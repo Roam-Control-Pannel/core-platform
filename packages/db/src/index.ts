@@ -59,7 +59,7 @@ export function createServiceClient(config: {
   url: string;
   serviceRoleKey: string;
 }): RoamClient {
-  if (typeof window !== "undefined") {
+  if (typeof (globalThis as { window?: unknown }).window !== "undefined") {
     throw new Error(
       "[@roam/db] createServiceClient called in a browser context. " +
         "The service-role key bypasses RLS and must never reach the client. " +
