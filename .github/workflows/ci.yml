@@ -1,0 +1,52 @@
+name: CI
+
+# "No green, no merge" — every push and PR runs the full check suite.
+# This makes the commit-chain discipline a guarantee, not a habit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile fails if pnpm-lock.yaml is out of sync with package.json,
+      # which catches a committed dependency change that forgot to update the lock.
+      # esbuild's build script is pre-approved via onlyBuiltDependencies in
+      # pnpm-workspace.yaml, so no interactive approve-builds step is needed in CI.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # Lint is wired into the Turbo pipeline but no package defines an eslint
+      # config yet. Re-enable once eslint lands so CI doesn't fail on a missing
+      # binary. Tracked: add lint step when the eslint config slice ships.
+      # - name: Lint
+      #   run: pnpm lint
