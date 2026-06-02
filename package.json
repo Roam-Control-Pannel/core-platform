@@ -1,0 +1,27 @@
+{
+  "name": "roam",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Roam — hyper-local discovery + social planning. Monorepo: one core, thin shells.",
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "turbo run lint typecheck test",
+    "db:migrate": "supabase migration up",
+    "db:types": "supabase gen types typescript --local > packages/db/src/generated/database.types.ts",
+    "db:reset": "supabase db reset",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}
