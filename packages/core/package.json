@@ -1,0 +1,25 @@
+{
+  "name": "@roam/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./meetup": "./src/meetup/index.ts",
+    "./posts": "./src/posts/index.ts",
+    "./credits": "./src/credits/index.ts",
+    "./geo": "./src/geo/index.ts",
+    "./moderation": "./src/moderation/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@roam/db": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
