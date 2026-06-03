@@ -26,9 +26,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@next/env':
-        specifier: ^16.2.7
-        version: 16.2.7
       '@roam/api':
         specifier: workspace:*
         version: link:../../packages/api
