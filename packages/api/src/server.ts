@@ -8,6 +8,13 @@
  * Netlify Function wrapper) is a few lines that just forward the Request — kept out of
  * here so this stays transport-pure.
  *
+ * CORS: because the API is a SEPARATE ORIGIN from the web/console surfaces (Shape B),
+ * browsers enforce CORS on every call. We allow the configured surface origins, answer
+ * the preflight OPTIONS request, and echo the headers tRPC's batch client needs. Allowed
+ * origins come from CORS_ALLOWED_ORIGINS (comma-separated); in dev we default to the
+ * local Next origins. Server-to-server callers (Edge Functions / cron) are unaffected —
+ * CORS is a browser concept and those calls carry the x-internal-call secret instead.
+ *
  * Env is read ONCE at module load and fail-fast: a missing secret should crash the
  * service at boot, not silently degrade auth at request time.
  */
@@ -39,6 +46,31 @@ function loadEnv(): ApiEnv {
 
 const createContext = makeContextFactory(loadEnv());
 
+/**
+ * Allowed browser origins for CORS. Comma-separated CORS_ALLOWED_ORIGINS in prod;
+ * sensible local Next origins (3000/3001) in dev. Read once at boot.
+ */
+const allowedOrigins: string[] = (
+  process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:3000,http://localhost:3001"
+)
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+/** Build the CORS headers for a given request origin (echo it only if allowed). */
+function corsHeaders(origin: string | null): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-internal-call",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+  if (origin && allowedOrigins.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
 /** Adapt a standard fetch Headers object to our transport-agnostic HeaderBag. */
 function toHeaderBag(headers: Headers): HeaderBag {
   return { get: (name: string) => headers.get(name) };
@@ -49,11 +81,28 @@ function toHeaderBag(headers: Headers): HeaderBag {
  *   export default { fetch: handler }   // edge / Bun / Deno
  *   // or wrap in a Netlify Function that forwards (request) => handler(request)
  */
-export function handler(request: Request): Promise<Response> {
-  return fetchRequestHandler({
+export async function handler(request: Request): Promise<Response> {
+  const origin = request.headers.get("origin");
+  const cors = corsHeaders(origin);
+
+  // Preflight: answer OPTIONS immediately with the CORS headers, no body.
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors });
+  }
+
+  const response = await fetchRequestHandler({
     endpoint: "/trpc",
     req: request,
     router: appRouter,
     createContext: () => createContext({ headers: toHeaderBag(request.headers) }),
+  });
+
+  // Attach CORS headers to the actual response (clone so we can add headers).
+  const headers = new Headers(response.headers);
+  for (const [k, v] of Object.entries(cors)) headers.set(k, v);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
