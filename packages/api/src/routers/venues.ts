@@ -245,10 +245,10 @@ export const venuesRouter = router({
    * genuine business email-domain match (venue → claimed, owner_id set) and otherwise
    * leaves the claim pending for human review — it NEVER auto-rejects.
    *
-   * Invoked two ways, both running the SAME DB logic:
-   *   - inline by the web client as a best-effort follow-up right after requestClaim
-   *     (so a verifiable owner gets instant approval), and
-   *   - later by a cron/Edge sweep over the pending queue (same endpoint).
+   * Invoked SERVER-SIDE ONLY (never by the browser — INTERNAL_CALL_SECRET is
+   * server-only): a manual/curl call today, a cron/Edge sweep over the pending
+   * queue later. Until approval runs, VenueDetail shows the true "under review"
+   * state; the venue flips to claimed on the next byId read after approval.
    * The DB owns WHAT approval means; this procedure only carries the WHEN.
    */
   approveClaim: internalProcedure

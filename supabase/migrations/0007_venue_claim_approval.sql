@@ -22,10 +22,11 @@
 --   * Conferring ownership is two coupled writes (venues + venue_claims) that must
 --     be atomic and must verify the domain in the SAME transaction that flips the
 --     status — otherwise a TOCTOU race could approve against stale link data.
---   * Centralising the rule here (not in TS) means a future cron sweep and the
---     inline post-request call run IDENTICAL logic — the one-core principle applied
---     at the DB layer. The TS side only decides WHEN to call; the DB owns WHAT
---     approval means.
+--   * Centralising the rule here (not in TS) means every caller of approval runs
+--     IDENTICAL logic — the one-core principle applied at the DB layer. Approval is
+--     SERVER-SIDE ONLY (a manual/curl call today, a cron/Edge sweep later); the
+--     browser never calls it. The TS side only decides WHEN to call; the DB owns
+--     WHAT approval means.
 --
 -- Safe SECURITY DEFINER (same discipline as 0006): non-recursive (reads venues,
 -- venue_claims, auth.users; writes venues, venue_claims — never queries its own
