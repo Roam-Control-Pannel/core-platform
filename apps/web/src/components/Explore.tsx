@@ -1,15 +1,20 @@
 /**
  * Explore — the place-anchored home, and the screen that validates the architecture:
- * a real tRPC call (venues.list) → RLS-scoped data → the component kit → a navigable
+ * a real tRPC call (venues.near) → RLS-scoped data → the component kit → a navigable
  * screen. Ported from the hi-fi Consumer Discovery layout.
  *
- * Now: place header (the switcher is a static label this slice — re-rooting is a later
- * seam), Browse/Feed seg (Feed is a placeholder pending the posts-feed query), category
- * pills derived from loaded venues, and the venue grid. Venues are loaded via
- * `venues.near` from the Darlington centre (the static place this slice), so the grid is
- * ordered near→far and each card carries a real RPC-computed distance. Loading uses a
- * content-shaped skeleton (not a spinner) per the States spec; empty reads "new", not
- * "dead".
+ * Now LIVE on both the place switcher AND the feed (this slice):
+ *   - The place header is a real PlaceSwitcher. Selecting a place (or "use my location")
+ *     re-roots the venue query: `near` is re-issued from the chosen centre, so the grid
+ *     re-orders near→far around wherever the user picked. The hardcoded Darlington
+ *     constant is gone — Darlington is now just the DEFAULT_PLACE.
+ *   - The Feed tab renders FeedList (real posts.feed query) instead of a placeholder,
+ *     with its own skeleton/empty/error states. The launch-empty feed is the median
+ *     case and reads "new, not dead".
+ *
+ * Venues load via `venues.near` from the selected place's centre, so the grid is ordered
+ * near→far and each card carries a real RPC-computed distance. Loading uses a
+ * content-shaped skeleton (not a spinner) per the States spec; empty reads "new".
  */
 "use client";
 
@@ -17,27 +22,28 @@ import { useEffect, useMemo, useState } from "react";
 import { Seg, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
+import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
+import { FeedList } from "./FeedList";
 
 type Mode = "browse" | "feed";
-
-/**
- * Darlington town centre — the static place origin for this slice. When the place
- * switcher becomes live, this becomes the selected place's centre (and later the
- * user's own location).
- */
-const DARLINGTON = { lat: 54.5253, lng: -1.5536 };
 
 export function Explore() {
   const trpc = useTrpc();
   const [mode, setMode] = useState<Mode>("browse");
+  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [venues, setVenues] = useState<VenueCardData[] | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Re-issue `near` from the selected place's centre whenever it changes. Resetting
+  // venues to null first restores the skeleton, so a place switch reads as a real load.
   useEffect(() => {
     let cancelled = false;
+    setVenues(null);
+    setError(null);
+    setActiveCategory(null);
     trpc.venues.near
-      .query({ lat: DARLINGTON.lat, lng: DARLINGTON.lng, limit: 50 })
+      .query({ lat: place.lat, lng: place.lng, limit: 50 })
       .then((rows) => {
         if (cancelled) return;
         setVenues(
@@ -57,7 +63,7 @@ export function Explore() {
     return () => {
       cancelled = true;
     };
-  }, [trpc]);
+  }, [trpc, place]);
 
   const categories = useMemo(() => {
     if (!venues) return [];
@@ -73,7 +79,7 @@ export function Explore() {
 
   return (
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      {/* place header */}
+      {/* place header — now a live switcher */}
       <header
         style={{
           display: "flex",
@@ -82,20 +88,7 @@ export function Explore() {
           padding: "var(--space-2) 0 var(--space-4)",
         }}
       >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            fontFamily: "var(--display)",
-            fontWeight: 600,
-            fontSize: 20,
-          }}
-        >
-          <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--crimson)" }} />
-          Darlington
-          <span style={{ color: "var(--muted)", fontSize: 14 }}>▾</span>
-        </div>
+        <PlaceSwitcher value={place} onChange={setPlace} />
         <Seg
           options={[
             { value: "browse", label: "Browse" },
@@ -107,7 +100,7 @@ export function Explore() {
       </header>
 
       {mode === "feed" ? (
-        <FeedPlaceholder />
+        <FeedList placeName={place.name} />
       ) : (
         <>
           {/* category pills */}
@@ -197,7 +190,7 @@ function EmptyState() {
         Nothing here yet
       </div>
       <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>
-        No venues match this view. Try another category, or check back as Roam grows in your area.
+        No venues match this view. Try another category or place, or check back as Roam grows in your area.
       </p>
     </div>
   );
@@ -210,14 +203,6 @@ function ErrorState({ message }: { message: string }) {
         Couldn&apos;t load venues
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
-    </div>
-  );
-}
-
-function FeedPlaceholder() {
-  return (
-    <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", color: "var(--muted)" }}>
-      <p>The local feed is coming soon — geofenced posts from venues near you.</p>
     </div>
   );
 }
