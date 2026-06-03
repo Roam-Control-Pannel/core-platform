@@ -1,33 +1,42 @@
 /**
- * VenueDetail — the full-page venue surface. The natural next slice after Explore:
- * `venues.byId` already existed in the API; this is its first consumer and the entry
- * point to the claim flow.
+ * VenueDetail — the full-page venue surface, now with the FIRST real write-path on
+ * the consumer surface: claim-as-request + just-in-time auth.
  *
- * Two first-class states, mirroring VenueCard's split but at full-page depth:
+ * States (mirroring VenueCard's split, at full-page depth, plus the claim machinery):
  *
  *  - CLAIMED (owner_id set): hero, name, ★rating (gold) + category, description,
- *    a Links row (Order/Book/Menu from the venue's `links` jsonb), Details
- *    (address/locality/opening times where present). The richer the record, the
- *    fuller the page — but it degrades gracefully when fields are null.
- *  - UNCLAIMED: the global-launch median experience at full size — honest
- *    "From public sources" provenance, locality context, and the claim entry point
- *    presented as the page's single primary CTA. NO rating (over-claiming confidence
- *    on unverified scraped data is the exact thing VenueCard's design intent forbids).
+ *    Links row, Details. Degrades gracefully when fields are null.
+ *  - UNCLAIMED (owner_id null, status 'unclaimed'): the global-launch median
+ *    experience — honest provenance, locality context, and the claim entry point as
+ *    the page's single primary CTA. NO rating (over-claiming on scraped data is
+ *    forbidden). This is where claiming begins.
+ *  - PENDING CLAIM (status 'pending_claim'): someone has already requested this venue
+ *    and it's awaiting verification. NOT claimable again here — we show an honest
+ *    "under review" state instead of a second competing CTA.
  *
- * Claim is an ENTRY POINT this slice, not a flow: the primary CTA is present and
- * labelled, but wiring just-in-time auth + the claim mutation is a deliberately
- * separate next step. The button is disabled with an honest "coming soon" affordance
- * rather than a dead click or a half-built flow.
+ * THE CLAIM FLOW (claim-as-request — see 0006_venue_claims.sql):
+ * Claiming is a trust event, not a land-grab. Pressing "Claim" does NOT set ownership;
+ * it submits a REQUEST that moves the venue unclaimed → pending_claim and records a
+ * claim awaiting verification. Ownership is conferred only later by the service-role
+ * approval path.
  *
- * All four states ship with the screen (States matrix): loading (content-shaped
- * skeleton, not a spinner), error, not-found, and the two loaded states.
+ *   signed in  → press Claim → venues.requestClaim → "claim submitted, under review"
+ *   signed out → press Claim → AuthPanel appears (JIT auth):
+ *       • sign IN  → session immediate → claim submits in the same sitting
+ *       • sign UP  → email confirmation (project default ON) → no session yet →
+ *                    "check your email"; the confirmation link returns here with
+ *                    ?claim=1, and on return — now signed in — the claim auto-resumes.
+ *
+ * All four base states still ship with the screen (States matrix): loading
+ * (content-shaped skeleton), error, not-found, and the loaded states.
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Pill, Rate, Button } from "@roam/design";
-import { useTrpc } from "./TrpcProvider";
+import { useTrpc, useSession } from "./TrpcProvider";
+import { AuthPanel } from "./AuthPanel";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -52,29 +61,46 @@ interface VenueDetailData {
   source_attribution: string | null;
 }
 
+/** Where the claim CTA currently stands, locally. Drives which affordance shows. */
+type ClaimUiState =
+  | "idle" // not started
+  | "auth" // signed out, AuthPanel showing
+  | "submitting" // requestClaim in flight
+  | "submitted" // success — under review
+  | "error"; // requestClaim failed (message in claimError)
+
 export function VenueDetail({ venueId }: { venueId: string }) {
   const trpc = useTrpc();
+  const session = useSession();
   const [venue, setVenue] = useState<VenueDetailData | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const [claimUi, setClaimUi] = useState<ClaimUiState>("idle");
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  const loadVenue = useCallback(async () => {
     setVenue(undefined);
     setError(null);
     // The byId procedure returns the full generated `venues` Row (select("*")), a
     // deeply-nested type (Json fields, enum refs). Inferring it through the tRPC
     // client's promise chain trips TS2589 (instantiation too deep), so we widen the
-    // call to a minimal query signature here — the runtime is unchanged, and we
-    // narrow back to VenueDetailData immediately below.
+    // call to a minimal query signature here — runtime unchanged, narrow back below.
     const byId = trpc.venues.byId as unknown as {
       query: (input: { venueId: string }) => Promise<unknown>;
     };
-    byId
-      .query({ venueId })
-      .then((row) => {
-        if (cancelled) return;
-        // null = not found (maybeSingle returned no row).
-        setVenue((row as VenueDetailData | null) ?? null);
+    try {
+      const row = await byId.query({ venueId });
+      return (row as VenueDetailData | null) ?? null;
+    } catch (e: unknown) {
+      throw e instanceof Error ? e : new Error("Failed to load venue.");
+    }
+  }, [trpc, venueId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadVenue()
+      .then((v) => {
+        if (!cancelled) setVenue(v);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load venue.");
@@ -82,7 +108,57 @@ export function VenueDetail({ venueId }: { venueId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [trpc, venueId]);
+  }, [loadVenue]);
+
+  /**
+   * Submit the claim request. Assumes a session exists (caller gates on it). On
+   * success we move the local UI to "submitted" and refresh the venue so its status
+   * reflects pending_claim from the server (single source of truth).
+   */
+  const submitClaim = useCallback(async () => {
+    setClaimUi("submitting");
+    setClaimError(null);
+    try {
+      await trpc.venues.requestClaim.mutate({ venueId });
+      setClaimUi("submitted");
+      // Re-read so the venue's status (now pending_claim) is server-truth, not assumed.
+      const fresh = await loadVenue();
+      setVenue(fresh);
+    } catch (e: unknown) {
+      setClaimError(e instanceof Error ? e.message : "Couldn't submit your claim.");
+      setClaimUi("error");
+    }
+  }, [trpc, venueId, loadVenue]);
+
+  /**
+   * Resume-after-confirmation: if the page was opened with ?claim=1 (the redirect
+   * target the AuthPanel set on sign-up) AND we now have a session, auto-fire the
+   * claim once. The flag is cleared from the URL so a refresh doesn't re-fire.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("claim") !== "1") return;
+    if (!session) return; // wait for the session to land post-confirmation
+    if (claimUi !== "idle" && claimUi !== "auth") return;
+
+    // Clear the flag so a manual refresh won't resubmit.
+    params.delete("claim");
+    const cleaned =
+      window.location.pathname + (params.toString() ? `?${params}` : "");
+    window.history.replaceState(null, "", cleaned);
+
+    void submitClaim();
+  }, [session, claimUi, submitClaim]);
+
+  /** Claim button pressed. Signed in → submit; signed out → show the auth panel. */
+  const onClaimPressed = useCallback(() => {
+    if (session) {
+      void submitClaim();
+    } else {
+      setClaimUi("auth");
+    }
+  }, [session, submitClaim]);
 
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -95,8 +171,17 @@ export function VenueDetail({ venueId }: { venueId: string }) {
         <NotFoundState />
       ) : venue.owner_id !== null ? (
         <ClaimedDetail venue={venue} />
+      ) : venue.status === "pending_claim" ? (
+        <PendingClaimDetail venue={venue} mineJustSubmitted={claimUi === "submitted"} />
       ) : (
-        <UnclaimedDetail venue={venue} />
+        <UnclaimedDetail
+          venue={venue}
+          claimUi={claimUi}
+          claimError={claimError}
+          onClaimPressed={onClaimPressed}
+          onAuthed={submitClaim}
+          venueId={venueId}
+        />
       )}
     </main>
   );
@@ -186,7 +271,7 @@ function ClaimedDetail({ venue }: { venue: VenueDetailData }) {
       </div>
 
       {venue.description ? (
-        <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-1)" }}>{venue.description}</p>
+        <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
       ) : null}
 
       {links.length > 0 ? (
@@ -204,7 +289,21 @@ function ClaimedDetail({ venue }: { venue: VenueDetailData }) {
   );
 }
 
-function UnclaimedDetail({ venue }: { venue: VenueDetailData }) {
+function UnclaimedDetail({
+  venue,
+  claimUi,
+  claimError,
+  onClaimPressed,
+  onAuthed,
+  venueId,
+}: {
+  venue: VenueDetailData;
+  claimUi: ClaimUiState;
+  claimError: string | null;
+  onClaimPressed: () => void;
+  onAuthed: () => void;
+  venueId: string;
+}) {
   return (
     <>
       <Hero claimed={false} />
@@ -229,23 +328,135 @@ function UnclaimedDetail({ venue }: { venue: VenueDetailData }) {
         {venue.source_attribution ?? "From public sources"}
       </div>
 
-      {/* Claim entry point — the page's single primary CTA. Flow + JIT auth are the
-          next slice, so the CTA is present and honest, not a dead click. */}
-      <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
-        <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-          Is this your venue?
+      <ClaimSection
+        venueId={venueId}
+        claimUi={claimUi}
+        claimError={claimError}
+        onClaimPressed={onClaimPressed}
+        onAuthed={onAuthed}
+      />
+
+      <DetailsBlock venue={venue} />
+    </>
+  );
+}
+
+/**
+ * The claim entry point + its live states. The page's single primary CTA when idle;
+ * swaps to the auth panel (signed out), a submitting state, the submitted/under-review
+ * confirmation, or an error with retry.
+ */
+function ClaimSection({
+  venueId,
+  claimUi,
+  claimError,
+  onClaimPressed,
+  onAuthed,
+}: {
+  venueId: string;
+  claimUi: ClaimUiState;
+  claimError: string | null;
+  onClaimPressed: () => void;
+  onAuthed: () => void;
+}) {
+  if (claimUi === "submitted") {
+    return <ClaimSubmittedCard />;
+  }
+
+  if (claimUi === "auth") {
+    return (
+      <AuthPanel
+        intro="Claiming is free. Sign in or create an account to submit your claim — we'll verify it before it goes live."
+        emailRedirectTo={claimReturnUrl(venueId)}
+        onAuthed={onAuthed}
+      />
+    );
+  }
+
+  return (
+    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+        Is this your venue?
+      </div>
+      <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
+        Claim it free to add photos, opening times, your menu and links — and post offers
+        and events to people nearby. We&apos;ll verify your claim before it goes live.
+      </p>
+
+      {claimUi === "error" && claimError ? (
+        <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-3)" }} role="alert">
+          {claimError}
         </div>
-        <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-          Claim it free to add photos, opening times, your menu and links — and post offers
-          and events to people nearby.
-        </p>
-        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
-          <Button variant="pri" disabled title="Claiming opens soon">
-            Claim it free
-          </Button>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>Coming soon</span>
-        </div>
-      </Card>
+      ) : null}
+
+      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+        <Button variant="pri" onClick={onClaimPressed} disabled={claimUi === "submitting"}>
+          {claimUi === "submitting" ? "Submitting…" : claimUi === "error" ? "Try again" : "Claim it free"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function ClaimSubmittedCard() {
+  return (
+    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+        Claim submitted
+      </div>
+      <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
+        Thanks — your claim is now with us for verification. Once it&apos;s approved you&apos;ll
+        be able to manage this venue, add photos and details, and post to people nearby.
+      </p>
+    </Card>
+  );
+}
+
+/**
+ * Shown when the venue is already in pending_claim status. If the current user just
+ * submitted it, we show the warmer "submitted" copy; otherwise a neutral "under review"
+ * (someone — possibly someone else — has claimed it and it's being verified). Either
+ * way there is NO second claim CTA: the venue isn't claimable again from here.
+ */
+function PendingClaimDetail({
+  venue,
+  mineJustSubmitted,
+}: {
+  venue: VenueDetailData;
+  mineJustSubmitted: boolean;
+}) {
+  return (
+    <>
+      <Hero claimed={false} />
+      <TitleRow name={venue.name} />
+      <div style={{ marginTop: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
+        {venue.category ? <span>{venue.category}</span> : null}
+        {venue.category && venue.locality ? <span> · </span> : null}
+        {venue.locality ? <span>{venue.locality}</span> : null}
+      </div>
+
+      {mineJustSubmitted ? (
+        <ClaimSubmittedCard />
+      ) : (
+        <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              letterSpacing: ".04em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              marginBottom: "var(--space-2)",
+            }}
+          >
+            Claim under review
+          </div>
+          <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
+            A claim for this venue has been submitted and is being verified. Check back soon —
+            once it&apos;s approved the venue&apos;s owner can keep its details up to date.
+          </p>
+        </Card>
+      )}
 
       <DetailsBlock venue={venue} />
     </>
@@ -276,7 +487,7 @@ function DetailsBlock({ venue }: { venue: VenueDetailData }) {
         {rows.map(([k, v]) => (
           <div key={k} style={{ display: "contents" }}>
             <dt style={{ color: "var(--muted)", fontSize: 13 }}>{k}</dt>
-            <dd style={{ margin: 0, fontSize: 13.5, color: "var(--ink-1)" }}>{v}</dd>
+            <dd style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)" }}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -332,4 +543,18 @@ function linkEntries(links: Record<string, unknown> | null): Array<[string, stri
 
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * The URL the email-confirmation link returns to: this venue page with the claim
+ * resume flag, so a confirmed sign-up lands back ready to finish. Uses
+ * NEXT_PUBLIC_SITE_URL (the project's domain source of truth) with the same localhost
+ * fallback the tRPC client uses, and never throws at module/runtime if unset.
+ */
+function claimReturnUrl(venueId: string): string {
+  const origin =
+    (typeof window !== "undefined" ? window.location.origin : undefined) ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+  return `${origin}/venue/${venueId}?claim=1`;
 }
