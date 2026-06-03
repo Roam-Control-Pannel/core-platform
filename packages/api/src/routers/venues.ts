@@ -18,10 +18,19 @@
  * unclaimed → pending_claim and records a venue_claims row WITHOUT setting owner_id.
  * Ownership is conferred only by the service-role approval path (verification),
  * never by the user. See `requestClaim` below and 0006_venue_claims.sql.
+ *
+ * As of migration 0007 that approval path exists: `approve_venue_claim` (service-role
+ * only) performs email-domain auto-match and, on a genuine business-domain match,
+ * confers ownership (venue → claimed, owner_id set). It NEVER auto-rejects: a non-match
+ * leaves the claim pending for human review. The `approveClaim` procedure here is
+ * `internalProcedure` (requires x-internal-call; uses the service client) — it is the
+ * ONLY caller of that function, and it is unreachable by a user JWT. This is the other
+ * half of claim-as-request, and it keeps the dangerous owner_id write off every
+ * user-facing path exactly as 0004/0006/ARCHITECTURE.md demand.
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
 
 /**
  * Shape returned by the `venues_near` RPC (migration 0005). The generated DB types
@@ -59,6 +68,19 @@ interface VenueClaimRow {
 }
 
 /**
+ * Shape returned by the `approve_venue_claim` function (migration 0007) — the
+ * venue_claim_approval composite. Not in generated types until `pnpm db:types`
+ * re-runs; typed explicitly and read through the widened .rpc() surface.
+ */
+interface VenueClaimApprovalRow {
+  claim_id: string;
+  venue_id: string;
+  verified: boolean;
+  venue_status: string;
+  method: "email_domain" | "manual_review_required" | "not_actionable";
+}
+
+/**
  * Postgres error codes the request_venue_claim function raises (via `using errcode`),
  * mapped to friendly, typed outcomes. These surface to the client through the RPC
  * error.message / code, so we match on the SQLSTATE we deliberately chose in 0006.
@@ -75,6 +97,17 @@ const CLAIM_ERROR_BY_SQLSTATE: Record<string, { code: TRPCError["code"]; message
     message: "You've already submitted a claim for this venue. It's awaiting review.",
   },
 };
+
+/**
+ * A widened `.rpc()` surface. The 0005/0006/0007 functions aren't in the generated
+ * DB types until `pnpm db:types` is re-run, so the typed client's .rpc() overload
+ * rejects their names. We widen JUST the rpc call (the rest of the client stays fully
+ * typed) — the same idiom proven on `near` and `requestClaim`.
+ */
+type LooseRpc = (
+  fn: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
 
 export const venuesRouter = router({
   /**
@@ -117,14 +150,7 @@ export const venuesRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // The `venues_near` function isn't in the generated DB types until
-      // `pnpm db:types` is re-run after migration 0005 is applied. Until then the
-      // typed client's .rpc() overload rejects the name, so we widen JUST this call
-      // through a minimal rpc surface — the rest of ctx.db stays fully typed.
-      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
       const { data, error } = await rpc("venues_near", {
         lat: input.lat,
         lng: input.lng,
@@ -182,15 +208,7 @@ export const venuesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // request_venue_claim isn't in the generated DB types until `pnpm db:types`
-      // is re-run after 0006 is applied; widen JUST this call (same idiom as near).
-      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{
-        data: unknown;
-        error: { message: string; code?: string } | null;
-      }>;
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
 
       const { data, error } = await rpc("request_venue_claim", {
         target_venue_id: input.venueId,
@@ -202,7 +220,6 @@ export const venuesRouter = router({
         if (mapped) {
           throw new TRPCError({ code: mapped.code, message: mapped.message });
         }
-        // Unknown DB error — surface generically, don't leak internals.
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Couldn't submit your claim. Please try again.",
@@ -215,6 +232,45 @@ export const venuesRouter = router({
         claimId: claim.id,
         venueId: claim.venue_id,
         status: claim.status,
+      };
+    }),
+
+  /**
+   * Internal: run the verification/approval check on a pending claim. The OTHER HALF
+   * of claim-as-request. Requires x-internal-call (internalProcedure) and uses the
+   * service client (RLS bypass) — it is unreachable by a user JWT, which is the whole
+   * point: conferring ownership must never sit on a user-facing path.
+   *
+   * Calls `approve_venue_claim` (migration 0007), which auto-approves ONLY on a
+   * genuine business email-domain match (venue → claimed, owner_id set) and otherwise
+   * leaves the claim pending for human review — it NEVER auto-rejects.
+   *
+   * Invoked SERVER-SIDE ONLY (never by the browser — INTERNAL_CALL_SECRET is
+   * server-only): a manual/curl call today, a cron/Edge sweep over the pending
+   * queue later. Until approval runs, VenueDetail shows the true "under review"
+   * state; the venue flips to claimed on the next byId read after approval.
+   * The DB owns WHAT approval means; this procedure only carries the WHEN.
+   */
+  approveClaim: internalProcedure
+    .input(z.object({ claimId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      const { data, error } = await rpc("approve_venue_claim", {
+        target_claim_id: input.claimId,
+      });
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Claim approval failed: ${error.message}`,
+        });
+      }
+      const r = data as VenueClaimApprovalRow;
+      return {
+        claimId: r.claim_id,
+        venueId: r.venue_id,
+        verified: r.verified,
+        venueStatus: r.venue_status,
+        method: r.method,
       };
     }),
 });
