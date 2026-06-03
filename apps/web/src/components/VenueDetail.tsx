@@ -61,7 +61,15 @@ export function VenueDetail({ venueId }: { venueId: string }) {
     let cancelled = false;
     setVenue(undefined);
     setError(null);
-    trpc.venues.byId
+    // The byId procedure returns the full generated `venues` Row (select("*")), a
+    // deeply-nested type (Json fields, enum refs). Inferring it through the tRPC
+    // client's promise chain trips TS2589 (instantiation too deep), so we widen the
+    // call to a minimal query signature here — the runtime is unchanged, and we
+    // narrow back to VenueDetailData immediately below.
+    const byId = trpc.venues.byId as unknown as {
+      query: (input: { venueId: string }) => Promise<unknown>;
+    };
+    byId
       .query({ venueId })
       .then((row) => {
         if (cancelled) return;
