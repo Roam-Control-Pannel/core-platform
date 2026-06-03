@@ -5,6 +5,6 @@
  * the web React component kit ported from the hi-fi handoff. Native components are a
  * later slice consuming the same tokens and the same @roam/core logic.
  */
-export * from "./tokens/index.js";
-export { rootCss, typeScaleCss } from "./css.js";
-export * from "./components/index.js";
+export * from "./tokens/index";
+export { rootCss, typeScaleCss } from "./css";
+export * from "./components/index";

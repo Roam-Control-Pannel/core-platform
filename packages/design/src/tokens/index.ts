@@ -7,8 +7,8 @@
  * THESE values — a token change here repaints every surface, which is the whole
  * point of the one-design-system architecture.
  */
-export { color, type ColorToken } from "./color.js";
-export { font, type, type FontToken, type TypeToken } from "./type.js";
+export { color, type ColorToken } from "./color";
+export { font, type, type FontToken, type TypeToken } from "./type";
 export {
   space,
   radius,
@@ -18,4 +18,4 @@ export {
   type RadiusToken,
   type ElevationToken,
   type MotionToken,
-} from "./space.js";
+} from "./space";

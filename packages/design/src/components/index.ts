@@ -8,10 +8,10 @@
  *
  * Native equivalents are a later slice consuming the same tokens + the same core logic.
  */
-export { Button, type ButtonProps, type ButtonVariant } from "./Button.js";
-export { Pill, type PillProps, type PillVariant } from "./Pill.js";
-export { Card, Stat, type CardProps, type StatProps } from "./Card.js";
-export { Seg, type SegProps, type SegOption } from "./Seg.js";
+export { Button, type ButtonProps, type ButtonVariant } from "./Button";
+export { Pill, type PillProps, type PillVariant } from "./Pill";
+export { Card, Stat, type CardProps, type StatProps } from "./Card";
+export { Seg, type SegProps, type SegOption } from "./Seg";
 export {
   Rate,
   DistanceChip,
@@ -19,5 +19,5 @@ export {
   type RateProps,
   type DistanceChipProps,
   type AvatarStackProps,
-} from "./Chips.js";
-export { PollCard, type PollCardProps, type PollOption } from "./PollCard.js";
+} from "./Chips";
+export { PollCard, type PollCardProps, type PollOption } from "./PollCard";
