@@ -15,7 +15,6 @@
     "prebuild": "node scripts/sync-env.mjs"
   },
   "dependencies": {
-    "@next/env": "^16.2.7",
     "@roam/api": "workspace:*",
     "@roam/db": "workspace:*",
     "@roam/design": "workspace:*",
