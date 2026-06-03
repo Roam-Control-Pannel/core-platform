@@ -1,0 +1,29 @@
+{
+  "name": "@roam/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./trpc": "./src/trpc.ts",
+    "./context": "./src/context.ts",
+    "./routers": "./src/routers/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@roam/core": "workspace:*",
+    "@roam/db": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}
