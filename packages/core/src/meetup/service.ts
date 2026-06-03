@@ -117,3 +117,45 @@ export async function endMeetup(
     .eq("id", meetupId);
   if (updateErr) throw new Error(`Failed to end meet-up: ${updateErr.message}`);
 }
+
+/**
+ * Cast (or change) a vote in a meet-up poll. Encodes the crown-jewel rule that
+ * logic.ts documents and the DB enforces by PK: ONE active vote per voter, and a
+ * re-vote OVERWRITES the previous one. We express that as an upsert keyed on
+ * (meetup_id, voter_id) — the same voter voting again replaces their row rather
+ * than adding a second, which is exactly what resolvePoll's re-vote example expects.
+ *
+ * The vote may only be cast while the meet-up is still in 'voting'. We check state
+ * first so a closed poll can't be mutated (a resolved/ended meet-up rejects votes).
+ *
+ * Thin orchestrator: the RULE (one-per-voter, overwrite) lives here in core so web,
+ * console, native, and cron all cast votes identically; the transport layer only
+ * supplies the validated ids.
+ */
+export async function castVote(
+  client: RoamClient,
+  meetupId: string,
+  optionId: string,
+  voterId: string,
+): Promise<{ ok: boolean; reason?: "not_voting" }> {
+  const { data: meetup, error } = await client
+    .from("meetups")
+    .select("state")
+    .eq("id", meetupId)
+    .single();
+  if (error) throw new Error(`Failed to load meet-up: ${error.message}`);
+
+  if ((meetup.state as MeetupState) !== "voting") {
+    return { ok: false, reason: "not_voting" };
+  }
+
+  const { error: voteErr } = await client
+    .from("meetup_votes")
+    .upsert(
+      { meetup_id: meetupId, option_id: optionId, voter_id: voterId },
+      { onConflict: "meetup_id,voter_id" },
+    );
+  if (voteErr) throw new Error(`Failed to cast vote: ${voteErr.message}`);
+
+  return { ok: true };
+}
