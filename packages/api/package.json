@@ -11,6 +11,7 @@
     "./routers": "./src/routers/index.ts"
   },
   "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/dev.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
@@ -19,10 +20,12 @@
   "dependencies": {
     "@roam/core": "workspace:*",
     "@roam/db": "workspace:*",
+    "@hono/node-server": "^1.13.0",
     "@trpc/server": "^11.0.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.2.0"
   }
