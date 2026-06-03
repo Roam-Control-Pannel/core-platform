@@ -1,18 +1,37 @@
 /**
- * VenueCard — renders a venue from venues.list. Two states, both first-class:
+ * VenueCard — renders a venue from venues.list / venues.near. Two states, both
+ * first-class, and now a link into the full detail page (/venue/[id]).
  *
  *  - CLAIMED (owner_id set): name, ★rating (gold), category. A photo slot sits on top;
  *    real photography wires in later (the list endpoint doesn't return images yet, so
  *    we show a tasteful tinted placeholder, not a broken image).
  *  - UNCLAIMED: the global-launch median experience, designed to look INTENTIONAL, not
  *    broken — a brand-tinted tile (no fake photo), the name, category if known, a
- *    "From public sources" honesty label, and a quiet "Claim it free" affordance. No
- *    rating (there isn't one). This must read "new", not "dead".
+ *    "From public sources" honesty label. No rating (there isn't one). The claim
+ *    affordance now lives on the detail page (the card is the navigational entry);
+ *    this keeps one clear claim CTA rather than competing ones.
  *
- * No distance chip: venues.list returns no distance (the PostGIS near-RPC isn't built),
- * so we don't fake one. When that RPC lands, the chip slots in here.
+ * Distance: when the card is fed from venues.near it carries `distanceM`, and the
+ * DistanceChip renders a real, RPC-computed distance (formatted by a local helper).
+ * When fed from the no-origin `list`, distanceM is undefined and no chip shows — we
+ * still never fake one.
  */
-import { Card, Pill, Rate } from "@roam/design";
+import Link from "next/link";
+import { Card, Pill, Rate, DistanceChip } from "@roam/design";
+
+/**
+ * Local mirror of @roam/core's geo.formatDistance. Core is a Node-ESM package (its
+ * internal imports carry .js suffixes), so bundling it into this client component
+ * trips Turbopack's resolver — and dragging the whole core package (plus its @roam/db
+ * dependency) into the browser just for a four-line formatter is the wrong trade. This
+ * is a pure presentation helper; it lives here. (If a shared browser-safe core subset
+ * ever exists, swap this back to that import.)
+ */
+function formatDistance(metres: number): string {
+  if (metres < 1000) return `${Math.round(metres)} m`;
+  const km = metres / 1000;
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+}
 
 export interface VenueCardData {
   id: string;
@@ -20,10 +39,16 @@ export interface VenueCardData {
   claimed: boolean;
   category: string | null;
   rating: number | null;
+  /** Metres from the search origin, present only when sourced from venues.near. */
+  distanceM?: number | undefined;
 }
 
 export function VenueCard({ venue }: { venue: VenueCardData }) {
-  return venue.claimed ? <ClaimedCard venue={venue} /> : <UnclaimedCard venue={venue} />;
+  return (
+    <Link href={`/venue/${venue.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+      {venue.claimed ? <ClaimedCard venue={venue} /> : <UnclaimedCard venue={venue} />}
+    </Link>
+  );
 }
 
 function ClaimedCard({ venue }: { venue: VenueCardData }) {
@@ -54,6 +79,9 @@ function ClaimedCard({ venue }: { venue: VenueCardData }) {
         >
           {venue.rating != null ? <Rate value={venue.rating.toFixed(1)} /> : null}
           {venue.category ? <span>{venue.category}</span> : null}
+          {venue.distanceM != null ? (
+            <DistanceChip style={{ marginLeft: "auto" }}>{formatDistance(venue.distanceM)}</DistanceChip>
+          ) : null}
         </div>
       </div>
     </Card>
@@ -79,9 +107,14 @@ function UnclaimedCard({ venue }: { venue: VenueCardData }) {
         <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>
           {venue.name}
         </div>
-        {venue.category ? (
-          <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{venue.category}</div>
-        ) : null}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          {venue.category ? (
+            <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{venue.category}</div>
+          ) : null}
+          {venue.distanceM != null ? (
+            <DistanceChip style={{ marginLeft: "auto" }}>{formatDistance(venue.distanceM)}</DistanceChip>
+          ) : null}
+        </div>
         <div
           style={{
             fontFamily: "var(--mono)",
@@ -97,7 +130,6 @@ function UnclaimedCard({ venue }: { venue: VenueCardData }) {
           <Pill variant="ghost-crim" size="sm">
             Claim it free
           </Pill>
-          <Pill size="sm">Suggest an edit</Pill>
         </div>
       </div>
     </Card>

@@ -5,8 +5,11 @@
  *
  * Now: place header (the switcher is a static label this slice — re-rooting is a later
  * seam), Browse/Feed seg (Feed is a placeholder pending the posts-feed query), category
- * pills derived from loaded venues, and the venue grid. Loading uses a content-shaped
- * skeleton (not a spinner) per the States spec; empty reads "new", not "dead".
+ * pills derived from loaded venues, and the venue grid. Venues are loaded via
+ * `venues.near` from the Darlington centre (the static place this slice), so the grid is
+ * ordered near→far and each card carries a real RPC-computed distance. Loading uses a
+ * content-shaped skeleton (not a spinner) per the States spec; empty reads "new", not
+ * "dead".
  */
 "use client";
 
@@ -17,6 +20,13 @@ import { VenueCard, type VenueCardData } from "./VenueCard";
 
 type Mode = "browse" | "feed";
 
+/**
+ * Darlington town centre — the static place origin for this slice. When the place
+ * switcher becomes live, this becomes the selected place's centre (and later the
+ * user's own location).
+ */
+const DARLINGTON = { lat: 54.5253, lng: -1.5536 };
+
 export function Explore() {
   const trpc = useTrpc();
   const [mode, setMode] = useState<Mode>("browse");
@@ -26,8 +36,8 @@ export function Explore() {
 
   useEffect(() => {
     let cancelled = false;
-    trpc.venues.list
-      .query({ limit: 50 })
+    trpc.venues.near
+      .query({ lat: DARLINGTON.lat, lng: DARLINGTON.lng, limit: 50 })
       .then((rows) => {
         if (cancelled) return;
         setVenues(
@@ -37,6 +47,7 @@ export function Explore() {
             claimed: v.claimed,
             category: v.category,
             rating: v.rating,
+            distanceM: v.distanceM,
           })),
         );
       })

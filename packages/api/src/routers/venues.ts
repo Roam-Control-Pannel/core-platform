@@ -7,11 +7,10 @@
  * IMPORTANT schema reality (verified against generated types): a venue's location is a
  * PostGIS `geo` column (type `unknown` in the generated types), NOT plain lat/lng. You
  * cannot order by distance client-side from `geo` — that needs a PostGIS query/RPC
- * (ST_Distance against a GiST index), which is the right place for near→far ordering
- * anyway (it's what core/geo's comment says the DB does). That RPC is not built yet, so
- * `near` currently returns a simple list and documents the gap rather than faking a sort
- * over data it doesn't have. core/geo's pure sort stays available for surfaces that
- * already hold coordinates (e.g. plan stops), just not here.
+ * (ST_Distance against a GiST index). As of migration 0005 that RPC exists
+ * (`venues_near`), so `near` now returns a real near→far ordering with a distance.
+ * `list` stays as the no-origin fallback (a plain page, no proximity claim) for
+ * surfaces that have no caller location yet.
  *
  * "Claimed" is not a boolean column — `owner_id` being non-null means claimed. Claiming
  * sets owner_id to the caller; RLS enforces who may claim.
@@ -19,11 +18,27 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
+/**
+ * Shape returned by the `venues_near` RPC (migration 0005). The generated DB types
+ * won't include this function until `pnpm db:types` is re-run after the migration is
+ * applied, so we type the row explicitly here and read it through `as unknown` at the
+ * call site. Keep this in sync with the RPC's `returns table (...)` definition.
+ */
+interface VenuesNearRow {
+  id: string;
+  name: string;
+  owner_id: string | null;
+  status: string;
+  category: string | null;
+  categories: string[];
+  rating: number | null;
+  distance_m: number;
+}
+
 export const venuesRouter = router({
   /**
-   * Public: list venues. Distance ordering is a TODO pending a PostGIS RPC
-   * (e.g. an rpc('venues_near', { lat, lng, limit }) ordering by ST_Distance).
-   * Until then this returns a plain page of venues — no fake proximity sort.
+   * Public: list venues with NO proximity ordering. The no-origin fallback — used
+   * when the caller has no location yet. For near→far + distance, use `near`.
    */
   list: publicProcedure
     .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
@@ -41,6 +56,50 @@ export const venuesRouter = router({
         category: v.category,
         categories: v.categories,
         rating: v.rating,
+      }));
+    }),
+
+  /**
+   * Public: near→far venue search from a (lat,lng) origin, via the `venues_near`
+   * PostGIS RPC (migration 0005). Orders by the GiST-indexed KNN operator and returns
+   * a real `distanceM` (metres) for the DistanceChip. RLS still applies — the RPC is
+   * SECURITY INVOKER, so anonymous browsing sees the same world-readable venues.
+   *
+   * `distanceM` is surfaced raw (metres); formatting (formatDistance) is a UI concern.
+   */
+  near: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        limit: z.number().int().min(1).max(100).default(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // The `venues_near` function isn't in the generated DB types until
+      // `pnpm db:types` is re-run after migration 0005 is applied. Until then the
+      // typed client's .rpc() overload rejects the name, so we widen JUST this call
+      // through a minimal rpc surface — the rest of ctx.db stays fully typed.
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      const { data, error } = await rpc("venues_near", {
+        lat: input.lat,
+        lng: input.lng,
+        max_results: input.limit,
+      });
+      if (error) throw new Error(`Failed to load nearby venues: ${error.message}`);
+      const rows = (data ?? []) as VenuesNearRow[];
+      return rows.map((v) => ({
+        id: v.id,
+        name: v.name,
+        claimed: v.owner_id !== null,
+        status: v.status,
+        category: v.category,
+        categories: v.categories,
+        rating: v.rating,
+        distanceM: v.distance_m,
       }));
     }),
 
