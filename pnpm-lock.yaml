@@ -66,6 +66,15 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/design:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.6(@types/node@22.19.19)
+
 packages:
 
   '@ampproject/remapping@2.3.0':
