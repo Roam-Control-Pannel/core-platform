@@ -7,9 +7,9 @@
  * Variable naming mirrors the handoff CSS (--crimson, --paper, --ink, --r-md, etc.) so
  * the ported hi-fi component classes line up against these vars unchanged.
  */
-import { color } from "./tokens/color.js";
-import { font, type } from "./tokens/type.js";
-import { space, radius, elevation, motion } from "./tokens/space.js";
+import { color } from "./tokens/color";
+import { font, type } from "./tokens/type";
+import { space, radius, elevation, motion } from "./tokens/space";
 
 /**
  * Map a camelCase token key to the handoff's kebab CSS var suffix.
