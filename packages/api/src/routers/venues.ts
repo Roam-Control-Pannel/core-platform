@@ -68,16 +68,26 @@ interface VenueClaimRow {
 }
 
 /**
- * Shape returned by the `approve_venue_claim` function (migration 0007) — the
- * venue_claim_approval composite. Not in generated types until `pnpm db:types`
- * re-runs; typed explicitly and read through the widened .rpc() surface.
+ * Shape returned by the `approve_venue_claim` / `reject_venue_claim` functions
+ * (migrations 0007 / 0008) — the venue_claim_approval composite, SHARED by both
+ * review outcomes. Not in generated types until `pnpm db:types` re-runs; typed
+ * explicitly and read through the widened .rpc() surface.
+ *
+ * `method` is the honest union across BOTH outcomes: approve emits
+ * 'email_domain' | 'manual_review_required' | 'not_actionable'; reject emits
+ * 'rejected' | 'not_actionable'. The row type is their union.
  */
 interface VenueClaimApprovalRow {
   claim_id: string;
   venue_id: string;
   verified: boolean;
   venue_status: string;
-  method: "email_domain" | "manual_review_required" | "not_actionable";
+  method: "email_domain" | "manual_review_required" | "not_actionable" | "rejected";
+}
+
+/** A pending venue_claims row id, as selected by sweepClaims before looping. */
+interface PendingClaimIdRow {
+  id: string;
 }
 
 /**
@@ -99,7 +109,7 @@ const CLAIM_ERROR_BY_SQLSTATE: Record<string, { code: TRPCError["code"]; message
 };
 
 /**
- * A widened `.rpc()` surface. The 0005/0006/0007 functions aren't in the generated
+ * A widened `.rpc()` surface. The 0005/0006/0007/0008 functions aren't in the generated
  * DB types until `pnpm db:types` is re-run, so the typed client's .rpc() overload
  * rejects their names. We widen JUST the rpc call (the rest of the client stays fully
  * typed) — the same idiom proven on `near` and `requestClaim`.
@@ -271,6 +281,156 @@ export const venuesRouter = router({
         verified: r.verified,
         venueStatus: r.venue_status,
         method: r.method,
+      };
+    }),
+
+  /**
+   * Internal: reject a pending claim. The counterpart to approveClaim, reaching the
+   * `rejected` enum value (0006) via reject_venue_claim (0008). Requires
+   * x-internal-call (internalProcedure) and uses the service client — unreachable by
+   * a user JWT, same as approveClaim. Returns the shared venue_claim_approval shape
+   * (verified always false; method 'rejected' | 'not_actionable').
+   *
+   * Server-side only (a staff/console review action or a sweep decision); the browser
+   * never calls it. The DB owns WHAT rejection means (close the claim; return the venue
+   * to the pool iff it was pending on this claim and no other pending claim remains;
+   * never un-own a claimed venue); this only carries the WHEN + the reason.
+   */
+  rejectClaim: internalProcedure
+    .input(
+      z.object({
+        claimId: z.string().uuid(),
+        reason: z.string().trim().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      const { data, error } = await rpc("reject_venue_claim", {
+        target_claim_id: input.claimId,
+        reason: input.reason ?? null,
+      });
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Claim rejection failed: ${error.message}`,
+        });
+      }
+      const r = data as VenueClaimApprovalRow;
+      return {
+        claimId: r.claim_id,
+        venueId: r.venue_id,
+        verified: r.verified,
+        venueStatus: r.venue_status,
+        method: r.method,
+      };
+    }),
+
+  /**
+   * Internal: sweep the pending-claim queue. Selects every `pending` claim and runs
+   * approve_venue_claim per row, so approval happens in a batch instead of one
+   * hand-run curl. In prod a scheduler hits venues.sweepClaims over x-internal-call
+   * on an interval.
+   *
+   * Mechanism: a single internalProcedure (the one sanctioned server-to-server path);
+   * NOT a new HTTP route or Edge Function (ARCHITECTURE.md mandates one mechanism, and
+   * server.ts stays transport-pure).
+   *
+   * Behaviour: reads pending claims via the service client (RLS bypassed — the review
+   * side legitimately sees all claims), then calls approve_venue_claim per claim id.
+   * That function is idempotent and guarded (a claim that raced to non-pending, or
+   * whose venue is no longer pending_claim, returns not_actionable rather than
+   * erroring), so the loop is safe against concurrent requests/approvals. Outcomes are
+   * tallied by result so the caller (and prod logs) can see what the sweep did.
+   *
+   * It does NOT reject anything — a non-match stays pending for human review (the
+   * 0007/0008 "never auto-reject" stance). Rejection is the explicit rejectClaim path.
+   */
+  sweepClaims: internalProcedure
+    .input(
+      z
+        .object({
+          /** Safety cap so one sweep can't run unboundedly; defaults to 500. */
+          limit: z.number().int().min(1).max(1000).default(500),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 500;
+
+      // `venue_claims` (migration 0006) is not in the generated DB types yet —
+      // `pnpm db:types` hasn't been re-run since 0006 — so the typed client's
+      // `.from()` overload rejects the table name. Widen JUST this select to a
+      // minimal query surface (the rest of the client stays fully typed), the same
+      // idiom `near`/`requestClaim`/`approveClaim` use for the un-generated RPCs.
+      // Once `pnpm db:types` regenerates, this can revert to a plain typed `.from`.
+      type LooseSelect = {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (
+              col: string,
+              val: string,
+            ) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => {
+                limit: (n: number) => Promise<{
+                  data: PendingClaimIdRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      };
+      const svc = ctx.service as unknown as LooseSelect;
+
+      const { data: pendingRows, error: selErr } = await svc
+        .from("venue_claims")
+        .select("id")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .limit(limit);
+
+      if (selErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Sweep failed to load pending claims: ${selErr.message}`,
+        });
+      }
+
+      const ids = (pendingRows ?? []).map((r) => r.id);
+
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      let approved = 0;
+      let stillPending = 0;
+      let notActionable = 0;
+
+      // Sequential loop: each approve_venue_claim locks its own rows; running them one
+      // at a time keeps lock contention trivial and the tally exact. At launch volumes
+      // the pending queue is tiny; if it ever grows, the seam to move this into a single
+      // set-based SQL function is here (flagged, not over-built now).
+      for (const id of ids) {
+        const { data, error } = await rpc("approve_venue_claim", {
+          target_claim_id: id,
+        });
+        if (error) {
+          // A single bad row must not abort the whole sweep — count it as still pending
+          // (it remains in the queue for the next pass / human review).
+          stillPending += 1;
+          continue;
+        }
+        const r = data as VenueClaimApprovalRow;
+        if (r.verified && r.method === "email_domain") approved += 1;
+        else if (r.method === "manual_review_required") stillPending += 1;
+        else notActionable += 1; // raced to non-pending between select and call
+      }
+
+      return {
+        swept: ids.length,
+        approved,
+        stillPending,
+        notActionable,
       };
     }),
 });
