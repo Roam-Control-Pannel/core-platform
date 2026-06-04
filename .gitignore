@@ -40,3 +40,4 @@ android/
 coverage/
 mint-token.mjs
 mint-token.mjs
+packages/api/stage2b-proof.mjs
