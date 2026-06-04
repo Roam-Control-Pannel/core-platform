@@ -10,6 +10,7 @@ import { postsRouter } from "./posts.js";
 import { venuesRouter } from "./venues.js";
 import { socialRouter } from "./social.js";
 import { meetupRouter } from "./meetup.js";
+import { chatRouter } from "./chat.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   venues: venuesRouter,
   social: socialRouter,
   meetup: meetupRouter,
+  chat: chatRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */
