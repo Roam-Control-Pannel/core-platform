@@ -194,4 +194,119 @@ export const chatRouter = router({
         addedAt: data.created_at,
       };
     }),
+
+  /**
+   * List the caller's threads, most-recently-active first. RLS (chat_threads_read,
+   * gated on in_thread) already scopes the select to threads the caller is a
+   * participant of, so a plain select returns exactly their inbox — no explicit
+   * membership filter needed. Lean by design: enough to render a thread list.
+   *
+   * participantCount comes from the chat_participants(count) FK-embed. Under RLS the
+   * embedded rows are those the caller can read (chat_participants_read = in_thread),
+   * which for a thread they're in is ALL its participants — so the count is accurate.
+   * PostgREST returns the aggregate as `[{ count: n }]`; we read it through unknown
+   * and normalise (the same array/object widening idiom posts.ts uses for its embed).
+   */
+  listThreads: protectedProcedure.query(async ({ ctx }) => {
+    const { data, error } = await ctx.db
+      .from("chat_threads")
+      .select("id, is_group, title, updated_at, chat_participants(count)")
+      .order("updated_at", { ascending: false });
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to load chats: ${error.message}`,
+      });
+    }
+
+    return (data ?? []).map((t) => {
+      // The count embed arrives as `[{ count: n }]` (array) for a to-many relation.
+      // Read through unknown and normalise; never assume the shape blindly.
+      const raw = (t as { chat_participants?: unknown }).chat_participants;
+      const countRow = Array.isArray(raw)
+        ? (raw[0] as { count?: number } | undefined)
+        : (raw as { count?: number } | null);
+      return {
+        id: t.id,
+        isGroup: t.is_group,
+        title: t.title,
+        updatedAt: t.updated_at,
+        participantCount: countRow?.count ?? 0,
+      };
+    });
+  }),
+
+  /**
+   * Read one thread with its participants, for the detail view. RLS scopes the
+   * thread select to ones the caller is in; NOT_FOUND covers both "no such thread"
+   * and "not visible to you" (we never confirm existence of a thread the caller
+   * isn't in) — mirroring meetup.ts's loadState.
+   *
+   * Participants embed profiles via the chat_participants -> profiles FK. Profile
+   * fields are all nullable (display_name/handle/avatar_url); the UI degrades
+   * gracefully. The embed is read through unknown and normalised (array-or-object),
+   * the same idiom posts.ts uses for its venue embed.
+   */
+  getThread: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data: thread, error: threadErr } = await ctx.db
+        .from("chat_threads")
+        .select("id, is_group, plan_id, title, created_at, updated_at")
+        .eq("id", input.threadId)
+        .maybeSingle();
+      if (threadErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load chat: ${threadErr.message}`,
+        });
+      }
+      if (!thread) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Chat not found, or you do not have access to it.",
+        });
+      }
+
+      const { data: partRows, error: partErr } = await ctx.db
+        .from("chat_participants")
+        .select("profile_id, created_at, profiles(display_name, handle, avatar_url)")
+        .eq("thread_id", input.threadId)
+        .order("created_at", { ascending: true });
+      if (partErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load participants: ${partErr.message}`,
+        });
+      }
+
+      type EmbeddedProfile = {
+        display_name: string | null;
+        handle: string | null;
+        avatar_url: string | null;
+      };
+      const participants = (partRows ?? []).map((p) => {
+        const raw = (p as { profiles?: unknown }).profiles;
+        const prof: EmbeddedProfile | null = Array.isArray(raw)
+          ? ((raw[0] as EmbeddedProfile | undefined) ?? null)
+          : ((raw as EmbeddedProfile | null) ?? null);
+        return {
+          profileId: p.profile_id,
+          displayName: prof?.display_name ?? null,
+          handle: prof?.handle ?? null,
+          avatarUrl: prof?.avatar_url ?? null,
+          joinedAt: p.created_at,
+        };
+      });
+
+      return {
+        id: thread.id,
+        isGroup: thread.is_group,
+        planId: thread.plan_id,
+        title: thread.title,
+        createdAt: thread.created_at,
+        updatedAt: thread.updated_at,
+        participants,
+      };
+    }),
 });
