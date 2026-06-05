@@ -81,7 +81,7 @@ export async function tryResolveMeetup(
   const transitionError = canTransition("voting", "resolved");
   if (transitionError) throw new Error(transitionError);
 
-  const { error: updateErr } = await client
+  const { data: updatedRows, error: updateErr } = await client
     .from("meetups")
     .update({
       state: "resolved",
@@ -89,9 +89,18 @@ export async function tryResolveMeetup(
       resolved_at: new Date().toISOString(),
     })
     .eq("id", meetupId)
-    .eq("state", "voting"); // guard against a concurrent resolve (last-write-safe)
+    .eq("state", "voting") // guard against a concurrent resolve (last-write-safe)
+    .select("id");
 
   if (updateErr) throw new Error(`Failed to resolve meet-up: ${updateErr.message}`);
+  // A zero-row update here means the write was silently denied (e.g. a missing RLS
+  // UPDATE policy) or lost a concurrent race. Either way the transition did NOT persist,
+  // so we must not report success — surface it instead of returning a stale resolution.
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "Resolve did not persist: the meet-up row was not updated (check RLS UPDATE policy on meetups).",
+    );
+  }
 
   return resolution;
 }
@@ -111,9 +120,17 @@ export async function endMeetup(
   const transitionError = canTransition(meetup.state as MeetupState, "ended");
   if (transitionError) throw new Error(transitionError);
 
-  const { error: updateErr } = await client
+  const { data: updatedRows, error: updateErr } = await client
     .from("meetups")
     .update({ state: "ended", ended_at: new Date().toISOString() })
-    .eq("id", meetupId);
+    .eq("id", meetupId)
+    .select("id");
   if (updateErr) throw new Error(`Failed to end meet-up: ${updateErr.message}`);
+  // Zero rows updated => the write was silently denied (missing RLS UPDATE policy) and
+  // the meet-up did NOT end. Fail loudly rather than reporting a phantom success.
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error(
+      "End did not persist: the meet-up row was not updated (check RLS UPDATE policy on meetups).",
+    );
+  }
 }
