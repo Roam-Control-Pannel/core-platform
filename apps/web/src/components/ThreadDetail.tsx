@@ -1,7 +1,7 @@
 /**
- * ThreadDetail — /threads/[id]. The thread container view: who's in it + adding
- * people. NOT messages — listing/sending messages is a later slice; this is the
- * participant surface that the meet-up poll UI (2c-ii) will build on.
+ * ThreadDetail — /threads/[id]. The thread surface: its messages (primary), its
+ * participants, and the meet-up poll. Messages are the main content (Stage 2c-iii);
+ * participants + MeetupPanel sit alongside.
  *
  * Reads chat.getThread (RLS-scoped: NOT_FOUND if the caller isn't a participant).
  * Adding a participant calls chat.addThreadParticipant, which is GROUP-ONLY at the
@@ -18,7 +18,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Pill, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -144,6 +144,8 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
             Created {formatWhen(thread.createdAt)}
           </div>
 
+          <MessagePanel threadId={thread.id} />
+
           <SectionLabel>
             {thread.participants.length} {thread.participants.length === 1 ? "person" : "people"}
           </SectionLabel>
@@ -213,6 +215,226 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
         </>
       )}
     </main>
+  );
+}
+
+interface ThreadMessage {
+  id: string;
+  senderId: string | null;
+  body: string | null;
+  kind: string;
+  createdAt: string;
+  senderName: string | null;
+  senderHandle: string | null;
+}
+
+/**
+ * MessagePanel — the thread's chat surface. Reads chat.listMessages (oldest-first,
+ * RLS-scoped) and posts via chat.sendMessage. Ships the full state ladder:
+ * error -> undefined(skeleton) -> empty("new, not dead") -> content. After a send
+ * we refetch from server-truth (the sender always sees their own message back, even
+ * while it's moderation-pending). Dates arrive as ISO strings; formatted here.
+ *
+ * Only kind='text' is rendered this slice; a non-text kind (the open rich-kind seam)
+ * shows a neutral placeholder rather than nothing, so a future venue_card/poll
+ * message isn't silently dropped before its renderer exists.
+ */
+function MessagePanel({ threadId }: { threadId: string }) {
+  const trpc = useTrpc();
+  const session = useSession();
+  const [messages, setMessages] = useState<ThreadMessage[] | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const myId = session?.user?.id ?? null;
+
+  const load = useCallback(() => {
+    let cancelled = false;
+    setMessages(undefined);
+    setError(null);
+    trpc.chat.listMessages
+      .query({ threadId })
+      .then((rows) => {
+        if (!cancelled) setMessages(rows as ThreadMessage[]);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Failed to load messages.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, threadId]);
+
+  useEffect(() => load(), [load]);
+
+  // Keep the list pinned to the newest message as content arrives / a send lands.
+  useEffect(() => {
+    if (messages && messages.length > 0 && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const send = useCallback(async () => {
+    const body = draft.trim();
+    if (!body) {
+      setSendError("Type a message to send.");
+      return;
+    }
+    setSending(true);
+    setSendError(null);
+    try {
+      await trpc.chat.sendMessage.mutate({ threadId, body });
+      setDraft("");
+      load(); // refetch server-truth (includes the just-sent message)
+    } catch (e: unknown) {
+      setSendError(e instanceof Error ? e.message : "Couldn't send your message.");
+    } finally {
+      setSending(false);
+    }
+  }, [trpc, threadId, draft, load]);
+
+  return (
+    <section style={{ marginBottom: "var(--space-8)" }}>
+      <SectionLabel>Messages</SectionLabel>
+
+      {error ? (
+        <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
+          <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>{error}</p>
+        </Card>
+      ) : messages === undefined ? (
+        <MessagesSkeleton />
+      ) : (
+        <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
+          <div
+            ref={listRef}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-3)",
+              maxHeight: 420,
+              overflowY: "auto",
+            }}
+          >
+            {messages.length === 0 ? (
+              <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
+                No messages yet — say something to get this chat going.
+              </p>
+            ) : (
+              messages.map((m) => (
+                <MessageRow key={m.id} message={m} mine={m.senderId !== null && m.senderId === myId} />
+              ))
+            )}
+          </div>
+
+          {/* composer */}
+          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", alignItems: "flex-end" }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              placeholder="Write a message…"
+              rows={2}
+              maxLength={4000}
+              style={{
+                flex: 1,
+                resize: "vertical",
+                fontFamily: "var(--ui)",
+                fontSize: 14,
+                lineHeight: 1.45,
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--line-2)",
+                background: "#fff",
+                color: "var(--ink)",
+                outline: "none",
+              }}
+            />
+            <Button variant="pri" onClick={() => void send()} disabled={sending}>
+              {sending ? "Sending…" : "Send"}
+            </Button>
+          </div>
+          {sendError ? (
+            <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
+              {sendError}
+            </div>
+          ) : null}
+        </Card>
+      )}
+    </section>
+  );
+}
+
+function MessageRow({ message, mine }: { message: ThreadMessage; mine: boolean }) {
+  const name =
+    message.senderName?.trim() ||
+    (message.senderHandle ? `@${message.senderHandle}` : null) ||
+    (mine ? "You" : "Roam member");
+
+  // Rich-kind seam: only text renders this slice; other kinds get a neutral note.
+  const isText = message.kind === "text";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: mine ? "flex-end" : "flex-start",
+        gap: 2,
+      }}
+    >
+      <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--faint)" }}>
+        {mine ? "You" : name} · {formatWhen(message.createdAt)}
+      </span>
+      <div
+        style={{
+          maxWidth: "78%",
+          padding: "8px 12px",
+          borderRadius: 12,
+          fontSize: 14,
+          lineHeight: 1.45,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
+          color: "var(--ink-hi)",
+          border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
+        }}
+      >
+        {isText ? (
+          message.body ?? ""
+        ) : (
+          <span style={{ color: "var(--muted)", fontStyle: "italic" }}>
+            Unsupported message type
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MessagesSkeleton() {
+  return (
+    <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        {[
+          { w: "55%", me: false },
+          { w: "40%", me: true },
+          { w: "65%", me: false },
+        ].map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: r.me ? "flex-end" : "flex-start" }}>
+            <div style={{ height: 32, width: r.w, background: "var(--paper-2)", borderRadius: 12 }} />
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

@@ -309,4 +309,120 @@ export const chatRouter = router({
         participants,
       };
     }),
+
+  /**
+   * List a thread's messages, oldest-first (the existing (thread_id, created_at)
+   * index in migration 0002). RLS (chat_messages_read = in_thread) already scopes
+   * the select to threads the caller participates in, so a thread the caller can't
+   * see simply returns no rows.
+   *
+   * MODERATION READ MODEL: mirrors posts_read_public — visible messages are those
+   * with moderation in ('auto_approved','approved'). Text auto-approves on send
+   * (see sendMessage), so a sent message is immediately visible to the whole thread;
+   * when the moderation Edge scanner lands it runs post-insert and can demote a row
+   * to auto_flagged/rejected, which this same filter then hides. RLS returns all
+   * in-thread rows; this content-status filter is applied in TS (the moderation
+   * column isn't part of the RLS predicate).
+   *
+   * Scope: kind='text' is what this slice renders, but we do NOT filter by kind in
+   * the read — the rich-kind seam (venue_card/poll/...) stays open; the UI decides
+   * what it can render. sender display is embedded via the chat_messages -> profiles
+   * FK, normalised array-or-object exactly like getThread's participant embed.
+   */
+  listMessages: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.db
+        .from("chat_messages")
+        .select(
+          "id, sender_id, body, kind, moderation, created_at, profiles(display_name, handle, avatar_url)",
+        )
+        .eq("thread_id", input.threadId)
+        .order("created_at", { ascending: true });
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load messages: ${error.message}`,
+        });
+      }
+
+      type EmbeddedProfile = {
+        display_name: string | null;
+        handle: string | null;
+        avatar_url: string | null;
+      };
+      const visible = (data ?? []).filter(
+        (m) => m.moderation === "auto_approved" || m.moderation === "approved",
+      );
+
+      return visible.map((m) => {
+        const raw = (m as { profiles?: unknown }).profiles;
+        const prof: EmbeddedProfile | null = Array.isArray(raw)
+          ? ((raw[0] as EmbeddedProfile | undefined) ?? null)
+          : ((raw as EmbeddedProfile | null) ?? null);
+        return {
+          id: m.id,
+          senderId: m.sender_id,
+          body: m.body,
+          kind: m.kind,
+          createdAt: m.created_at,
+          senderName: prof?.display_name ?? null,
+          senderHandle: prof?.handle ?? null,
+        };
+      });
+    }),
+
+  /**
+   * Send a text message to a thread. RLS (chat_messages_insert) enforces
+   * sender_id = auth.uid() AND in_thread(thread_id), so a non-participant's insert
+   * is denied. We resolve sender_id from the validated JWT and pass it explicitly
+   * (belt-and-braces, mirroring social.ts / meetup.ts), and .select() the row back,
+   * throwing on a zero-row result — the banked lesson: a write that matches no row
+   * (e.g. a denied insert) must fail loudly, never report phantom success.
+   *
+   * kind is hard-coded 'text' this slice (the rich-kind seam stays unbuilt). body
+   * is trimmed and required non-empty; an empty message is meaningless.
+   */
+  sendMessage: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().uuid(),
+        body: z.string().trim().min(1).max(4000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const sender_id = await callerId(ctx.db);
+
+      const { data, error } = await ctx.db
+        .from("chat_messages")
+        .insert({
+          thread_id: input.threadId,
+          sender_id,
+          body: input.body,
+          kind: "text",
+          // Text auto-approves on send: the moderation Edge scanner runs POST-insert
+          // (flagging/rejecting async into moderation_queue), so a message must be
+          // visible to the thread immediately — a 'pending' default with no scanner
+          // to clear it would make every message invisible to non-senders. This is
+          // the optimistic-publish + async-moderation model the queue seam was built
+          // for; it keeps the hard gate (async scan + manual queue) without leaving
+          // the surface write-only. When the scanner lands it can still demote a row.
+          moderation: "auto_approved",
+        })
+        .select("id, sender_id, body, kind, created_at")
+        .single();
+      if (error || !data) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to send message: ${error?.message ?? "no row returned"}`,
+        });
+      }
+      return {
+        id: data.id,
+        senderId: data.sender_id,
+        body: data.body,
+        kind: data.kind,
+        createdAt: data.created_at,
+      };
+    }),
 });
