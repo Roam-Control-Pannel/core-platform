@@ -144,6 +144,48 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Protected: the venues the CALLER owns. The Business console's root query —
+   * a venue owner's overview is "the venues I own", which is owner_id = auth.uid().
+   * RLS: venues_read is `using (true)` so the select is permitted; we additionally
+   * filter owner_id to the caller (resolved from the validated JWT) so the console
+   * only ever shows a user their OWN venues, never the world's. No new policy needed
+   * — ownership is venue_status 'claimed' + owner_id set (0006/0007), and this reads
+   * exactly that. Returns the fields the Overview cards render.
+   */
+  myVenues: protectedProcedure.query(async ({ ctx }) => {
+    const { data: userData, error: userErr } = await ctx.db.auth.getUser();
+    if (userErr || !userData.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Could not resolve the signed-in user.",
+      });
+    }
+    const ownerId = userData.user.id;
+
+    const { data, error } = await ctx.db
+      .from("venues")
+      .select("id, name, status, category, locality, region, rating, rating_count")
+      .eq("owner_id", ownerId)
+      .order("name", { ascending: true });
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to load your venues: ${error.message}`,
+      });
+    }
+    return (data ?? []).map((v) => ({
+      id: v.id,
+      name: v.name,
+      status: v.status,
+      category: v.category,
+      locality: v.locality,
+      region: v.region,
+      rating: v.rating,
+      ratingCount: v.rating_count,
+    }));
+  }),
+
+  /**
    * Public: near→far venue search from a (lat,lng) origin, via the `venues_near`
    * PostGIS RPC (migration 0005). Orders by the GiST-indexed KNN operator and returns
    * a real `distanceM` (metres) for the DistanceChip. RLS still applies — the RPC is

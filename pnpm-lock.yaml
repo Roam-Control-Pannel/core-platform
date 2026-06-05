@@ -24,6 +24,49 @@ importers:
         specifier: ^3.0.0
         version: 3.2.6(@types/node@22.19.19)(tsx@4.22.4)
 
+  apps/console:
+    dependencies:
+      '@roam/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@roam/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@roam/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@supabase/supabase-js':
+        specifier: ^2.47.0
+        version: 2.106.2
+      '@trpc/client':
+        specifier: ^11.0.0
+        version: 11.17.0(@trpc/server@11.17.0(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server':
+        specifier: ^11.0.0
+        version: 11.17.0(typescript@5.9.3)
+      next:
+        specifier: ^16.0.0
+        version: 16.2.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.19
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.16
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.16)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@roam/api':
