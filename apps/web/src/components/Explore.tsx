@@ -19,8 +19,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Seg, Pill } from "@roam/design";
-import { useTrpc } from "./TrpcProvider";
+import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import { FeedList } from "./FeedList";
@@ -29,6 +30,7 @@ type Mode = "browse" | "feed";
 
 export function Explore() {
   const trpc = useTrpc();
+  const session = useSession();
   const [mode, setMode] = useState<Mode>("browse");
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [venues, setVenues] = useState<VenueCardData[] | null>(null);
@@ -89,14 +91,30 @@ export function Explore() {
         }}
       >
         <PlaceSwitcher value={place} onChange={setPlace} />
-        <Seg
-          options={[
-            { value: "browse", label: "Browse" },
-            { value: "feed", label: "Feed" },
-          ]}
-          value={mode}
-          onChange={(v) => setMode(v as Mode)}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+          {session ? (
+            <Link
+              href="/threads"
+              style={{
+                fontFamily: "var(--ui)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink-2)",
+                textDecoration: "none",
+              }}
+            >
+              Chats
+            </Link>
+          ) : null}
+          <Seg
+            options={[
+              { value: "browse", label: "Browse" },
+              { value: "feed", label: "Feed" },
+            ]}
+            value={mode}
+            onChange={(v) => setMode(v as Mode)}
+          />
+        </div>
       </header>
 
       {mode === "feed" ? (
