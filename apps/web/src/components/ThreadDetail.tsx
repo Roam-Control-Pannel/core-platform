@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Pill, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { MeetupPanel } from "./MeetupPanel";
 
 interface Participant {
   profileId: string;
@@ -153,6 +154,8 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
               ))}
             </div>
           </Card>
+
+          {thread.isGroup ? <MeetupPanel threadId={thread.id} /> : null}
 
           {thread.isGroup ? (
             <div style={{ marginTop: "var(--space-6)" }}>
