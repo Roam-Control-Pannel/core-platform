@@ -79,6 +79,32 @@ function assertVoting(state: string): void {
 }
 
 export const meetupRouter = router({
+  /**
+   * Discover the live (non-ended) meet-up for a thread, or null. Read-only.
+   * The router had no thread->meetup lookup (createMeetup's CONFLICT is a write-guard,
+   * not a discovery path), so the thread UI couldn't find an existing meet-up's id to
+   * drive `resolution`. This mirrors createMeetup's exact existence check and rides the
+   * same participant-scoped RLS. No rule lives here — pure read.
+   */
+  forThread: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.db
+        .from("meetups")
+        .select("id, state")
+        .eq("thread_id", input.threadId)
+        .neq("state", "ended")
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load the meet-up: ${error.message}`,
+        });
+      }
+      return data ?? null;
+    }),
+
   /** Live poll resolution (read-only): current tally + winner/tie/no-votes. */
   resolution: protectedProcedure
     .input(meetupId)
