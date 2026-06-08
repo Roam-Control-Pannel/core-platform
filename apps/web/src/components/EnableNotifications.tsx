@@ -24,6 +24,7 @@ import { useState } from "react";
 import { Button, Card, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { subscribeWebPush, pushSupported } from "../lib/push";
+import { AuthPanel } from "./AuthPanel";
 
 type Status = "idle" | "working" | "done" | "error";
 
@@ -38,7 +39,21 @@ export function EnableNotifications() {
   const [message, setMessage] = useState<string | null>(null);
 
   // A subscription must belong to a signed-in profile (RLS: profile_id = auth.uid()).
-  if (!session) return null;
+  // Unlike a silent `return null`, offer the JIT auth prompt (mirrors ThreadList's
+  // SignedOut): on `/` the visitor is anonymous by design, so hiding would be a dead
+  // end. Signing in lands a session via SessionContext; this re-renders into the
+  // enable affordance with nothing else to wire (same reasoning as ThreadList).
+  if (!session) {
+    return (
+      <AuthPanel
+        intro="Sign in to turn on notifications on this device."
+        emailRedirectTo={signedOutReturnUrl()}
+        onAuthed={() => {
+          // The session change re-renders this component into the enable state.
+        }}
+      />
+    );
+  }
 
   async function enable() {
     setStatus("working");
@@ -102,4 +117,16 @@ export function EnableNotifications() {
       </div>
     </Card>
   );
+}
+
+
+/** Return here after email confirmation (sign-up). Landing back on `/` signed in is
+ *  enough — this component re-renders into the enable state on the session change.
+ *  Mirrors ThreadList.signedOutReturnUrl (home rather than /threads). */
+function signedOutReturnUrl(): string {
+  const origin =
+    (typeof window !== "undefined" ? window.location.origin : undefined) ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+  return `${origin}/`;
 }
