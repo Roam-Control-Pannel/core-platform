@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, Pill, Button, Rate } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { PostComposer } from "./PostComposer";
 
 interface OwnedVenue {
   id: string;
@@ -114,6 +115,7 @@ export function Overview() {
 }
 
 function VenueOverviewCard({ venue }: { venue: OwnedVenue }) {
+  const [composing, setComposing] = useState(false);
   const place = [venue.locality, venue.region].filter(Boolean).join(", ");
   return (
     <Card style={{ padding: "var(--space-5)" }}>
@@ -151,10 +153,18 @@ function VenueOverviewCard({ venue }: { venue: OwnedVenue }) {
         <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
           <strong style={{ color: "var(--ink-hi)" }}>Next:</strong> post news, an offer or an event to people nearby.
         </div>
-        <Button variant="pri" disabled title="Posting arrives in the next console slice">
+        <Button variant="pri" onClick={() => setComposing(true)}>
           Post an update
         </Button>
       </div>
+      {composing ? (
+        <PostComposer
+          venueId={venue.id}
+          venueName={venue.name}
+          onClose={() => setComposing(false)}
+          onPublished={() => {}}
+        />
+      ) : null}
     </Card>
   );
 }
