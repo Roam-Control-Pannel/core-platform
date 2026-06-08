@@ -19,6 +19,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
+import { push } from "@roam/core";
 import { router, protectedProcedure } from "../trpc.js";
 
 /** Resolve the caller's auth user id from the validated session JWT. */
@@ -34,6 +35,52 @@ async function callerId(db: RoamClient): Promise<string> {
 }
 
 export const socialRouter = router({
+  /**
+   * Register THIS device's push subscription (capture). Grain is per-PERSON, not
+   * per-venue: push_subscriptions is keyed (profile_id, token), and which venues
+   * a person gets pushes for is the separate `follows` edge. Dispatch (a later
+   * slice) fans out by joining follows x push_subscriptions on profile_id.
+   *
+   * Idempotent on the (profile_id, token) unique key (re-subscribing the same
+   * browser is a no-op upsert). Validation lives in @roam/core/push so the rule
+   * is shared; we re-run it server-side here before the write. Read back on write
+   * and throw on zero rows, per the banked write-path rule.
+   */
+  register: protectedProcedure
+    .input(
+      z.object({
+        platform: z.enum(["web", "ios", "android"]),
+        token: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const validation = push.validateRegistration(input);
+      if (!validation.ok) {
+        return { ok: false as const, errors: validation.errors };
+      }
+
+      const profile_id = await callerId(ctx.db);
+      const { data, error } = await ctx.db
+        .from("push_subscriptions")
+        .upsert(
+          {
+            profile_id,
+            platform: input.platform,
+            token: input.token,
+            consent: true,
+          },
+          { onConflict: "profile_id,token" },
+        )
+        .select("id")
+        .single();
+
+      if (error) return { ok: false as const, errors: [error.message] };
+      if (!data) {
+        return { ok: false as const, errors: ["Subscription write returned no row."] };
+      }
+      return { ok: true as const, subscriptionId: data.id };
+    }),
+
   /** Follow a venue (idempotent on the follower+venue key). */
   followVenue: protectedProcedure
     .input(z.object({ venueId: z.string().uuid() }))
