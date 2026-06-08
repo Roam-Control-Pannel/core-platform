@@ -20,8 +20,9 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { posts } from "@roam/core";
-import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { posts, credits } from "@roam/core";
+import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
+import { dispatchFollowerPush } from "../push/dispatch.js";
 
 const postKind = z.enum(["news", "offer", "event"]);
 const postDestination = z.enum(["profile", "feed", "follower_push"]);
@@ -137,6 +138,24 @@ export const postsRouter = router({
       const publishAt = timing.status === "scheduled" ? timing.at : null;
       const publishedAt = timing.status === "published" ? timing.at : null;
 
+      // Credit precondition (the slice's "block entirely" decision): a follower_push
+      // publish costs one credit. Read the venue's balance under the caller's RLS
+      // (the author owns the venue, so push_ledger_owner lets them read it) and, if
+      // they cannot afford it, write NOTHING — the post is not created. The composer
+      // validates affordability before submit; this is the hard server-side enforce.
+      const PUSH_COST = 1;
+      if (requiresPushCredit) {
+        const balance = await credits.getBalance(ctx.db, input.venueId);
+        if (balance < PUSH_COST) {
+          return {
+            created: false as const,
+            validation,
+            reason: "insufficient_credits" as const,
+            balance,
+          };
+        }
+      }
+
       const { data: userData, error: userErr } = await ctx.db.auth.getUser();
       if (userErr || !userData.user) {
         throw new TRPCError({
@@ -173,12 +192,41 @@ export const postsRouter = router({
         return { created: false as const, validation, error: error.message };
       }
 
+      // Post is persisted. If it targets follower_push, consume one credit then fan
+      // out — both need the service client (the ledger consume bypasses RLS, and the
+      // dispatch reads OTHER followers' subscriptions). escalateToService is the one
+      // sanctioned construction site, shared with the internal-call gate. The consume
+      // re-checks affordability atomically against the live ledger; if a concurrent
+      // send drained the balance between the gate read and here, we DON'T push (safe
+      // direction: "published but not pushed", never "pushed without paying").
+      let dispatch:
+        | { sent: number; failed: number; pruned: number; skipped: number; candidates: number }
+        | null = null;
+      if (requiresPushCredit) {
+        const service = escalateToService(ctx.env);
+        const consumed = await credits.consumeForSend(
+          service,
+          input.venueId,
+          PUSH_COST,
+          data.id,
+        );
+        if (consumed.ok) {
+          dispatch = await dispatchFollowerPush(service, ctx.env.vapid, {
+            venueId: input.venueId,
+            url: `/venues/${input.venueId}`,
+            title: input.title ?? "New update",
+            body: input.body ?? "",
+          });
+        }
+      }
+
       return {
         created: true as const,
         validation,
         timing,
         requiresPushCredit,
         postId: data.id,
+        dispatch,
       };
     }),
 });
