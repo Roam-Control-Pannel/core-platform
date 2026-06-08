@@ -10,6 +10,11 @@ const env: ApiEnv = {
   supabase: { url: "https://example.supabase.co", anonKey: "anon-key" },
   supabaseServiceRoleKey: "service-key",
   internalCallSecret: "s3cr3t-internal-call",
+  vapid: {
+    subject: "mailto:test@example.com",
+    publicKey: "test-public-key",
+    privateKey: "test-private-key",
+  },
 };
 
 const createContext = makeContextFactory(env);

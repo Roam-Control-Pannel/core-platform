@@ -36,6 +36,17 @@ export interface ApiEnv {
   supabaseServiceRoleKey: string;
   /** Shared secret that marks a call as trusted server-to-server. */
   internalCallSecret: string;
+  /**
+   * Web Push (VAPID) signing config. Server-only. Note the public key is read from
+   * NEXT_PUBLIC_VAPID_PUBLIC_KEY (the SAME value the web bundle inlines) — web-push's
+   * setVapidDetails needs BOTH keys to sign, so the send path reads the public key too;
+   * the private key + subject are unprefixed server-only secrets.
+   */
+  vapid: {
+    subject: string;
+    publicKey: string;
+    privateKey: string;
+  };
 }
 
 export interface Context {

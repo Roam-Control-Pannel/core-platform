@@ -21,7 +21,21 @@
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createServiceClient, type RoamClient } from "@roam/db";
-import type { Context } from "./context.js";
+import type { ApiEnv, Context } from "./context.js";
+
+/**
+ * The ONE sanctioned construction site for the RLS-bypassing service client.
+ * Both server-side callers go through here: the internal-call gate (below) for
+ * external trusted callers, and posts.create for its in-process post-publish
+ * dispatch. Naming it keeps the "service client is built in exactly one place"
+ * law honest without a pointless in-process HTTP round-trip back through the gate.
+ */
+export function escalateToService(env: ApiEnv): RoamClient {
+  return createServiceClient({
+    url: env.supabase.url,
+    serviceRoleKey: env.supabaseServiceRoleKey,
+  });
+}
 
 const t = initTRPC.context<Context>().create();
 
@@ -49,10 +63,7 @@ const requireInternal = middleware(({ ctx, next }) => {
     });
   }
   // Service-role client built lazily, ONLY on a verified internal call. RLS bypassed.
-  const service: RoamClient = createServiceClient({
-    url: ctx.env.supabase.url,
-    serviceRoleKey: ctx.env.supabaseServiceRoleKey,
-  });
+  const service: RoamClient = escalateToService(ctx.env);
   return next({ ctx: { ...ctx, service } });
 });
 
