@@ -19,6 +19,7 @@
  * ("looks new, not dead"), per ARCHITECTURE.md.
  */
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { posts } from "@roam/core";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
@@ -136,10 +137,19 @@ export const postsRouter = router({
       const publishAt = timing.status === "scheduled" ? timing.at : null;
       const publishedAt = timing.status === "published" ? timing.at : null;
 
+      const { data: userData, error: userErr } = await ctx.db.auth.getUser();
+      if (userErr || !userData.user) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Could not resolve the signed-in user.",
+        });
+      }
+
       const { data, error } = await ctx.db
         .from("posts")
         .insert({
           venue_id: input.venueId,
+          author_id: userData.user.id,
           kind: input.kind,
           title: input.title ?? null,
           body: input.body ?? null,
@@ -147,6 +157,14 @@ export const postsRouter = router({
           is_draft: isDraft,
           publish_at: publishAt,
           published_at: publishedAt,
+          // Optimistic-publish + async-moderation, mirroring chat.sendMessage:
+          // the posts.moderation column defaults to 'pending', but no scanner runs
+          // to clear it, so a 'pending' post would be invisible to posts.feed
+          // (posts_read_public exposes only auto_approved/approved) forever. We
+          // auto-approve on publish so the post surfaces immediately; the async
+          // moderation scanner (when it lands) runs post-insert and can demote a
+          // row into moderation_queue, keeping the hard gate without a write-only feed.
+          moderation: "auto_approved",
         })
         .select("id")
         .single();
