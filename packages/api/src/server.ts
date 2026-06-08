@@ -41,6 +41,14 @@ function loadEnv(): ApiEnv {
     },
     supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
     internalCallSecret: requireEnv("INTERNAL_CALL_SECRET"),
+    vapid: {
+      subject: requireEnv("VAPID_SUBJECT"),
+      // Deliberately the NEXT_PUBLIC_-prefixed var: this is the SAME public key the
+      // web bundle inlines, and web-push's setVapidDetails needs both keys to sign.
+      // Not a bug — the API reads other env unprefixed, but the public key is shared.
+      publicKey: requireEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
+      privateKey: requireEnv("VAPID_PRIVATE_KEY"),
+    },
   };
 }
 
