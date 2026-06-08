@@ -3,12 +3,14 @@
  * VenueOverviewCard's "Post an update" seam. Drives posts.create (protected,
  * owner-scoped RLS) for a venue the caller owns.
  *
- * Scope of this first cut (deliberately honest seams, not lying toggles):
+ * Scope of this cut:
  *   - kind: news | offer | event
- *   - destinations: 'profile' ALWAYS on (core requires it); 'feed' a real toggle.
- *     'follower_push' is a present-but-DISABLED seam — it arrives with the Push
- *     slice, which builds credit consumption + the send path. A toggle that set
- *     follower_push today would cost no credit and send nothing, so it stays off.
+ *   - destinations: 'profile' ALWAYS on (core requires it); 'feed' a real toggle;
+ *     'follower_push' a real toggle — it costs ONE push credit and fans out to every
+ *     web device of every follower. The toggle is gated on affordability: we read the
+ *     venue's balance on mount and disable push when the venue can't afford a send.
+ *     The server re-checks (posts.create blocks the publish entirely on a zero-credit
+ *     follower_push), so this is a UX guard, never the source of truth.
  *   - timing: publish-now only. Scheduling is a disabled seam — resolvePublishTiming
  *     supports it, but no publisher runs yet to flip a scheduled row live, so a
  *     scheduled post would be invisible. Honest seam until the publisher slice.
@@ -24,7 +26,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -37,6 +39,8 @@ interface PostComposerProps {
   /** Fired after a successful publish so the caller can confirm / refresh. */
   onPublished: (postId: string) => void;
 }
+
+const PUSH_COST = 1;
 
 /** Local mirror of core's validateComposition rules (server re-validates). */
 function localValidate(input: {
@@ -60,8 +64,34 @@ export function PostComposer({ venueId, venueName, onClose, onPublished }: PostC
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [toFeed, setToFeed] = useState(true);
+  const [toPush, setToPush] = useState(false);
   const [ui, setUi] = useState<UiState>("idle");
   const [error, setError] = useState<string | null>(null);
+  /** Push-credit balance for this venue. null = not yet loaded (or unreadable). */
+  const [balance, setBalance] = useState<number | null>(null);
+  /** Whether the push toggle actually fired (so CreatedState can be honest). */
+  const [pushed, setPushed] = useState(false);
+
+  // Read the venue's push-credit balance once on mount. The vanilla tRPC client
+  // exposes procedures imperatively (same shape as posts.create.mutate), so this is
+  // a plain query in an effect, not a hook. A read failure leaves balance null —
+  // the toggle then shows "checking…" and stays disabled rather than lying "ready".
+  useEffect(() => {
+    let live = true;
+    trpc.credits.balance
+      .query({ venueId })
+      .then((r) => {
+        if (live) setBalance(r.balance);
+      })
+      .catch(() => {
+        if (live) setBalance(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [trpc, venueId]);
+
+  const canAffordPush = balance !== null && balance >= PUSH_COST;
 
   async function publish() {
     const localError = localValidate({ kind, title, body });
@@ -69,12 +99,19 @@ export function PostComposer({ venueId, venueName, onClose, onPublished }: PostC
       setError(localError);
       return;
     }
+    // Guard: don't even submit a follower_push the venue can't afford. The server
+    // blocks it too, but failing here keeps the post from being a wasted round-trip
+    // and gives an immediate, specific message.
+    if (toPush && !canAffordPush) {
+      setError("This venue doesn't have a push credit, so it can't notify followers yet.");
+      return;
+    }
     setUi("submitting");
     setError(null);
 
-    const destinations: ("profile" | "feed" | "follower_push")[] = toFeed
-      ? ["profile", "feed"]
-      : ["profile"];
+    const destinations: ("profile" | "feed" | "follower_push")[] = ["profile"];
+    if (toFeed) destinations.push("feed");
+    if (toPush) destinations.push("follower_push");
 
     try {
       const result = await trpc.posts.create.mutate({
@@ -86,10 +123,18 @@ export function PostComposer({ venueId, venueName, onClose, onPublished }: PostC
         isDraft: false,
       });
       if (!result.created) {
+        if ("reason" in result && result.reason === "insufficient_credits") {
+          setBalance(result.balance);
+          setToPush(false);
+          setError("This venue doesn't have a push credit, so it can't notify followers yet.");
+          setUi("error");
+          return;
+        }
         setError(result.validation.errors[0] ?? "Couldn't publish your post.");
         setUi("error");
         return;
       }
+      setPushed(toPush);
       setUi("created");
       onPublished(result.postId);
     } catch (e: unknown) {
@@ -137,7 +182,7 @@ export function PostComposer({ venueId, venueName, onClose, onPublished }: PostC
         </h2>
 
         {ui === "created" ? (
-          <CreatedState onClose={onClose} toFeed={toFeed} />
+          <CreatedState onClose={onClose} toFeed={toFeed} pushed={pushed} />
         ) : (
           <>
             <KindPicker kind={kind} onChange={setKind} />
@@ -145,7 +190,14 @@ export function PostComposer({ venueId, venueName, onClose, onPublished }: PostC
             <Field label="Title" value={title} onChange={setTitle} placeholder="What's happening?" />
             <TextField label="Details" value={body} onChange={setBody} placeholder="Tell people more (optional for news)." />
 
-            <DestinationRow toFeed={toFeed} onToggleFeed={() => setToFeed((f) => !f)} />
+            <DestinationRow
+              toFeed={toFeed}
+              onToggleFeed={() => setToFeed((f) => !f)}
+              toPush={toPush}
+              onTogglePush={() => setToPush((p) => !p)}
+              balance={balance}
+              canAffordPush={canAffordPush}
+            />
 
             {error ? (
               <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-3)" }} role="alert">
@@ -185,7 +237,30 @@ function KindPicker({ kind, onChange }: { kind: PostKind; onChange: (k: PostKind
   );
 }
 
-function DestinationRow({ toFeed, onToggleFeed }: { toFeed: boolean; onToggleFeed: () => void }) {
+function DestinationRow({
+  toFeed,
+  onToggleFeed,
+  toPush,
+  onTogglePush,
+  balance,
+  canAffordPush,
+}: {
+  toFeed: boolean;
+  onToggleFeed: () => void;
+  toPush: boolean;
+  onTogglePush: () => void;
+  balance: number | null;
+  canAffordPush: boolean;
+}) {
+  // Push label is honest about each state: still checking, affordable (show count),
+  // or out of credits (disabled, explains why).
+  const pushLabel =
+    balance === null
+      ? "Followers by push · checking…"
+      : canAffordPush
+        ? `Followers by push${toPush ? " · on" : ""} · ${balance} left`
+        : "Followers by push · no credit";
+
   return (
     <div style={{ marginTop: "var(--space-4)", display: "grid", gap: "var(--space-2)" }}>
       <SectionLabel>Where it goes</SectionLabel>
@@ -194,22 +269,39 @@ function DestinationRow({ toFeed, onToggleFeed }: { toFeed: boolean; onToggleFee
         <button onClick={onToggleFeed} style={{ all: "unset", cursor: "pointer" }}>
           <Pill variant={toFeed ? "on" : "neutral"}>Local feed{toFeed ? " · on" : ""}</Pill>
         </button>
-        <span title="Reaching followers by push arrives with the Push slice">
-          <Pill variant="neutral" style={{ opacity: 0.5 }}>Followers by push · soon</Pill>
-        </span>
+        {canAffordPush ? (
+          <button onClick={onTogglePush} style={{ all: "unset", cursor: "pointer" }}>
+            <Pill variant={toPush ? "on" : "neutral"}>{pushLabel}</Pill>
+          </button>
+        ) : (
+          <span
+            title={
+              balance === null
+                ? "Checking this venue's push credits…"
+                : "This venue has no push credits. Add credit to notify followers."
+            }
+          >
+            <Pill variant="neutral" style={{ opacity: 0.5 }}>{pushLabel}</Pill>
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function CreatedState({ onClose, toFeed }: { onClose: () => void; toFeed: boolean }) {
+function CreatedState({ onClose, toFeed, pushed }: { onClose: () => void; toFeed: boolean; pushed: boolean }) {
+  const where =
+    "Your update is live on your venue profile" +
+    (toFeed ? " and in the local feed for people nearby" : "") +
+    (pushed ? ". Followers with notifications on have been pushed" : "") +
+    ".";
   return (
     <div style={{ marginTop: "var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
         Published
       </div>
       <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-        Your update is live on your venue profile{toFeed ? " and in the local feed for people nearby" : ""}.
+        {where}
       </p>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Button variant="pri" onClick={onClose}>Done</Button>
