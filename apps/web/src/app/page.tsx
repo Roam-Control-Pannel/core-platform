@@ -10,10 +10,12 @@ export const dynamic = "force-dynamic";
 
 import { TrpcProvider } from "../components/TrpcProvider";
 import { Explore } from "../components/Explore";
+import { EnableNotifications } from "../components/EnableNotifications";
 
 export default function Home() {
   return (
     <TrpcProvider>
+      <EnableNotifications />
       <Explore />
     </TrpcProvider>
   );
