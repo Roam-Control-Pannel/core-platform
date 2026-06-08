@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./meetup": "./src/meetup/index.ts",
     "./posts": "./src/posts/index.ts",
+    "./push": "./src/push/index.ts",
     "./credits": "./src/credits/index.ts",
     "./geo": "./src/geo/index.ts",
     "./moderation": "./src/moderation/index.ts"
