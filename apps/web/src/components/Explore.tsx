@@ -34,6 +34,9 @@ export function Explore() {
   const [mode, setMode] = useState<Mode>("browse");
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [venues, setVenues] = useState<VenueCardData[] | null>(null);
+  // venue_ids the caller follows — read once per session, used to seed each card's
+  // FollowButton so N cards don't each fetch. Empty when signed out (no follow state).
+  const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +69,33 @@ export function Explore() {
       cancelled = true;
     };
   }, [trpc, place]);
+
+  // Read the caller's follow set once (per session). Signed-out → empty set: cards
+  // show "Follow" and gate to auth on tap. We load all follows and build a Set of
+  // venue_ids; each card checks membership. One query for the whole grid.
+  useEffect(() => {
+    if (!session) {
+      setFollowingSet(new Set());
+      return;
+    }
+    let cancelled = false;
+    const myFollows = trpc.social.myFollows as unknown as {
+      query: () => Promise<{ ok: boolean; follows?: { venue_id: string }[] }>;
+    };
+    myFollows
+      .query()
+      .then((res) => {
+        if (cancelled) return;
+        const ids = res.ok ? (res.follows ?? []).map((f) => f.venue_id) : [];
+        setFollowingSet(new Set(ids));
+      })
+      .catch(() => {
+        if (!cancelled) setFollowingSet(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, session]);
 
   const categories = useMemo(() => {
     if (!venues) return [];
@@ -161,7 +191,7 @@ export function Explore() {
               }}
             >
               {shown.map((v) => (
-                <VenueCard key={v.id} venue={v} />
+                <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
               ))}
             </div>
           )}
