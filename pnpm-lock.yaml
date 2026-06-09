@@ -121,6 +121,9 @@ importers:
       '@roam/db':
         specifier: workspace:*
         version: link:../db
+      '@supabase/supabase-js':
+        specifier: 2.106.2
+        version: 2.106.2
       '@trpc/server':
         specifier: ^11.0.0
         version: 11.17.0(typescript@5.9.3)
