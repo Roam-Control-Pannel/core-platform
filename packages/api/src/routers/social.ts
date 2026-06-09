@@ -108,6 +108,38 @@ export const socialRouter = router({
       return { ok: true as const };
     }),
 
+  /**
+   * Toggle push delivery for a venue the caller already follows. The follow row
+   * is left intact; only push_enabled flips. Updating a venue the caller does not
+   * follow affects zero rows and returns ok (idempotent no-op) — you cannot tune
+   * delivery for something you do not follow.
+   */
+  setVenuePushEnabled: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const follower_id = await callerId(ctx.db);
+      const { error } = await ctx.db
+        .from("follows")
+        .update({ push_enabled: input.enabled })
+        .eq("follower_id", follower_id)
+        .eq("venue_id", input.venueId);
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const };
+    }),
+
+  /** Venues the caller follows, newest first, with each follow's push preference. */
+  myFollows: protectedProcedure
+    .query(async ({ ctx }) => {
+      const follower_id = await callerId(ctx.db);
+      const { data, error } = await ctx.db
+        .from("follows")
+        .select("venue_id, push_enabled, created_at, venues(id, name, category)")
+        .eq("follower_id", follower_id)
+        .order("created_at", { ascending: false });
+      if (error) return { ok: false as const, error: error.message };
+      return { ok: true as const, follows: data ?? [] };
+    }),
+
   /** Send a friend request (requester is the caller; addressee is the target). */
   requestFriend: protectedProcedure
     .input(z.object({ addresseeId: z.string().uuid() }))

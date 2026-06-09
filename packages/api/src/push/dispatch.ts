@@ -91,7 +91,8 @@ export async function dispatchFollowerPush(
   const { data: followRows, error: followErr } = await service
     .from("follows")
     .select("follower_id")
-    .eq("venue_id", payload.venueId);
+    .eq("venue_id", payload.venueId)
+    .eq("push_enabled", true);
   if (followErr) {
     throw new Error(`Dispatch failed to load followers: ${followErr.message}`);
   }
