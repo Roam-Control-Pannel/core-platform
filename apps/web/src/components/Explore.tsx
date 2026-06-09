@@ -124,6 +124,20 @@ export function Explore() {
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
           {session ? (
             <Link
+              href="/following"
+              style={{
+                fontFamily: "var(--ui)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink-2)",
+                textDecoration: "none",
+              }}
+            >
+              Following
+            </Link>
+          ) : null}
+          {session ? (
+            <Link
               href="/threads"
               style={{
                 fontFamily: "var(--ui)",
