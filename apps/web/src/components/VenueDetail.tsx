@@ -37,6 +37,7 @@ import Link from "next/link";
 import { Card, Pill, Rate, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { FollowButton } from "./FollowButton";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -78,6 +79,11 @@ export function VenueDetail({ venueId }: { venueId: string }) {
   const [claimUi, setClaimUi] = useState<ClaimUiState>("idle");
   const [claimError, setClaimError] = useState<string | null>(null);
 
+  // Follow state for THIS venue, read once after load from the caller's myFollows.
+  // undefined = not yet known (button renders its default-off until this resolves);
+  // a claimed venue is the only state that shows a FollowButton (see ClaimedDetail).
+  const [following, setFollowing] = useState<boolean | undefined>(undefined);
+
   const loadVenue = useCallback(async () => {
     setVenue(undefined);
     setError(null);
@@ -109,6 +115,34 @@ export function VenueDetail({ venueId }: { venueId: string }) {
       cancelled = true;
     };
   }, [loadVenue]);
+
+  // Read whether the caller already follows this venue. Signed-out → not following.
+  // We load the full myFollows set and check membership: one extra query on a detail
+  // page is fine, and reuses the query the Following view will use. The grid path
+  // (3b) will instead pass a precomputed followingSet so N cards don't each fetch.
+  useEffect(() => {
+    if (!session) {
+      setFollowing(false);
+      return;
+    }
+    let cancelled = false;
+    const myFollows = trpc.social.myFollows as unknown as {
+      query: () => Promise<{ ok: boolean; follows?: { venue_id: string }[] }>;
+    };
+    myFollows
+      .query()
+      .then((res) => {
+        if (cancelled) return;
+        const set = res.ok ? (res.follows ?? []) : [];
+        setFollowing(set.some((f) => f.venue_id === venueId));
+      })
+      .catch(() => {
+        if (!cancelled) setFollowing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, session, venueId]);
 
   /**
    * Submit the claim request. Assumes a session exists (caller gates on it). On
@@ -170,7 +204,7 @@ export function VenueDetail({ venueId }: { venueId: string }) {
       ) : venue === null ? (
         <NotFoundState />
       ) : venue.owner_id !== null ? (
-        <ClaimedDetail venue={venue} />
+        <ClaimedDetail venue={venue} venueId={venueId} initialFollowing={following ?? false} />
       ) : venue.status === "pending_claim" ? (
         <PendingClaimDetail venue={venue} mineJustSubmitted={claimUi === "submitted"} />
       ) : (
@@ -247,7 +281,15 @@ function TitleRow({ name }: { name: string }) {
   );
 }
 
-function ClaimedDetail({ venue }: { venue: VenueDetailData }) {
+function ClaimedDetail({
+  venue,
+  venueId,
+  initialFollowing,
+}: {
+  venue: VenueDetailData;
+  venueId: string;
+  initialFollowing: boolean;
+}) {
   const links = linkEntries(venue.links);
   return (
     <>
@@ -268,6 +310,14 @@ function ClaimedDetail({ venue }: { venue: VenueDetailData }) {
           <Rate value={`${venue.rating.toFixed(1)}${venue.rating_count ? ` (${venue.rating_count})` : ""}`} />
         ) : null}
         {venue.category ? <span>{venue.category}</span> : null}
+      </div>
+
+      <div style={{ marginTop: "var(--space-4)" }}>
+        <FollowButton
+          venueId={venueId}
+          initialFollowing={initialFollowing}
+          emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+        />
       </div>
 
       {venue.description ? (

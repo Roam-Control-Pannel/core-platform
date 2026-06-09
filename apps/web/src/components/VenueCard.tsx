@@ -18,6 +18,7 @@
  */
 import Link from "next/link";
 import { Card, Pill, Rate, DistanceChip } from "@roam/design";
+import { FollowButton } from "./FollowButton";
 
 /**
  * Local mirror of @roam/core's geo.formatDistance. Core is a Node-ESM package (its
@@ -43,15 +44,31 @@ export interface VenueCardData {
   distanceM?: number | undefined;
 }
 
-export function VenueCard({ venue }: { venue: VenueCardData }) {
+/** Whether the caller follows this venue, seeded from Explore's followingSet. */
+interface VenueCardProps {
+  venue: VenueCardData;
+  initialFollowing?: boolean;
+}
+
+export function VenueCard({ venue, initialFollowing = false }: VenueCardProps) {
   return (
     <Link href={`/venue/${venue.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-      {venue.claimed ? <ClaimedCard venue={venue} /> : <UnclaimedCard venue={venue} />}
+      {venue.claimed ? (
+        <ClaimedCard venue={venue} initialFollowing={initialFollowing} />
+      ) : (
+        <UnclaimedCard venue={venue} />
+      )}
     </Link>
   );
 }
 
-function ClaimedCard({ venue }: { venue: VenueCardData }) {
+function ClaimedCard({
+  venue,
+  initialFollowing,
+}: {
+  venue: VenueCardData;
+  initialFollowing: boolean;
+}) {
   return (
     <Card>
       <div
@@ -82,6 +99,22 @@ function ClaimedCard({ venue }: { venue: VenueCardData }) {
           {venue.distanceM != null ? (
             <DistanceChip style={{ marginLeft: "auto" }}>{formatDistance(venue.distanceM)}</DistanceChip>
           ) : null}
+        </div>
+        {/* Follow control. Wrapped in a click-isolating div: the card is a <Link>, so
+            without stopPropagation/preventDefault a follow tap would navigate to the
+            detail page. This keeps FollowButton host-agnostic (no Link awareness). */}
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{ marginTop: "var(--space-1)" }}
+        >
+          <FollowButton
+            venueId={venue.id}
+            initialFollowing={initialFollowing}
+            emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+          />
         </div>
       </div>
     </Card>

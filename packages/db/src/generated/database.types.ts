@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       automation_journeys: {
@@ -306,16 +281,19 @@ export type Database = {
         Row: {
           created_at: string
           follower_id: string
+          push_enabled: boolean
           venue_id: string
         }
         Insert: {
           created_at?: string
           follower_id: string
+          push_enabled?: boolean
           venue_id: string
         }
         Update: {
           created_at?: string
           follower_id?: string
+          push_enabled?: boolean
           venue_id?: string
         }
         Relationships: [
@@ -1290,6 +1268,64 @@ export type Database = {
           },
         ]
       }
+      venue_claims: {
+        Row: {
+          claimant_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["venue_claim_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          claimant_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["venue_claim_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          claimant_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["venue_claim_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_claims_claimant_id_fkey"
+            columns: ["claimant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_claims_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_claims_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           address: string | null
@@ -1552,7 +1588,34 @@ export type Database = {
             }
             Returns: string
           }
+      approve_venue_claim: {
+        Args: { target_claim_id: string }
+        Returns: Database["public"]["CompositeTypes"]["venue_claim_approval"]
+        SetofOptions: {
+          from: "*"
+          to: "venue_claim_approval"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
+      create_thread_with_creator: {
+        Args: { p_is_group?: boolean; p_plan_id?: string; p_title?: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_group: boolean
+          plan_id: string | null
+          title: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "chat_threads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_profile: { Args: never; Returns: string }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -1687,6 +1750,8 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
       in_thread: { Args: { t: string }; Returns: boolean }
+      is_free_mail_host: { Args: { host: string }; Returns: boolean }
+      is_non_evidence_host: { Args: { host: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -1728,6 +1793,36 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      reject_venue_claim: {
+        Args: { reason?: string; target_claim_id: string }
+        Returns: Database["public"]["CompositeTypes"]["venue_claim_approval"]
+        SetofOptions: {
+          from: "*"
+          to: "venue_claim_approval"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      request_venue_claim: {
+        Args: { claim_note?: string; target_venue_id: string }
+        Returns: {
+          claimant_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["venue_claim_status"]
+          updated_at: string
+          venue_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "venue_claims"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       st_3dclosestpoint: {
@@ -2322,6 +2417,20 @@ export type Database = {
         }
         Returns: string
       }
+      venue_link_hosts: { Args: { target_venue_id: string }; Returns: string[] }
+      venues_near: {
+        Args: { lat: number; lng: number; max_results?: number }
+        Returns: {
+          categories: string[]
+          category: string
+          distance_m: number
+          id: string
+          name: string
+          owner_id: string
+          rating: number
+          status: Database["public"]["Enums"]["venue_status"]
+        }[]
+      }
     }
     Enums: {
       friendship_status: "pending" | "accepted" | "blocked"
@@ -2334,6 +2443,7 @@ export type Database = {
       post_destination: "profile" | "feed" | "follower_push"
       post_kind: "news" | "offer" | "event"
       subscription_tier: "free" | "premium" | "gold"
+      venue_claim_status: "pending" | "approved" | "rejected"
       venue_status: "unclaimed" | "pending_claim" | "claimed" | "suspended"
     }
     CompositeTypes: {
@@ -2345,6 +2455,13 @@ export type Database = {
         valid: boolean | null
         reason: string | null
         location: unknown
+      }
+      venue_claim_approval: {
+        claim_id: string | null
+        venue_id: string | null
+        verified: boolean | null
+        venue_status: Database["public"]["Enums"]["venue_status"] | null
+        method: string | null
       }
     }
   }
@@ -2468,9 +2585,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       friendship_status: ["pending", "accepted", "blocked"],
@@ -2484,6 +2598,7 @@ export const Constants = {
       post_destination: ["profile", "feed", "follower_push"],
       post_kind: ["news", "offer", "event"],
       subscription_tier: ["free", "premium", "gold"],
+      venue_claim_status: ["pending", "approved", "rejected"],
       venue_status: ["unclaimed", "pending_claim", "claimed", "suspended"],
     },
   },
