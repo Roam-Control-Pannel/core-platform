@@ -39,14 +39,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Lint runs first: it is the cheapest gate (~seconds) and catches the
+      # most common errors, so it gives the fastest red signal. Every workspace
+      # lints through the shared @roam/eslint-config presets and one eslint binary.
+      - name: Lint
+        run: pnpm lint
+
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
         run: pnpm test
-
-      # Lint is wired into the Turbo pipeline but no package defines an eslint
-      # config yet. Re-enable once eslint lands so CI doesn't fail on a missing
-      # binary. Tracked: add lint step when the eslint config slice ships.
-      # - name: Lint
-      #   run: pnpm lint

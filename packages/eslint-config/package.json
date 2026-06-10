@@ -1,0 +1,20 @@
+{
+  "name": "@roam/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.mjs",
+    "./next": "./next.mjs"
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.18.0",
+    "typescript-eslint": "^8.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "@next/eslint-plugin-next": "^16.0.0",
+    "globals": "^15.14.0"
+  }
+}
