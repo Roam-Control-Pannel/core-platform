@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint src",
     "clean": "rm -rf .next .turbo dist *.tsbuildinfo",
     "sync-env": "node scripts/sync-env.mjs",
     "predev": "node scripts/sync-env.mjs",
@@ -26,6 +26,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@roam/eslint-config": "workspace:*",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
