@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@expo/ui": "~56.0.16",
+    "@roam/core": "workspace:*",
     "expo": "~56.0.9",
     "expo-constants": "~56.0.17",
     "expo-device": "~56.0.4",
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@roam/eslint-config": "workspace:*",
     "@types/react": "~19.2.2",
+    "globals": "^15.15.0",
     "typescript": "^5.7.0"
   }
 }
