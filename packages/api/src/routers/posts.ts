@@ -20,7 +20,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { posts, credits } from "@roam/core";
+import { posts, credits, routes } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { dispatchFollowerPush } from "../push/dispatch.js";
 
@@ -213,7 +213,7 @@ export const postsRouter = router({
         if (consumed.ok) {
           dispatch = await dispatchFollowerPush(service, ctx.env.vapid, {
             venueId: input.venueId,
-            url: `/venues/${input.venueId}`,
+            url: routes.venuePath(input.venueId),
             title: input.title ?? "New update",
             body: input.body ?? "",
           });
