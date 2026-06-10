@@ -15,7 +15,10 @@
   },
   "dependencies": {
     "@expo/ui": "~56.0.16",
+    "@roam/api": "workspace:*",
     "@roam/core": "workspace:*",
+    "@tanstack/react-query": "^5.101.0",
+    "@trpc/client": "^11.17.0",
     "expo": "~56.0.9",
     "expo-constants": "~56.0.17",
     "expo-device": "~56.0.4",
