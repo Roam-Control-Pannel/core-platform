@@ -34,14 +34,17 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://localhost:8787"
+      "apiUrl": "http://localhost:8787",
+      "supabaseUrl": "https://kyancopdkxotzzkzqsmf.supabase.co",
+      "supabaseAnonKey": "sb_publishable_Tm1fZpRCZ-0VT1rmC9ppYg_kMU0xMJa"
     }
   }
 }

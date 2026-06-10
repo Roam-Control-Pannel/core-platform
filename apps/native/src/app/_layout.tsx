@@ -2,18 +2,22 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { TrpcProvider } from "../lib/TrpcProvider";
 
-// Root layout for @roam/native. Wraps the app in a QueryClientProvider so
-// screens can fetch via @tanstack/react-query. The tRPC client itself is
-// created per-screen for now (chunk 3 is a single read-only Discover screen);
-// a shared TrpcProvider mirroring the web surface comes when auth lands.
+// Root layout for @roam/native. QueryClientProvider supplies @tanstack/react-query;
+// TrpcProvider (nested inside it) tracks the Supabase session, rebuilds the typed tRPC
+// client when the token changes, and exposes useTrpc()/useSession() to every screen —
+// the same contract the web surface uses. Public browsing works with a null session
+// (just-in-time auth); signing in flows a live JWT through to RLS-scoped requests.
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }} />
-      <StatusBar style="auto" />
+      <TrpcProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+        <StatusBar style="auto" />
+      </TrpcProvider>
     </QueryClientProvider>
   );
 }

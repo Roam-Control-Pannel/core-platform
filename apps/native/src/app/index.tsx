@@ -1,25 +1,82 @@
-import { useMemo } from "react";
+import { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistance } from "@roam/core/geo";
-import { makeTrpcClient } from "../lib/trpc";
+import { useTrpc, useSession } from "../lib/TrpcProvider";
+import { AuthSheet } from "../components/AuthSheet";
 
-// CHUNK 3: the first native data screen. Fetches venues.near (publicProcedure,
-// no auth — public browsing) from a fixed Darlington origin and renders the
-// near->far list. distanceM comes server-side from PostGIS; formatDistance from
-// @roam/core/geo renders it (reusing chunk 2's helper). Real geolocation
-// (expo-location) is a later slice — the origin is labelled honestly.
+// Native Discover. Fetches venues.near (publicProcedure — public browsing works with no
+// session) from a fixed Darlington origin and renders the near->far list. Claimed venues
+// carry a Follow control: the first GATED action on native. Signed in -> social.followVenue
+// runs immediately; signed out -> the AuthSheet rises (just-in-time auth) and the follow
+// RESUMES on sign-in. expo-location (real device origin) is a later slice.
 const DARLINGTON = { lat: 54.5253, lng: -1.5849 };
 
+interface VenueRow {
+  id: string;
+  name: string;
+  claimed: boolean;
+  category: string | null;
+  distanceM: number;
+}
+
 export default function DiscoverScreen() {
-  // No auth yet: getAccessToken returns null (public browsing is valid).
-  const trpc = useMemo(() => makeTrpcClient(() => null), []);
+  const trpc = useTrpc();
+  const session = useSession();
+
+  // Follow state: venue_ids the caller has followed THIS session (optimistic). We don't
+  // pre-load myFollows here (the list is the minimal surface) — a tapped follow flips the
+  // row; server-truth seeds on a later detail-screen slice. Set, so re-render is cheap.
+  const [followed, setFollowed] = useState<Set<string>>(new Set());
+
+  // JIT auth: the venue the user tried to follow while signed out, held so the follow
+  // resumes after sign-in. null = sheet closed.
+  const [pendingFollowVenueId, setPendingFollowVenueId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["venues.near", DARLINGTON],
     queryFn: () => trpc.venues.near.query({ ...DARLINGTON, limit: 50 }),
   });
+
+  // Run the follow mutation and flip the row optimistically. Assumes a session exists
+  // (caller gates on it). social.followVenue is idempotent server-side, so a re-follow
+  // is harmless.
+  const doFollow = useCallback(
+    async (venueId: string) => {
+      setFollowed((prev) => new Set(prev).add(venueId));
+      try {
+        await trpc.social.followVenue.mutate({ venueId });
+      } catch {
+        // Revert on failure — never show a follow that didn't persist.
+        setFollowed((prev) => {
+          const next = new Set(prev);
+          next.delete(venueId);
+          return next;
+        });
+      }
+    },
+    [trpc],
+  );
+
+  // Tap handler: signed in -> follow now; signed out -> open the sheet, holding the intent.
+  const onFollowPressed = useCallback(
+    (venueId: string) => {
+      if (session) {
+        void doFollow(venueId);
+      } else {
+        setPendingFollowVenueId(venueId);
+      }
+    },
+    [session, doFollow],
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -44,7 +101,7 @@ export default function DiscoverScreen() {
 
       {data && (
         <FlatList
-          data={data}
+          data={data as VenueRow[]}
           keyExtractor={(v) => v.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -59,13 +116,45 @@ export default function DiscoverScreen() {
                 {item.category && <Text style={styles.muted}>{item.category}</Text>}
               </View>
               <Text style={styles.distance}>{formatDistance(item.distanceM)}</Text>
+              {item.claimed && (
+                <Pressable
+                  onPress={() => onFollowPressed(item.id)}
+                  style={[styles.followBtn, followed.has(item.id) && styles.followBtnOn]}
+                >
+                  <Text
+                    style={[
+                      styles.followBtnText,
+                      followed.has(item.id) && styles.followBtnTextOn,
+                    ]}
+                  >
+                    {followed.has(item.id) ? "Following" : "Follow"}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           )}
         />
       )}
+
+      <AuthSheet
+        visible={pendingFollowVenueId !== null}
+        intro="Sign in to follow this venue and get a heads-up when it posts."
+        onClose={() => setPendingFollowVenueId(null)}
+        onAuthed={() => {
+          const venueId = pendingFollowVenueId;
+          setPendingFollowVenueId(null);
+          // Session now lands via onAuthStateChange (provider rebuilds the client); resume
+          // the held follow. doFollow reads the live trpc client at call time.
+          if (venueId) void doFollow(venueId);
+        }}
+      />
     </SafeAreaView>
   );
 }
+
+const CRIMSON = "#C2123F";
+const CRIMSON_TINT = "#FBE6EC";
+const CRIMSON_700 = "#9D0F33";
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
@@ -87,4 +176,13 @@ const styles = StyleSheet.create({
   distance: { fontSize: 14, opacity: 0.7, fontVariant: ["tabular-nums"] },
   muted: { fontSize: 13, opacity: 0.6 },
   errorTitle: { fontSize: 16, fontWeight: "600" },
+  followBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: CRIMSON_TINT,
+  },
+  followBtnOn: { backgroundColor: CRIMSON },
+  followBtnText: { fontSize: 12.5, fontWeight: "600", color: CRIMSON_700 },
+  followBtnTextOn: { color: "#fff" },
 });
