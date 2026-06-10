@@ -4,8 +4,10 @@ packages:
 
 allowBuilds:
   esbuild: true
+  msgpackr-extract: true
   sharp: true
 
 onlyBuiltDependencies:
   - esbuild
+  - msgpackr-extract
   - sharp
