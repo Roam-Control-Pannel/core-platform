@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.47.0"
   },
   "devDependencies": {
+    "@roam/eslint-config": "workspace:*",
     "typescript": "^5.7.0"
   }
 }

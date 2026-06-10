@@ -19,6 +19,5 @@ import { handler } from "./server.js";
 const port = Number(process.env.PORT ?? 8787);
 
 serve({ fetch: handler, port }, (info) => {
-  // eslint-disable-next-line no-console
   console.log(`[@roam/api] dev service listening on http://localhost:${info.port}/trpc`);
 });
