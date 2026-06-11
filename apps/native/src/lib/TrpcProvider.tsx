@@ -6,9 +6,11 @@
  * auth the same way on both surfaces (one mental model, the architecture's whole point).
  *
  * Just-in-time auth: a null session is VALID (public Discover browses with no token).
- * The token feeds makeTrpcClient's getAccessToken; when it changes (sign in/out/refresh)
- * the client is rebuilt so every request carries the live JWT. On cold start the session
- * rehydrates from the keychain (getSession), so a signed-in user stays signed in.
+ * The client is built ONCE; its getAccessToken reads the live session from the Supabase
+ * singleton at request time, so every request carries the current JWT with no rebuild
+ * timing to get wrong — a sign-in that resumes a gated action is authed immediately.
+ * The session state below still drives useSession() (the UI auth gate); it just no
+ * longer gates the client. On cold start the session rehydrates from the keychain.
  */
 import {
   createContext,
@@ -37,9 +39,16 @@ export function TrpcProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Rebuild the client when the token changes so requests carry the live JWT.
-  const token = session?.access_token ?? null;
-  const client = useMemo(() => makeTrpcClient(() => token), [token]);
+  // Build the client once. getAccessToken reads the live session at request time, so
+  // there's no stale-closure race when a just-in-time sign-in resumes a gated action.
+  const client = useMemo(
+    () =>
+      makeTrpcClient(async () => {
+        const { data } = await getSupabaseNative().auth.getSession();
+        return data.session?.access_token ?? null;
+      }),
+    [],
+  );
 
   return (
     <TrpcContext.Provider value={client}>
