@@ -8,6 +8,7 @@
     "scheme": "native",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.roamlocal.roam",
       "icon": "./assets/expo.icon"
     },
     "android": {
