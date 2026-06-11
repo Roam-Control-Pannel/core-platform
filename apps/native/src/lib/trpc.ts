@@ -5,8 +5,9 @@
  * app.json's extra.apiUrl via expo-constants, with a localhost:8787 fallback.
  * Imports ONLY `type AppRouter` from @roam/api — no server code bundles in.
  *
- * getAccessToken returns null for now: chunk 3 is read-only public Discover
- * (venues.near is publicProcedure). Supabase session wiring is a later slice.
+ * getAccessToken is read live at request time (returns a Promise) so every call
+ * carries the current JWT regardless of React render timing — no stale-closure
+ * race when a just-in-time sign-in resumes a gated action.
  * Never throws at module-eval; an unreachable API fails at call time and the
  * screen shows its error state.
  */
@@ -19,13 +20,13 @@ function apiUrl(): string {
   return extra?.apiUrl ?? "http://localhost:8787";
 }
 
-export function makeTrpcClient(getAccessToken: () => string | null) {
+export function makeTrpcClient(getAccessToken: () => Promise<string | null>) {
   return createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
         url: `${apiUrl()}/trpc`,
-        headers() {
-          const token = getAccessToken();
+        async headers() {
+          const token = await getAccessToken();
           return token ? { authorization: `Bearer ${token}` } : {};
         },
       }),
