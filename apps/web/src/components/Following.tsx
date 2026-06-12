@@ -22,6 +22,7 @@ import { Card, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
+import { venuePath } from "../lib/routes";
 
 /** A row from myFollows: the follow's push pref + the embedded venue it points at. */
 interface FollowRow {
@@ -195,7 +196,7 @@ function FollowRowCard({ row }: { row: FollowRow }) {
     <Card style={{ padding: "var(--space-4)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
         <Link
-          href={`/venue/${row.venueId}`}
+          href={venuePath(row.venueId)}
           style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}
         >
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>
