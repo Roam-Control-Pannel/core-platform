@@ -19,6 +19,7 @@
 import Link from "next/link";
 import { Card, Pill, Rate, DistanceChip } from "@roam/design";
 import { FollowButton } from "./FollowButton";
+import { venuePath } from "../lib/routes";
 
 /**
  * Local mirror of @roam/core's geo.formatDistance. Core is a Node-ESM package (its
@@ -52,7 +53,7 @@ interface VenueCardProps {
 
 export function VenueCard({ venue, initialFollowing = false }: VenueCardProps) {
   return (
-    <Link href={`/venue/${venue.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+    <Link href={venuePath(venue.id)} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       {venue.claimed ? (
         <ClaimedCard venue={venue} initialFollowing={initialFollowing} />
       ) : (

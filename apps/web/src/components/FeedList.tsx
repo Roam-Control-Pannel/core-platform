@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
+import { venuePath } from "../lib/routes";
 
 export interface FeedPost {
   id: string;
@@ -115,7 +116,7 @@ function PostCard({ post }: { post: FeedPost }) {
       {post.venueName ? (
         <div style={{ marginTop: "var(--space-3)" }}>
           <Link
-            href={`/venue/${post.venueId}`}
+            href={venuePath(post.venueId)}
             style={{ textDecoration: "none" }}
           >
             <Pill variant="ghost-crim" size="sm">
