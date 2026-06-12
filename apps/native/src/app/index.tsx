@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -13,6 +14,7 @@ import { formatDistance } from "@roam/core/geo";
 import { useTrpc, useSession } from "../lib/TrpcProvider";
 import { AuthSheet } from "../components/AuthSheet";
 import { useDeviceOrigin } from "../lib/useDeviceOrigin";
+import { getSupabaseNative } from "../lib/supabase";
 
 // Native Discover. Fetches venues.near (publicProcedure — public browsing works with no
 // session) from a fixed Darlington origin and renders the near->far list. Claimed venues
@@ -85,13 +87,42 @@ export default function DiscoverScreen() {
     [session, doFollow],
   );
 
+  // Sign out via the Supabase singleton. onAuthStateChange in TrpcProvider clears the
+  // session (reverting the follow gate) — we don't touch session state here. We DO clear
+  // the optimistic followed set: those pills belong to the signed-out user's session, not
+  // the screen's permanent truth. Confirm first so an accidental tap can't drop the session.
+  const onSignOutPressed = useCallback(() => {
+    Alert.alert(
+      "Sign out?",
+      "You'll need to sign in again to follow venues.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: () => {
+            void getSupabaseNative().auth.signOut();
+            setFollowed(new Set());
+          },
+        },
+      ],
+    );
+  }, []);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.brand}>Roam</Text>
-        <Text style={styles.subtitle}>
-          Discover · {deviceOrigin.status === "ready" ? "near you" : "near Darlington"}
-        </Text>
+        <View style={styles.headerMain}>
+          <Text style={styles.brand}>Roam</Text>
+          <Text style={styles.subtitle}>
+            Discover · {deviceOrigin.status === "ready" ? "near you" : "near Darlington"}
+          </Text>
+        </View>
+        {session && (
+          <Pressable onPress={onSignOutPressed} style={styles.signOutBtn} hitSlop={8}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        )}
       </View>
 
       {deviceOrigin.status === "resolving" && (
@@ -174,7 +205,24 @@ const CRIMSON_700 = "#9D0F33";
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 2 },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  headerMain: { gap: 2 },
+  signOutBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0,0,0,0.2)",
+    marginTop: 4,
+  },
+  signOutText: { fontSize: 13, color: "#4D463F", fontWeight: "600" },
   brand: { fontSize: 28, fontWeight: "700" },
   subtitle: { fontSize: 13, opacity: 0.6 },
   centerFill: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
