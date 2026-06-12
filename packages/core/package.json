@@ -9,6 +9,7 @@
     "./posts": "./src/posts/index.ts",
     "./push": "./src/push/index.ts",
     "./credits": "./src/credits/index.ts",
+    "./auth": "./src/auth/index.ts",
     "./geo": "./src/geo/index.ts",
     "./moderation": "./src/moderation/index.ts"
   },
