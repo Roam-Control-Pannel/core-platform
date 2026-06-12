@@ -16,7 +16,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -78,13 +78,18 @@ export function Following() {
   }, [trpc]);
 
   // Only load when signed in (the query is protected; an anon call would 401).
+  // Gate on the user IDENTITY, not the session object: Supabase emits a fresh Session
+  // reference on every TOKEN_REFRESHED / focus event, and depending on the object would
+  // re-run this effect (setRows(null) + refetch) on benign token churn — the query storm.
+  // The user id is stable across refreshes, so we only reload on a real sign-in/out/switch.
+  const userId = session?.user?.id ?? null;
   useEffect(() => {
-    if (!session) {
+    if (!userId) {
       setRows(null);
       return;
     }
     return load();
-  }, [session, load]);
+  }, [userId, load]);
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -139,21 +144,51 @@ function FollowRowCard({ row }: { row: FollowRow }) {
   const name = row.venue?.name ?? "Unknown venue";
   const [pushEnabled, setPushEnabled] = useState(row.pushEnabled);
   const [busy, setBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  // Synchronous in-flight latch. React state (busy) commits asynchronously, so a rapid
+  // re-invocation of this handler — React StrictMode's intentional double-call in dev, or
+  // any future re-entrancy — slips through the state guard before setBusy(true) commits.
+  // A ref updates synchronously, so it blocks the duplicate write immediately. This makes
+  // the mutation idempotent by construction rather than relying on prod stripping StrictMode.
+  const inFlightRef = useRef(false);
 
-  // Flip the per-venue push pref optimistically, reverting on failure.
+  // Flip the per-venue push pref optimistically, reconciling against the server.
+  //
+  // Guarded so ONE user action is ONE write: ignore the call if a write is already in
+  // flight, or if the requested value already matches state (a no-op re-fire from a
+  // mid-interaction re-render). This is what collapses the observed 3x mutation burst
+  // to a single deterministic write.
+  //
+  // Errors are SURFACED, never swallowed. The previous bare `catch {}` is precisely how
+  // the 0014 silent-RLS bug hid: the toggle reported nothing while its writes vanished.
+  // Now the server reads back rows-affected (ok:false on zero), and we revert + show why.
   const setPush = useCallback(
     async (next: boolean) => {
+      if (inFlightRef.current || next === pushEnabled) return;
+      inFlightRef.current = true;
+      setPushError(null);
       setPushEnabled(next);
       setBusy(true);
       try {
-        await trpc.social.setVenuePushEnabled.mutate({ venueId: row.venueId, enabled: next });
-      } catch {
+        const res = (await trpc.social.setVenuePushEnabled.mutate({
+          venueId: row.venueId,
+          enabled: next,
+        })) as { ok: boolean; error?: string; pushEnabled?: boolean };
+        if (!res.ok) {
+          setPushEnabled(!next); // revert to the pre-toggle value
+          setPushError(res.error ?? "Couldn't update notifications.");
+        } else if (typeof res.pushEnabled === "boolean") {
+          setPushEnabled(res.pushEnabled); // reconcile to the server's confirmed value
+        }
+      } catch (e: unknown) {
         setPushEnabled(!next); // revert
+        setPushError(e instanceof Error ? e.message : "Couldn't update notifications.");
       } finally {
+        inFlightRef.current = false;
         setBusy(false);
       }
     },
-    [trpc, row.venueId],
+    [trpc, row.venueId, pushEnabled],
   );
 
   return (
@@ -208,6 +243,19 @@ function FollowRowCard({ row }: { row: FollowRow }) {
           />
         </div>
       </div>
+      {pushError ? (
+        <p
+          role="alert"
+          style={{
+            marginTop: "var(--space-2)",
+            marginBottom: 0,
+            fontSize: 12,
+            color: "var(--crimson-700)",
+          }}
+        >
+          {pushError}
+        </p>
+      ) : null}
     </Card>
   );
 }

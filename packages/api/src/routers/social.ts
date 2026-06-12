@@ -118,13 +118,21 @@ export const socialRouter = router({
     .input(z.object({ venueId: z.string().uuid(), enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const follower_id = await callerId(ctx.db);
-      const { error } = await ctx.db
+      const { data, error } = await ctx.db
         .from("follows")
         .update({ push_enabled: input.enabled })
         .eq("follower_id", follower_id)
-        .eq("venue_id", input.venueId);
+        .eq("venue_id", input.venueId)
+        .select("venue_id, push_enabled");
       if (error) return { ok: false as const, error: error.message };
-      return { ok: true as const };
+      const updated = data?.[0];
+      if (!updated) {
+        return {
+          ok: false as const,
+          error: "No follow row updated — not following this venue, or blocked by policy.",
+        };
+      }
+      return { ok: true as const, pushEnabled: updated.push_enabled };
     }),
 
   /** Venues the caller follows, newest first, with each follow's push preference. */
