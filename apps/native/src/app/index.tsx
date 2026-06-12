@@ -12,13 +12,14 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistance } from "@roam/core/geo";
 import { useTrpc, useSession } from "../lib/TrpcProvider";
 import { AuthSheet } from "../components/AuthSheet";
+import { useDeviceOrigin } from "../lib/useDeviceOrigin";
 
 // Native Discover. Fetches venues.near (publicProcedure — public browsing works with no
 // session) from a fixed Darlington origin and renders the near->far list. Claimed venues
 // carry a Follow control: the first GATED action on native. Signed in -> social.followVenue
 // runs immediately; signed out -> the AuthSheet rises (just-in-time auth) and the follow
-// RESUMES on sign-in. expo-location (real device origin) is a later slice.
-const DARLINGTON = { lat: 54.5253, lng: -1.5849 };
+// RESUMES on sign-in. The query origin comes from useDeviceOrigin (real device fix,
+// with a Darlington fallback when location is denied/unavailable).
 
 interface VenueRow {
   id: string;
@@ -31,6 +32,7 @@ interface VenueRow {
 export default function DiscoverScreen() {
   const trpc = useTrpc();
   const session = useSession();
+  const deviceOrigin = useDeviceOrigin();
 
   // Follow state: venue_ids the caller has followed THIS session (optimistic). We don't
   // pre-load myFollows here (the list is the minimal surface) — a tapped follow flips the
@@ -41,9 +43,14 @@ export default function DiscoverScreen() {
   // resumes after sign-in. null = sheet closed.
   const [pendingFollowVenueId, setPendingFollowVenueId] = useState<string | null>(null);
 
+  // Don't fetch until the origin resolves (real or fallback) — otherwise we'd query
+  // once on a placeholder then re-query on the real fix. Key on the resolved coords so
+  // a real fix re-roots the list cleanly.
+  const origin = deviceOrigin.origin;
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["venues.near", DARLINGTON],
-    queryFn: () => trpc.venues.near.query({ ...DARLINGTON, limit: 50 }),
+    queryKey: ["venues.near", origin],
+    queryFn: () => trpc.venues.near.query({ ...origin!, limit: 50 }),
+    enabled: origin !== null,
   });
 
   // Run the follow mutation and flip the row optimistically. Assumes a session exists
@@ -82,10 +89,19 @@ export default function DiscoverScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.brand}>Roam</Text>
-        <Text style={styles.subtitle}>Discover · near Darlington</Text>
+        <Text style={styles.subtitle}>
+          Discover · {deviceOrigin.status === "ready" ? "near you" : "near Darlington"}
+        </Text>
       </View>
 
-      {isLoading && (
+      {deviceOrigin.status === "resolving" && (
+        <View style={styles.centerFill}>
+          <ActivityIndicator />
+          <Text style={styles.muted}>Finding your location…</Text>
+        </View>
+      )}
+
+      {deviceOrigin.status !== "resolving" && isLoading && (
         <View style={styles.centerFill}>
           <ActivityIndicator />
           <Text style={styles.muted}>Loading venues…</Text>
