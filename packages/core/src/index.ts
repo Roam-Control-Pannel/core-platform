@@ -12,4 +12,5 @@ export * as geo from "./geo/index.js";
 export * as posts from "./posts/index.js";
 export * as push from "./push/index.js";
 export * as routes from "./routes/index.js";
+export * as auth from "./auth/index.js";
 export * as moderation from "./moderation/index.js";
