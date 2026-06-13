@@ -18,6 +18,7 @@
  * (onAuthStateChange in the provider updates the session, rebuilding the tRPC client).
  */
 import { useState } from "react";
+import { color } from "@roam/design/tokens";
 import {
   Modal,
   View,
@@ -244,7 +245,6 @@ function friendlyAuthError(message: string): string {
   return "Couldn't complete that. Please check your details and try again.";
 }
 
-const CRIMSON = "#C2123F";
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(33,29,26,0.38)" },
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: "600", color: "#857C72" },
   tabTextActive: { color: "#1A1714" },
   tabUnderline: { height: 2, marginTop: 4, backgroundColor: "transparent" },
-  tabUnderlineActive: { backgroundColor: CRIMSON },
+  tabUnderlineActive: { backgroundColor: color.crimson },
   input: {
     borderWidth: 1,
     borderColor: "#D6CEC3",
@@ -283,9 +283,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#211D1A",
   },
-  error: { color: "#9D0F33", fontSize: 13 },
+  error: { color: color.crimson700, fontSize: 13 },
   primaryBtn: {
-    backgroundColor: CRIMSON,
+    backgroundColor: color.crimson,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
