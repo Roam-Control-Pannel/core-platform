@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistance } from "@roam/core/geo";
+import { color } from "@roam/design/tokens";
 import { useTrpc, useSession } from "../lib/TrpcProvider";
 import { AuthSheet } from "../components/AuthSheet";
 import { useDeviceOrigin } from "../lib/useDeviceOrigin";
@@ -199,9 +200,6 @@ export default function DiscoverScreen() {
   );
 }
 
-const CRIMSON = "#C2123F";
-const CRIMSON_TINT = "#FBE6EC";
-const CRIMSON_700 = "#9D0F33";
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
@@ -244,9 +242,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: CRIMSON_TINT,
+    backgroundColor: color.crimsonTint,
   },
-  followBtnOn: { backgroundColor: CRIMSON },
-  followBtnText: { fontSize: 12.5, fontWeight: "600", color: CRIMSON_700 },
+  followBtnOn: { backgroundColor: color.crimson },
+  followBtnText: { fontSize: 12.5, fontWeight: "600", color: color.crimson700 },
   followBtnTextOn: { color: "#fff" },
 });
