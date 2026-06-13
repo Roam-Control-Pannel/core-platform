@@ -51,6 +51,6 @@
     "@roam/eslint-config": "workspace:*",
     "@types/react": "~19.2.2",
     "globals": "^15.15.0",
-    "typescript": "^5.7.0"
+    "typescript": "^6.0.0"
   }
 }
