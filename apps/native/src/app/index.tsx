@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.2)",
     marginTop: 4,
   },
-  signOutText: { fontSize: 13, color: "#4D463F", fontWeight: "600" },
+  signOutText: { fontSize: 13, color: color.ink2, fontWeight: "600" },
   brand: { fontSize: 28, fontWeight: "700" },
   subtitle: { fontSize: 13, opacity: 0.6 },
   centerFill: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
@@ -246,5 +246,5 @@ const styles = StyleSheet.create({
   },
   followBtnOn: { backgroundColor: color.crimson },
   followBtnText: { fontSize: 12.5, fontWeight: "600", color: color.crimson700 },
-  followBtnTextOn: { color: "#fff" },
+  followBtnTextOn: { color: color.card },
 });
