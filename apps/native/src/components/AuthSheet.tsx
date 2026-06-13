@@ -190,7 +190,7 @@ export function AuthSheet({ visible, onClose, onAuthed, intro }: AuthSheetProps)
                 disabled={busy}
               >
                 {busy ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={color.card} />
                 ) : (
                   <Text style={styles.primaryBtnText}>
                     {mode === "signin" ? "Sign in" : "Create account"}
@@ -249,7 +249,7 @@ function friendlyAuthError(message: string): string {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(33,29,26,0.38)" },
   sheet: {
-    backgroundColor: "#fff",
+    backgroundColor: color.card,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     paddingHorizontal: 20,
@@ -261,27 +261,27 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 999,
-    backgroundColor: "#D6CEC3",
+    backgroundColor: color.line2,
     marginBottom: 12,
   },
   body: { gap: 12 },
-  intro: { fontSize: 15, lineHeight: 21, color: "#4D463F" },
-  title: { fontSize: 22, fontWeight: "700", color: "#1A1714" },
-  copy: { fontSize: 15, lineHeight: 21, color: "#4D463F" },
+  intro: { fontSize: 15, lineHeight: 21, color: color.ink2 },
+  title: { fontSize: 22, fontWeight: "700", color: color.inkHi },
+  copy: { fontSize: 15, lineHeight: 21, color: color.ink2 },
   tabs: { flexDirection: "row", gap: 18, marginBottom: 4 },
   tab: { paddingVertical: 4 },
-  tabText: { fontSize: 14, fontWeight: "600", color: "#857C72" },
-  tabTextActive: { color: "#1A1714" },
+  tabText: { fontSize: 14, fontWeight: "600", color: color.muted },
+  tabTextActive: { color: color.inkHi },
   tabUnderline: { height: 2, marginTop: 4, backgroundColor: "transparent" },
   tabUnderlineActive: { backgroundColor: color.crimson },
   input: {
     borderWidth: 1,
-    borderColor: "#D6CEC3",
+    borderColor: color.line2,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#211D1A",
+    color: color.ink,
   },
   error: { color: color.crimson700, fontSize: 13 },
   primaryBtn: {
@@ -292,6 +292,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  cancel: { textAlign: "center", color: "#857C72", fontSize: 14, paddingVertical: 10 },
+  primaryBtnText: { color: color.card, fontSize: 15, fontWeight: "600" },
+  cancel: { textAlign: "center", color: color.muted, fontSize: 14, paddingVertical: 10 },
 });
