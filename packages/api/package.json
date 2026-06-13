@@ -30,7 +30,7 @@
     "@roam/eslint-config": "workspace:*",
     "@types/web-push": "^3.6.4",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
+    "typescript": "^6.0.0",
     "vitest": "^3.2.0"
   }
 }
