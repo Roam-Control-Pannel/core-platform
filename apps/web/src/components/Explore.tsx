@@ -1,32 +1,63 @@
 /**
- * Explore — the place-anchored home, and the screen that validates the architecture:
- * a real tRPC call (venues.near) → RLS-scoped data → the component kit → a navigable
- * screen. Ported from the hi-fi Consumer Discovery layout.
+ * Explore — the place-anchored home, and the screen that proves Slice 2's full loop:
+ * a category-pill tap triggers on-demand venue SUPPLY (POST /api/ingest, the server-side
+ * gated hop to the API's internalProcedure), then reads the freshly-filled, tiered,
+ * category-filtered set back via venues.inCategoryNear and renders it near→far with
+ * claimed venues first.
  *
- * Now LIVE on both the place switcher AND the feed (this slice):
- *   - The place header is a real PlaceSwitcher. Selecting a place (or "use my location")
- *     re-roots the venue query: `near` is re-issued from the chosen centre, so the grid
- *     re-orders near→far around wherever the user picked. The hardcoded Darlington
- *     constant is gone — Darlington is now just the DEFAULT_PLACE.
- *   - The Feed tab renders FeedList (real posts.feed query) instead of a placeholder,
- *     with its own skeleton/empty/error states. The launch-empty feed is the median
- *     case and reads "new, not dead".
+ * TWO LOAD PATHS, deliberately distinct:
+ *   - DEFAULT / "All": venues.near from the place centre (all categories, near→far).
+ *     This is the landing experience and the place-switch behaviour — unchanged from
+ *     the prior slice. Keyed on the place via an effect.
+ *   - CATEGORY VIEW: a pill tap runs loadCategory(group) — skeleton up, POST /api/ingest
+ *     to fill supply, then venues.inCategoryNear page 1. This is a user ACTION with its
+ *     own async lifecycle, NOT a place change, so it lives in its own handler with a
+ *     generation-counter guard: rapid pill switching cancels stale loads (latest wins).
  *
- * Venues load via `venues.near` from the selected place's centre, so the grid is ordered
- * near→far and each card carries a real RPC-computed distance. Loading uses a
- * content-shaped skeleton (not a spinner) per the States spec; empty reads "new".
+ * SUB-CATEGORY STRIP: in a category view, a second horizontally-scrolling pill row of the
+ * leaf types present in the loaded set (each venue carries its matched Places types in
+ * `categories`). Tapping one filters the grid CLIENT-SIDE — no new fetch; the data is
+ * already here. "All" sub-pill clears the leaf filter.
+ *
+ * Pagination: inCategoryNear returns hasMore/nextOffset; this slice renders page 1 only.
+ * A "Load more" surface is the clean next slice (the read already supports it).
+ *
+ * Loading uses a content-shaped skeleton (not a spinner) per the States spec; empty
+ * reads "new". The Feed tab is unchanged (FeedList with its own states).
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Seg, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import { FeedList } from "./FeedList";
+import { CATEGORY_GROUPS } from "../lib/categories";
 
 type Mode = "browse" | "feed";
+
+/** Map an inCategoryNear / near row to the card shape, carrying leaf categories. */
+function toCardData(v: {
+  id: string;
+  name: string;
+  claimed: boolean;
+  category: string | null;
+  rating: number | null;
+  distanceM?: number | undefined;
+  categories?: string[] | undefined;
+}): VenueCardData {
+  return {
+    id: v.id,
+    name: v.name,
+    claimed: v.claimed,
+    category: v.category,
+    rating: v.rating,
+    distanceM: v.distanceM,
+    categories: v.categories,
+  };
+}
 
 export function Explore() {
   const trpc = useTrpc();
@@ -37,38 +68,95 @@ export function Explore() {
   // venue_ids the caller follows — read once per session, used to seed each card's
   // FollowButton so N cards don't each fetch. Empty when signed out (no follow state).
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  // null = the "All" view (venues.near). A group name = a category view (ingest + read).
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // The selected leaf type within a category view, or null for "all sub-categories".
+  const [activeSub, setActiveSub] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Re-issue `near` from the selected place's centre whenever it changes. Resetting
-  // venues to null first restores the skeleton, so a place switch reads as a real load.
-  useEffect(() => {
-    let cancelled = false;
+  // Generation counter: every load (All or category) bumps this; a completing load only
+  // commits if it is still the latest. Guards against races from rapid pill switching
+  // and place changes interleaving with in-flight ingests.
+  const loadGen = useRef(0);
+
+  // DEFAULT / "All" load: venues.near from the place centre. Runs on mount, on place
+  // change, and when the user taps the "All" pill (via loadAll). Resetting venues to
+  // null first restores the skeleton, so each (re)load reads as a real load.
+  const loadAll = useCallback(() => {
+    const gen = ++loadGen.current;
+    setActiveCategory(null);
+    setActiveSub(null);
     setVenues(null);
     setError(null);
-    setActiveCategory(null);
     trpc.venues.near
       .query({ lat: place.lat, lng: place.lng, limit: 50 })
       .then((rows) => {
-        if (cancelled) return;
-        setVenues(
-          rows.map((v) => ({
-            id: v.id,
-            name: v.name,
-            claimed: v.claimed,
-            category: v.category,
-            rating: v.rating,
-            distanceM: v.distanceM,
-          })),
-        );
+        if (loadGen.current !== gen) return;
+        setVenues(rows.map(toCardData));
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load venues.");
+        if (loadGen.current !== gen) return;
+        setError(e instanceof Error ? e.message : "Failed to load venues.");
       });
-    return () => {
-      cancelled = true;
-    };
   }, [trpc, place]);
+
+  // CATEGORY view load: supply (POST /api/ingest) → tiered read (inCategoryNear page 1).
+  // Its own lifecycle + generation guard so a later tap cancels an earlier in-flight one.
+  const loadCategory = useCallback(
+    (group: string) => {
+      const gen = ++loadGen.current;
+      setActiveCategory(group);
+      setActiveSub(null);
+      setVenues(null);
+      setError(null);
+
+      // Phase 1: fill supply via the server-side gated route. We await it but treat ALL
+      // of its non-throwing outcomes (ingested / fresh-coverage / no-matching-places) as
+      // "proceed to read" — the read is the source of truth for what to render.
+      void (async () => {
+        try {
+          const res = await fetch("/api/ingest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category: group, lat: place.lat, lng: place.lng }),
+          });
+          if (!res.ok) {
+            // A failed ingest is non-fatal: we can still read whatever already exists.
+            // Log for the dev console; fall through to the read.
+            console.warn(`[Explore] ingest for "${group}" returned ${res.status}`);
+          }
+        } catch (e) {
+          console.warn(`[Explore] ingest for "${group}" failed`, e);
+          // fall through — read existing supply
+        }
+
+        if (loadGen.current !== gen) return;
+
+        // Phase 2: tiered, category-filtered read (claimed first, then near→far).
+        try {
+          const result = await trpc.venues.inCategoryNear.query({
+            category: group,
+            lat: place.lat,
+            lng: place.lng,
+            pageSize: 10,
+            pageOffset: 0,
+          });
+          if (loadGen.current !== gen) return;
+          setVenues(result.venues.map(toCardData));
+        } catch (e: unknown) {
+          if (loadGen.current !== gen) return;
+          setError(e instanceof Error ? e.message : "Failed to load venues.");
+        }
+      })();
+    },
+    [trpc, place],
+  );
+
+  // Mount + place change → the All load. (Pill taps call loadAll/loadCategory directly.)
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [place]);
 
   // Read the caller's follow set once (per session). Signed-out → empty set: cards
   // show "Follow" and gate to auth on tap. We load all follows and build a Set of
@@ -97,21 +185,33 @@ export function Explore() {
     };
   }, [trpc, session]);
 
-  const categories = useMemo(() => {
-    if (!venues) return [];
-    const set = new Set<string>();
-    for (const v of venues) if (v.category) set.add(v.category);
-    return Array.from(set).sort();
-  }, [venues]);
+  // Sub-category strip options: the distinct leaf types across the loaded set, in first-
+  // seen order. Only meaningful in a category view; empty in the All view by design
+  // (the All view's refinement is the top-level group pills themselves).
+  const subCategories = useMemo(() => {
+    if (!venues || activeCategory === null) return [];
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const v of venues) {
+      for (const t of v.categories ?? []) {
+        if (!seen.has(t)) {
+          seen.add(t);
+          ordered.push(t);
+        }
+      }
+    }
+    return ordered;
+  }, [venues, activeCategory]);
 
   const shown = useMemo(() => {
     if (!venues) return [];
-    return activeCategory ? venues.filter((v) => v.category === activeCategory) : venues;
-  }, [venues, activeCategory]);
+    if (activeSub === null) return venues;
+    return venues.filter((v) => (v.categories ?? []).includes(activeSub));
+  }, [venues, activeSub]);
 
   return (
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      {/* place header — now a live switcher */}
+      {/* place header — a live switcher */}
       <header
         style={{
           display: "flex",
@@ -165,30 +265,60 @@ export function Explore() {
         <FeedList placeName={place.name} />
       ) : (
         <>
-          {/* category pills */}
-          {categories.length > 0 ? (
+          {/* top-level category pills — the nine canonical groups */}
+          <div
+            style={{
+              display: "flex",
+              gap: "var(--space-2)",
+              flexWrap: "wrap",
+              paddingBottom: "var(--space-3)",
+            }}
+          >
+            <button onClick={() => loadAll()} style={{ all: "unset", cursor: "pointer" }}>
+              <Pill variant={activeCategory === null ? "on" : "neutral"}>All</Pill>
+            </button>
+            {CATEGORY_GROUPS.map((c) => (
+              <button
+                key={c}
+                onClick={() => loadCategory(c)}
+                style={{ all: "unset", cursor: "pointer" }}
+              >
+                <Pill variant={activeCategory === c ? "on" : "neutral"}>{c}</Pill>
+              </button>
+            ))}
+          </div>
+
+          {/* sub-category sliding strip — leaf types in the loaded category view */}
+          {subCategories.length > 0 ? (
             <div
               style={{
                 display: "flex",
                 gap: "var(--space-2)",
-                flexWrap: "wrap",
+                overflowX: "auto",
                 paddingBottom: "var(--space-4)",
+                WebkitOverflowScrolling: "touch",
               }}
             >
-              <button onClick={() => setActiveCategory(null)} style={{ all: "unset", cursor: "pointer" }}>
-                <Pill variant={activeCategory === null ? "on" : "neutral"}>All</Pill>
+              <button onClick={() => setActiveSub(null)} style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}>
+                <Pill variant={activeSub === null ? "on" : "neutral"} size="sm">
+                  All
+                </Pill>
               </button>
-              {categories.map((c) => (
+              {subCategories.map((t) => (
                 <button
-                  key={c}
-                  onClick={() => setActiveCategory(c)}
-                  style={{ all: "unset", cursor: "pointer" }}
+                  key={t}
+                  onClick={() => setActiveSub(t)}
+                  style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}
                 >
-                  <Pill variant={activeCategory === c ? "on" : "neutral"}>{c}</Pill>
+                  <Pill variant={activeSub === t ? "on" : "neutral"} size="sm">
+                    {t.replace(/_/g, " ")}
+                  </Pill>
                 </button>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <div style={{ paddingBottom: "var(--space-1)" }} />
+          )}
 
           {error ? (
             <ErrorState message={error} />

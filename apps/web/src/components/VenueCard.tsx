@@ -43,6 +43,12 @@ export interface VenueCardData {
   rating: number | null;
   /** Metres from the search origin, present only when sourced from venues.near. */
   distanceM?: number | undefined;
+  /**
+   * Matched Google Places leaf types (the sub-categories), in Places order. Present
+   * when sourced from venues.near / venues.inCategoryNear; powers Explore's
+   * sub-category strip. The card itself does not render these.
+   */
+  categories?: string[] | undefined;
 }
 
 /** Whether the caller follows this venue, seeded from Explore's followingSet. */
