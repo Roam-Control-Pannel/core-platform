@@ -15,6 +15,7 @@ const env: ApiEnv = {
     publicKey: "test-public-key",
     privateKey: "test-private-key",
   },
+  places: { apiKey: "test-places-key" },
 };
 
 const createContext = makeContextFactory(env);

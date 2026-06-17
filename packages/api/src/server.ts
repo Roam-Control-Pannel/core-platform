@@ -49,6 +49,9 @@ function loadEnv(): ApiEnv {
       publicKey: requireEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
       privateKey: requireEnv("VAPID_PRIVATE_KEY"),
     },
+    places: {
+      apiKey: requireEnv("GOOGLE_PLACES_API_KEY_CORE"),
+    },
   };
 }
 
