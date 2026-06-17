@@ -14,3 +14,4 @@ export * as push from "./push/index.js";
 export * as routes from "./routes/index.js";
 export * as auth from "./auth/index.js";
 export * as moderation from "./moderation/index.js";
+export * as places from "./places/index.js";

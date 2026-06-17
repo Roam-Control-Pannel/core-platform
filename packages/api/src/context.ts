@@ -47,6 +47,10 @@ export interface ApiEnv {
     publicKey: string;
     privateKey: string;
   };
+  /** Google Places (New) API key — server-only, used for on-demand venue ingestion. */
+  places: {
+    apiKey: string;
+  };
 }
 
 export interface Context {
