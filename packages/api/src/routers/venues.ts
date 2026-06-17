@@ -30,6 +30,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { places as corePlaces } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
 
 /**
@@ -39,6 +40,25 @@ import { router, publicProcedure, protectedProcedure, internalProcedure } from "
  * call site. Keep this in sync with the RPC's `returns table (...)` definition.
  */
 interface VenuesNearRow {
+  id: string;
+  name: string;
+  owner_id: string | null;
+  status: string;
+  category: string | null;
+  categories: string[];
+  rating: number | null;
+  distance_m: number;
+}
+
+/**
+ * Shape returned by the `venues_in_category_near` RPC (migration 0017) — the tiered,
+ * category-filtered, paginated browse read. Same row shape as VenuesNearRow (the two
+ * RPCs return identical columns); kept as its own named interface so the sibling
+ * procedures read independently and a future shape change to one can't silently drift
+ * the other. Not in generated DB types until `pnpm db:types` re-runs; read through the
+ * widened .rpc() surface, same idiom as venues_near.
+ */
+interface VenuesInCategoryNearRow {
   id: string;
   name: string;
   owner_id: string | null;
@@ -220,6 +240,61 @@ export const venuesRouter = router({
         rating: v.rating,
         distanceM: v.distance_m,
       }));
+    }),
+
+  /**
+   * Public: tiered, category-filtered, paginated browse from a (lat,lng) origin, via
+   * the `venues_in_category_near` PostGIS RPC (migration 0017). This is the read the
+   * Explore category-pill tap issues AFTER ingestion has filled supply: claimed venues
+   * first, then unclaimed, each near→far, filtered to the tapped category group.
+   *
+   * Sibling to `near` (not an extension of it): `near` stays the pure-distance read
+   * that chat.ts also depends on. The RPC returns pageSize+1 rows so we derive
+   * `hasMore` from the overflow without a COUNT(*); we slice the overflow row off so
+   * the client contract is a clean { venues, hasMore, nextOffset } — the +1 mechanism
+   * never leaks past this boundary. SECURITY INVOKER, so venues_read RLS (public)
+   * applies and anonymous browsing works, exactly like `near`.
+   */
+  inCategoryNear: publicProcedure
+    .input(
+      z.object({
+        category: z.enum(corePlaces.CATEGORIES as unknown as [string, ...string[]]),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        pageSize: z.number().int().min(1).max(100).default(10),
+        pageOffset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+      const { data, error } = await rpc("venues_in_category_near", {
+        filter_category: input.category,
+        lat: input.lat,
+        lng: input.lng,
+        page_size: input.pageSize,
+        page_offset: input.pageOffset,
+      });
+      if (error) throw new Error(`Failed to load category venues: ${error.message}`);
+
+      const rows = (data ?? []) as VenuesInCategoryNearRow[];
+      // The RPC returns up to pageSize+1; the extra row only tells us another page
+      // exists. Slice it off so the client never sees the overflow mechanism.
+      const hasMore = rows.length > input.pageSize;
+      const page = hasMore ? rows.slice(0, input.pageSize) : rows;
+      return {
+        venues: page.map((v) => ({
+          id: v.id,
+          name: v.name,
+          claimed: v.owner_id !== null,
+          status: v.status,
+          category: v.category,
+          categories: v.categories,
+          rating: v.rating,
+          distanceM: v.distance_m,
+        })),
+        hasMore,
+        nextOffset: input.pageOffset + page.length,
+      };
     }),
 
   /** Public: read a single venue (claimed or the graceful unclaimed state). */

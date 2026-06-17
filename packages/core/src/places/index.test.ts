@@ -129,3 +129,123 @@ describe("placeToVenueRow", () => {
     expect(row!.categories).toEqual(["convenience_store", "store"]);
   });
 });
+
+/**
+ * Google Places (New) Table A validation — cheap insurance against the bug class that
+ * bit in Slice 1: a leaf type that LOOKS plausible but is invalid as a searchNearby
+ * `includedTypes` value (`steakhouse` vs `steak_house`), or a type that is Table B
+ * (response-only, request-forbidden — e.g. `place_of_worship`). Either reaches a live,
+ * paid Places call and fails or silently fetches nothing.
+ *
+ * The check is three layers, deliberately NOT a hand-maintained full mirror of Table A
+ * (which Google revises — the live list was last revised 2026-02-12 / 2026-03-31):
+ *   1. STRUCTURAL — every type is lowercase snake_case, no duplicates. Kills malformed
+ *      strings and accidental whitespace/casing.
+ *   2. DENYLIST — none of our types is a known Table B / geographical / generic type.
+ *      This denylist is derived from Table B, which (unlike Table A) is structural and
+ *      stable, so it rarely needs touching. This is the layer that catches the
+ *      `place_of_worship` (Table B) class directly.
+ *   3. OVERLAP SNAPSHOT — every type we send IS a real Table A primary type, checked
+ *      against a snapshot scoped to EXACTLY the types we use (not all ~400 of Table A).
+ *      The snapshot grows only when we add a type to CATEGORY_PLACES_TYPES, in the same
+ *      commit, having checked the new type against Table A. It therefore never drifts
+ *      against Google adding cuisines we don't list.
+ *
+ * Source of truth for membership:
+ *   developers.google.com/maps/documentation/places/web-service/place-types  (Table A)
+ *   Snapshot verified against the list dated 2026-03-31 UTC.
+ */
+describe("Google Places Table A validity", () => {
+  const ALL_USED_TYPES = CATEGORIES.flatMap((c) => [...CATEGORY_PLACES_TYPES[c]]);
+
+  it("every type is lowercase snake_case (no typos of shape, casing, or whitespace)", () => {
+    const shape = /^[a-z]+(_[a-z]+)*$/;
+    for (const t of ALL_USED_TYPES) {
+      expect(t, `"${t}" is not lowercase snake_case`).toMatch(shape);
+    }
+  });
+
+  it("has no duplicate types within the whole taxonomy", () => {
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const t of ALL_USED_TYPES) {
+      if (seen.has(t)) dupes.push(t);
+      seen.add(t);
+    }
+    expect(dupes, `duplicate types: ${dupes.join(", ")}`).toEqual([]);
+  });
+
+  it("uses no Table B / geographical / generic types (request-forbidden as includedTypes)", () => {
+    // Table B + address/geographical types that are RESPONSE-only. Sending any of these
+    // as an includedTypes value is the lesson-5 bug (place_of_worship was the real one).
+    const TABLE_B_OR_GEOGRAPHICAL = new Set<string>([
+      "place_of_worship", "food", "establishment", "point_of_interest", "political",
+      "geocode", "premise", "subpremise", "route", "intersection", "landmark",
+      "natural_feature", "health", "finance", "general_contractor", "neighborhood",
+      "colloquial_area", "plus_code", "town_square", "archipelago", "continent",
+      "locality", "sublocality", "postal_code", "postal_town", "country",
+      "administrative_area_level_1", "administrative_area_level_2",
+      "administrative_area_level_3", "administrative_area_level_4",
+      "administrative_area_level_5", "administrative_area_level_6",
+      "administrative_area_level_7", "school_district",
+    ]);
+    const leaked = ALL_USED_TYPES.filter((t) => TABLE_B_OR_GEOGRAPHICAL.has(t));
+    expect(leaked, `Table B / geographical types must not be sent: ${leaked.join(", ")}`).toEqual([]);
+  });
+
+  it("every sent type is a real Table A primary type (usage-scoped snapshot, dated 2026-03-31)", () => {
+    // Snapshot of the Table A primary types Roam actually sends. Each was verified
+    // against developers.google.com/.../place-types Table A on 2026-03-31. When a new
+    // type is added to CATEGORY_PLACES_TYPES, add it here in the SAME commit after
+    // confirming it against Table A. This set must stay a superset of ALL_USED_TYPES.
+    const TABLE_A_SNAPSHOT_USED = new Set<string>([
+      // Food & Drink
+      "restaurant", "cafe", "bar", "bakery", "fast_food_restaurant",
+      "american_restaurant", "asian_fusion_restaurant", "brazilian_restaurant",
+      "chinese_restaurant", "french_restaurant", "indian_restaurant",
+      "italian_restaurant", "japanese_restaurant", "mexican_restaurant",
+      "middle_eastern_restaurant", "seafood_restaurant", "spanish_restaurant",
+      "steak_house", "sushi_restaurant", "thai_restaurant", "vegan_restaurant",
+      "vegetarian_restaurant", "bar_and_grill", "beer_garden", "pub", "wine_bar",
+      "coffee_shop", "dessert_shop", "donut_shop", "ice_cream_shop", "juice_shop",
+      // Shopping
+      "store", "shopping_mall", "supermarket", "grocery_store", "convenience_store",
+      "clothing_store", "shoe_store", "department_store", "jewelry_store",
+      "electronics_store", "home_goods_store", "furniture_store", "hardware_store",
+      "book_store", "florist", "gift_shop", "pet_store", "toy_store",
+      "liquor_store", "pharmacy", "wholesaler",
+      // Entertainment & Recreation
+      "amusement_park", "aquarium", "art_gallery", "museum", "zoo",
+      "movie_theater", "performing_arts_theater", "concert_hall", "opera_house",
+      "casino", "night_club", "bowling_alley", "video_arcade",
+      "stadium", "sports_complex", "fitness_center", "gym", "swimming_pool",
+      "park", "dog_park", "botanical_garden", "national_park", "tourist_attraction",
+      // Automotive & Transport
+      "car_dealer", "car_rental", "car_repair", "car_wash",
+      "gas_station", "electric_vehicle_charging_station",
+      "parking", "parking_garage", "parking_lot",
+      "airport", "bus_station", "subway_station", "train_station",
+      "transit_station", "taxi_stand",
+      // Finance & Business
+      "bank", "atm", "accounting", "insurance_agency",
+      "corporate_office", "business_center", "coworking_space",
+      // Health & Wellness
+      "hospital", "medical_clinic", "dentist", "doctor", "physiotherapist",
+      "spa", "massage", "beauty_salon", "hair_salon", "nail_salon", "veterinary_care",
+      // Lodging
+      "hotel", "motel", "resort_hotel", "bed_and_breakfast", "hostel", "lodging",
+      "campground", "rv_park",
+      // Education & Government
+      "school", "primary_school", "secondary_school", "university", "library",
+      "preschool", "city_hall", "courthouse", "embassy", "local_government_office",
+      "police", "post_office", "fire_station",
+      // Places of Worship
+      "church", "mosque", "synagogue", "hindu_temple", "buddhist_temple",
+    ]);
+    const notInTableA = ALL_USED_TYPES.filter((t) => !TABLE_A_SNAPSHOT_USED.has(t));
+    expect(
+      notInTableA,
+      `types missing from the Table A snapshot (add after verifying against Table A): ${notInTableA.join(", ")}`,
+    ).toEqual([]);
+  });
+});
