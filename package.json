@@ -5,7 +5,7 @@
   "description": "Roam — hyper-local discovery + social planning. Monorepo: one core, thin shells.",
   "packageManager": "pnpm@11.5.1",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   },
   "scripts": {
     "build": "turbo run build",
