@@ -7,6 +7,7 @@ import {
   classifyPlaceTypes,
   placeToVenueRow,
   placeOpeningTimes,
+  placePhotos,
   type CategoryId,
   type PlaceResult,
 } from "./index.js";
@@ -304,5 +305,68 @@ describe("placeToVenueRow opening hours", () => {
     );
     expect(row!.opening_times).not.toBeNull();
     expect(row!.opening_times!.weekdayDescriptions).toEqual(["Monday: 8:00 AM – 4:00 PM"]);
+  });
+});
+
+describe("placePhotos", () => {
+  it("returns [] when Places returned no photos", () => {
+    expect(placePhotos({ id: "x" })).toEqual([]);
+    expect(placePhotos({ id: "x", photos: [] })).toEqual([]);
+  });
+
+  it("maps a full photo with attribution and dims", () => {
+    const result = placePhotos({
+      id: "x",
+      photos: [
+        {
+          name: "places/x/photos/abc/media",
+          widthPx: 4032,
+          heightPx: 3024,
+          authorAttributions: [{ displayName: "Jane D", uri: "https://maps.google.com/jane" }],
+        },
+      ],
+    });
+    expect(result).toEqual([
+      {
+        places_photo_ref: "places/x/photos/abc/media",
+        attribution: [{ displayName: "Jane D", uri: "https://maps.google.com/jane" }],
+        width: 4032,
+        height: 3024,
+      },
+    ]);
+  });
+
+  it("drops a photo with no usable ref", () => {
+    const result = placePhotos({
+      id: "x",
+      photos: [{ name: "  " }, { name: "places/x/photos/ok/media" }],
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.places_photo_ref).toBe("places/x/photos/ok/media");
+  });
+
+  it("null-safe dims when Places omits widthPx/heightPx", () => {
+    const result = placePhotos({
+      id: "x",
+      photos: [{ name: "places/x/photos/ok/media" }],
+    });
+    expect(result[0]!.width).toBeNull();
+    expect(result[0]!.height).toBeNull();
+  });
+
+  it("drops attribution entries with an empty display name, keeps valid ones", () => {
+    const result = placePhotos({
+      id: "x",
+      photos: [
+        {
+          name: "places/x/photos/ok/media",
+          authorAttributions: [
+            { displayName: "  ", uri: "https://x" },
+            { displayName: "Real Name" },
+          ],
+        },
+      ],
+    });
+    expect(result[0]!.attribution).toEqual([{ displayName: "Real Name", uri: null }]);
   });
 });

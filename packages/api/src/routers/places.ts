@@ -88,6 +88,13 @@ type IngestResult = {
   fetched: number;
   inserted: number;
   claimedSkipped: number;
+  photosUpserted: number;
+}
+
+/** One element of the upsert_venue_photos payload: a venue and its mapped photo rows. */
+interface PhotoPayloadEntry {
+  venue_id: string;
+  photos: (corePlaces.PlacePhoto & { position: number })[];
 }
 
 /**
@@ -120,6 +127,7 @@ export async function ingestCategoryCore(
       fetched: 0,
       inserted: 0,
       claimedSkipped: 0,
+      photosUpserted: 0,
     };
   }
 
@@ -135,11 +143,19 @@ export async function ingestCategoryCore(
     apiKey,
   );
 
-  // Map through the PURE core helpers; drop nulls and category-mismatches.
-  const rows = results
-    .filter((p) => corePlaces.classifyPlaceTypes(p.types ?? []) === args.category)
-    .map((p) => corePlaces.placeToVenueRow(p, args.category))
-    .filter((r): r is NonNullable<typeof r> => r !== null);
+  // Keep each result paired with the venue row it produces, so the raw PlaceResult
+  // (which carries photos) survives to the photo-write step. Venue-row logic unchanged:
+  // classify -> placeToVenueRow -> drop nulls/mismatches.
+  const matched: { place: corePlaces.PlaceResult; row: corePlaces.VenueRowFromPlace }[] =
+    [];
+  for (const p of results) {
+    if (corePlaces.classifyPlaceTypes(p.types ?? []) !== args.category) continue;
+    const row = corePlaces.placeToVenueRow(p, args.category);
+    if (row === null) continue;
+    matched.push({ place: p, row });
+  }
+
+  const rows = matched.map((m) => m.row);
 
   if (rows.length === 0) {
     return {
@@ -149,6 +165,7 @@ export async function ingestCategoryCore(
       fetched: results.length,
       inserted: 0,
       claimedSkipped: 0,
+      photosUpserted: 0,
     };
   }
 
@@ -161,6 +178,34 @@ export async function ingestCategoryCore(
   const upserted = (upsertData ?? []) as UpsertRow[];
   const claimedSkipped = upserted.filter((r) => r.out_was_claimed).length;
 
+  // (4) Photos (google_places provenance). Map source_ref -> venue_id for venues that
+  // were upserted AND are NOT claimed (claimed venues' photos stay frozen, parity with
+  // claimed hours). Map each matched result's raw photos through the pure core helper,
+  // stamping array order as `position`. One batch replace-all RPC.
+  const unclaimedVenueId = new Map<string, string>();
+  for (const u of upserted) {
+    if (!u.out_was_claimed) unclaimedVenueId.set(u.out_source_ref, u.out_id);
+  }
+
+  const photoPayload: PhotoPayloadEntry[] = [];
+  for (const m of matched) {
+    const venueId = unclaimedVenueId.get(m.place.id);
+    if (!venueId) continue; // claimed or not upserted — photos frozen/absent
+    const photos = corePlaces
+      .placePhotos(m.place)
+      .map((ph, i) => ({ ...ph, position: i }));
+    photoPayload.push({ venue_id: venueId, photos });
+  }
+
+  let photosUpserted = 0;
+  if (photoPayload.length > 0) {
+    const { data: photoData, error: photoErr } = await rpc("upsert_venue_photos", {
+      payload: photoPayload,
+    });
+    if (photoErr) throw new Error(`Photo upsert failed: ${photoErr.message}`);
+    photosUpserted = typeof photoData === "number" ? photoData : Number(photoData ?? 0);
+  }
+
   return {
     skipped: false,
     reason: "ingested",
@@ -168,6 +213,7 @@ export async function ingestCategoryCore(
     fetched: results.length,
     inserted: upserted.length - claimedSkipped,
     claimedSkipped,
+    photosUpserted,
   };
 }
 

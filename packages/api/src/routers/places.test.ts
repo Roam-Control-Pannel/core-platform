@@ -14,7 +14,9 @@ import { places as corePlaces } from "@roam/core";
 const API_KEY = "test-places-key";
 
 /** A fake rpc() returning scripted results per function name and recording calls. */
-function fakeRpc(results: Record<string, { data: unknown; error: null }>) {
+function fakeRpc(
+  results: Record<string, { data: unknown; error: { message: string } | null }>,
+) {
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const rpc: LooseRpc = async (fn, args) => {
     calls.push({ fn, args });
@@ -30,6 +32,24 @@ const cafePlace: corePlaces.PlaceResult = {
   types: ["cafe", "food", "point_of_interest"],
   formattedAddress: "1 High Row, Darlington",
   rating: 4.4,
+};
+
+const cafeWithPhotos: corePlaces.PlaceResult = {
+  ...{
+    id: "ChIJ_cafe",
+    displayName: { text: "Proof Cafe" },
+    location: { latitude: 54.5253, longitude: -1.5849 },
+    types: ["cafe", "food", "point_of_interest"],
+  },
+  photos: [
+    {
+      name: "places/ChIJ_cafe/photos/p1/media",
+      widthPx: 4032,
+      heightPx: 3024,
+      authorAttributions: [{ displayName: "A Photographer", uri: "https://maps.google.com/a" }],
+    },
+    { name: "places/ChIJ_cafe/photos/p2/media", widthPx: 1024, heightPx: 768 },
+  ],
 };
 
 const carPlace: corePlaces.PlaceResult = {
@@ -95,6 +115,8 @@ describe("ingestCategoryCore — fetch, filter, upsert", () => {
     expect(out.fetched).toBe(2);
     expect(out.inserted).toBe(1);
     expect(out.claimedSkipped).toBe(0);
+    // cafePlace carries no photos -> empty photo set -> no photo RPC for it.
+    expect(out.photosUpserted).toBe(0);
   });
 
   it("reports claimedSkipped when the upsert leaves a claimed venue untouched", async () => {
@@ -133,5 +155,71 @@ describe("ingestCategoryCore — fetch, filter, upsert", () => {
     await expect(
       ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs),
     ).rejects.toThrow(/Freshness check failed/);
+  });
+});
+
+
+describe("ingestCategoryCore — google_places photos", () => {
+  it("writes positioned photos for an unclaimed venue via upsert_venue_photos", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      upsert_place_venues: {
+        data: [{ out_id: "venue-1", out_source_ref: "ChIJ_cafe", out_was_claimed: false }],
+        error: null,
+      },
+      upsert_venue_photos: { data: 2, error: null },
+    });
+    const searchNearby: SearchNearbyFn = async () => [cafeWithPhotos];
+
+    const out = await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    const photoCall = calls.find((c) => c.fn === "upsert_venue_photos");
+    expect(photoCall).toBeDefined();
+    const payload = photoCall!.args.payload as {
+      venue_id: string;
+      photos: { places_photo_ref: string; position: number }[];
+    }[];
+    expect(payload.length).toBe(1);
+    expect(payload[0]!.venue_id).toBe("venue-1");
+    expect(payload[0]!.photos.length).toBe(2);
+    // Position stamps Places' array order.
+    expect(payload[0]!.photos[0]!.position).toBe(0);
+    expect(payload[0]!.photos[1]!.position).toBe(1);
+    expect(payload[0]!.photos[0]!.places_photo_ref).toBe("places/ChIJ_cafe/photos/p1/media");
+    expect(out.photosUpserted).toBe(2);
+  });
+
+  it("excludes a CLAIMED venue's photos from the payload (frozen, parity with hours)", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      upsert_place_venues: {
+        data: [{ out_id: "venue-1", out_source_ref: "ChIJ_cafe", out_was_claimed: true }],
+        error: null,
+      },
+      upsert_venue_photos: { data: 0, error: null },
+    });
+    const searchNearby: SearchNearbyFn = async () => [cafeWithPhotos];
+
+    const out = await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    // Claimed -> excluded from photo payload -> no photo RPC at all (payload empty).
+    expect(calls.some((c) => c.fn === "upsert_venue_photos")).toBe(false);
+    expect(out.photosUpserted).toBe(0);
+    expect(out.claimedSkipped).toBe(1);
+  });
+
+  it("propagates a photo upsert error as a thrown Error", async () => {
+    const { rpc } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      upsert_place_venues: {
+        data: [{ out_id: "venue-1", out_source_ref: "ChIJ_cafe", out_was_claimed: false }],
+        error: null,
+      },
+      upsert_venue_photos: { data: null, error: { message: "photo boom" } },
+    });
+    const searchNearby: SearchNearbyFn = async () => [cafeWithPhotos];
+    await expect(
+      ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs),
+    ).rejects.toThrow(/Photo upsert failed/);
   });
 });

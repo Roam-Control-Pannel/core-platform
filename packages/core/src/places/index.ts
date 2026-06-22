@@ -171,6 +171,29 @@ export function classifyPlaceTypes(types: readonly string[]): CategoryId | null 
 }
 
 /**
+ * The stored photo shape — our own minimal contract, NOT the raw Places photo object.
+ * We keep only: a reference (resolved later through our server-side proxy, never the raw
+ * billable Places endpoint on render), the ToS-required attribution, and the pixel dims
+ * (so the gallery reserves aspect ratio without layout shift). We deliberately do NOT
+ * copy photo bytes — storing scraped image bytes would breach Places caching terms; we
+ * store a POINTER + provenance, exactly as opening hours stores a marker not raw periods.
+ */
+export interface PlacePhoto {
+  /** Places (New) photo resource `name` — the handle our proxy resolves. */
+  places_photo_ref: string;
+  /** authorAttributions from Places — required to be shown wherever the photo renders. */
+  attribution: PhotoAttribution[];
+  width: number | null;
+  height: number | null;
+}
+
+/** A single required photo attribution (author display name + optional profile uri). */
+export interface PhotoAttribution {
+  displayName: string;
+  uri: string | null;
+}
+
+/**
  * The stored opening-hours shape — our own minimal contract, NOT the raw Places
  * object. We keep only the 7 human-readable day strings (what a "plannable" page
  * renders) plus a provenance marker. Deliberately NO structured periods[]: live
@@ -195,6 +218,39 @@ export function placeOpeningTimes(place: PlaceResult): OpeningTimes | null {
   return { weekdayDescriptions: clean, source: "google_places" };
 }
 
+/**
+ * Map a Places result's photos[] to our minimal PlacePhoto rows. Returns [] when Places
+ * returned no photos (common) — an empty list round-trips cleanly to "no photo rows
+ * written". Pure: no I/O, no clock. A photo with no usable ref is dropped (unusable).
+ * Attribution entries with an empty display name are dropped (cannot be shown to ToS).
+ *
+ * NB: this returns photo rows SEPARATELY from placeToVenueRow — photos are rows in the
+ * venue_photos table, not columns on venues. The ingest layer writes each to its own
+ * table. That keeps the venues/venue_photos boundary the 0019 design depends on.
+ */
+export function placePhotos(place: PlaceResult): PlacePhoto[] {
+  const photos = place.photos;
+  if (!Array.isArray(photos) || photos.length === 0) return [];
+  const out: PlacePhoto[] = [];
+  for (const p of photos) {
+    const ref = p?.name?.trim();
+    if (!ref) continue;
+    const attribution = (p.authorAttributions ?? [])
+      .map((a: { displayName?: string; uri?: string }) => ({
+        displayName: a?.displayName?.trim() ?? "",
+        uri: a?.uri?.trim() || null,
+      }))
+      .filter((a: { displayName: string; uri: string | null }) => a.displayName.length > 0);
+    out.push({
+      places_photo_ref: ref,
+      attribution,
+      width: typeof p.widthPx === "number" ? p.widthPx : null,
+      height: typeof p.heightPx === "number" ? p.heightPx : null,
+    });
+  }
+  return out;
+}
+
 /** A coordinate. Mirrors geo's LatLng; the DB builds the PostGIS point from it. */
 export interface LatLng {
   lat: number;
@@ -215,6 +271,19 @@ export interface PlaceResult {
   businessStatus?: string | undefined;
   /** Places (New) regular hours. We read only the human display strings. */
   regularOpeningHours?: { weekdayDescriptions?: string[] } | undefined;
+  /**
+   * Places (New) photos. Each carries a resource `name` (our ref), pixel dims, and
+   * authorAttributions. We map to our minimal PlacePhoto via placePhotos(); we never
+   * persist the bytes.
+   */
+  photos?:
+    | readonly {
+        name?: string;
+        widthPx?: number;
+        heightPx?: number;
+        authorAttributions?: readonly { displayName?: string; uri?: string }[];
+      }[]
+    | undefined;
 }
 
 /**
