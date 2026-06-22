@@ -11,7 +11,7 @@
  *
  * COST: the X-Goog-FieldMask header is the billing lever — Places (New) charges by the
  * field classes requested. We ask for exactly what a venue row needs (id, displayName,
- * location, types, formattedAddress, rating, businessStatus) and nothing else.
+ * location, types, formattedAddress, rating, businessStatus, regularOpeningHours) and nothing else.
  *
  * THE KEY is passed in (read from env at the call boundary, server-only) — never read
  * from process.env in here, so this module stays a pure function of its arguments and
@@ -35,6 +35,7 @@ const FIELD_MASK = [
   "places.formattedAddress",
   "places.rating",
   "places.businessStatus",
+  "places.regularOpeningHours",
 ].join(",");
 
 /** Inputs to one searchNearby call. */
