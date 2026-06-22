@@ -57,7 +57,7 @@ interface VenueDetailData {
   address: string | null;
   locality: string | null;
   region: string | null;
-  opening_times: unknown;
+  opening_times: { weekdayDescriptions?: string[]; source?: string } | null;
   links: Record<string, unknown> | null;
   source_attribution: string | null;
 }
@@ -334,7 +334,9 @@ function ClaimedDetail({
         </div>
       ) : null}
 
+      <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
+      <NavigateHere address={venue.address} />
     </>
   );
 }
@@ -386,7 +388,9 @@ function UnclaimedDetail({
         onAuthed={onAuthed}
       />
 
+      <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
+      <NavigateHere address={venue.address} />
     </>
   );
 }
@@ -508,7 +512,9 @@ function PendingClaimDetail({
         </Card>
       )}
 
+      <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
+      <NavigateHere address={venue.address} />
     </>
   );
 }
@@ -580,6 +586,64 @@ function ErrorState({ message }: { message: string }) {
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>
+  );
+}
+
+/**
+ * Opening hours — renders the 7 human-readable day strings our ingest stores
+ * (OpeningTimes.weekdayDescriptions from @roam/core/places). Tolerant by design:
+ * renders nothing when hours are absent or malformed, so a venue without hours simply
+ * omits the block rather than showing an empty shell. Hours are venue facts (shown in
+ * every loaded state), not claim-state facts.
+ */
+function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening_times"] }) {
+  const days = openingTimes?.weekdayDescriptions;
+  if (!Array.isArray(days) || days.length === 0) return null;
+  const clean = days.filter((d): d is string => typeof d === "string" && d.length > 0);
+  if (clean.length === 0) return null;
+  return (
+    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
+      <div
+        style={{
+          fontFamily: "var(--mono)",
+          fontSize: 10,
+          letterSpacing: ".06em",
+          textTransform: "uppercase",
+          color: "var(--muted)",
+          marginBottom: "var(--space-3)",
+        }}
+      >
+        Opening hours
+      </div>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-1)" }}>
+        {clean.map((line) => (
+          <li key={line} style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+            {line}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/**
+ * Navigate-here — a plain anchor to the device's maps app via the address. Address is
+ * populated on every ingested venue; we query by address text (not lat/lng) so the maps
+ * provider resolves the named place rather than dropping an unlabelled pin. Renders
+ * nothing without an address. The schema's "navigable without an owner" mandate, made real.
+ */
+function NavigateHere({ address }: { address: string | null }) {
+  if (!address) return null;
+  const href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ textDecoration: "none", display: "inline-block", marginTop: "var(--space-4)" }}
+    >
+      <Pill variant="ghost-crim">↗ Directions</Pill>
+    </a>
   );
 }
 

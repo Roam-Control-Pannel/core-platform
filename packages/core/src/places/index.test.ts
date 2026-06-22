@@ -6,6 +6,7 @@ import {
   categoryToPlacesTypes,
   classifyPlaceTypes,
   placeToVenueRow,
+  placeOpeningTimes,
   type CategoryId,
   type PlaceResult,
 } from "./index.js";
@@ -100,6 +101,7 @@ describe("placeToVenueRow", () => {
     expect(row!.rating).toBe(4.6);
     expect(row!.address).toBe("1 High Row, Darlington");
     expect(row!.source_attribution).toBe("Information from public sources");
+    expect(row!.opening_times).toBeNull(); // fixture has no hours -> null round-trips
   });
 
   it("keeps only the group's leaf types as sub-categories, in Places order", () => {
@@ -247,5 +249,60 @@ describe("Google Places Table A validity", () => {
       notInTableA,
       `types missing from the Table A snapshot (add after verifying against Table A): ${notInTableA.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+describe("placeOpeningTimes", () => {
+  it("maps Places weekdayDescriptions to our OpeningTimes shape", () => {
+    const ot = placeOpeningTimes({
+      id: "x",
+      regularOpeningHours: {
+        weekdayDescriptions: [
+          "Monday: 9:00 AM – 5:00 PM",
+          "Tuesday: 9:00 AM – 5:00 PM",
+        ],
+      },
+    });
+    expect(ot).not.toBeNull();
+    expect(ot!.source).toBe("google_places");
+    expect(ot!.weekdayDescriptions).toEqual([
+      "Monday: 9:00 AM – 5:00 PM",
+      "Tuesday: 9:00 AM – 5:00 PM",
+    ]);
+  });
+
+  it("returns null when Places gave no hours (the common case)", () => {
+    expect(placeOpeningTimes({ id: "x" })).toBeNull();
+    expect(placeOpeningTimes({ id: "x", regularOpeningHours: {} })).toBeNull();
+    expect(
+      placeOpeningTimes({ id: "x", regularOpeningHours: { weekdayDescriptions: [] } }),
+    ).toBeNull();
+  });
+
+  it("drops empty/non-string day entries defensively", () => {
+    const ot = placeOpeningTimes({
+      id: "x",
+      regularOpeningHours: {
+        weekdayDescriptions: ["Monday: 9–5", "", "Wednesday: 9–5"] as string[],
+      },
+    });
+    expect(ot!.weekdayDescriptions).toEqual(["Monday: 9–5", "Wednesday: 9–5"]);
+  });
+});
+
+describe("placeToVenueRow opening hours", () => {
+  it("carries opening_times through onto the venue row when present", () => {
+    const row = placeToVenueRow(
+      {
+        id: "ChIJ_hours",
+        displayName: { text: "Open Cafe" },
+        location: { latitude: 54.52, longitude: -1.55 },
+        types: ["cafe"],
+        regularOpeningHours: { weekdayDescriptions: ["Monday: 8:00 AM – 4:00 PM"] },
+      },
+      "Food & Drink",
+    );
+    expect(row!.opening_times).not.toBeNull();
+    expect(row!.opening_times!.weekdayDescriptions).toEqual(["Monday: 8:00 AM – 4:00 PM"]);
   });
 });

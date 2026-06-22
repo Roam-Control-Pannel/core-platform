@@ -170,6 +170,31 @@ export function classifyPlaceTypes(types: readonly string[]): CategoryId | null 
   return null;
 }
 
+/**
+ * The stored opening-hours shape — our own minimal contract, NOT the raw Places
+ * object. We keep only the 7 human-readable day strings (what a "plannable" page
+ * renders) plus a provenance marker. Deliberately NO structured periods[]: live
+ * "open now" needs timezone + clock math and is a separate slice; storing periods
+ * now would be unused weight. Widen here (and the field mask) when that slice lands.
+ */
+export interface OpeningTimes {
+  weekdayDescriptions: string[];
+  source: "google_places";
+}
+
+/**
+ * Pull our OpeningTimes from a Places result, or null when Places returned no hours
+ * (the common case for many venues). Pure: no clock, no I/O. Null must round-trip
+ * cleanly all the way to the DB column (which is nullable by design).
+ */
+export function placeOpeningTimes(place: PlaceResult): OpeningTimes | null {
+  const days = place.regularOpeningHours?.weekdayDescriptions;
+  if (!Array.isArray(days) || days.length === 0) return null;
+  const clean = days.filter((d): d is string => typeof d === "string" && d.length > 0);
+  if (clean.length === 0) return null;
+  return { weekdayDescriptions: clean, source: "google_places" };
+}
+
 /** A coordinate. Mirrors geo's LatLng; the DB builds the PostGIS point from it. */
 export interface LatLng {
   lat: number;
@@ -188,6 +213,8 @@ export interface PlaceResult {
   formattedAddress?: string | undefined;
   rating?: number | undefined;
   businessStatus?: string | undefined;
+  /** Places (New) regular hours. We read only the human display strings. */
+  regularOpeningHours?: { weekdayDescriptions?: string[] } | undefined;
 }
 
 /**
@@ -210,6 +237,7 @@ export interface VenueRowFromPlace {
   rating: number | null;
   address: string | null;
   source_attribution: string;
+  opening_times: OpeningTimes | null;
 }
 
 const ATTRIBUTION = "Information from public sources";
@@ -251,5 +279,6 @@ export function placeToVenueRow(
     rating: typeof place.rating === "number" ? place.rating : null,
     address: place.formattedAddress?.trim() || null,
     source_attribution: ATTRIBUTION,
+    opening_times: placeOpeningTimes(place),
   };
 }
