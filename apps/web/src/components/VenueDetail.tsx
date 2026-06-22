@@ -33,6 +33,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import Link from "next/link";
 import { Card, Pill, Rate, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -206,7 +207,7 @@ export function VenueDetail({ venueId }: { venueId: string }) {
       ) : venue.owner_id !== null ? (
         <ClaimedDetail venue={venue} venueId={venueId} initialFollowing={following ?? false} />
       ) : venue.status === "pending_claim" ? (
-        <PendingClaimDetail venue={venue} mineJustSubmitted={claimUi === "submitted"} />
+        <PendingClaimDetail venue={venue} venueId={venueId} mineJustSubmitted={claimUi === "submitted"} />
       ) : (
         <UnclaimedDetail
           venue={venue}
@@ -237,6 +238,137 @@ function BackLink() {
     >
       <span aria-hidden>←</span> Explore
     </Link>
+  );
+}
+
+/**
+ * VenuePhotos — the photo surface for a venue: a hero (replacing the CSS-gradient
+ * placeholder when photos exist) plus a gallery strip. Fetches the venue's photo rows
+ * ONCE via venues.photosByVenue, then derives the hero (selectHero) and ordered gallery
+ * (galleryOrder) from @roam/core/photos. Falls back to the gradient Hero when there are
+ * no photos — the honest empty state (unclaimed venues Google had no photos for, or a
+ * claimed venue whose owner has not uploaded yet).
+ *
+ * Photos are venue FACTS, shown in every loaded state regardless of claim (same
+ * principle as opening hours): owner content outranks scraped, both render here.
+ */
+function VenuePhotos({ venueId, claimed }: { venueId: string; claimed: boolean }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    const photosByVenue = trpc.venues.photosByVenue as unknown as {
+      query: (input: { venueId: string }) => Promise<PhotoRow[]>;
+    };
+    photosByVenue
+      .query({ venueId })
+      .then((res) => {
+        if (!cancelled) setRows(Array.isArray(res) ? res : []);
+      })
+      .catch(() => {
+        if (!cancelled) setRows([]); // a photo-load failure must not break the page
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, venueId]);
+
+  // Until loaded, or when there are no photos, show the existing gradient Hero — the
+  // page never waits on photos and degrades to exactly today's look.
+  if (rows === undefined || rows.length === 0) {
+    return <Hero claimed={claimed} />;
+  }
+
+  const hero = selectHero(rows);
+  const gallery = galleryOrder(rows);
+
+  return (
+    <>
+      {hero ? (
+        <div style={{ borderRadius: 16, overflow: "hidden", marginBottom: "var(--space-4)" }}>
+          <VenuePhoto photoId={hero.id} alt="" heightPx={220} />
+        </div>
+      ) : (
+        <Hero claimed={claimed} />
+      )}
+      {gallery.length > 1 ? (
+        <div
+          style={{
+            display: "flex",
+            gap: "var(--space-2)",
+            overflowX: "auto",
+            marginBottom: "var(--space-4)",
+            paddingBottom: 4,
+          }}
+        >
+          {gallery
+            .filter((p: PhotoRow) => p.id !== hero?.id)
+            .map((p: PhotoRow) => (
+              <div
+                key={p.id}
+                style={{ flex: "0 0 auto", width: 120, borderRadius: 12, overflow: "hidden" }}
+              >
+                <VenuePhoto photoId={p.id} alt="" heightPx={90} />
+              </div>
+            ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * VenuePhoto — resolves ONE photo to a renderable url via venues.photoMediaUrl (public;
+ * the API holds the Google key and returns a short-lived, keyless googleusercontent url)
+ * and renders it. Resolves lazily on mount, so only photos actually shown are resolved.
+ * On a resolve failure it renders nothing — never a broken image.
+ */
+function VenuePhoto({
+  photoId,
+  alt,
+  heightPx,
+}: {
+  photoId: string;
+  alt: string;
+  heightPx: number;
+}) {
+  const trpc = useTrpc();
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const photoMediaUrl = trpc.venues.photoMediaUrl as unknown as {
+      query: (input: { photoId: string }) => Promise<{ url: string }>;
+    };
+    photoMediaUrl
+      .query({ photoId })
+      .then((res) => {
+        if (!cancelled) setUrl(res?.url ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, photoId]);
+
+  if (!url) {
+    // Reserve the space (no layout shift) with a neutral placeholder while resolving.
+    return <div style={{ height: heightPx, background: "var(--crimson-tint)" }} />;
+  }
+  return (
+    // A plain <img> is correct here: src is a short-lived, keyless googleusercontent URL
+    // resolved fresh on mount (~1hr TTL). next/image would optimize/cache a URL that
+    // expires and cannot be re-resolved by the optimizer, so we opt out deliberately.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      style={{ display: "block", width: "100%", height: heightPx, objectFit: "cover" }}
+    />
   );
 }
 
@@ -293,7 +425,7 @@ function ClaimedDetail({
   const links = linkEntries(venue.links);
   return (
     <>
-      <Hero claimed />
+      <VenuePhotos venueId={venueId} claimed />
       <TitleRow name={venue.name} />
       <div
         style={{
@@ -358,7 +490,7 @@ function UnclaimedDetail({
 }) {
   return (
     <>
-      <Hero claimed={false} />
+      <VenuePhotos venueId={venueId} claimed={false} />
       <TitleRow name={venue.name} />
       <div style={{ marginTop: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
         {venue.category ? <span>{venue.category}</span> : null}
@@ -474,14 +606,16 @@ function ClaimSubmittedCard() {
  */
 function PendingClaimDetail({
   venue,
+  venueId,
   mineJustSubmitted,
 }: {
   venue: VenueDetailData;
+  venueId: string;
   mineJustSubmitted: boolean;
 }) {
   return (
     <>
-      <Hero claimed={false} />
+      <VenuePhotos venueId={venueId} claimed={false} />
       <TitleRow name={venue.name} />
       <div style={{ marginTop: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
         {venue.category ? <span>{venue.category}</span> : null}

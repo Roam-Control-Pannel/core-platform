@@ -33,6 +33,44 @@ import { TRPCError } from "@trpc/server";
 import { places as corePlaces } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
 
+
+/**
+ * The Places (New) photo-media endpoint, built as a pure function so it is unit-testable
+ * without a network. With skipHttpRedirect=true Google returns JSON { photoUri } — a
+ * SHORT-LIVED, KEYLESS url the browser can render directly. The API key is used ONLY in
+ * this server-side request; it never reaches the browser and the returned photoUri
+ * carries no key. maxWidthPx caps the delivered size (cost + bandwidth control).
+ */
+export function buildPhotoMediaRequestUrl(
+  placesPhotoRef: string,
+  apiKey: string,
+  maxWidthPx: number,
+): string {
+  // ref is like "places/{id}/photos/{photoRef}"; the media resource appends "/media".
+  const base = `https://places.googleapis.com/v1/${placesPhotoRef}/media`;
+  const params = new URLSearchParams({
+    key: apiKey,
+    maxWidthPx: String(maxWidthPx),
+    skipHttpRedirect: "true",
+  });
+  return `${base}?${params.toString()}`;
+}
+
+/** Max delivered width for venue photos (px). Gallery/hero never need more on web. */
+const PHOTO_MAX_WIDTH_PX = 1200;
+
+/** A single venue_photos row as read for the gallery (the display read-model). */
+interface VenuePhotoReadRow {
+  id: string;
+  source: "google_places" | "owner_upload";
+  position: number;
+  is_cover: boolean;
+  places_photo_ref: string | null;
+  storage_path: string | null;
+  attribution: unknown;
+}
+
+
 /**
  * Shape returned by the `venues_near` RPC (migration 0005). The generated DB types
  * won't include this function until `pnpm db:types` is re-run after the migration is
@@ -308,6 +346,146 @@ export const venuesRouter = router({
         .maybeSingle();
       if (error) throw new Error(`Failed to load venue: ${error.message}`);
       return data;
+    }),
+
+  /**
+   * Public: ordered photo rows for a venue's gallery. RLS venue_photos_select_public
+   * is `using (true)`, so the anon ctx.db read is permitted. Ordering (owner-first,
+   * then places, each by position) is applied client-side via @roam/core photos
+   * selectHero/galleryOrder — this procedure returns the raw ordered-by-position rows.
+   */
+  photosByVenue: publicProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // venue_photos is newer than the generated DB types (db:types not yet re-run since
+      // migration 0019) — widen the read via a loose select typed to our row shape, the
+      // same idiom this file uses for venues_near and the pending-claims sweep.
+      type LoosePhotoList = {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (
+              col: string,
+              val: string,
+            ) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => Promise<{
+                data: VenuePhotoReadRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LoosePhotoList;
+      const { data, error } = await db
+        .from("venue_photos")
+        .select("id, source, position, is_cover, places_photo_ref, storage_path, attribution")
+        .eq("venue_id", input.venueId)
+        .order("position", { ascending: true });
+      if (error) throw new Error(`Failed to load venue photos: ${error.message}`);
+      return (data ?? []).map(
+        (p): {
+          id: string;
+          source: "google_places" | "owner_upload";
+          position: number;
+          is_cover: boolean;
+          places_photo_ref: string | null;
+          storage_path: string | null;
+          attribution: unknown;
+        } => ({
+          id: p.id,
+          source: p.source,
+          position: p.position,
+          is_cover: p.is_cover,
+          places_photo_ref: p.places_photo_ref,
+          storage_path: p.storage_path,
+          attribution: p.attribution,
+        }),
+      );
+    }),
+
+  /**
+   * Public: resolve ONE photo to a renderable url. The Google API key is used only in
+   * this server-side call; the browser receives a short-lived, KEYLESS googleusercontent
+   * url (google_places) or the Storage url (owner_upload). The key never leaves the API.
+   *
+   * google_places: GET Places media with skipHttpRedirect=true -> { photoUri }.
+   * owner_upload:   return storage_path directly (owner media; Slice 6 populates these).
+   */
+  photoMediaUrl: publicProcedure
+    .input(z.object({ photoId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      // venue_photos newer than generated types — loose widen, typed to the row shape.
+      type PhotoResolveRow = {
+        id: string;
+        source: "google_places" | "owner_upload";
+        places_photo_ref: string | null;
+        storage_path: string | null;
+      };
+      type LoosePhotoSingle = {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (
+              col: string,
+              val: string,
+            ) => {
+              maybeSingle: () => Promise<{
+                data: PhotoResolveRow | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LoosePhotoSingle;
+      const { data, error } = await db
+        .from("venue_photos")
+        .select("id, source, places_photo_ref, storage_path")
+        .eq("id", input.photoId)
+        .maybeSingle();
+      if (error) throw new Error(`Failed to load photo: ${error.message}`);
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Photo not found." });
+
+      const row = data;
+
+      if (row.source === "owner_upload") {
+        if (!row.storage_path) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no storage path." });
+        }
+        return { url: row.storage_path };
+      }
+
+      // google_places
+      if (!row.places_photo_ref) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no Places reference." });
+      }
+      const reqUrl = buildPhotoMediaRequestUrl(
+        row.places_photo_ref,
+        ctx.env.places.apiKey,
+        PHOTO_MAX_WIDTH_PX,
+      );
+      let res: Response;
+      try {
+        res = await fetch(reqUrl);
+      } catch (e) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `Places photo resolve failed: ${e instanceof Error ? e.message : "fetch error"}`,
+        });
+      }
+      if (!res.ok) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `Places photo resolve failed: ${res.status} ${res.statusText}`,
+        });
+      }
+      const json = (await res.json()) as { photoUri?: string };
+      if (!json.photoUri) {
+        throw new TRPCError({ code: "BAD_GATEWAY", message: "Places returned no photoUri." });
+      }
+      return { url: json.photoUri };
     }),
 
   /**

@@ -11,6 +11,7 @@
     "./credits": "./src/credits/index.ts",
     "./auth": "./src/auth/index.ts",
     "./geo": "./src/geo/index.ts",
+    "./photos": "./src/photos/index.ts",
     "./moderation": "./src/moderation/index.ts"
   },
   "scripts": {

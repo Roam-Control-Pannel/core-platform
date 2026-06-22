@@ -36,6 +36,9 @@ const FIELD_MASK = [
   "places.rating",
   "places.businessStatus",
   "places.regularOpeningHours",
+  // BILLING: places.photos is a billable Places (New) field class (same caveat as
+  // regularOpeningHours). Contained by the existing 2,000/day per-endpoint quota cap.
+  "places.photos",
 ].join(",");
 
 /** Inputs to one searchNearby call. */
