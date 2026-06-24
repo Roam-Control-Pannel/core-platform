@@ -32,6 +32,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { places as corePlaces } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
+import {
+  normaliseVenueDescription,
+  normaliseVenueLinks,
+} from "../venue-details.js";
 
 
 /**
@@ -1033,5 +1037,77 @@ export const venuesRouter = router({
         return { ok: false as const, deleted: false as const };
       }
       return { ok: true as const, deleted: true as const };
+    }),
+
+  /**
+   * Protected: an owner edits their CLAIMED venue's description and links — the owner
+   * twin of the Places-sourced facts. Column-scope is enforced HERE, not in RLS: the
+   * patch object is built from exactly two validated fields (description, links), so it
+   * is structurally impossible for this mutation to write any other venue column
+   * (rating, category, geo, place_id, owner_id, status, …). RLS (venues_owner_update,
+   * 0004 + explicit with check in 0022) is the row gate: it admits the write only when
+   * the caller owns the row AND it is claimed, and the post-image must still satisfy
+   * that — so this cannot reassign ownership or change status either.
+   *
+   * Both fields are nullable: passing null (or an empty/whitespace description, or a
+   * links map that normalises to nothing) CLEARS that field, which the reader treats
+   * identically to "never set". links is normalised to the flat Record<string,string>
+   * VenueDetail's linkEntries expects, with an http(s)-only scheme allow-list.
+   *
+   * .select()-guarded: zero returned rows => RLS refused (not owner, or not claimed) =>
+   * ok:false, so the client refetches rather than trust an unverified write.
+   */
+  updateVenueDetails: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        description: z.string().max(20000).nullable(),
+        links: z.record(z.unknown()).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Column gate: validate + normalise to exactly what we persist. Throws => 400.
+      let description: string | null;
+      let links: Record<string, string> | null;
+      try {
+        description = normaliseVenueDescription(input.description);
+        links = normaliseVenueLinks(input.links);
+      } catch (e) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: e instanceof Error ? e.message : "Invalid venue details.",
+        });
+      }
+
+      type UpdatedRow = { id: string };
+      type LooseDetailsUpdate = {
+        from: (table: string) => {
+          update: (patch: Record<string, unknown>) => {
+            eq: (col: string, val: string) => {
+              select: (cols: string) => Promise<{
+                data: UpdatedRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseDetailsUpdate;
+      // jsonb `links` column is NOT NULL default '{}' (0001) — clearing writes {} not null.
+      const { data, error } = await db
+        .from("venues")
+        .update({ description, links: links ?? {} })
+        .eq("id", input.venueId)
+        .select("id");
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to update venue details: ${error.message}`,
+        });
+      }
+      if (!data || data.length === 0) {
+        return { ok: false as const };
+      }
+      return { ok: true as const };
     }),
 });
