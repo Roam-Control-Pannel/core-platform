@@ -40,6 +40,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
 import { OwnerMediaManager } from "./OwnerMediaManager";
+import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -211,6 +212,7 @@ export function VenueDetail({ venueId }: { venueId: string }) {
           venueId={venueId}
           initialFollowing={following ?? false}
           isOwner={session?.user?.id === venue.owner_id}
+          onSaved={loadVenue}
         />
       ) : venue.status === "pending_claim" ? (
         <PendingClaimDetail venue={venue} venueId={venueId} mineJustSubmitted={claimUi === "submitted"} />
@@ -424,11 +426,13 @@ function ClaimedDetail({
   venueId,
   initialFollowing,
   isOwner,
+  onSaved,
 }: {
   venue: VenueDetailData;
   venueId: string;
   initialFollowing: boolean;
   isOwner: boolean;
+  onSaved: () => Promise<unknown> | void;
 }) {
   const links = linkEntries(venue.links);
   return (
@@ -461,6 +465,15 @@ function ClaimedDetail({
       </div>
 
       {isOwner ? <OwnerMediaManager venueId={venueId} /> : null}
+
+      {isOwner ? (
+        <OwnerDetailsEditor
+          venueId={venueId}
+          initialDescription={venue.description}
+          initialLinks={venue.links}
+          onSaved={onSaved}
+        />
+      ) : null}
 
       {venue.description ? (
         <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
