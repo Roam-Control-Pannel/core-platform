@@ -56,6 +56,36 @@ export function buildPhotoMediaRequestUrl(
   return `${base}?${params.toString()}`;
 }
 
+/**
+ * Build the public CDN URL for an owner_upload object in the PUBLIC `venue-media`
+ * bucket (migration 0021). Public-bucket objects have a stable, keyless, CDN-cacheable
+ * URL of the form {SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}.
+ *
+ * Pure (no I/O): the owner twin of buildPhotoMediaRequestUrl. We persist the object
+ * PATH in venue_photos.storage_path (not the resolved URL) so the row survives a
+ * project-ref change and the column keeps meaning "where the object lives"; this
+ * rebuilds the URL at read time, exactly as buildPhotoMediaRequestUrl does for Places.
+ *
+ * supabaseUrl is trimmed of a trailing slash; each path segment is encodeURIComponent'd
+ * (so spaces/unicode in a filename can't break the URL) while the '/' separators are
+ * preserved (we encode segment-wise, never the whole path).
+ */
+export function buildOwnerPhotoPublicUrl(
+  supabaseUrl: string,
+  bucket: string,
+  storagePath: string,
+): string {
+  const base = supabaseUrl.replace(/\/+$/, "");
+  const encodedPath = storagePath
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/");
+  return `${base}/storage/v1/object/public/${bucket}/${encodedPath}`;
+}
+
+/** The Storage bucket owner uploads land in (migration 0021). */
+const VENUE_MEDIA_BUCKET = "venue-media";
+
 /** Max delivered width for venue photos (px). Gallery/hero never need more on web. */
 const PHOTO_MAX_WIDTH_PX = 1200;
 
@@ -454,7 +484,13 @@ export const venuesRouter = router({
         if (!row.storage_path) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no storage path." });
         }
-        return { url: row.storage_path };
+        return {
+          url: buildOwnerPhotoPublicUrl(
+            ctx.env.supabase.url,
+            VENUE_MEDIA_BUCKET,
+            row.storage_path,
+          ),
+        };
       }
 
       // google_places
@@ -727,5 +763,275 @@ export const venuesRouter = router({
         stillPending,
         notActionable,
       };
+    }),
+
+  /**
+   * Protected: record an owner_upload photo row AFTER the browser has uploaded the
+   * bytes to Storage (SDK upload under the owner's JWT; the 0021 storage RLS gated it).
+   * Only writes the metadata row. The INSERT is itself RLS-gated
+   * (venue_photos_owner_insert, 0019), so a row can't be written for a venue the caller
+   * doesn't own. position defaults 0; is_cover is never set here (setCover owns that).
+   * .select()-guarded: zero rows => RLS refused => ok:false.
+   */
+  addOwnerPhoto: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        storagePath: z.string().min(1).max(1024),
+        altText: z.string().trim().max(500).optional(),
+        width: z.number().int().positive().max(100000).optional(),
+        height: z.number().int().positive().max(100000).optional(),
+        position: z.number().int().min(0).max(10000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Defence in depth: storage path's first segment MUST be this venue id.
+      const firstSegment = input.storagePath.split("/")[0];
+      if (firstSegment !== input.venueId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "storagePath must be scoped under the venue id (`<venueId>/<file>`).",
+        });
+      }
+      type InsertedRow = { id: string; position: number; is_cover: boolean };
+      type LooseInsert = {
+        from: (table: string) => {
+          insert: (row: Record<string, unknown>) => {
+            select: (cols: string) => {
+              maybeSingle: () => Promise<{
+                data: InsertedRow | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseInsert;
+      const { data, error } = await db
+        .from("venue_photos")
+        .insert({
+          venue_id: input.venueId,
+          source: "owner_upload",
+          storage_path: input.storagePath,
+          alt_text: input.altText ?? null,
+          width: input.width ?? null,
+          height: input.height ?? null,
+          position: input.position ?? 0,
+          is_cover: false,
+        })
+        .select("id, position, is_cover")
+        .maybeSingle();
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to record photo: ${error.message}`,
+        });
+      }
+      if (!data) {
+        return { ok: false as const };
+      }
+      return { ok: true as const, photoId: data.id, position: data.position };
+    }),
+
+  /**
+   * Protected: reorder an owner's photos. Accepts the full ordered list of photo ids;
+   * writes each row's `position` to its index. Only owner_upload rows update (RLS scope).
+   * Per-row .select()-guarded; a shortfall in the tally => some update was RLS-refused =>
+   * ok:false so the client refetches rather than trust a partial reorder.
+   */
+  reorderPhotos: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        orderedPhotoIds: z.array(z.string().uuid()).min(1).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      type UpdatedRow = { id: string };
+      type LooseUpdate = {
+        from: (table: string) => {
+          update: (patch: Record<string, unknown>) => {
+            eq: (col: string, val: string) => {
+              eq: (col2: string, val2: string) => {
+                select: (cols: string) => Promise<{
+                  data: UpdatedRow[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseUpdate;
+      let updated = 0;
+      for (let i = 0; i < input.orderedPhotoIds.length; i++) {
+        const photoId = input.orderedPhotoIds[i]!;
+        const { data, error } = await db
+          .from("venue_photos")
+          .update({ position: i })
+          .eq("id", photoId)
+          .eq("venue_id", input.venueId)
+          .select("id");
+        if (error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Failed to reorder photos: ${error.message}`,
+          });
+        }
+        if (data && data.length > 0) updated += data.length;
+      }
+      const ok = updated === input.orderedPhotoIds.length;
+      return { ok, updated, requested: input.orderedPhotoIds.length };
+    }),
+
+  /**
+   * Protected: set ONE photo as cover (hero). Clears prior cover, then sets the new one.
+   * Order is clear-then-set: setting first could transiently violate the one-cover
+   * partial-unique index (0019); clearing first is always safe. Both updates owner-RLS-
+   * gated + .select()-guarded. photoId=null is a valid "no cover" (clears any cover).
+   */
+  setCover: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        photoId: z.string().uuid().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      type Row = { id: string };
+      type LooseCover = {
+        from: (table: string) => {
+          update: (patch: Record<string, unknown>) => {
+            eq: (c1: string, v1: string) => {
+              eq: (c2: string, v2: string | boolean) => {
+                select: (cols: string) => Promise<{
+                  data: Row[] | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseCover;
+      const { error: clearErr } = await db
+        .from("venue_photos")
+        .update({ is_cover: false })
+        .eq("venue_id", input.venueId)
+        .eq("is_cover", true)
+        .select("id");
+      if (clearErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to clear current cover: ${clearErr.message}`,
+        });
+      }
+      if (input.photoId === null) {
+        return { ok: true as const, cover: null };
+      }
+      const { data, error: setErr } = await db
+        .from("venue_photos")
+        .update({ is_cover: true })
+        .eq("id", input.photoId)
+        .eq("venue_id", input.venueId)
+        .select("id");
+      if (setErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to set cover: ${setErr.message}`,
+        });
+      }
+      if (!data || data.length === 0) {
+        return { ok: false as const, cover: null };
+      }
+      return { ok: true as const, cover: input.photoId };
+    }),
+
+  /**
+   * Protected: remove an owner_upload photo — deletes the Storage OBJECT then the ROW.
+   * Object first: a failure leaves the row intact (retryable, no orphan). Both deletes
+   * owner-authorised (0021 storage RLS + venue_photos_owner_delete 0019). Row delete
+   * .select()-guarded. google_places rows are not owner-deletable (FORBIDDEN).
+   */
+  removeOwnerPhoto: protectedProcedure
+    .input(z.object({ photoId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      type ResolveRow = {
+        id: string;
+        venue_id: string;
+        source: "google_places" | "owner_upload";
+        storage_path: string | null;
+      };
+      type LooseResolve = {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (c: string, v: string) => {
+              maybeSingle: () => Promise<{
+                data: ResolveRow | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const dbRead = ctx.db as unknown as LooseResolve;
+      const { data: row, error: readErr } = await dbRead
+        .from("venue_photos")
+        .select("id, venue_id, source, storage_path")
+        .eq("id", input.photoId)
+        .maybeSingle();
+      if (readErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load photo: ${readErr.message}`,
+        });
+      }
+      if (!row) {
+        return { ok: true as const, deleted: false as const };
+      }
+      if (row.source !== "owner_upload" || !row.storage_path) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owner-uploaded photos can be removed.",
+        });
+      }
+      const { error: objErr } = await ctx.db.storage
+        .from(VENUE_MEDIA_BUCKET)
+        .remove([row.storage_path]);
+      if (objErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to delete photo object: ${objErr.message}`,
+        });
+      }
+      type DelRow = { id: string };
+      type LooseDelete = {
+        from: (table: string) => {
+          delete: () => {
+            eq: (c: string, v: string) => {
+              select: (cols: string) => Promise<{
+                data: DelRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const dbDel = ctx.db as unknown as LooseDelete;
+      const { data: delData, error: delErr } = await dbDel
+        .from("venue_photos")
+        .delete()
+        .eq("id", input.photoId)
+        .select("id");
+      if (delErr) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to delete photo row: ${delErr.message}`,
+        });
+      }
+      if (!delData || delData.length === 0) {
+        return { ok: false as const, deleted: false as const };
+      }
+      return { ok: true as const, deleted: true as const };
     }),
 });
