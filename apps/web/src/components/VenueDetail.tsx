@@ -39,6 +39,7 @@ import { Card, Pill, Rate, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
+import { OwnerMediaManager } from "./OwnerMediaManager";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -205,7 +206,12 @@ export function VenueDetail({ venueId }: { venueId: string }) {
       ) : venue === null ? (
         <NotFoundState />
       ) : venue.owner_id !== null ? (
-        <ClaimedDetail venue={venue} venueId={venueId} initialFollowing={following ?? false} />
+        <ClaimedDetail
+          venue={venue}
+          venueId={venueId}
+          initialFollowing={following ?? false}
+          isOwner={session?.user?.id === venue.owner_id}
+        />
       ) : venue.status === "pending_claim" ? (
         <PendingClaimDetail venue={venue} venueId={venueId} mineJustSubmitted={claimUi === "submitted"} />
       ) : (
@@ -417,10 +423,12 @@ function ClaimedDetail({
   venue,
   venueId,
   initialFollowing,
+  isOwner,
 }: {
   venue: VenueDetailData;
   venueId: string;
   initialFollowing: boolean;
+  isOwner: boolean;
 }) {
   const links = linkEntries(venue.links);
   return (
@@ -451,6 +459,8 @@ function ClaimedDetail({
           emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
         />
       </div>
+
+      {isOwner ? <OwnerMediaManager venueId={venueId} /> : null}
 
       {venue.description ? (
         <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
