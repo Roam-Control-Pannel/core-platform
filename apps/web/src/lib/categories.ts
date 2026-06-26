@@ -29,3 +29,27 @@ export const CATEGORY_GROUPS = [
 ] as const;
 
 export type CategoryGroup = (typeof CATEGORY_GROUPS)[number];
+
+/**
+ * Friendly DISPLAY labels for the pill row (from the Discovery design: "Eateries",
+ * "Hotels", "Attractions"…). The canonical group name is still what's sent to the API —
+ * this map only changes the text on the chip, so the long, database-flavoured taxonomy
+ * ("Automotive & Transport", "Education & Government") reads like a place people browse,
+ * not a schema. Keyed by the canonical value so the mapping can't drift from CATEGORY_GROUPS.
+ */
+export const CATEGORY_LABELS: Record<CategoryGroup, string> = {
+  "Food & Drink": "Eateries",
+  Shopping: "Shopping",
+  "Entertainment & Recreation": "Attractions",
+  "Automotive & Transport": "Transport",
+  "Finance & Business": "Business",
+  "Health & Wellness": "Health & Beauty",
+  Lodging: "Hotels",
+  "Education & Government": "Civic",
+  "Places of Worship": "Worship",
+};
+
+/** The friendly pill label for a canonical group (falls back to the canonical name). */
+export function categoryLabel(group: string): string {
+  return (CATEGORY_LABELS as Record<string, string>)[group] ?? group;
+}

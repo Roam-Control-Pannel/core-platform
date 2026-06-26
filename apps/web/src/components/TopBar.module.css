@@ -1,0 +1,139 @@
+/*
+ * Global app top bar. Ported from the Discovery design's .topbar / .webnav. Uses the
+ * Foundations tokens (the :root vars from globals.css) — it invents no colours. A CSS
+ * Module (not inline styles like the rest of the web app) BECAUSE the chrome is genuinely
+ * responsive: the nav collapses into the bottom TabBar on phones, which needs a media
+ * query. globals.css is generated from @roam/design and must not be hand-edited, so the
+ * responsive rules live here, scoped to the chrome.
+ */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 20px;
+  background: rgba(246, 243, 239, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-size: 17px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mark {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.link,
+.dormant {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.link:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.active {
+  background: var(--ink-hi);
+  color: #fff;
+}
+
+.active:hover {
+  background: var(--ink-hi);
+  color: #fff;
+}
+
+/* Dormant nav item (a Stage-2 surface that doesn't exist yet): present as an honest
+   seam — visible, labelled, but plainly not active. No link, no hover. */
+.dormant {
+  color: var(--faint);
+  cursor: default;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ＋ Create — a Stage-2 affordance (posts/plans). Dormant: looks like its eventual self
+   but is clearly not yet enabled. */
+.create {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--crimson-tint-2);
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+  opacity: 0.7;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.signin {
+  all: unset;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  padding: 7px 13px;
+  border-radius: 999px;
+}
+
+.signin:hover {
+  background: var(--paper-2);
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  border: 1px solid var(--line-2);
+  display: block;
+}
+
+/* Phones: the primary nav + Create move into the bottom TabBar, so hide them here and
+   keep the bar to brand + sign-in/avatar. */
+@media (max-width: 720px) {
+  .nav,
+  .create {
+    display: none;
+  }
+}
