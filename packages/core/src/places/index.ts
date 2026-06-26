@@ -266,6 +266,51 @@ export interface LatLng {
   lng: number;
 }
 
+// ============================================================================
+// On-demand ingestion cost policy — the tunable knobs, defined once.
+//
+// The api's ingestCategory makes a PAID Places searchNearby call only when there is no
+// fresh local coverage. Three independent bounds keep that cost finite; the two numeric
+// caps + the snap grid live here (pure, testable) and are passed into the api/DB layers:
+//   • TEMPORAL  — 30-day freshness window (in SQL: count_fresh_places_venues).
+//   • SPATIAL   — snapToIngestGrid below: collapse near-identical points to one cache key
+//                 so the freshness skip actually catches coordinate enumeration.
+//   • VOLUME    — PLACES_DAILY_FETCH_BUDGET (global/day) + the per-client window limit
+//                 (enforced atomically in SQL: claim_places_fetch_quota, migration 0024).
+// ============================================================================
+
+/**
+ * Grid size (degrees) the ingest query point is snapped to. ~0.005° ≈ 555 m. Chosen below
+ * the default 1500 m search radius so snapping never opens a coverage hole (the snapped
+ * centre is within ~390 m of the true point, well inside the radius), while collapsing
+ * jittered/enumerated coordinates in the same neighbourhood into a single freshness key.
+ * Tunable: larger = more dedup (cheaper) but a coarser search centre.
+ */
+export const INGEST_SNAP_DEGREES = 0.005;
+
+/** Hard ceiling on paid searchNearby calls per day, across ALL callers. The wallet backstop. */
+export const PLACES_DAILY_FETCH_BUDGET = 2000;
+
+/** Max paid searchNearby calls a single client (by IP) may trigger per window. Fairness. */
+export const PLACES_CLIENT_FETCH_LIMIT = 60;
+
+/** The per-client fixed window, in seconds (1 hour). */
+export const PLACES_CLIENT_WINDOW_SECS = 3600;
+
+/**
+ * Snap a coordinate to the ingest grid. Pure. Two requests in the same cell produce the
+ * same point, so the second hits the freshness cache instead of paying for a fetch — this
+ * is what turns "infinite distinct points" into "finite grid cells" for cost purposes.
+ * Used for BOTH the freshness check and the searchNearby centre so they stay consistent.
+ */
+export function snapToIngestGrid(lat: number, lng: number): LatLng {
+  const step = INGEST_SNAP_DEGREES;
+  return {
+    lat: Math.round(lat / step) * step,
+    lng: Math.round(lng / step) * step,
+  };
+}
+
 /**
  * The subset of a Places (New) result we read (matches the field mask). Minimal by
  * design — we request only these fields, so we type only these.

@@ -71,6 +71,28 @@ describe("internal-call detection", () => {
   });
 });
 
+describe("forwarded client key", () => {
+  it("is honoured ONLY on a trusted internal call", () => {
+    const ctx = createContext({
+      headers: headers({
+        "x-internal-call": env.internalCallSecret,
+        "x-roam-client-ip": "203.0.113.7",
+      }),
+    });
+    expect(ctx.clientKey).toBe("203.0.113.7");
+  });
+
+  it("is ignored (null) when the call is not internal — no spoofing the rate bucket", () => {
+    const ctx = createContext({ headers: headers({ "x-roam-client-ip": "203.0.113.7" }) });
+    expect(ctx.clientKey).toBeNull();
+  });
+
+  it("is null on an internal call that forwards no client ip (e.g. local dev)", () => {
+    const ctx = createContext({ headers: headers({ "x-internal-call": env.internalCallSecret }) });
+    expect(ctx.clientKey).toBeNull();
+  });
+});
+
 describe("context shape", () => {
   it("always carries a db client and the env", () => {
     const ctx = createContext({ headers: headers({}) });

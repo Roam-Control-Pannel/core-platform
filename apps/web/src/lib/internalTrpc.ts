@@ -32,8 +32,13 @@ function apiUrl(): string {
 /**
  * Build the internal client. The secret is read here (call time) and the access is
  * isolated so a missing value fails loudly at the point of use, not at import.
+ *
+ * `clientIp` (the browser's IP, which only the server-side route handler can read) is
+ * forwarded as `x-roam-client-ip` so the api can enforce a per-client ingest rate limit.
+ * The api trusts this header ONLY because it arrives alongside the internal-call secret
+ * (see context.ts) — the browser can neither reach this client nor set the header itself.
  */
-export function makeInternalTrpcClient() {
+export function makeInternalTrpcClient(clientIp?: string | null) {
   const secret = process.env.INTERNAL_CALL_SECRET;
   if (!secret) {
     throw new Error(
@@ -47,7 +52,9 @@ export function makeInternalTrpcClient() {
       httpBatchLink({
         url: `${apiUrl()}/trpc`,
         headers() {
-          return { "x-internal-call": secret };
+          const h: Record<string, string> = { "x-internal-call": secret };
+          if (clientIp) h["x-roam-client-ip"] = clientIp;
+          return h;
         },
       }),
     ],

@@ -8,6 +8,8 @@ import {
   placeToVenueRow,
   placeOpeningTimes,
   placePhotos,
+  snapToIngestGrid,
+  INGEST_SNAP_DEGREES,
   type CategoryId,
   type PlaceResult,
 } from "./index.js";
@@ -368,5 +370,31 @@ describe("placePhotos", () => {
       ],
     });
     expect(result[0]!.attribution).toEqual([{ displayName: "Real Name", uri: null }]);
+  });
+});
+
+describe("snapToIngestGrid — spatial cost bound", () => {
+  it("snaps to the grid step and is idempotent on an exact grid point", () => {
+    const snapped = snapToIngestGrid(54.5253, -1.5849);
+    // 54.5253 / 0.005 = 10905.06 -> 10905 -> 54.525 ; -1.5849 / 0.005 = -316.98 -> -317 -> -1.585
+    expect(snapped.lat).toBeCloseTo(54.525, 6);
+    expect(snapped.lng).toBeCloseTo(-1.585, 6);
+    const again = snapToIngestGrid(snapped.lat, snapped.lng);
+    expect(again.lat).toBeCloseTo(snapped.lat, 9);
+    expect(again.lng).toBeCloseTo(snapped.lng, 9);
+  });
+
+  it("collapses two jittered points in the same cell to one key (the dedup win)", () => {
+    // Two points a few metres apart (well under the ~555 m cell) must snap identically,
+    // so the second request hits the freshness cache instead of paying for a fetch.
+    const a = snapToIngestGrid(54.52531, -1.58489);
+    const b = snapToIngestGrid(54.52539, -1.58492);
+    expect(a).toEqual(b);
+  });
+
+  it("keeps points in different cells distinct", () => {
+    const a = snapToIngestGrid(54.5253, -1.5849);
+    const b = snapToIngestGrid(54.5253 + INGEST_SNAP_DEGREES * 2, -1.5849);
+    expect(a.lat).not.toBeCloseTo(b.lat, 6);
   });
 });
