@@ -36,6 +36,8 @@ import {
   normaliseVenueDescription,
   normaliseVenueLinks,
 } from "../venue-details.js";
+import { buildOwnerOpeningTimes } from "../venue-hours.js";
+import { type DayPeriods } from "@roam/core/hours";
 
 
 /**
@@ -1103,6 +1105,105 @@ export const venuesRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: `Failed to update venue details: ${error.message}`,
+        });
+      }
+      if (!data || data.length === 0) {
+        return { ok: false as const };
+      }
+      return { ok: true as const };
+    }),
+
+  /**
+   * Protected: an owner edits their CLAIMED venue's opening HOURS — the structured,
+   * owner-authored twin of the Places-sourced weekdayDescriptions. The owner becomes the
+   * sole writer of a claimed venue's hours: the 0016/0018/0020 ingest functions freeze
+   * claimed rows (`where venues.owner_id is null`), so Places never touches them again.
+   *
+   * Column-scope is enforced HERE, not in RLS: the patch object is built from exactly
+   * ONE validated field (opening_times), so it is structurally impossible for this
+   * mutation to write any other venue column. Three layers stack:
+   *   - this mutation = COLUMN gate (only opening_times can change),
+   *   - RLS venues_owner_update (0004 + 0022 with-check) = ROW gate (own it + claimed,
+   *     post-image still owned + claimed — can't reassign owner_id or leave 'claimed'),
+   *   - the 0023 check constraint = PROVENANCE backstop (structured periods => source
+   *     'owner'), which even a service-role write cannot bypass.
+   *
+   * Input is { venueId, periods, timezone }. `periods: null` CLEARS the hours
+   * (opening_times -> null; the column is nullable). Otherwise the pure
+   * buildOwnerOpeningTimes validates the structure (HH:MM, open<close, no overlap,
+   * day-index range, interval caps, valid IANA tz — overnight deliberately deferred),
+   * DERIVES weekdayDescriptions so the existing OpeningHours reader renders owner hours
+   * identically to Google's, and stamps source: 'owner'. A validator RangeError => 400,
+   * exactly the updateVenueDetails pattern.
+   *
+   * .select()-guarded: zero returned rows => RLS refused (not owner, or not claimed) =>
+   * ok:false, so the client refetches rather than trust an unverified write.
+   */
+  updateVenueHours: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        // null => clear hours. Otherwise a 7-day-max structured array (the pure builder
+        // re-validates the fine structure; this schema is the clean edge rejection).
+        periods: z
+          .array(
+            z.object({
+              day: z.number().int().min(0).max(6),
+              closed: z.boolean(),
+              intervals: z
+                .array(z.object({ open: z.string(), close: z.string() }))
+                .max(10),
+            }),
+          )
+          .max(7)
+          .nullable(),
+        timezone: z.string().min(1).max(64),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Column gate: build EXACTLY the opening_times value we persist (or null to clear).
+      // The pure builder validates + derives weekdayDescriptions + stamps source:'owner';
+      // a RangeError => 400, mirroring updateVenueDetails.
+      let openingTimes: ReturnType<typeof buildOwnerOpeningTimes> | null;
+      if (input.periods === null) {
+        openingTimes = null;
+      } else {
+        try {
+          openingTimes = buildOwnerOpeningTimes({
+            periods: input.periods as DayPeriods[],
+            timezone: input.timezone,
+          });
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: e instanceof Error ? e.message : "Invalid opening hours.",
+          });
+        }
+      }
+
+      type UpdatedRow = { id: string };
+      type LooseHoursUpdate = {
+        from: (table: string) => {
+          update: (patch: Record<string, unknown>) => {
+            eq: (col: string, val: string) => {
+              select: (cols: string) => Promise<{
+                data: UpdatedRow[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseHoursUpdate;
+      const { data, error } = await db
+        .from("venues")
+        .update({ opening_times: openingTimes })
+        .eq("id", input.venueId)
+        .select("id");
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to update venue hours: ${error.message}`,
         });
       }
       if (!data || data.length === 0) {

@@ -41,6 +41,8 @@ import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
+import { OwnerHoursEditor } from "./OwnerHoursEditor";
+import { isOpenNow } from "../lib/openNow";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -60,7 +62,12 @@ interface VenueDetailData {
   address: string | null;
   locality: string | null;
   region: string | null;
-  opening_times: { weekdayDescriptions?: string[]; source?: string } | null;
+  opening_times: {
+    weekdayDescriptions?: string[];
+    periods?: { day: number; closed: boolean; intervals: { open: string; close: string }[] }[];
+    timezone?: string;
+    source?: string;
+  } | null;
   links: Record<string, unknown> | null;
   source_attribution: string | null;
 }
@@ -475,6 +482,14 @@ function ClaimedDetail({
         />
       ) : null}
 
+      {isOwner ? (
+        <OwnerHoursEditor
+          venueId={venueId}
+          initialPeriods={venue.opening_times?.periods ?? null}
+          onSaved={onSaved}
+        />
+      ) : null}
+
       {venue.description ? (
         <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
       ) : null}
@@ -758,6 +773,18 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
   if (!Array.isArray(days) || days.length === 0) return null;
   const clean = days.filter((d): d is string => typeof d === "string" && d.length > 0);
   if (clean.length === 0) return null;
+
+  // "Open now" status — computed at render from structured periods + timezone (owner
+  // venues only). Returns status 'unknown' for legacy Places string-only hours, in
+  // which case we show no pill and render exactly as before. Evaluated once at render
+  // (accurate on load); a live-ticking clock is intentionally deferred.
+  const open = isOpenNow(openingTimes, new Date());
+  const pill =
+    open.status === "open"
+      ? { text: open.nextChange ? `Open now · closes ${open.nextChange.at}` : "Open now", on: true }
+      : open.status === "closed"
+        ? { text: open.nextChange ? `Closed · opens ${open.nextChange.at}` : "Closed", on: false }
+        : null;
   return (
     <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
       <div
@@ -772,6 +799,23 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
       >
         Opening hours
       </div>
+      {pill ? (
+        <div
+          style={{
+            display: "inline-block",
+            fontSize: 12.5,
+            fontWeight: 600,
+            padding: "2px 10px",
+            borderRadius: 999,
+            marginBottom: "var(--space-3)",
+            color: pill.on ? "var(--ink-1)" : "var(--ink-2)",
+            background: pill.on ? "var(--line-1)" : "transparent",
+            border: pill.on ? "none" : "1px solid var(--line-2)",
+          }}
+        >
+          {pill.text}
+        </div>
+      ) : null}
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-1)" }}>
         {clean.map((line) => (
           <li key={line} style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
