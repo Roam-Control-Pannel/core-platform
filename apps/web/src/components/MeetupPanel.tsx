@@ -23,7 +23,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Pill, PollCard } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
@@ -60,6 +60,15 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
   const [meetupError, setMeetupError] = useState<string | null>(null);
   const [resolution, setResolution] = useState<Resolution | null | undefined>(undefined);
   const [venueNames, setVenueNames] = useState<Record<string, string>>({});
+  // Live mirror of venueNames for loadResolution's "which ids are still unknown?" check.
+  // Reading the map through a ref (instead of closing over the state) keeps loadResolution's
+  // identity stable across name fills — without it, setVenueNames → new loadResolution →
+  // the resolution effect re-fires the query (with a setResolution(undefined) flash) every
+  // time a name resolves. The ref breaks that loop while still seeing the latest names.
+  const venueNamesRef = useRef(venueNames);
+  useEffect(() => {
+    venueNamesRef.current = venueNames;
+  }, [venueNames]);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -101,7 +110,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
           setResolution(res);
           const unknown = res.tally
             .map((t) => t.venueId)
-            .filter((vid) => !(vid in venueNames));
+            .filter((vid) => !(vid in venueNamesRef.current));
           if (unknown.length > 0) {
             const pairs = await Promise.all(
               unknown.map(async (vid) => {
@@ -131,7 +140,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         cancelled = true;
       };
     },
-    [trpc, venueNames],
+    [trpc],
   );
 
   useEffect(() => {

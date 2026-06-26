@@ -51,6 +51,15 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  // Tracks mount state so the async geolocation callbacks (up to 8s later) don't setState
+  // or call onChange after the switcher has unmounted.
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    [],
+  );
 
   // Close on outside click / Escape — a popover that traps focus would be overkill here.
   useEffect(() => {
@@ -71,12 +80,13 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
 
   const supportsGeo = typeof navigator !== "undefined" && "geolocation" in navigator;
 
-  function useMyLocation() {
+  function handleUseMyLocation() {
     if (!supportsGeo) return;
     setLocating(true);
     setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!mountedRef.current) return;
         setLocating(false);
         setOpen(false);
         onChange({
@@ -88,6 +98,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
         });
       },
       () => {
+        if (!mountedRef.current) return;
         setLocating(false);
         setGeoError("Couldn't get your location. Pick a place instead.");
       },
@@ -184,7 +195,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
             <>
               <div style={{ height: 1, background: "var(--line)", margin: "var(--space-2) 0" }} />
               <button
-                onClick={useMyLocation}
+                onClick={handleUseMyLocation}
                 disabled={locating}
                 style={{
                   all: "unset",

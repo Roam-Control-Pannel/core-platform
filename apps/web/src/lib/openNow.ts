@@ -100,29 +100,40 @@ export function isOpenNow(opening: OpeningTimesRead | null | undefined, nowUtc: 
   }
 
   const { day, minutes } = localDayAndMinutes(nowUtc, opening.timezone);
-  const today = opening.periods.find((p) => p.day === day);
 
-  if (today && !today.closed) {
-    for (const iv of today.intervals) {
-      const openMin = parseHhmm(iv.open);
-      const closeMin = parseHhmm(iv.close);
-      if (minutes >= openMin && minutes < closeMin) {
-        return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
+  // Defensive boundary unique to this browser copy: core validates interval strings on
+  // WRITE, but this evaluator runs inside render and reads whatever is stored — including
+  // legacy / imported rows that never passed the write validator. A malformed "HH:MM"
+  // (the only thing parseHhmm throws on) must degrade to "unknown" (no pill), never throw
+  // and take down the venue page render. Core has no try/catch here because core never
+  // sees unvalidated data; we do, so we harden here and stay in lockstep on everything else.
+  try {
+    const today = opening.periods.find((p) => p.day === day);
+
+    if (today && !today.closed) {
+      for (const iv of today.intervals) {
+        const openMin = parseHhmm(iv.open);
+        const closeMin = parseHhmm(iv.close);
+        if (minutes >= openMin && minutes < closeMin) {
+          return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
+        }
       }
     }
-  }
 
-  for (let ahead = 0; ahead < 7; ahead++) {
-    const d = (day + ahead) % 7;
-    const p = opening.periods.find((x) => x.day === d);
-    if (!p || p.closed) continue;
-    for (const iv of p.intervals) {
-      const openMin = parseHhmm(iv.open);
-      if (ahead === 0 && openMin <= minutes) continue;
-      const inMinutes = ahead * MINUTES_IN_DAY + openMin - minutes;
-      return { status: "closed", nextChange: { at: iv.open, day: d, inMinutes } };
+    for (let ahead = 0; ahead < 7; ahead++) {
+      const d = (day + ahead) % 7;
+      const p = opening.periods.find((x) => x.day === d);
+      if (!p || p.closed) continue;
+      for (const iv of p.intervals) {
+        const openMin = parseHhmm(iv.open);
+        if (ahead === 0 && openMin <= minutes) continue;
+        const inMinutes = ahead * MINUTES_IN_DAY + openMin - minutes;
+        return { status: "closed", nextChange: { at: iv.open, day: d, inMinutes } };
+      }
     }
-  }
 
-  return { status: "closed" };
+    return { status: "closed" };
+  } catch {
+    return { status: "unknown" };
+  }
 }
