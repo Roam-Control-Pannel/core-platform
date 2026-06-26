@@ -20,6 +20,11 @@ function fakeRpc(
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const rpc: LooseRpc = async (fn, args) => {
     calls.push({ fn, args });
+    // Default: the fetch-quota check ALLOWS, so tests not about cost control are unaffected.
+    // The dedicated cost-control tests pass their own claim_places_fetch_quota result.
+    if (fn === "claim_places_fetch_quota" && !(fn in results)) {
+      return { data: [{ allowed: true, reason: "allowed" }], error: null };
+    }
     return results[fn] ?? { data: null, error: null };
   };
   return { rpc, calls };
@@ -66,6 +71,7 @@ const baseArgs = {
   lng: -1.5849,
   category: "Food & Drink" as corePlaces.CategoryId,
   radiusMetres: 1500,
+  clientKey: "203.0.113.9",
 };
 
 describe("ingestCategoryCore — freshness skip", () => {
@@ -221,5 +227,105 @@ describe("ingestCategoryCore — google_places photos", () => {
     await expect(
       ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs),
     ).rejects.toThrow(/Photo upsert failed/);
+  });
+});
+
+describe("ingestCategoryCore — cost control (budget + per-client limit + snapping)", () => {
+  it("snaps the query point before the freshness check AND the fetch", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+    });
+    let center: { lat: number; lng: number } | null = null;
+    const searchNearby: SearchNearbyFn = async (params) => {
+      center = { lat: params.lat, lng: params.lng };
+      return [];
+    };
+
+    await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    // 54.5253 -> 54.525, -1.5849 -> -1.585 on the 0.005° grid; both the freshness RPC and
+    // the searchNearby centre must use the SNAPPED point (so they share one cache key).
+    const fresh = calls.find((c) => c.fn === "count_fresh_places_venues");
+    expect(fresh!.args.lat).toBeCloseTo(54.525, 6);
+    expect(fresh!.args.lng).toBeCloseTo(-1.585, 6);
+    expect(center!.lat).toBeCloseTo(54.525, 6);
+    expect(center!.lng).toBeCloseTo(-1.585, 6);
+  });
+
+  it("forwards the policy caps + client key to claim_places_fetch_quota", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+    });
+    const searchNearby: SearchNearbyFn = async () => [];
+
+    await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    const quota = calls.find((c) => c.fn === "claim_places_fetch_quota");
+    expect(quota).toBeDefined();
+    expect(quota!.args.p_client_key).toBe("203.0.113.9");
+    expect(quota!.args.p_daily_cap).toBe(corePlaces.PLACES_DAILY_FETCH_BUDGET);
+    expect(quota!.args.p_client_cap).toBe(corePlaces.PLACES_CLIENT_FETCH_LIMIT);
+    expect(quota!.args.p_client_window_secs).toBe(corePlaces.PLACES_CLIENT_WINDOW_SECS);
+  });
+
+  it("skips the paid fetch when the global daily budget is exhausted", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      claim_places_fetch_quota: { data: [{ allowed: false, reason: "daily-budget" }], error: null },
+    });
+    let fetched = false;
+    const searchNearby: SearchNearbyFn = async () => {
+      fetched = true;
+      return [];
+    };
+
+    const out = await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    expect(fetched).toBe(false); // the wallet backstop: no Places call
+    expect(out.skipped).toBe(true);
+    expect(out.reason).toBe("budget-exhausted");
+    expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
+  });
+
+  it("skips the paid fetch when the per-client window limit is hit (rate-limited)", async () => {
+    const { rpc } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      claim_places_fetch_quota: { data: [{ allowed: false, reason: "client-rate" }], error: null },
+    });
+    let fetched = false;
+    const searchNearby: SearchNearbyFn = async () => {
+      fetched = true;
+      return [];
+    };
+
+    const out = await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    expect(fetched).toBe(false);
+    expect(out.skipped).toBe(true);
+    expect(out.reason).toBe("rate-limited");
+  });
+
+  it("does NOT consume quota when fresh coverage already exists (cheap path)", async () => {
+    const { rpc, calls } = fakeRpc({
+      count_fresh_places_venues: { data: 5, error: null },
+    });
+    const searchNearby: SearchNearbyFn = async () => [];
+
+    const out = await ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs);
+
+    expect(out.reason).toBe("fresh-coverage");
+    // A freshness HIT must never touch the budget — only imminent paid calls claim quota.
+    expect(calls.some((c) => c.fn === "claim_places_fetch_quota")).toBe(false);
+  });
+
+  it("throws when the quota rpc errors (procedure maps to a 500)", async () => {
+    const { rpc } = fakeRpc({
+      count_fresh_places_venues: { data: 0, error: null },
+      claim_places_fetch_quota: { data: null, error: { message: "quota boom" } },
+    });
+    const searchNearby: SearchNearbyFn = async () => [];
+    await expect(
+      ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs),
+    ).rejects.toThrow(/Fetch-quota check failed/);
   });
 });

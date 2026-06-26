@@ -77,13 +77,24 @@ export interface IngestArgs {
   lng: number;
   category: corePlaces.CategoryId;
   radiusMetres: number;
+  /**
+   * Opaque per-client key (the forwarded browser IP) for the per-client fetch limit, or
+   * null when none was forwarded (e.g. local dev) — then only the global budget applies.
+   * NOT a procedure input: it comes from the request context, so a caller can't spoof it.
+   */
+  clientKey: string | null;
 }
 
 /** The tally returned by an ingest run. Internal — NOT exported, so its name never
  *  leaks into the AppRouter inferred type that client packages consume (TS2883). */
 type IngestResult = {
   skipped: boolean;
-  reason: "fresh-coverage" | "no-matching-places" | "ingested";
+  reason:
+    | "fresh-coverage"
+    | "no-matching-places"
+    | "ingested"
+    | "budget-exhausted"
+    | "rate-limited";
   freshCount: number;
   fetched: number;
   inserted: number;
@@ -109,10 +120,16 @@ export async function ingestCategoryCore(
   apiKey: string,
   args: IngestArgs,
 ): Promise<IngestResult> {
+  // (0) SPATIAL cost bound: snap the query point to the ingest grid, used for BOTH the
+  // freshness check and the searchNearby centre. Two requests in the same cell collapse to
+  // one point, so jittered/enumerated coordinates hit the freshness cache instead of paying
+  // for a fetch. The snapped centre stays well within the search radius (see core comment).
+  const snapped = corePlaces.snapToIngestGrid(args.lat, args.lng);
+
   // (1) Freshness check — skip the paid call if we already have fresh coverage.
   const { data: freshData, error: freshErr } = await rpc("count_fresh_places_venues", {
-    lat: args.lat,
-    lng: args.lng,
+    lat: snapped.lat,
+    lng: snapped.lng,
     radius_m: args.radiusMetres,
     cat: args.category,
   });
@@ -131,11 +148,38 @@ export async function ingestCategoryCore(
     };
   }
 
+  // (1b) VOLUME cost bound: claim one unit of the global daily budget AND the per-client
+  // window BEFORE paying for the fetch. This runs only on a freshness MISS, so one claim ==
+  // one intended paid call. A denial is non-fatal: we return a skipped result and the caller
+  // reads whatever supply already exists (browsing is never blocked on supply).
+  const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
+    p_client_key: args.clientKey,
+    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
+    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+  });
+  if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
+  // The function returns a single-row table -> PostgREST yields an array of one row.
+  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
+    | { allowed?: boolean; reason?: string }
+    | undefined;
+  if (!quota?.allowed) {
+    return {
+      skipped: true,
+      reason: quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted",
+      freshCount: 0,
+      fetched: 0,
+      inserted: 0,
+      claimedSkipped: 0,
+      photosUpserted: 0,
+    };
+  }
+
   // (2) Fetch from Places (New).
   const results = await searchNearby(
     {
-      lat: args.lat,
-      lng: args.lng,
+      lat: snapped.lat,
+      lng: snapped.lng,
       includedTypes: corePlaces.categoryToPlacesTypes(args.category),
       radiusMetres: args.radiusMetres,
       maxResultCount: MAX_RESULTS,
@@ -242,6 +286,8 @@ export const placesRouter = router({
           lng: input.lng,
           category: input.category as corePlaces.CategoryId,
           radiusMetres: input.radiusMetres,
+          // From context (the web route forwards the browser IP), never client input.
+          clientKey: ctx.clientKey,
         });
       } catch (e) {
         throw new TRPCError({

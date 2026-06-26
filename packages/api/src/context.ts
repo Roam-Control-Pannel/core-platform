@@ -60,6 +60,12 @@ export interface Context {
   accessToken: string | null;
   /** True iff a valid `x-internal-call` secret was presented. */
   isInternalCall: boolean;
+  /**
+   * Opaque per-client key (the browser IP the web route forwards as `x-roam-client-ip`),
+   * or null. Trusted ONLY on an internal call — a direct caller can't set it to spoof
+   * another client's rate-limit bucket. Used by ingestCategory's per-client fetch limit.
+   */
+  clientKey: string | null;
   /** Server env, carried so procedures can lazily build a service client. */
   env: ApiEnv;
 }
@@ -103,11 +109,17 @@ export function makeContextFactory(env: ApiEnv) {
       env.internalCallSecret,
     );
 
+    // Only honour the forwarded client key on a trusted internal call — otherwise a direct
+    // caller could set x-roam-client-ip to poison or evade another client's limit bucket.
+    const clientKey = isInternalCall
+      ? headers.get("x-roam-client-ip")?.trim() || null
+      : null;
+
     const db = accessToken
       ? createUserClient(env.supabase, accessToken)
       : createUserClient(env.supabase);
 
-    return { db, accessToken, isInternalCall, env };
+    return { db, accessToken, isInternalCall, clientKey, env };
   };
 }
 

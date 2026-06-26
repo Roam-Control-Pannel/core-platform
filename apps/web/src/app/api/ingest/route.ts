@@ -56,7 +56,43 @@ function parseIngestInput(body: unknown): { ok: true; value: IngestInput } | { o
   return { ok: true, value: { category: b.category, lat: b.lat, lng: b.lng } };
 }
 
+/**
+ * The browser's IP, as seen at the edge. Vercel/Railway set x-forwarded-for (client first,
+ * proxies appended); x-real-ip is the single-value fallback. Used only as the per-client
+ * rate-limit key — null when absent (then only the global budget applies).
+ */
+function clientIpFrom(request: Request): string | null {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || null;
+}
+
+/**
+ * Cheap same-origin guard: reject a cross-origin browser POST. This isn't the real cost
+ * control (a scripted client sets no Origin / a fake one — that's what the budget + rate
+ * limit are for), but it filters casual cross-site abuse for free. Only rejects when an
+ * Origin is present AND its host disagrees with the request host; absent Origin is allowed.
+ */
+function isCrossOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  const host = request.headers.get("host");
+  if (!host) return false;
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true; // an unparseable Origin is not a same-origin request
+  }
+}
+
 export async function POST(request: Request): Promise<Response> {
+  if (isCrossOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin requests are not allowed." }, { status: 403 });
+  }
+
   // Parse + shape-validate the body. A malformed body is the caller's error (400).
   let body: unknown;
   try {
@@ -77,12 +113,17 @@ export async function POST(request: Request): Promise<Response> {
   // validates the category against the canonical enum, runs the cost-controlled ingest,
   // and returns the tally (skipped | no-matching-places | ingested).
   try {
-    const trpc = makeInternalTrpcClient();
+    const trpc = makeInternalTrpcClient(clientIpFrom(request));
     const result = await trpc.places.ingestCategory.mutate({
       category: parsed.value.category,
       lat: parsed.value.lat,
       lng: parsed.value.lng,
     });
+    // Surface a gated supply request server-side so abuse / budget exhaustion is visible
+    // (no silent caps). The response itself is unchanged — the caller reads existing supply.
+    if (result.reason === "budget-exhausted" || result.reason === "rate-limited") {
+      console.warn(`[api/ingest] supply gated (${result.reason}) for ip=${clientIpFrom(request) ?? "unknown"}`);
+    }
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
     // The API surfaced an error (bad category, upstream Places failure, or a missing
