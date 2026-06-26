@@ -107,6 +107,62 @@ const PHOTO_MAX_WIDTH_PX = 1200;
 const PHOTO_URL_TTL_MS = 50 * 60 * 1000;
 const photoUrlCache = new Map<string, { url: string; expires: number }>();
 
+/** The venue_photos columns the resolver needs (table newer than generated DB types). */
+type PhotoResolveRow = {
+  id: string;
+  source: "google_places" | "owner_upload";
+  places_photo_ref: string | null;
+  storage_path: string | null;
+};
+
+/**
+ * Resolve ONE photo row to a renderable url. Owner uploads → the keyless public Storage
+ * URL (free, never expires). google_places → the cached resolved photoUri, or a fresh
+ * (billable) Places Photo Media call cached just under its ~1h expiry. Shared by both the
+ * single (photoMediaUrl) and batch (photoMediaUrls) reads so the cache + cost discipline
+ * live in exactly one place. Throws TRPCError on a missing ref / resolve failure.
+ */
+async function resolvePhotoRowUrl(
+  row: PhotoResolveRow,
+  env: { supabase: { url: string }; places: { apiKey: string } },
+): Promise<string> {
+  if (row.source === "owner_upload") {
+    if (!row.storage_path) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no storage path." });
+    }
+    return buildOwnerPhotoPublicUrl(env.supabase.url, VENUE_MEDIA_BUCKET, row.storage_path);
+  }
+
+  if (!row.places_photo_ref) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no Places reference." });
+  }
+  const cached = photoUrlCache.get(row.id);
+  if (cached && cached.expires > Date.now()) return cached.url;
+
+  const reqUrl = buildPhotoMediaRequestUrl(row.places_photo_ref, env.places.apiKey, PHOTO_MAX_WIDTH_PX);
+  let res: Response;
+  try {
+    res = await fetch(reqUrl);
+  } catch (e) {
+    throw new TRPCError({
+      code: "BAD_GATEWAY",
+      message: `Places photo resolve failed: ${e instanceof Error ? e.message : "fetch error"}`,
+    });
+  }
+  if (!res.ok) {
+    throw new TRPCError({
+      code: "BAD_GATEWAY",
+      message: `Places photo resolve failed: ${res.status} ${res.statusText}`,
+    });
+  }
+  const json = (await res.json()) as { photoUri?: string };
+  if (!json.photoUri) {
+    throw new TRPCError({ code: "BAD_GATEWAY", message: "Places returned no photoUri." });
+  }
+  photoUrlCache.set(row.id, { url: json.photoUri, expires: Date.now() + PHOTO_URL_TTL_MS });
+  return json.photoUri;
+}
+
 /** A single venue_photos row as read for the gallery (the display read-model). */
 interface VenuePhotoReadRow {
   id: string;
@@ -478,13 +534,6 @@ export const venuesRouter = router({
   photoMediaUrl: publicProcedure
     .input(z.object({ photoId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      // venue_photos newer than generated types — loose widen, typed to the row shape.
-      type PhotoResolveRow = {
-        id: string;
-        source: "google_places" | "owner_upload";
-        places_photo_ref: string | null;
-        storage_path: string | null;
-      };
       type LoosePhotoSingle = {
         from: (table: string) => {
           select: (cols: string) => {
@@ -509,56 +558,54 @@ export const venuesRouter = router({
       if (error) throw new Error(`Failed to load photo: ${error.message}`);
       if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Photo not found." });
 
-      const row = data;
+      return { url: await resolvePhotoRowUrl(data, ctx.env) };
+    }),
 
-      if (row.source === "owner_upload") {
-        if (!row.storage_path) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no storage path." });
-        }
-        return {
-          url: buildOwnerPhotoPublicUrl(
-            ctx.env.supabase.url,
-            VENUE_MEDIA_BUCKET,
-            row.storage_path,
-          ),
+  /**
+   * Public: BATCH resolve many cover photos in one call. Explore resolves all of a page's
+   * visible covers at once and passes each url straight to its card — so the grid paints
+   * real images on first render (no per-card round-trip, no fallback-then-swap flash), and
+   * shared/cached google_places urls are reused. Resolution failures are dropped from the
+   * map (the card falls back to the illustrated default), never failing the whole batch.
+   * Capped per call (a page is ~15) to bound the fan-out of billable Places resolves.
+   */
+  photoMediaUrls: publicProcedure
+    .input(z.object({ photoIds: z.array(z.string().uuid()).min(1).max(60) }))
+    .query(async ({ ctx, input }) => {
+      const ids = Array.from(new Set(input.photoIds));
+      type LoosePhotoMulti = {
+        from: (table: string) => {
+          select: (cols: string) => {
+            in: (
+              col: string,
+              vals: string[],
+            ) => Promise<{
+              data: PhotoResolveRow[] | null;
+              error: { message: string } | null;
+            }>;
+          };
         };
-      }
+      };
+      const db = ctx.db as unknown as LoosePhotoMulti;
+      const { data, error } = await db
+        .from("venue_photos")
+        .select("id, source, places_photo_ref, storage_path")
+        .in("id", ids);
+      if (error) throw new Error(`Failed to load photos: ${error.message}`);
 
-      // google_places
-      if (!row.places_photo_ref) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no Places reference." });
-      }
-      // Serve a still-fresh resolved URL from the process cache before re-billing Google.
-      const cached = photoUrlCache.get(input.photoId);
-      if (cached && cached.expires > Date.now()) {
-        return { url: cached.url };
-      }
-      const reqUrl = buildPhotoMediaRequestUrl(
-        row.places_photo_ref,
-        ctx.env.places.apiKey,
-        PHOTO_MAX_WIDTH_PX,
+      const rows = data ?? [];
+      const resolved = await Promise.all(
+        rows.map(async (row) => {
+          try {
+            return [row.id, await resolvePhotoRowUrl(row, ctx.env)] as const;
+          } catch {
+            return null; // drop — the card keeps its default cover
+          }
+        }),
       );
-      let res: Response;
-      try {
-        res = await fetch(reqUrl);
-      } catch (e) {
-        throw new TRPCError({
-          code: "BAD_GATEWAY",
-          message: `Places photo resolve failed: ${e instanceof Error ? e.message : "fetch error"}`,
-        });
-      }
-      if (!res.ok) {
-        throw new TRPCError({
-          code: "BAD_GATEWAY",
-          message: `Places photo resolve failed: ${res.status} ${res.statusText}`,
-        });
-      }
-      const json = (await res.json()) as { photoUri?: string };
-      if (!json.photoUri) {
-        throw new TRPCError({ code: "BAD_GATEWAY", message: "Places returned no photoUri." });
-      }
-      photoUrlCache.set(input.photoId, { url: json.photoUri, expires: Date.now() + PHOTO_URL_TTL_MS });
-      return { url: json.photoUri };
+      const urls: Record<string, string> = {};
+      for (const entry of resolved) if (entry) urls[entry[0]] = entry[1];
+      return { urls };
     }),
 
   /**

@@ -78,6 +78,12 @@ export interface VenueCardData {
 interface VenueCardProps {
   venue: VenueCardData;
   initialFollowing?: boolean;
+  /**
+   * A cover url already resolved by the host (Explore batch-resolves a whole page in one
+   * call). When present the card renders it immediately — no per-card round-trip, no
+   * fallback-then-swap flash. Absent → the card lazily resolves coverPhotoId itself.
+   */
+  coverUrl?: string | undefined;
 }
 
 /* ── Hoisted static styles (allocated once, not per card render) ────────────────── */
@@ -169,15 +175,22 @@ function isolateClick(e: { preventDefault: () => void; stopPropagation: () => vo
  */
 function CardCover({
   coverPhotoId,
+  resolvedUrl,
   fallback,
 }: {
   coverPhotoId: string | null | undefined;
+  resolvedUrl: string | undefined;
   fallback: ReactNode;
 }) {
   const trpc = useTrpc();
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(resolvedUrl ?? null);
 
   useEffect(() => {
+    // Host already resolved it (Explore's batch) — render immediately, no per-card call.
+    if (resolvedUrl) {
+      setUrl(resolvedUrl);
+      return;
+    }
     if (!coverPhotoId) return;
     let cancelled = false;
     const resolve = trpc.venues.photoMediaUrl as unknown as {
@@ -194,7 +207,7 @@ function CardCover({
     return () => {
       cancelled = true;
     };
-  }, [trpc, coverPhotoId]);
+  }, [trpc, coverPhotoId, resolvedUrl]);
 
   if (!url) return <>{fallback}</>;
   return (
@@ -206,13 +219,17 @@ function CardCover({
   );
 }
 
-export const VenueCard = memo(function VenueCard({ venue, initialFollowing = false }: VenueCardProps) {
+export const VenueCard = memo(function VenueCard({
+  venue,
+  initialFollowing = false,
+  coverUrl,
+}: VenueCardProps) {
   return (
     <Link href={venuePath(venue.id)} style={linkStyle}>
       {venue.claimed ? (
-        <ClaimedCard venue={venue} initialFollowing={initialFollowing} />
+        <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} />
       ) : (
-        <UnclaimedCard venue={venue} />
+        <UnclaimedCard venue={venue} coverUrl={coverUrl} />
       )}
     </Link>
   );
@@ -221,13 +238,15 @@ export const VenueCard = memo(function VenueCard({ venue, initialFollowing = fal
 function ClaimedCard({
   venue,
   initialFollowing,
+  coverUrl,
 }: {
   venue: VenueCardData;
   initialFollowing: boolean;
+  coverUrl: string | undefined;
 }) {
   return (
     <Card>
-      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<FallbackCover />} />
+      <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
       <div style={claimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
@@ -254,11 +273,11 @@ function ClaimedCard({
   );
 }
 
-function UnclaimedCard({ venue }: { venue: VenueCardData }) {
+function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: string | undefined }) {
   return (
     <Card>
       {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
-      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<FallbackCover />} />
+      <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
       <div style={unclaimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
