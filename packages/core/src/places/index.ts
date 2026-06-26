@@ -364,8 +364,8 @@ export interface VenueRowFromPlace {
   category: CategoryId;
   categories: string[];
   rating: number | null;
-  /** Number of ratings behind `rating`; null when Places gives none. */
-  rating_count: number | null;
+  /** Number of ratings behind `rating`; 0 when Places gives none (column is NOT NULL). */
+  rating_count: number;
   /** Normalized price level ("PRICE_LEVEL_*"), or null when unspecified/absent. */
   price_level: string | null;
   /** Places' clean type label for the card subtitle, or null. */
@@ -396,7 +396,9 @@ export function normalizePriceLevel(raw: string | undefined): string | null {
  *  and the enrichment backfill so the mapping lives in exactly one place. */
 export interface PlaceCardFields {
   rating: number | null;
-  rating_count: number | null;
+  /** NOT nullable: venues.rating_count is `integer not null default 0` (0001); 0 = no
+   *  ratings, and the card only shows the count when > 0. */
+  rating_count: number;
   price_level: string | null;
   primary_type_label: string | null;
   business_status: string | null;
@@ -406,7 +408,9 @@ export interface PlaceCardFields {
 export function placeCardFields(place: PlaceResult): PlaceCardFields {
   return {
     rating: typeof place.rating === "number" ? place.rating : null,
-    rating_count: typeof place.userRatingCount === "number" ? place.userRatingCount : null,
+    // 0 (not null) when Places gives no count — matches venues.rating_count's NOT NULL
+    // default-0 contract, so both the live upsert and the backfill update stay valid.
+    rating_count: typeof place.userRatingCount === "number" ? place.userRatingCount : 0,
     price_level: normalizePriceLevel(place.priceLevel),
     primary_type_label: place.primaryTypeDisplayName?.text?.trim() || null,
     business_status: place.businessStatus?.trim() || null,
