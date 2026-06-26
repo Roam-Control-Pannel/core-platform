@@ -96,14 +96,16 @@ async function main(): Promise<void> {
   const rpc = db.rpc.bind(db) as unknown as LooseRpc;
 
   // venues' new card columns (0026) aren't in the generated DB types yet — update them
-  // through a narrow loose accessor, same idiom as LooseRpc for the un-generated functions.
-  const looseUpdate = (db as unknown as {
+  // through a narrow loose view of the SAME client. NB: keep this as a cast of `db` and call
+  // `looseDb.from(...)` — pulling `.from` off into a bare variable detaches it from its
+  // receiver and supabase-js crashes on `this.rest`.
+  const looseDb = db as unknown as {
     from: (t: string) => {
       update: (vals: Record<string, unknown>) => {
         eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
       };
     };
-  }).from;
+  };
 
   console.log(
     `\nVenue backfill (photos + card fields) — ${dryRun ? "DRY RUN (no writes)" : "LIVE"}` +
@@ -127,7 +129,8 @@ async function main(): Promise<void> {
         return typeof data === "number" ? data : Number(data ?? 0);
       },
       updateVenueFields: async (venueId, fields) => {
-        const { error } = await looseUpdate("venues")
+        const { error } = await looseDb
+          .from("venues")
           .update({
             rating: fields.rating,
             rating_count: fields.rating_count,
