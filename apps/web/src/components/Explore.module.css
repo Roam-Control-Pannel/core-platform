@@ -1,0 +1,94 @@
+/*
+ * Explore Browse reflow (Discovery design Flow A). Mobile-first stacked list; on web a
+ * 3-column layout — a left categories rail · the venue grid · a live-map column — per the
+ * parity contract. A CSS Module because the reflow is a media query and globals.css
+ * (generated from @roam/design) must not be hand-edited. Tokens only; no new colours.
+ */
+
+/* Phone: single column. The horizontal category pills + search live in the centre. */
+.browse {
+  display: flex;
+  align-items: flex-start;
+}
+
+.rail,
+.mapCol {
+  display: none;
+}
+
+.center {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobilePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+/* Web ≥ 900px: rail · list · map. The rail and map stick under the TopBar as the list
+   scrolls; the horizontal pills hide (the rail is the desktop category nav). */
+@media (min-width: 900px) {
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 0 0 196px;
+    padding-right: var(--space-4);
+    margin-right: var(--space-4);
+    border-right: 1px solid var(--line);
+    position: sticky;
+    top: 72px;
+  }
+
+  .railLabel {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .mapCol {
+    display: block;
+    flex: 0 0 280px;
+    margin-left: var(--space-4);
+    position: sticky;
+    top: 72px;
+    align-self: stretch;
+  }
+
+  .mapTile {
+    height: 460px;
+    border-radius: var(--r-lg);
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(120% 80% at 30% 20%, rgba(194, 18, 63, 0.06), transparent 60%),
+      var(--paper-2);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    gap: 6px;
+    color: var(--muted);
+  }
+
+  .mapGlyph {
+    font-size: 26px;
+    color: var(--crimson-700);
+    opacity: 0.55;
+  }
+
+  .mapLabel {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .mobilePills {
+    display: none;
+  }
+}
