@@ -47,3 +47,27 @@ export function directionsUrl(address: string, platform: MapsPlatform): string {
       return `https://www.google.com/maps/search/?api=1&query=${q}`;
   }
 }
+
+/**
+ * "Open this area in Maps" hand-off — centre the device's default maps app on a place
+ * (lat/lng) with a labelled pin. Used by Explore instead of an embedded map provider: the
+ * product decision is to defer to the user's own maps app rather than ship a map SDK + key.
+ */
+export function placeMapsUrl(
+  lat: number,
+  lng: number,
+  label: string,
+  platform: MapsPlatform,
+): string {
+  const ll = `${lat},${lng}`;
+  const q = encodeURIComponent(label);
+  switch (platform) {
+    case "ios":
+      return `https://maps.apple.com/?ll=${ll}&q=${q}`;
+    case "android":
+      return `geo:${ll}?q=${ll}(${q})`;
+    case "web":
+    default:
+      return `https://www.google.com/maps/search/?api=1&query=${ll}`;
+  }
+}
