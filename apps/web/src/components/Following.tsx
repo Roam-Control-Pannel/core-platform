@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Card, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { EnableNotifications } from "./EnableNotifications";
 import { FollowButton } from "./FollowButton";
 import { venuePath } from "../lib/routes";
 
@@ -123,18 +124,25 @@ export function Following() {
 
       {!session ? (
         <SignedOut />
-      ) : error ? (
-        <ErrorState message={error} />
-      ) : rows === null ? (
-        <ListSkeleton />
-      ) : rows.length === 0 ? (
-        <EmptyState />
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-3)" }}>
-          {rows.map((r) => (
-            <FollowRowCard key={r.venueId} row={r} />
-          ))}
-        </div>
+        <>
+          <div style={{ marginBottom: "var(--space-4)" }}>
+            <EnableNotifications />
+          </div>
+          {error ? (
+            <ErrorState message={error} />
+          ) : rows === null ? (
+            <ListSkeleton />
+          ) : rows.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div style={{ display: "grid", gap: "var(--space-3)" }}>
+              {rows.map((r) => (
+                <FollowRowCard key={r.venueId} row={r} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </main>
   );
