@@ -178,6 +178,55 @@ describe("backfillVenuePhotosCore", () => {
     expect(sink.batches.map((b) => b.length)).toEqual([2, 2, 1]);
   });
 
+  it("enriches venue card fields from the same Details call when the dep is provided", async () => {
+    const details = fakeDetails({
+      p1: { ...placeWithPhotos("p1", 1), rating: 4.6, userRatingCount: 1240, priceLevel: "PRICE_LEVEL_MODERATE" },
+      p2: { ...placeWithPhotos("p2", 0), rating: 3.9, userRatingCount: 12 },
+      p3: { ...placeWithPhotos("p3", 2), businessStatus: "CLOSED_TEMPORARILY" },
+    });
+    const sink = fakeUpsert();
+    const updates: { id: string; fields: corePlaces.PlaceCardFields }[] = [];
+
+    const res = await backfillVenuePhotosCore(venues, {
+      getDetails: details.getDetails,
+      upsertVenuePhotos: sink.upsertVenuePhotos,
+      updateVenueFields: async (id, fields) => {
+        updates.push({ id, fields });
+      },
+    });
+
+    expect(res.enriched).toBe(3);
+    expect(updates.map((u) => u.id)).toEqual(["v1", "v2", "v3"]);
+    expect(updates[0]!.fields.rating_count).toBe(1240);
+    expect(updates[0]!.fields.price_level).toBe("PRICE_LEVEL_MODERATE");
+    expect(updates[2]!.fields.business_status).toBe("CLOSED_TEMPORARILY");
+  });
+
+  it("does not enrich in a dry run", async () => {
+    const details = fakeDetails({
+      p1: placeWithPhotos("p1", 1),
+      p2: placeWithPhotos("p2", 1),
+      p3: placeWithPhotos("p3", 1),
+    });
+    const sink = fakeUpsert();
+    let updateCalls = 0;
+
+    const res = await backfillVenuePhotosCore(
+      venues,
+      {
+        getDetails: details.getDetails,
+        upsertVenuePhotos: sink.upsertVenuePhotos,
+        updateVenueFields: async () => {
+          updateCalls++;
+        },
+      },
+      { dryRun: true },
+    );
+
+    expect(res.enriched).toBe(0);
+    expect(updateCalls).toBe(0);
+  });
+
   it("skips a venue with an empty source_ref without fetching", async () => {
     const details = fakeDetails({ p2: placeWithPhotos("p2", 1) });
     const sink = fakeUpsert();

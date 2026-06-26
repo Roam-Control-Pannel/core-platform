@@ -322,6 +322,12 @@ export interface PlaceResult {
   types?: readonly string[] | undefined;
   formattedAddress?: string | undefined;
   rating?: number | undefined;
+  /** Total number of user ratings behind `rating` (credibility on the card). */
+  userRatingCount?: number | undefined;
+  /** Places' clean localized type label, e.g. "Coffee shop", "Italian restaurant". */
+  primaryTypeDisplayName?: { text?: string } | undefined;
+  /** Places (New) price level enum, e.g. "PRICE_LEVEL_MODERATE". UNSPECIFIED → no signal. */
+  priceLevel?: string | undefined;
   businessStatus?: string | undefined;
   /** Places (New) regular hours. We read only the human display strings. */
   regularOpeningHours?: { weekdayDescriptions?: string[] } | undefined;
@@ -358,12 +364,54 @@ export interface VenueRowFromPlace {
   category: CategoryId;
   categories: string[];
   rating: number | null;
+  /** Number of ratings behind `rating`; null when Places gives none. */
+  rating_count: number | null;
+  /** Normalized price level ("PRICE_LEVEL_*"), or null when unspecified/absent. */
+  price_level: string | null;
+  /** Places' clean type label for the card subtitle, or null. */
+  primary_type_label: string | null;
+  /**
+   * Places businessStatus, but only the values we keep: "OPERATIONAL" or
+   * "CLOSED_TEMPORARILY" (permanently-closed places are dropped above), else null. Lets
+   * the card badge a temporarily-closed venue instead of silently showing it as normal.
+   */
+  business_status: string | null;
   address: string | null;
   source_attribution: string;
   opening_times: OpeningTimes | null;
 }
 
 const ATTRIBUTION = "Information from public sources";
+
+/**
+ * Normalize a Places (New) priceLevel to our stored value: the enum string as-is, except
+ * the "unspecified" / empty / unknown cases collapse to null (no signal → no card chip).
+ */
+export function normalizePriceLevel(raw: string | undefined): string | null {
+  if (!raw || raw === "PRICE_LEVEL_UNSPECIFIED") return null;
+  return raw;
+}
+
+/** The card-enrichment facts pulled from a Places result, shared by the ingest row mapper
+ *  and the enrichment backfill so the mapping lives in exactly one place. */
+export interface PlaceCardFields {
+  rating: number | null;
+  rating_count: number | null;
+  price_level: string | null;
+  primary_type_label: string | null;
+  business_status: string | null;
+}
+
+/** Extract the card-enrichment facts from a Places result. Pure; null-safe throughout. */
+export function placeCardFields(place: PlaceResult): PlaceCardFields {
+  return {
+    rating: typeof place.rating === "number" ? place.rating : null,
+    rating_count: typeof place.userRatingCount === "number" ? place.userRatingCount : null,
+    price_level: normalizePriceLevel(place.priceLevel),
+    primary_type_label: place.primaryTypeDisplayName?.text?.trim() || null,
+    business_status: place.businessStatus?.trim() || null,
+  };
+}
 
 /**
  * Map a Places result + the originating group pill to a venue insert row.
@@ -386,6 +434,11 @@ export function placeToVenueRow(
     return null;
   }
 
+  // Drop permanently-closed places at the source: a dead venue is worse than no venue on a
+  // discovery grid. (Temporarily-closed venues are kept — they reopen; the card can badge
+  // them.) businessStatus rides the field mask we already request.
+  if (place.businessStatus === "CLOSED_PERMANENTLY") return null;
+
   // Keep only the place's types that belong to the chosen group, preserving Places'
   // most-specific-first order. This is the sub-category set for this venue.
   const groupTypes = new Set(CATEGORY_PLACES_TYPES[category]);
@@ -399,7 +452,7 @@ export function placeToVenueRow(
     lng,
     category,
     categories: leaves,
-    rating: typeof place.rating === "number" ? place.rating : null,
+    ...placeCardFields(place),
     address: place.formattedAddress?.trim() || null,
     source_attribution: ATTRIBUTION,
     opening_times: placeOpeningTimes(place),

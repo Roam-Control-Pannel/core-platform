@@ -42,6 +42,13 @@ export interface BackfillPhotosDeps {
   getDetails: (placeId: string) => Promise<corePlaces.PlaceResult>;
   /** Persist a batch of mapped photo rows; returns the count inserted. */
   upsertVenuePhotos: (payload: BackfillPhotoEntry[]) => Promise<number>;
+  /**
+   * Optional: also refresh a venue's card fields (rating/count/price/type label/business
+   * status) from the same Details call. Absent → photos-only (the original behaviour).
+   */
+  updateVenueFields?:
+    | ((venueId: string, fields: corePlaces.PlaceCardFields) => Promise<void>)
+    | undefined;
   /** Optional progress sink. */
   log?: ((msg: string) => void) | undefined;
   /** Optional pacing delay between Place Details calls. */
@@ -72,6 +79,8 @@ export interface BackfillPhotosResult {
   venuesWithoutPhotos: number;
   /** Total photo rows upserted (0 in a dry run). */
   photosUpserted: number;
+  /** Venues whose card fields were refreshed (0 when no updateVenueFields dep / dry run). */
+  enriched: number;
 }
 
 /**
@@ -98,6 +107,7 @@ export async function backfillVenuePhotosCore(
   let venuesWithPhotos = 0;
   let venuesWithoutPhotos = 0;
   let photosUpserted = 0;
+  let enriched = 0;
   let pending: BackfillPhotoEntry[] = [];
 
   async function flush(): Promise<void> {
@@ -117,6 +127,11 @@ export async function backfillVenuePhotosCore(
     try {
       const place = await deps.getDetails(v.source_ref);
       fetched++;
+      // Refresh the card fields from the same Details call (rating/count/price/label/status).
+      if (deps.updateVenueFields && !dryRun) {
+        await deps.updateVenueFields(v.id, corePlaces.placeCardFields(place));
+        enriched++;
+      }
       const photos = corePlaces
         .placePhotos(place)
         .map((ph, idx) => ({ ...ph, position: idx }));
@@ -146,5 +161,6 @@ export async function backfillVenuePhotosCore(
     venuesWithPhotos,
     venuesWithoutPhotos,
     photosUpserted,
+    enriched,
   };
 }

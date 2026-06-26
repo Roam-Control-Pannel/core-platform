@@ -50,6 +50,10 @@ function toCardData(v: {
   claimed: boolean;
   category: string | null;
   rating: number | null;
+  ratingCount?: number | null | undefined;
+  priceLevel?: string | null | undefined;
+  primaryTypeLabel?: string | null | undefined;
+  businessStatus?: string | null | undefined;
   distanceM?: number | undefined;
   categories?: string[] | undefined;
   coverPhotoId?: string | null | undefined;
@@ -62,6 +66,10 @@ function toCardData(v: {
     claimed: v.claimed,
     category: v.category,
     rating: v.rating,
+    ratingCount: v.ratingCount,
+    priceLevel: v.priceLevel,
+    primaryTypeLabel: v.primaryTypeLabel,
+    businessStatus: v.businessStatus,
     distanceM: v.distanceM,
     categories: v.categories,
     coverPhotoId: v.coverPhotoId,

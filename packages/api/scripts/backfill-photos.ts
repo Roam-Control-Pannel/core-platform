@@ -1,10 +1,10 @@
 /**
- * One-time photo backfill runner (thin shell over backfill/photos.ts).
+ * One-time venue backfill runner (thin shell over backfill/photos.ts).
  *
- * Pulls Google Places photos for every `google_places`, UNCLAIMED venue that has a place id
- * (source_ref) but no photo rows yet — the venues whose category was ingested before photo
- * support existed, which the live freshness guard will never re-fetch. See backfill/photos.ts
- * for the why.
+ * For every `google_places`, UNCLAIMED venue with a place id (source_ref), pulls a single
+ * Place Details call and (a) refreshes the card fields added after ingest — rating, rating
+ * count, price level, primary type label, business status — and (b) upserts its photos. The
+ * live freshness guard would skip a normal re-ingest, so existing venues need this pass.
  *
  * RUN (from repo root, with the Core project's keys in .env — same .env the api dev server
  * uses; NEVER a DDS key):
@@ -18,8 +18,9 @@
  *   --limit=N        process at most N venues (cost guard / smoke test)
  *   --delay=MS       wait MS between Place Details calls (default 120)
  *
- * Each venue costs ONE Place Details call (field mask id,photos). The run is idempotent
- * (upsert_venue_photos is replace-all and skips claimed venues), so it is safe to re-run.
+ * Each venue costs ONE Place Details call. The run is idempotent (field update is a plain
+ * overwrite; upsert_venue_photos is replace-all and skips claimed venues), so it's safe to
+ * re-run. NOTE: requires migration 0026 (the new columns) to be applied first.
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
 import { getPlaceDetails } from "../src/places/client.js";
@@ -53,11 +54,14 @@ function parseFlags(argv: string[]): { dryRun: boolean; limit?: number; delayMs:
 }
 
 /**
- * The photoless target set: google_places + unclaimed (owner_id null) + has a source_ref +
- * no photo rows of any kind. Computed with two reads (RLS bypassed under the service role):
- * all candidates, minus the venue ids that already have any photo.
+ * The backfill target set: every UNCLAIMED google_places venue with a source_ref. We hit
+ * all of them (not just photoless ones) because the new card fields (rating count, price,
+ * type label, business status) were added after every venue was ingested, so all need the
+ * refresh; the photo upsert is replace-all and idempotent, so re-touching the few that
+ * already have photos is harmless. Claimed venues are excluded — their Places-derived
+ * facts are frozen (owner_id is null filter), same as everywhere else.
  */
-async function listPhotolessVenues(db: RoamClient): Promise<PhotolessVenue[]> {
+async function listBackfillVenues(db: RoamClient): Promise<PhotolessVenue[]> {
   const { data: candidates, error: cErr } = await db
     .from("venues")
     .select("id, name, source_ref")
@@ -66,22 +70,8 @@ async function listPhotolessVenues(db: RoamClient): Promise<PhotolessVenue[]> {
     .not("source_ref", "is", null);
   if (cErr) throw new Error(`Listing venues failed: ${cErr.message}`);
 
-  // venue_photos (0019) isn't in the generated DB types yet — read it through a narrow
-  // loose accessor, same idiom as LooseRpc for the un-generated functions.
-  const looseFrom = (db as unknown as {
-    from: (t: string) => {
-      select: (c: string) => Promise<{
-        data: { venue_id: string }[] | null;
-        error: { message: string } | null;
-      }>;
-    };
-  }).from;
-  const { data: withPhotos, error: pErr } = await looseFrom("venue_photos").select("venue_id");
-  if (pErr) throw new Error(`Listing existing photos failed: ${pErr.message}`);
-
-  const have = new Set((withPhotos ?? []).map((r) => r.venue_id));
   return (candidates ?? [])
-    .filter((v) => v.source_ref && !have.has(v.id as string))
+    .filter((v) => v.source_ref)
     .map((v) => ({
       id: v.id as string,
       source_ref: v.source_ref as string,
@@ -105,26 +95,48 @@ async function main(): Promise<void> {
   const db = createServiceClient({ url, serviceRoleKey });
   const rpc = db.rpc.bind(db) as unknown as LooseRpc;
 
+  // venues' new card columns (0026) aren't in the generated DB types yet — update them
+  // through a narrow loose accessor, same idiom as LooseRpc for the un-generated functions.
+  const looseUpdate = (db as unknown as {
+    from: (t: string) => {
+      update: (vals: Record<string, unknown>) => {
+        eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+  }).from;
+
   console.log(
-    `\nPhoto backfill — ${dryRun ? "DRY RUN (no writes)" : "LIVE"}` +
+    `\nVenue backfill (photos + card fields) — ${dryRun ? "DRY RUN (no writes)" : "LIVE"}` +
       `${limit !== undefined ? `, limit ${limit}` : ""}, delay ${delayMs}ms\n`,
   );
 
-  const photoless = await listPhotolessVenues(db);
-  console.log(`Found ${photoless.length} photoless google_places venue(s).\n`);
-  if (photoless.length === 0) {
+  const targets = await listBackfillVenues(db);
+  console.log(`Found ${targets.length} unclaimed google_places venue(s) to backfill.\n`);
+  if (targets.length === 0) {
     console.log("Nothing to backfill. Done.");
     return;
   }
 
   const result = await backfillVenuePhotosCore(
-    photoless,
+    targets,
     {
       getDetails: (placeId) => getPlaceDetails(placeId, apiKey),
       upsertVenuePhotos: async (payload: BackfillPhotoEntry[]) => {
         const { data, error } = await rpc("upsert_venue_photos", { payload });
         if (error) throw new Error(`upsert_venue_photos failed: ${error.message}`);
         return typeof data === "number" ? data : Number(data ?? 0);
+      },
+      updateVenueFields: async (venueId, fields) => {
+        const { error } = await looseUpdate("venues")
+          .update({
+            rating: fields.rating,
+            rating_count: fields.rating_count,
+            price_level: fields.price_level,
+            primary_type_label: fields.primary_type_label,
+            business_status: fields.business_status,
+          })
+          .eq("id", venueId);
+        if (error) throw new Error(`venue field update failed: ${error.message}`);
       },
       log: (msg) => console.log(msg),
       sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -136,6 +148,7 @@ async function main(): Promise<void> {
   console.log(`considered:          ${result.considered}`);
   console.log(`details fetched:     ${result.fetched}`);
   console.log(`fetch failures:      ${result.failed}`);
+  console.log(`card fields updated: ${result.enriched}${dryRun ? " (dry run — none written)" : ""}`);
   console.log(`venues w/ photos:    ${result.venuesWithPhotos}`);
   console.log(`venues w/o photos:   ${result.venuesWithoutPhotos} (keep default cover)`);
   console.log(`photo rows upserted: ${result.photosUpserted}${dryRun ? " (dry run — none written)" : ""}`);

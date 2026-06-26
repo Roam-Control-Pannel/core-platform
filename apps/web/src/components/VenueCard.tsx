@@ -50,12 +50,44 @@ function formatDistance(metres: number): string {
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
 }
 
+/** Compact rating count for the card: 1240 → "1.2k", 980 → "980". */
+function formatRatingCount(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return k < 10 ? `${k.toFixed(1)}k` : `${Math.round(k)}k`;
+}
+
+/**
+ * Google price-level enum → a £ run. Null/unspecified is filtered upstream (core
+ * normalizePriceLevel), so this only ever sees a meaningful level.
+ */
+const PRICE_LEVEL_LABELS: Record<string, string> = {
+  PRICE_LEVEL_FREE: "Free",
+  PRICE_LEVEL_INEXPENSIVE: "£",
+  PRICE_LEVEL_MODERATE: "££",
+  PRICE_LEVEL_EXPENSIVE: "£££",
+  PRICE_LEVEL_VERY_EXPENSIVE: "££££",
+};
+
+function priceLevelLabel(level: string | null | undefined): string | null {
+  return level ? (PRICE_LEVEL_LABELS[level] ?? null) : null;
+}
+
 export interface VenueCardData {
   id: string;
   name: string;
   claimed: boolean;
   category: string | null;
   rating: number | null;
+  /** Number of Google ratings behind `rating`, for the "(1,240)" credibility cue. */
+  ratingCount?: number | null | undefined;
+  /** Google price-level enum ("PRICE_LEVEL_*"), rendered as £..££££. Null → no chip. */
+  priceLevel?: string | null | undefined;
+  /** Google's clean type label ("Coffee shop"); preferred over the coarse `category`. */
+  primaryTypeLabel?: string | null | undefined;
+  /** Google businessStatus; "CLOSED_TEMPORARILY" badges the card. (Permanently-closed
+   *  venues are dropped at ingest and never reach here.) */
+  businessStatus?: string | null | undefined;
   /** Metres from the search origin, present only when sourced from venues.near. */
   distanceM?: number | undefined;
   /**
@@ -107,6 +139,26 @@ const metaRow: CSSProperties = {
 };
 
 const distanceRight: CSSProperties = { marginLeft: "auto" };
+
+// Rating + its count sit together ("4.6 ★ (1.2k)"); the count is a quiet secondary cue.
+const ratingCluster: CSSProperties = { display: "flex", alignItems: "center", gap: 4 };
+const ratingCountStyle: CSSProperties = { color: "var(--faint)", fontSize: 12 };
+const priceStyle: CSSProperties = { color: "var(--ink-2)", fontWeight: 600 };
+
+// Temporarily-closed badge — a quiet warning chip over the cover, top-left.
+const closedBadge: CSSProperties = {
+  position: "absolute",
+  top: "var(--space-2)",
+  left: "var(--space-2)",
+  padding: "2px 8px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 600,
+  color: "#fff",
+  background: "rgba(33,29,26,.72)",
+  backdropFilter: "blur(2px)",
+};
+const coverWrap: CSSProperties = { position: "relative" };
 
 const followWrap: CSSProperties = { marginTop: "var(--space-1)" };
 
@@ -163,6 +215,57 @@ function FallbackCover() {
 function isolateClick(e: { preventDefault: () => void; stopPropagation: () => void }) {
   e.preventDefault();
   e.stopPropagation();
+}
+
+/** Prefer Google's clean type label; fall back to our coarse category group. */
+function typeLabel(venue: VenueCardData): string | null {
+  return venue.primaryTypeLabel?.trim() || venue.category || null;
+}
+
+/**
+ * The shared meta row — rating + count, type label, price level, distance. Used by both
+ * card states (a Places rating is real supply whether or not the venue is claimed, so we
+ * surface it on both). Renders nothing when the venue has none of these.
+ */
+function CardMeta({ venue }: { venue: VenueCardData }) {
+  const price = priceLevelLabel(venue.priceLevel);
+  const label = typeLabel(venue);
+  const hasRating = venue.rating != null;
+  if (!hasRating && !label && price == null && venue.distanceM == null) return null;
+  return (
+    <div style={metaRow}>
+      {hasRating ? (
+        <span style={ratingCluster}>
+          <Rate value={venue.rating!.toFixed(1)} />
+          {venue.ratingCount != null && venue.ratingCount > 0 ? (
+            <span style={ratingCountStyle}>({formatRatingCount(venue.ratingCount)})</span>
+          ) : null}
+        </span>
+      ) : null}
+      {label ? <span>{label}</span> : null}
+      {price ? <span style={priceStyle}>{price}</span> : null}
+      {venue.distanceM != null ? (
+        <DistanceChip style={distanceRight}>{formatDistance(venue.distanceM)}</DistanceChip>
+      ) : null}
+    </div>
+  );
+}
+
+/** The cover plus an optional "Temporarily closed" badge overlay. */
+function CoverWithBadge({
+  venue,
+  coverUrl,
+}: {
+  venue: VenueCardData;
+  coverUrl: string | undefined;
+}) {
+  const closed = venue.businessStatus === "CLOSED_TEMPORARILY";
+  return (
+    <div style={coverWrap}>
+      <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
+      {closed ? <span style={closedBadge}>Temporarily closed</span> : null}
+    </div>
+  );
 }
 
 /**
@@ -246,18 +349,12 @@ function ClaimedCard({
 }) {
   return (
     <Card>
-      <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
+      <CoverWithBadge venue={venue} coverUrl={coverUrl} />
       <div style={claimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
-        <div style={metaRow}>
-          {venue.rating != null ? <Rate value={venue.rating.toFixed(1)} /> : null}
-          {venue.category ? <span>{venue.category}</span> : null}
-          {venue.distanceM != null ? (
-            <DistanceChip style={distanceRight}>{formatDistance(venue.distanceM)}</DistanceChip>
-          ) : null}
-        </div>
+        <CardMeta venue={venue} />
         {/* Follow control. Wrapped in a click-isolating div: the card is a <Link>, so
             without stopPropagation/preventDefault a follow tap would navigate to the
             detail page. This keeps FollowButton host-agnostic (no Link awareness). */}
@@ -277,19 +374,12 @@ function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: st
   return (
     <Card>
       {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
-      <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
+      <CoverWithBadge venue={venue} coverUrl={coverUrl} />
       <div style={unclaimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
-        {venue.category || venue.distanceM != null ? (
-          <div style={metaRow}>
-            {venue.category ? <span>{venue.category}</span> : null}
-            {venue.distanceM != null ? (
-              <DistanceChip style={distanceRight}>{formatDistance(venue.distanceM)}</DistanceChip>
-            ) : null}
-          </div>
-        ) : null}
+        <CardMeta venue={venue} />
         {/* The single unclaimed signal. */}
         <div style={claimRow}>
           <Pill variant="ghost-crim" size="sm">

@@ -189,6 +189,11 @@ interface VenuesNearRow {
   category: string | null;
   categories: string[];
   rating: number | null;
+  // 0026: richer card facts (rating count, price level enum, Places' clean type label).
+  rating_count: number | null;
+  price_level: string | null;
+  primary_type_label: string | null;
+  business_status: string | null;
   distance_m: number;
   // 0025: coordinates (for map pins) + the hero photo id (for the card cover image).
   lat_out: number;
@@ -212,6 +217,10 @@ interface VenuesInCategoryNearRow {
   category: string | null;
   categories: string[];
   rating: number | null;
+  rating_count: number | null;
+  price_level: string | null;
+  primary_type_label: string | null;
+  business_status: string | null;
   distance_m: number;
   lat_out: number;
   lng_out: number;
@@ -387,6 +396,10 @@ export const venuesRouter = router({
         category: v.category,
         categories: v.categories,
         rating: v.rating,
+        ratingCount: v.rating_count,
+        priceLevel: v.price_level,
+        primaryTypeLabel: v.primary_type_label,
+        businessStatus: v.business_status,
         distanceM: v.distance_m,
         lat: v.lat_out,
         lng: v.lng_out,
@@ -442,6 +455,10 @@ export const venuesRouter = router({
           category: v.category,
           categories: v.categories,
           rating: v.rating,
+          ratingCount: v.rating_count,
+          priceLevel: v.price_level,
+          primaryTypeLabel: v.primary_type_label,
+          businessStatus: v.business_status,
           distanceM: v.distance_m,
           lat: v.lat_out,
           lng: v.lng_out,
