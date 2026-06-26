@@ -22,6 +22,17 @@ import type { places } from "@roam/core";
 /** The Places (New) searchNearby endpoint. */
 const SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby";
 
+/** The Places (New) Place Details endpoint base — GET …/v1/places/{PLACE_ID}. */
+const PLACE_DETAILS_BASE = "https://places.googleapis.com/v1/places/";
+
+/**
+ * The Place Details field mask for the PHOTO BACKFILL — `id,photos` and nothing else.
+ * Details uses BARE field names (no `places.` prefix, unlike searchNearby). This is the
+ * cost lever: we ask only for the photo pointers a venue is missing, so a one-time
+ * backfill of photoless venues stays as cheap as Places allows.
+ */
+const DETAILS_PHOTOS_FIELD_MASK = "id,photos";
+
 /**
  * The field mask — the exact fields we read, and the cost lever. Each `places.*` entry
  * maps onto the PlaceResult shape in @roam/core/places. Adding a field here costs money
@@ -111,4 +122,43 @@ export async function searchNearby(
 
   const json = (await res.json()) as SearchNearbyResponse;
   return json.places ?? [];
+}
+
+/**
+ * Fetch a single place's photos via Place Details (New), by its stored Places id. Used by
+ * the one-time photo backfill (scripts/backfill-photos): venues whose category was ingested
+ * before photo support existed have a `source_ref` but no photo rows, and the freshness
+ * guard makes a normal re-ingest skip them — so we re-pull their photos directly here.
+ *
+ * Returns the raw PlaceResult (mapped to our rows by core's placePhotos in the caller).
+ * Throws on a transport/HTTP failure so the backfill can record and skip that one venue;
+ * a place that simply has no photos is NOT an error (its photos[] is absent/empty).
+ */
+export async function getPlaceDetails(
+  placeId: string,
+  apiKey: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<places.PlaceResult> {
+  const res = await fetchImpl(`${PLACE_DETAILS_BASE}${encodeURIComponent(placeId)}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": DETAILS_PHOTOS_FIELD_MASK,
+    },
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      detail = "(no response body)";
+    }
+    throw new Error(
+      `Places getPlaceDetails(${placeId}) failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
+    );
+  }
+
+  // Details returns the place object directly (not wrapped in a `places` array).
+  return (await res.json()) as places.PlaceResult;
 }

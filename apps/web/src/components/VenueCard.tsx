@@ -2,17 +2,18 @@
  * VenueCard — renders a venue from venues.list / venues.near. Two states, both
  * first-class, and a link into the full detail page (/venue/[id]).
  *
- *  - CLAIMED (owner_id set): name, ★rating (gold), category. A warm brand tile sits on
- *    top; real photography wires in later (the list endpoint doesn't return images yet,
- *    so we show a tasteful gradient, not a broken image).
+ *  - CLAIMED (owner_id set): name, ★rating (gold), category. The cover is the venue's hero
+ *    photo (owner cover, else Google Places); venues with no photo fall back to the shared
+ *    illustrated cover (see CardCover / FallbackCover), never a broken image.
  *  - UNCLAIMED: the global-launch median experience, designed to look INTENTIONAL, not
  *    broken or provisional. Earlier this card signalled "not real yet" three ways at once
  *    (dashed border + pink placeholder + claim pill); that read as a busy grid because at
  *    launch *every* seed venue is unclaimed, so the busy treatment was all you ever saw.
- *    Now it's a normal card border + a calm warm locality tile, and the single unclaimed
- *    signal is the quiet "Claim it free" pill. "From public sources" recedes to a faint
- *    footnote. No rating (there isn't one). The claim affordance itself lives on the
- *    detail page — the card is the navigational entry, keeping one clear claim CTA.
+ *    Now it's a normal card border + the same cover treatment (real photo when there is
+ *    one, else the illustrated fallback), and the single unclaimed signal is the quiet
+ *    "Claim it free" pill. "From public sources" recedes to a faint footnote. No rating
+ *    (there isn't one). The claim affordance itself lives on the detail page — the card is
+ *    the navigational entry, keeping one clear claim CTA.
  *
  * Distance: when the card is fed from venues.near it carries `distanceM`, and the
  * DistanceChip renders a real, RPC-computed distance (formatted by a local helper).
@@ -83,14 +84,6 @@ interface VenueCardProps {
 
 const linkStyle: CSSProperties = { textDecoration: "none", color: "inherit", display: "block" };
 
-const claimedTile: CSSProperties = {
-  height: 132,
-  background:
-    "radial-gradient(120% 90% at 20% 10%, #e7b48a 0%, transparent 55%)," +
-    "radial-gradient(120% 120% at 90% 90%, #7c3a2a 0%, transparent 60%)," +
-    "linear-gradient(150deg, #c96b43, #8f3f29)",
-};
-
 const claimedBody: CSSProperties = {
   padding: "var(--space-3)",
   display: "grid",
@@ -111,20 +104,24 @@ const distanceRight: CSSProperties = { marginLeft: "auto" };
 
 const followWrap: CSSProperties = { marginTop: "var(--space-1)" };
 
-// Calm warm locality tile. The earlier flat pink (var(--crimson-tint)) read as a
-// "provisional" warning; this is a soft neutral→whisper-of-crimson wash that reads as an
-// intentional placeholder. crimson-tint is a fills token, used here only as a faint
-// gradient endpoint — not the "crimson as background wash" the palette rule forbids.
-const unclaimedTile: CSSProperties = {
-  height: 132,
-  background: "linear-gradient(150deg, var(--paper-2), var(--crimson-tint))",
-  display: "grid",
-  placeItems: "center",
-};
-
-const unclaimedGlyph: CSSProperties = { fontSize: 24, color: "var(--faint)" };
-
 const coverImg: CSSProperties = { display: "block", width: "100%", height: 132, objectFit: "cover" };
+
+/**
+ * The default cover, shown when a venue has no Google Places photo and no owner-uploaded
+ * cover. A flat "market street" illustration (public/venue-fallback.svg) — warm and on-brand,
+ * so a venue with no real image still reads as an intentional card, not a broken/empty one.
+ * To use bespoke artwork, replace that file (keep the path) or point this at a raster.
+ */
+const VENUE_FALLBACK_SRC = "/venue-fallback.svg";
+
+const fallbackImg: CSSProperties = {
+  display: "block",
+  width: "100%",
+  height: 132,
+  objectFit: "cover",
+  // a soft warm base shows for the instant before the SVG paints (no flash of empty box)
+  background: "linear-gradient(150deg, var(--paper-2), var(--crimson-tint))",
+};
 
 const unclaimedBody: CSSProperties = {
   padding: "var(--space-3)",
@@ -142,6 +139,19 @@ const provenance: CSSProperties = {
   textTransform: "uppercase",
   color: "var(--faint)",
 };
+
+/**
+ * The default illustrated cover (no Places photo, no owner cover). Same 132px height as a
+ * real cover, so swapping it in causes no layout shift. Decorative → empty alt + aria-hidden.
+ */
+function FallbackCover() {
+  return (
+    // Local SVG asset, not an external/expiring URL, so next/image is fine to skip; it's
+    // also tiny and identical across every card, so the browser caches one request.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={VENUE_FALLBACK_SRC} alt="" aria-hidden loading="lazy" style={fallbackImg} />
+  );
+}
 
 /** Card-level click isolation for the follow control (the card itself is a <Link>). */
 function isolateClick(e: { preventDefault: () => void; stopPropagation: () => void }) {
@@ -217,7 +227,7 @@ function ClaimedCard({
 }) {
   return (
     <Card>
-      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<div aria-hidden style={claimedTile} />} />
+      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<FallbackCover />} />
       <div style={claimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
@@ -247,15 +257,8 @@ function ClaimedCard({
 function UnclaimedCard({ venue }: { venue: VenueCardData }) {
   return (
     <Card>
-      {/* cover photo when Places (or the owner) has one; else the calm warm locality tile */}
-      <CardCover
-        coverPhotoId={venue.coverPhotoId}
-        fallback={
-          <div aria-hidden style={unclaimedTile}>
-            <span style={unclaimedGlyph}>◍</span>
-          </div>
-        }
-      />
+      {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
+      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<FallbackCover />} />
       <div style={unclaimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}

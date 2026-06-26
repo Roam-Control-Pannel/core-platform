@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { searchNearby, type FetchImpl } from "./client.js";
+import { searchNearby, getPlaceDetails, type FetchImpl } from "./client.js";
 
 /** Build a fake fetch that records the call and returns a canned response. */
 function fakeFetch(
@@ -88,5 +88,45 @@ describe("searchNearby response parsing", () => {
       { ok: false, status: 429, statusText: "Too Many Requests" },
     );
     await expect(searchNearby(params, "test-key", impl)).rejects.toThrow(/429/);
+  });
+});
+
+describe("getPlaceDetails (photo backfill)", () => {
+  it("GETs /v1/places/{id} with the id,photos field mask and the api key", async () => {
+    const { impl, calls } = fakeFetch({ id: "ChIJ_abc", photos: [] });
+    await getPlaceDetails("ChIJ_abc", "test-key", impl);
+
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places/ChIJ_abc");
+    expect((calls[0]!.init.method ?? "GET")).toBe("GET");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe("test-key");
+    // Minimal mask — the cost lever: only id + photos.
+    expect(headers["X-Goog-FieldMask"]).toBe("id,photos");
+  });
+
+  it("url-encodes the place id in the path", async () => {
+    const { impl, calls } = fakeFetch({ id: "a/b id", photos: [] });
+    await getPlaceDetails("a/b id", "test-key", impl);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places/a%2Fb%20id");
+  });
+
+  it("returns the place object directly (not wrapped in a places array)", async () => {
+    const { impl } = fakeFetch({
+      id: "ChIJ_abc",
+      photos: [{ name: "places/ChIJ_abc/photos/x", widthPx: 4032, heightPx: 3024 }],
+    });
+    const place = await getPlaceDetails("ChIJ_abc", "test-key", impl);
+    expect(place.id).toBe("ChIJ_abc");
+    expect(place.photos?.length).toBe(1);
+    expect(place.photos?.[0]!.name).toBe("places/ChIJ_abc/photos/x");
+  });
+
+  it("throws on a non-ok HTTP response so the backfill can skip that one venue", async () => {
+    const { impl } = fakeFetch(
+      { error: { message: "not found" } },
+      { ok: false, status: 404, statusText: "Not Found" },
+    );
+    await expect(getPlaceDetails("missing", "test-key", impl)).rejects.toThrow(/404/);
   });
 });
