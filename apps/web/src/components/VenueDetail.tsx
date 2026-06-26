@@ -130,8 +130,13 @@ export function VenueDetail({ venueId }: { venueId: string }) {
   // We load the full myFollows set and check membership: one extra query on a detail
   // page is fine, and reuses the query the Following view will use. The grid path
   // (3b) will instead pass a precomputed followingSet so N cards don't each fetch.
+  // Gate on the user IDENTITY, not the session object: Supabase emits a fresh Session
+  // reference on every TOKEN_REFRESHED / focus event, so depending on `session` would
+  // refetch myFollows on benign token churn — the query storm Following.tsx documents and
+  // guards the same way. The user id is stable across refreshes.
+  const followUserId = session?.user?.id ?? null;
   useEffect(() => {
-    if (!session) {
+    if (!followUserId) {
       setFollowing(false);
       return;
     }
@@ -152,7 +157,7 @@ export function VenueDetail({ venueId }: { venueId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [trpc, session, venueId]);
+  }, [trpc, followUserId, venueId]);
 
   /**
    * Submit the claim request. Assumes a session exists (caller gates on it). On

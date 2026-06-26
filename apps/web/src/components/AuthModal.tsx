@@ -39,11 +39,15 @@ export function AuthModal({
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Remember what had focus (the trigger) so we can hand it back on close — otherwise
+    // focus falls to <body> and keyboard / screen-reader users lose their place.
+    const prevFocus = document.activeElement as HTMLElement | null;
     // Move focus into the dialog so keyboard + screen-reader users land inside it.
     cardRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      prevFocus?.focus?.();
     };
   }, [open, onClose]);
 

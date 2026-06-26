@@ -209,6 +209,23 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
       reordered[idx] = reordered[swapWith]!;
       reordered[swapWith] = tmp;
 
+      // Apply the swap to local state immediately so the arrows feel instant — the two
+      // moved photos trade `position` values (the render sorts owner photos by position),
+      // and reload() below reconciles with server truth once the write lands.
+      const a = owner[idx]!;
+      const b = owner[swapWith]!;
+      setRows((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.id === a.id
+                ? { ...r, position: b.position }
+                : r.id === b.id
+                  ? { ...r, position: a.position }
+                  : r,
+            )
+          : prev,
+      );
+
       setBusy(true);
       setError(null);
       try {
