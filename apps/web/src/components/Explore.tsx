@@ -34,6 +34,7 @@ import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
+import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
 
@@ -213,8 +214,45 @@ export function Explore() {
     return list;
   }, [venues, activeSub, query]);
 
+  // The category chips, rendered twice by the responsive layout: vertical in the desktop
+  // rail, horizontal in the mobile pill row. Same handlers + active state; only the chip
+  // shape differs (full-width left-aligned vs auto). vStyle is applied only when vertical.
+  const vStyle = { width: "100%", justifyContent: "flex-start" as const };
+  const renderCategories = (vertical: boolean) => (
+    <>
+      <button
+        onClick={() => loadAll()}
+        style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
+      >
+        <Pill variant={activeCategory === null ? "on" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
+          All
+        </Pill>
+      </button>
+      {CATEGORY_GROUPS.map((c) => (
+        <button
+          key={c}
+          onClick={() => loadCategory(c)}
+          style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
+        >
+          <Pill variant={activeCategory === c ? "on" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
+            {categoryLabel(c)}
+          </Pill>
+        </button>
+      ))}
+      {/* Marketplace seam — dormant (Stage 5), present in the IA so lighting it up needs no reshuffle. */}
+      <span title="Marketplace is coming soon" style={{ cursor: "default", ...(vertical ? { width: "100%" } : {}) }}>
+        <Pill
+          variant="neutral"
+          style={{ borderStyle: "dashed", color: "var(--faint)", ...(vertical ? vStyle : {}) }}
+        >
+          Market ◇
+        </Pill>
+      </span>
+    </>
+  );
+
   return (
-    <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+    <main style={{ maxWidth: 1280, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       {/* place header — a live switcher + the Browse/Feed segment. (Brand, primary nav and
           sign-in live in the global TopBar now.) */}
       <header
@@ -239,109 +277,104 @@ export function Explore() {
       {mode === "feed" ? (
         <FeedList placeName={place.name} />
       ) : (
-        <>
-          {/* search — filters the loaded set by name (client-side, place-scoped) */}
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search venues in ${place.name}…`}
-            aria-label="Search venues"
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "10px 16px",
-              marginBottom: "var(--space-3)",
-              background: "var(--paper-2)",
-              border: "1px solid var(--line)",
-              borderRadius: "var(--r-full)",
-              fontFamily: "var(--ui)",
-              fontSize: 13,
-              color: "var(--ink)",
-              outline: "none",
-            }}
-          />
+        <div className={styles.browse}>
+          {/* desktop categories rail (hidden on phones — there the pills sit inline) */}
+          <aside className={styles.rail}>
+            <span className={styles.railLabel}>Categories</span>
+            {renderCategories(true)}
+          </aside>
 
-          {/* top-level category pills — the nine canonical groups, friendly labels */}
-          <div
-            style={{
-              display: "flex",
-              gap: "var(--space-2)",
-              flexWrap: "wrap",
-              paddingBottom: "var(--space-3)",
-            }}
-          >
-            <button onClick={() => loadAll()} style={{ all: "unset", cursor: "pointer" }}>
-              <Pill variant={activeCategory === null ? "on" : "neutral"}>All</Pill>
-            </button>
-            {CATEGORY_GROUPS.map((c) => (
-              <button
-                key={c}
-                onClick={() => loadCategory(c)}
-                style={{ all: "unset", cursor: "pointer" }}
-              >
-                <Pill variant={activeCategory === c ? "on" : "neutral"}>{categoryLabel(c)}</Pill>
-              </button>
-            ))}
-            {/* Marketplace seam — dormant (Stage 5), present in the IA so lighting it up needs no reshuffle. */}
-            <span title="Marketplace is coming soon" style={{ cursor: "default" }}>
-              <Pill variant="neutral" style={{ borderStyle: "dashed", color: "var(--faint)" }}>
-                Market ◇
-              </Pill>
-            </span>
-          </div>
-
-          {/* sub-category sliding strip — leaf types in the loaded category view */}
-          {subCategories.length > 0 ? (
-            <div
+          {/* centre column: search · (mobile pills) · sub-categories · venue grid */}
+          <div className={styles.center}>
+            {/* search — filters the loaded set by name (client-side, place-scoped) */}
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search venues in ${place.name}…`}
+              aria-label="Search venues"
               style={{
-                display: "flex",
-                gap: "var(--space-2)",
-                overflowX: "auto",
-                paddingBottom: "var(--space-4)",
-                WebkitOverflowScrolling: "touch",
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 16px",
+                marginBottom: "var(--space-3)",
+                background: "var(--paper-2)",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--r-full)",
+                fontFamily: "var(--ui)",
+                fontSize: 13,
+                color: "var(--ink)",
+                outline: "none",
               }}
-            >
-              <button onClick={() => setActiveSub(null)} style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}>
-                <Pill variant={activeSub === null ? "on" : "neutral"} size="sm">
-                  All
-                </Pill>
-              </button>
-              {subCategories.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setActiveSub(t)}
-                  style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}
-                >
-                  <Pill variant={activeSub === t ? "on" : "neutral"} size="sm">
-                    {t.replace(/_/g, " ")}
+            />
+
+            {/* category pills — phones only; on web the rail above carries them */}
+            <div className={styles.mobilePills}>{renderCategories(false)}</div>
+
+            {/* sub-category sliding strip — leaf types in the loaded category view */}
+            {subCategories.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  overflowX: "auto",
+                  paddingBottom: "var(--space-4)",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                <button onClick={() => setActiveSub(null)} style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}>
+                  <Pill variant={activeSub === null ? "on" : "neutral"} size="sm">
+                    All
                   </Pill>
                 </button>
-              ))}
-            </div>
-          ) : (
-            <div style={{ paddingBottom: "var(--space-1)" }} />
-          )}
+                {subCategories.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setActiveSub(t)}
+                    style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}
+                  >
+                    <Pill variant={activeSub === t ? "on" : "neutral"} size="sm">
+                      {t.replace(/_/g, " ")}
+                    </Pill>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ paddingBottom: "var(--space-1)" }} />
+            )}
 
-          {error ? (
-            <ErrorState message={error} />
-          ) : venues === null ? (
-            <VenueGridSkeleton />
-          ) : shown.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: "var(--space-4)",
-              }}
-            >
-              {shown.map((v) => (
-                <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
-              ))}
+            {error ? (
+              <ErrorState message={error} />
+            ) : venues === null ? (
+              <VenueGridSkeleton />
+            ) : shown.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: "var(--space-4)",
+                }}
+              >
+                {shown.map((v) => (
+                  <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* desktop live-map column. Placeholder until a map provider is chosen (build-plan
+              open question #5); the column is reserved so adding the map needs no reflow. */}
+          <aside className={styles.mapCol} aria-hidden>
+            <div className={styles.mapTile}>
+              <span className={styles.mapGlyph}>◍</span>
+              <span className={styles.mapLabel}>Map view</span>
+              <span className={styles.mapLabel} style={{ color: "var(--faint)" }}>
+                coming soon
+              </span>
             </div>
-          )}
-        </>
+          </aside>
+        </div>
       )}
 
     </main>
