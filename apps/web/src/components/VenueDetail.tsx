@@ -476,6 +476,8 @@ function ClaimedDetail({
         />
       </div>
 
+      <ActionRow address={venue.address} />
+
       {isOwner ? <OwnerMediaManager venueId={venueId} /> : null}
 
       {isOwner ? (
@@ -511,7 +513,6 @@ function ClaimedDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <NavigateHere address={venue.address} />
     </>
   );
 }
@@ -565,7 +566,7 @@ function UnclaimedDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <NavigateHere address={venue.address} />
+      <ActionRow address={venue.address} />
     </>
   );
 }
@@ -602,28 +603,47 @@ function ClaimSection({
     );
   }
 
+  // The unclaimed "two doors" (Discovery design): owners claim; locals suggest an edit.
+  // Both feed the unclaimed→claimed enrichment loop. Claim is the page's single crimson CTA;
+  // "Suggest an edit" is a dormant seam (the community edit path isn't built yet).
   return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
-      <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-        Is this your venue?
-      </div>
-      <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-        Claim it free to add photos, opening times, your menu and links — and post offers
-        and events to people nearby. We&apos;ll verify your claim before it goes live.
-      </p>
-
-      {claimUi === "error" && claimError ? (
-        <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-3)" }} role="alert">
-          {claimError}
+    <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-6)" }}>
+      <Card flat style={{ padding: "var(--space-4)", background: "var(--crimson-tint)", borderColor: "var(--crimson-tint-2)" }}>
+        <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+          Is this your business?
         </div>
-      ) : null}
-
-      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
+          Claim it free to add photos, opening times, your menu and links, and post offers and
+          events to people nearby — about 90 seconds. We&apos;ll verify it before it goes live.
+        </p>
+        {claimUi === "error" && claimError ? (
+          <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-3)" }} role="alert">
+            {claimError}
+          </div>
+        ) : null}
         <Button variant="pri" onClick={onClaimPressed} disabled={claimUi === "submitting"}>
-          {claimUi === "submitting" ? "Submitting…" : claimUi === "error" ? "Try again" : "Claim it free"}
+          {claimUi === "submitting" ? "Submitting…" : claimUi === "error" ? "Try again" : "Claim this venue"}
         </Button>
-      </div>
-    </Card>
+      </Card>
+
+      <Card flat style={{ padding: "var(--space-4)" }}>
+        <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+          Know this place?
+        </div>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
+          Help fellow locals — suggest a photo, the opening hours, or a fix.
+        </p>
+        <Button
+          variant="neutral"
+          aria-disabled
+          title="Suggesting edits is coming soon"
+          onClick={(e) => e.preventDefault()}
+          style={{ opacity: 0.6, cursor: "default" }}
+        >
+          ＋ Suggest an edit
+        </Button>
+      </Card>
+    </div>
   );
 }
 
@@ -691,7 +711,7 @@ function PendingClaimDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <NavigateHere address={venue.address} />
+      <ActionRow address={venue.address} />
     </>
   );
 }
@@ -833,22 +853,37 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
 }
 
 /**
- * Navigate-here — a plain anchor to the device's maps app via the address. Address is
- * populated on every ingested venue; we query by address text (not lat/lng) so the maps
- * provider resolves the named place rather than dropping an unlabelled pin. Renders
- * nothing without an address. The schema's "navigable without an owner" mandate, made real.
+ * Action cluster (Discovery design): "＋ Add to Plan" + "Get Directions". Both work even on
+ * an unclaimed venue with zero owner content — the venue is never a dead end. Add to Plan is
+ * a dormant Stage-2 (Social) seam; Directions opens the device maps app by address text (not
+ * lat/lng) so the provider resolves the named place rather than dropping an unlabelled pin.
  */
-function NavigateHere({ address }: { address: string | null }) {
+function ActionRow({ address }: { address: string | null }) {
+  return (
+    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
+      <Button
+        variant="neutral"
+        size="sm"
+        aria-disabled
+        title="Plans are coming soon"
+        onClick={(e) => e.preventDefault()}
+        style={{ opacity: 0.6, cursor: "default" }}
+      >
+        ＋ Add to Plan
+      </Button>
+      <DirectionsButton address={address} />
+    </div>
+  );
+}
+
+function DirectionsButton({ address }: { address: string | null }) {
   if (!address) return null;
   const href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: "none", display: "inline-block", marginTop: "var(--space-4)" }}
-    >
-      <Pill variant="ghost-crim">↗ Directions</Pill>
+    <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+      <Button variant="neutral" size="sm">
+        Get Directions ↗
+      </Button>
     </a>
   );
 }
