@@ -237,6 +237,45 @@ export function Explore() {
   // The current page of cards (PAGE_SIZE at a time).
   const visible = useMemo(() => shown.slice(0, visibleCount), [shown, visibleCount]);
 
+  // Resolve the visible page's cover photos in ONE batch call, keyed by venue id, so each
+  // card paints the real image on first render instead of doing its own round-trip and
+  // flashing the default first. We only request photo ids we haven't asked for yet (tracked
+  // in a ref so growing the page / re-renders never re-fetch), and a failure just leaves the
+  // card on its default cover. The server reuses its cached google urls across these.
+  const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
+  const requestedCoverIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const wanted = visible.filter(
+      (v) => v.coverPhotoId && !requestedCoverIds.current.has(v.coverPhotoId),
+    );
+    if (wanted.length === 0) return;
+    const photoIds = Array.from(new Set(wanted.map((v) => v.coverPhotoId as string)));
+    photoIds.forEach((id) => requestedCoverIds.current.add(id));
+    let cancelled = false;
+    const resolve = trpc.venues.photoMediaUrls as unknown as {
+      query: (input: { photoIds: string[] }) => Promise<{ urls: Record<string, string> }>;
+    };
+    resolve
+      .query({ photoIds })
+      .then((r) => {
+        if (cancelled || !r?.urls) return;
+        setCoverUrls((prev) => {
+          const next = { ...prev };
+          for (const v of wanted) {
+            const u = v.coverPhotoId ? r.urls[v.coverPhotoId] : undefined;
+            if (u) next[v.id] = u;
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        /* leave these cards on the default cover */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, trpc]);
+
   // Map pins: the whole loaded set (not just the visible page), so the map gives the full
   // local overview while the grid pages. Empty until the API returns lat/lng (migration 0025).
   const mapVenues = useMemo<MapVenue[]>(
@@ -400,7 +439,12 @@ export function Explore() {
                   }}
                 >
                   {visible.map((v) => (
-                    <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
+                    <VenueCard
+                      key={v.id}
+                      venue={v}
+                      initialFollowing={followingSet.has(v.id)}
+                      coverUrl={coverUrls[v.id]}
+                    />
                   ))}
                 </div>
 
