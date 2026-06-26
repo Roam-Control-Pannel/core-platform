@@ -40,6 +40,9 @@ import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
 
+/** Venues shown per page in the grid; "Load more" reveals the next page of this many. */
+const PAGE_SIZE = 15;
+
 /** Map an inCategoryNear / near row to the card shape, carrying leaf categories + cover/coords. */
 function toCardData(v: {
   id: string;
@@ -84,6 +87,8 @@ export function Explore() {
   // Free-text filter over the loaded set (client-side, by name). Sign-in now lives in the
   // global TopBar, so Explore's header is just the place switcher + Browse/Feed segment.
   const [query, setQuery] = useState("");
+  // How many venues the grid currently reveals (paged in PAGE_SIZE steps via "Load more").
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Generation counter: every load (All or category) bumps this; a completing load only
   // commits if it is still the latest. Guards against races from rapid pill switching
@@ -149,7 +154,8 @@ export function Explore() {
             category: group,
             lat: place.lat,
             lng: place.lng,
-            pageSize: 10,
+            // Load a deep set; the grid pages through it client-side in PAGE_SIZE steps.
+            pageSize: 50,
             pageOffset: 0,
           });
           if (loadGen.current !== gen) return;
@@ -222,8 +228,17 @@ export function Explore() {
     return list;
   }, [venues, activeSub, query]);
 
-  // The shown venues that carry coordinates — the map's pins. Empty until the API returns
-  // lat/lng (migration 0025 + redeploy), in which case the map just shows the place centre.
+  // Reset to the first page whenever the underlying set changes (a new load, category,
+  // place, sub-filter, or search) so "Load more" always starts from page 1.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [venues, activeSub, query]);
+
+  // The current page of cards (PAGE_SIZE at a time).
+  const visible = useMemo(() => shown.slice(0, visibleCount), [shown, visibleCount]);
+
+  // Map pins: the whole loaded set (not just the visible page), so the map gives the full
+  // local overview while the grid pages. Empty until the API returns lat/lng (migration 0025).
   const mapVenues = useMemo<MapVenue[]>(
     () =>
       shown
@@ -376,17 +391,33 @@ export function Explore() {
             ) : shown.length === 0 ? (
               <EmptyState />
             ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: "var(--space-4)",
-                }}
-              >
-                {shown.map((v) => (
-                  <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
-                ))}
-              </div>
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                    gap: "var(--space-4)",
+                  }}
+                >
+                  {visible.map((v) => (
+                    <VenueCard key={v.id} venue={v} initialFollowing={followingSet.has(v.id)} />
+                  ))}
+                </div>
+
+                {/* Load more — reveals the next PAGE_SIZE of the loaded set. */}
+                {visibleCount < shown.length ? (
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-6)" }}>
+                    <button
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      style={{ all: "unset", cursor: "pointer" }}
+                    >
+                      <Pill variant="neutral">
+                        Load more · {shown.length - visibleCount} more
+                      </Pill>
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
 
