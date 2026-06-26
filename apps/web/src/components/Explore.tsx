@@ -35,11 +35,12 @@ import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
+import { VenueMap, type MapVenue } from "./VenueMap";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
 
-/** Map an inCategoryNear / near row to the card shape, carrying leaf categories. */
+/** Map an inCategoryNear / near row to the card shape, carrying leaf categories + cover/coords. */
 function toCardData(v: {
   id: string;
   name: string;
@@ -48,6 +49,9 @@ function toCardData(v: {
   rating: number | null;
   distanceM?: number | undefined;
   categories?: string[] | undefined;
+  coverPhotoId?: string | null | undefined;
+  lat?: number | undefined;
+  lng?: number | undefined;
 }): VenueCardData {
   return {
     id: v.id,
@@ -57,6 +61,9 @@ function toCardData(v: {
     rating: v.rating,
     distanceM: v.distanceM,
     categories: v.categories,
+    coverPhotoId: v.coverPhotoId,
+    lat: v.lat,
+    lng: v.lng,
   };
 }
 
@@ -215,6 +222,16 @@ export function Explore() {
     return list;
   }, [venues, activeSub, query]);
 
+  // The shown venues that carry coordinates — the map's pins. Empty until the API returns
+  // lat/lng (migration 0025 + redeploy), in which case the map just shows the place centre.
+  const mapVenues = useMemo<MapVenue[]>(
+    () =>
+      shown
+        .filter((v): v is typeof v & { lat: number; lng: number } => typeof v.lat === "number" && typeof v.lng === "number")
+        .map((v) => ({ id: v.id, name: v.name, lat: v.lat, lng: v.lng, claimed: v.claimed })),
+    [shown],
+  );
+
   // The category chips, rendered twice by the responsive layout: vertical in the desktop
   // rail, horizontal in the mobile pill row. Same handlers + active state; only the chip
   // shape differs (full-width left-aligned vs auto). vStyle is applied only when vertical.
@@ -311,10 +328,13 @@ export function Explore() {
             {/* category pills — phones only; on web the rail above carries them */}
             <div className={styles.mobilePills}>{renderCategories(false)}</div>
 
-            {/* phones only: open the area in the device's default maps app (the desktop
-                map column does the same — Roam defers to the user's maps app, no embed) */}
+            {/* phones only: a compact map of the shown venues + the hand-off to the device's
+                default maps app (the desktop map column carries the same on web) */}
             <div className={styles.mobileMap}>
-              <OpenInMaps place={place} variant="pill" />
+              <VenueMap venues={mapVenues} center={place} className={styles.mobileMapEmbed} />
+              <div style={{ marginTop: "var(--space-2)" }}>
+                <OpenInMaps place={place} variant="pill" />
+              </div>
             </div>
 
             {/* sub-category sliding strip — leaf types in the loaded category view */}
@@ -370,10 +390,13 @@ export function Explore() {
             )}
           </div>
 
-          {/* desktop map column — a hand-off to the device's default maps app (the product
-              decision: defer to the user's maps app rather than embed a provider/SDK). */}
+          {/* desktop map column — a live Leaflet/OSM map (no provider key) with a pin per
+              venue, plus the hand-off to the device's default maps app below it. */}
           <aside className={styles.mapCol}>
-            <OpenInMaps place={place} variant="tile" />
+            <VenueMap venues={mapVenues} center={place} className={styles.mapEmbed} />
+            <div style={{ marginTop: "var(--space-2)", textAlign: "center" }}>
+              <OpenInMaps place={place} variant="pill" />
+            </div>
           </aside>
         </div>
       )}

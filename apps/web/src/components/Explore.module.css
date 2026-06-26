@@ -28,9 +28,30 @@
   padding-bottom: var(--space-3);
 }
 
-/* Phones: the "open in maps" hand-off pill (the desktop map column is hidden there). */
+/* Phones: a compact map of the shown venues + the "open in maps" hand-off pill (the
+   desktop map column is hidden there). */
 .mobileMap {
   padding-bottom: var(--space-3);
+}
+
+/* Leaflet needs an explicit height. Contain its stacking so map controls never bleed over
+   the sticky TopBar. */
+.mobileMapEmbed {
+  height: 220px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
+}
+
+.mapEmbed {
+  height: 440px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
 }
 
 /* Web ≥ 900px: rail · list · map. The rail and map stick under the TopBar as the list
