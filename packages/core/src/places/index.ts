@@ -24,6 +24,8 @@
  * coordinate; the DB/upsert layer builds the PostGIS point (same split as venues_near).
  */
 
+import type { DayPeriods } from "../hours/index.js";
+
 /** The nine canonical groups — the top-level pill row. Order here is display order. */
 export const CATEGORIES = [
   "Food & Drink",
@@ -202,7 +204,14 @@ export interface PhotoAttribution {
  */
 export interface OpeningTimes {
   weekdayDescriptions: string[];
-  source: "google_places";
+  /** Owner-authored structured hours (Slice 8). Absent on Places-sourced venues,
+   *  which carry only the free-text weekdayDescriptions above. Present => "open now"
+   *  is computable via @roam/core/hours isOpenNow. */
+  periods?: DayPeriods[];
+  /** IANA timezone for the structured periods (owner-authored). Required for a
+   *  correct "open now" evaluation; absent on Places-sourced venues. */
+  timezone?: string;
+  source: "google_places" | "owner";
 }
 
 /**

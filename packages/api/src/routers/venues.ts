@@ -36,7 +36,8 @@ import {
   normaliseVenueDescription,
   normaliseVenueLinks,
 } from "../venue-details.js";
-import { buildOwnerOpeningTimes, type DayPeriods } from "../venue-hours.js";
+import { buildOwnerOpeningTimes } from "../venue-hours.js";
+import { type DayPeriods } from "@roam/core/hours";
 
 
 /**

@@ -15,4 +15,5 @@ export * as routes from "./routes/index.js";
 export * as auth from "./auth/index.js";
 export * as moderation from "./moderation/index.js";
 export * as places from "./places/index.js";
+export * as hours from "./hours/index.js";
 export * as photos from "./photos/index.js";

@@ -12,7 +12,8 @@
     "./auth": "./src/auth/index.ts",
     "./geo": "./src/geo/index.ts",
     "./photos": "./src/photos/index.ts",
-    "./moderation": "./src/moderation/index.ts"
+    "./moderation": "./src/moderation/index.ts",
+    "./hours": "./src/hours/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
