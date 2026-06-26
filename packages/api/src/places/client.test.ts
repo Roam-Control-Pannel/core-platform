@@ -92,7 +92,7 @@ describe("searchNearby response parsing", () => {
 });
 
 describe("getPlaceDetails (photo backfill)", () => {
-  it("GETs /v1/places/{id} with the id,photos field mask and the api key", async () => {
+  it("GETs /v1/places/{id} with the backfill field mask and the api key", async () => {
     const { impl, calls } = fakeFetch({ id: "ChIJ_abc", photos: [] });
     await getPlaceDetails("ChIJ_abc", "test-key", impl);
 
@@ -101,8 +101,16 @@ describe("getPlaceDetails (photo backfill)", () => {
     expect((calls[0]!.init.method ?? "GET")).toBe("GET");
     const headers = calls[0]!.init.headers as Record<string, string>;
     expect(headers["X-Goog-Api-Key"]).toBe("test-key");
-    // Minimal mask — the cost lever: only id + photos.
-    expect(headers["X-Goog-FieldMask"]).toBe("id,photos");
+    // Photos + the card-enrichment facts, all within the SKU tier searchNearby already pays.
+    const mask = headers["X-Goog-FieldMask"]!;
+    expect(mask).toContain("id");
+    expect(mask).toContain("photos");
+    expect(mask).toContain("userRatingCount");
+    expect(mask).toContain("priceLevel");
+    expect(mask).toContain("primaryTypeDisplayName");
+    expect(mask).toContain("businessStatus");
+    // Atmosphere-tier fields must NOT leak in (they'd bump billing).
+    expect(mask).not.toContain("editorialSummary");
   });
 
   it("url-encodes the place id in the path", async () => {

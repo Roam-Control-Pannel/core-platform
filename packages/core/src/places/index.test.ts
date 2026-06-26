@@ -133,6 +133,47 @@ describe("placeToVenueRow", () => {
     expect(row!.rating).toBeNull();
     expect(row!.categories).toEqual(["convenience_store", "store"]);
   });
+
+  it("maps the card-enrichment fields (count, price, type label, status)", () => {
+    const row = placeToVenueRow(
+      {
+        ...darlingtonSushi,
+        userRatingCount: 1240,
+        priceLevel: "PRICE_LEVEL_MODERATE",
+        primaryTypeDisplayName: { text: "  Sushi restaurant  " },
+      },
+      "Food & Drink",
+    );
+    expect(row!.rating_count).toBe(1240);
+    expect(row!.price_level).toBe("PRICE_LEVEL_MODERATE");
+    expect(row!.primary_type_label).toBe("Sushi restaurant"); // trimmed
+    expect(row!.business_status).toBe("OPERATIONAL");
+  });
+
+  it("nulls an unspecified/absent price level and missing count/label", () => {
+    const row = placeToVenueRow(
+      { ...darlingtonSushi, priceLevel: "PRICE_LEVEL_UNSPECIFIED" },
+      "Food & Drink",
+    );
+    expect(row!.price_level).toBeNull();
+    expect(row!.rating_count).toBeNull();
+    expect(row!.primary_type_label).toBeNull();
+  });
+
+  it("drops a permanently-closed place at the source (no dead venues on the grid)", () => {
+    expect(
+      placeToVenueRow({ ...darlingtonSushi, businessStatus: "CLOSED_PERMANENTLY" }, "Food & Drink"),
+    ).toBeNull();
+  });
+
+  it("keeps a temporarily-closed place (it reopens; the card can badge it)", () => {
+    const row = placeToVenueRow(
+      { ...darlingtonSushi, businessStatus: "CLOSED_TEMPORARILY" },
+      "Food & Drink",
+    );
+    expect(row).not.toBeNull();
+    expect(row!.business_status).toBe("CLOSED_TEMPORARILY");
+  });
 });
 
 /**

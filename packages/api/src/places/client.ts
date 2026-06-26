@@ -26,12 +26,21 @@ const SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"
 const PLACE_DETAILS_BASE = "https://places.googleapis.com/v1/places/";
 
 /**
- * The Place Details field mask for the PHOTO BACKFILL — `id,photos` and nothing else.
- * Details uses BARE field names (no `places.` prefix, unlike searchNearby). This is the
- * cost lever: we ask only for the photo pointers a venue is missing, so a one-time
- * backfill of photoless venues stays as cheap as Places allows.
+ * The Place Details field mask for the BACKFILL — photos plus the card-enrichment facts
+ * (rating, count, price, type label, business status) that older venues were ingested
+ * before we requested. Details uses BARE field names (no `places.` prefix, unlike
+ * searchNearby). These all share the Enterprise/Pro tiers we already pay on searchNearby,
+ * so one Details call per venue refreshes everything the card needs at no extra tier cost.
  */
-const DETAILS_PHOTOS_FIELD_MASK = "id,photos";
+const DETAILS_BACKFILL_FIELD_MASK = [
+  "id",
+  "photos",
+  "rating",
+  "userRatingCount",
+  "priceLevel",
+  "primaryTypeDisplayName",
+  "businessStatus",
+].join(",");
 
 /**
  * The field mask — the exact fields we read, and the cost lever. Each `places.*` entry
@@ -45,6 +54,12 @@ const FIELD_MASK = [
   "places.types",
   "places.formattedAddress",
   "places.rating",
+  // userRatingCount + priceLevel ride the SAME Enterprise SKU `rating` already pulls, so
+  // they add no per-call cost. primaryTypeDisplayName is a cheaper (Pro) field. None of
+  // these bump the billing tier — only Atmosphere fields (e.g. editorialSummary) would.
+  "places.userRatingCount",
+  "places.primaryTypeDisplayName",
+  "places.priceLevel",
   "places.businessStatus",
   "places.regularOpeningHours",
   // BILLING: places.photos is a billable Places (New) field class (same caveat as
@@ -143,7 +158,7 @@ export async function getPlaceDetails(
     method: "GET",
     headers: {
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": DETAILS_PHOTOS_FIELD_MASK,
+      "X-Goog-FieldMask": DETAILS_BACKFILL_FIELD_MASK,
     },
   });
 
