@@ -117,8 +117,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
           We&apos;ve sent a confirmation link to <strong>{email.trim()}</strong>. Open it to
-          confirm your account — you&apos;ll come straight back here to finish claiming this
-          venue.
+          confirm your account — you&apos;ll come straight back here, signed in.
         </p>
       </Card>
     );

@@ -33,6 +33,7 @@ import { Seg, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
+import { AuthModal } from "./AuthModal";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS } from "../lib/categories";
 
@@ -73,6 +74,9 @@ export function Explore() {
   // The selected leaf type within a category view, or null for "all sub-categories".
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Signed-out sign-in affordance: the AuthModal hosts AuthPanel over a scrim, so
+  // auth is reachable from the header without a form blocking the home page.
+  const [authOpen, setAuthOpen] = useState(false);
 
   // Generation counter: every load (All or category) bumps this; a completing load only
   // commits if it is still the latest. Guards against races from rapid pill switching
@@ -250,6 +254,21 @@ export function Explore() {
               Chats
             </Link>
           ) : null}
+          {!session ? (
+            <button
+              onClick={() => setAuthOpen(true)}
+              style={{
+                all: "unset",
+                cursor: "pointer",
+                fontFamily: "var(--ui)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink-2)",
+              }}
+            >
+              Sign in
+            </button>
+          ) : null}
           <Seg
             options={[
               { value: "browse", label: "Browse" },
@@ -341,6 +360,13 @@ export function Explore() {
           )}
         </>
       )}
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        emailRedirectTo={typeof window !== "undefined" ? window.location.origin + "/" : ""}
+        intro="Sign in to follow venues and manage notifications."
+      />
     </main>
   );
 }
