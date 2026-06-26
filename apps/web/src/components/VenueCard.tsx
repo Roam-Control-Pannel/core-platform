@@ -26,10 +26,13 @@
  * place header) and the props here are primitives over a stable venue ref, so a shallow
  * memo skips the whole grid's reconciliation on those.
  */
-import { memo, type CSSProperties } from "react";
+"use client";
+
+import { memo, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { Card, Pill, Rate, DistanceChip } from "@roam/design";
 import { FollowButton } from "./FollowButton";
+import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
 
 /**
@@ -60,6 +63,14 @@ export interface VenueCardData {
    * sub-category strip. The card itself does not render these.
    */
   categories?: string[] | undefined;
+  /**
+   * The venue's hero photo id (owner-cover-aware), when it has one. The card lazily
+   * resolves it to a cover image; null/absent → the tinted placeholder tile.
+   */
+  coverPhotoId?: string | null | undefined;
+  /** Venue coordinates (for the Explore map pins). Not rendered by the card itself. */
+  lat?: number | undefined;
+  lng?: number | undefined;
 }
 
 /** Whether the caller follows this venue, seeded from Explore's followingSet. */
@@ -113,6 +124,8 @@ const unclaimedTile: CSSProperties = {
 
 const unclaimedGlyph: CSSProperties = { fontSize: 24, color: "var(--faint)" };
 
+const coverImg: CSSProperties = { display: "block", width: "100%", height: 132, objectFit: "cover" };
+
 const unclaimedBody: CSSProperties = {
   padding: "var(--space-3)",
   display: "grid",
@@ -136,6 +149,53 @@ function isolateClick(e: { preventDefault: () => void; stopPropagation: () => vo
   e.stopPropagation();
 }
 
+/**
+ * The card's image slot: the venue's cover photo when it has one, else the tinted tile.
+ * Resolves the cover id to a media url lazily via venues.photoMediaUrl (the API caches the
+ * resolution, so repeated grid loads don't re-bill Google). Until it resolves — or if the
+ * venue has no photo, or resolution fails — the `fallback` tile shows (same 132px height,
+ * so no layout shift). Owner-uploaded covers come through the SAME id (the API picks the
+ * owner cover over the Places photo), so an owner's chosen image just appears here.
+ */
+function CardCover({
+  coverPhotoId,
+  fallback,
+}: {
+  coverPhotoId: string | null | undefined;
+  fallback: ReactNode;
+}) {
+  const trpc = useTrpc();
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!coverPhotoId) return;
+    let cancelled = false;
+    const resolve = trpc.venues.photoMediaUrl as unknown as {
+      query: (input: { photoId: string }) => Promise<{ url: string }>;
+    };
+    resolve
+      .query({ photoId: coverPhotoId })
+      .then((r) => {
+        if (!cancelled) setUrl(r?.url ?? null);
+      })
+      .catch(() => {
+        /* keep the fallback tile — never a broken image */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, coverPhotoId]);
+
+  if (!url) return <>{fallback}</>;
+  return (
+    // A plain <img>: the src is a short-lived, keyless googleusercontent / Storage URL
+    // resolved fresh per mount (same rationale as VenueDetail's VenuePhoto). next/image
+    // would cache a URL that expires and can't be re-optimised, so we opt out.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt="" loading="lazy" style={coverImg} />
+  );
+}
+
 export const VenueCard = memo(function VenueCard({ venue, initialFollowing = false }: VenueCardProps) {
   return (
     <Link href={venuePath(venue.id)} style={linkStyle}>
@@ -157,7 +217,7 @@ function ClaimedCard({
 }) {
   return (
     <Card>
-      <div aria-hidden style={claimedTile} />
+      <CardCover coverPhotoId={venue.coverPhotoId} fallback={<div aria-hidden style={claimedTile} />} />
       <div style={claimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
@@ -187,10 +247,15 @@ function ClaimedCard({
 function UnclaimedCard({ venue }: { venue: VenueCardData }) {
   return (
     <Card>
-      {/* calm warm locality tile — intentional placeholder, not a broken pin */}
-      <div aria-hidden style={unclaimedTile}>
-        <span style={unclaimedGlyph}>◍</span>
-      </div>
+      {/* cover photo when Places (or the owner) has one; else the calm warm locality tile */}
+      <CardCover
+        coverPhotoId={venue.coverPhotoId}
+        fallback={
+          <div aria-hidden style={unclaimedTile}>
+            <span style={unclaimedGlyph}>◍</span>
+          </div>
+        }
+      />
       <div style={unclaimedBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
