@@ -28,6 +28,11 @@
   padding-bottom: var(--space-3);
 }
 
+/* Phones: the "open in maps" hand-off pill (the desktop map column is hidden there). */
+.mobileMap {
+  padding-bottom: var(--space-3);
+}
+
 /* Web ≥ 900px: rail · list · map. The rail and map stick under the TopBar as the list
    scrolls; the horizontal pills hide (the rail is the desktop category nav). */
 @media (min-width: 900px) {
@@ -73,6 +78,17 @@
     text-align: center;
     gap: 6px;
     color: var(--muted);
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color var(--motion-transition) var(--ease);
+  }
+
+  .mapTile:hover {
+    border-color: var(--crimson-tint-2);
+  }
+
+  .mobileMap {
+    display: none;
   }
 
   .mapGlyph {

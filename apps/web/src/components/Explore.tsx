@@ -34,6 +34,7 @@ import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
+import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
@@ -310,6 +311,12 @@ export function Explore() {
             {/* category pills — phones only; on web the rail above carries them */}
             <div className={styles.mobilePills}>{renderCategories(false)}</div>
 
+            {/* phones only: open the area in the device's default maps app (the desktop
+                map column does the same — Roam defers to the user's maps app, no embed) */}
+            <div className={styles.mobileMap}>
+              <OpenInMaps place={place} variant="pill" />
+            </div>
+
             {/* sub-category sliding strip — leaf types in the loaded category view */}
             {subCategories.length > 0 ? (
               <div
@@ -363,21 +370,53 @@ export function Explore() {
             )}
           </div>
 
-          {/* desktop live-map column. Placeholder until a map provider is chosen (build-plan
-              open question #5); the column is reserved so adding the map needs no reflow. */}
-          <aside className={styles.mapCol} aria-hidden>
-            <div className={styles.mapTile}>
-              <span className={styles.mapGlyph}>◍</span>
-              <span className={styles.mapLabel}>Map view</span>
-              <span className={styles.mapLabel} style={{ color: "var(--faint)" }}>
-                coming soon
-              </span>
-            </div>
+          {/* desktop map column — a hand-off to the device's default maps app (the product
+              decision: defer to the user's maps app rather than embed a provider/SDK). */}
+          <aside className={styles.mapCol}>
+            <OpenInMaps place={place} variant="tile" />
           </aside>
         </div>
       )}
 
     </main>
+  );
+}
+
+/**
+ * OpenInMaps — the "open this area in your maps app" hand-off. Roam deliberately doesn't
+ * embed a map provider (no SDK, no key, no cost); it centres the device's DEFAULT maps app
+ * on the current place. Renders as the desktop map-column tile or a mobile pill. Platform is
+ * client-only, so we render the web URL first and swap to the device-specific one on mount.
+ */
+function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill" }) {
+  const [href, setHref] = useState(() => placeMapsUrl(place.lat, place.lng, place.name, "web"));
+  useEffect(() => {
+    const platform = detectMapsPlatform(
+      navigator.userAgent,
+      navigator.maxTouchPoints,
+      navigator.platform,
+    );
+    setHref(placeMapsUrl(place.lat, place.lng, place.name, platform));
+  }, [place]);
+
+  // geo: must navigate in place (the OS intercepts); https opens a new tab so Roam stays open.
+  const external = href.startsWith("http");
+  const anchorProps = external ? { target: "_blank", rel: "noopener noreferrer" as const } : {};
+
+  if (variant === "tile") {
+    return (
+      <a href={href} {...anchorProps} className={styles.mapTile}>
+        <span className={styles.mapGlyph}>◍</span>
+        <span className={styles.mapLabel}>Open {place.name} in Maps ↗</span>
+      </a>
+    );
+  }
+  return (
+    <a href={href} {...anchorProps} style={{ textDecoration: "none" }}>
+      <Pill variant="ghost-crim" size="sm">
+        ◍ Open {place.name} in Maps
+      </Pill>
+    </a>
   );
 }
 
