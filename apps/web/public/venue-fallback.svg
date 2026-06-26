@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Roam default venue cover — a flat "market street" illustration of a row of
+  colourful shopfronts (awnings + bunting), shown when a venue has no Google
+  Places photo and no owner-uploaded cover. Warm, on-brand, intentional — it
+  reads as a placeholder by design, never as a broken image.
+
+  To swap in bespoke artwork, replace this file (keep the path
+  /venue-fallback.svg) or drop a raster at /venue-fallback.png and update the
+  reference in components/VenueCard.tsx (VENUE_FALLBACK_SRC).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 440" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of a row of shopfronts on a market street">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbeede"/>
+      <stop offset="1" stop-color="#f6ddc3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sky / wash -->
+  <rect width="1200" height="440" fill="url(#sky)"/>
+
+  <!-- soft sun -->
+  <circle cx="980" cy="96" r="58" fill="#f7c98a" opacity="0.55"/>
+
+  <!-- ground -->
+  <rect x="0" y="392" width="1200" height="48" fill="#e7c9a3"/>
+  <rect x="0" y="388" width="1200" height="6" fill="#d8b487"/>
+
+  <!-- ── shopfront 1 — crimson ── -->
+  <rect x="40" y="150" width="240" height="242" fill="#f3e3cf"/>
+  <rect x="40" y="150" width="240" height="26" fill="#9d0f33"/>
+  <!-- awning -->
+  <path d="M28 176 H292 L276 232 H44 Z" fill="#c2123f"/>
+  <path d="M28 176 H292 L276 232 H44 Z" fill="#c2123f"/>
+  <g fill="#f6ddc3">
+    <path d="M44 176 h26 l-6 56 h-26 z" opacity="0.55"/>
+    <path d="M96 176 h26 l-6 56 h-26 z" opacity="0.55"/>
+    <path d="M148 176 h26 l-6 56 h-26 z" opacity="0.55"/>
+    <path d="M200 176 h26 l-6 56 h-26 z" opacity="0.55"/>
+    <path d="M252 176 h24 l-5 56 h-24 z" opacity="0.55"/>
+  </g>
+  <!-- door + window -->
+  <rect x="72" y="270" width="74" height="122" fill="#7c3a2a"/>
+  <rect x="170" y="270" width="86" height="78" fill="#bfe0e3"/>
+  <rect x="170" y="270" width="86" height="78" fill="none" stroke="#7c3a2a" stroke-width="5"/>
+
+  <!-- ── shopfront 2 — teal ── -->
+  <rect x="300" y="120" width="250" height="272" fill="#eed9bd"/>
+  <rect x="300" y="120" width="250" height="30" fill="#2f6f6a"/>
+  <path d="M288 150 H562 L546 206 H304 Z" fill="#3f8f8a"/>
+  <g fill="#eef6f4">
+    <path d="M304 150 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M360 150 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M416 150 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M472 150 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M528 150 h22 l-5 56 h-22 z" opacity="0.5"/>
+  </g>
+  <rect x="332" y="250" width="92" height="142" fill="#bfe0e3"/>
+  <rect x="332" y="250" width="92" height="142" fill="none" stroke="#2f6f6a" stroke-width="5"/>
+  <rect x="446" y="262" width="78" height="130" fill="#5b3a2a"/>
+
+  <!-- ── shopfront 3 — mustard ── -->
+  <rect x="570" y="156" width="236" height="236" fill="#f1e2cb"/>
+  <rect x="570" y="156" width="236" height="28" fill="#cf9a2f"/>
+  <path d="M558 184 H818 L802 238 H574 Z" fill="#e6b341"/>
+  <g fill="#fbeede">
+    <path d="M574 184 h26 l-6 54 h-26 z" opacity="0.5"/>
+    <path d="M626 184 h26 l-6 54 h-26 z" opacity="0.5"/>
+    <path d="M678 184 h26 l-6 54 h-26 z" opacity="0.5"/>
+    <path d="M730 184 h26 l-6 54 h-26 z" opacity="0.5"/>
+    <path d="M782 184 h20 l-5 54 h-20 z" opacity="0.5"/>
+  </g>
+  <rect x="600" y="276" width="86" height="116" fill="#bfe0e3"/>
+  <rect x="600" y="276" width="86" height="116" fill="none" stroke="#9a6f22" stroke-width="5"/>
+  <rect x="706" y="270" width="80" height="122" fill="#7c3a2a"/>
+  <circle cx="772" cy="332" r="5" fill="#e6b341"/>
+
+  <!-- ── shopfront 4 — plum ── -->
+  <rect x="826" y="134" width="246" height="258" fill="#ecdcc6"/>
+  <rect x="826" y="134" width="246" height="30" fill="#6c2b4d"/>
+  <path d="M814 164 H1084 L1068 220 H830 Z" fill="#8d3a63"/>
+  <g fill="#f6e7ef">
+    <path d="M830 164 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M886 164 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M942 164 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M998 164 h28 l-6 56 h-28 z" opacity="0.5"/>
+    <path d="M1054 164 h14 l-5 56 h-14 z" opacity="0.5"/>
+  </g>
+  <rect x="858" y="262" width="92" height="130" fill="#bfe0e3"/>
+  <rect x="858" y="262" width="92" height="130" fill="none" stroke="#5a2440" stroke-width="5"/>
+  <rect x="972" y="270" width="78" height="122" fill="#5b3a2a"/>
+
+  <!-- ── shopfront 5 (right edge filler) — crimson ── -->
+  <rect x="1092" y="160" width="120" height="232" fill="#f3e3cf"/>
+  <rect x="1092" y="160" width="120" height="28" fill="#9d0f33"/>
+  <path d="M1080 188 H1212 L1212 240 H1096 Z" fill="#c2123f"/>
+
+  <!-- ── bunting across the top ── -->
+  <path d="M20 70 C 300 130, 900 130, 1180 70" fill="none" stroke="#a87b4e" stroke-width="3"/>
+  <g>
+    <path d="M70 78 l28 0 l-14 26 z" fill="#c2123f"/>
+    <path d="M150 90 l28 0 l-14 26 z" fill="#3f8f8a"/>
+    <path d="M232 100 l28 0 l-14 26 z" fill="#e6b341"/>
+    <path d="M320 108 l28 0 l-14 26 z" fill="#8d3a63"/>
+    <path d="M420 114 l28 0 l-14 26 z" fill="#c2123f"/>
+    <path d="M540 118 l28 0 l-14 26 z" fill="#3f8f8a"/>
+    <path d="M660 118 l28 0 l-14 26 z" fill="#e6b341"/>
+    <path d="M780 114 l28 0 l-14 26 z" fill="#8d3a63"/>
+    <path d="M884 108 l28 0 l-14 26 z" fill="#c2123f"/>
+    <path d="M980 100 l28 0 l-14 26 z" fill="#3f8f8a"/>
+    <path d="M1064 90 l28 0 l-14 26 z" fill="#e6b341"/>
+  </g>
+</svg>
