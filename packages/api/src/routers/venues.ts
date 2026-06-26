@@ -95,6 +95,18 @@ const VENUE_MEDIA_BUCKET = "venue-media";
 /** Max delivered width for venue photos (px). Gallery/hero never need more on web. */
 const PHOTO_MAX_WIDTH_PX = 1200;
 
+/**
+ * In-memory cache of resolved google_places photo URLs, keyed by photo id. Resolving a
+ * Places photo is a BILLABLE call, and Explore now shows a cover per card — without this,
+ * every grid load would re-bill Google for each visible cover. The googleusercontent URL
+ * Places returns is short-lived (~1h), so we cache just under that and re-resolve at most
+ * ~once/hour per photo. The API runs a single replica, so a process-local Map suffices;
+ * if it ever scales horizontally, move this to a shared cache (Redis / a cached column).
+ * Owner uploads aren't cached here — their Storage URL is free to build and never expires.
+ */
+const PHOTO_URL_TTL_MS = 50 * 60 * 1000;
+const photoUrlCache = new Map<string, { url: string; expires: number }>();
+
 /** A single venue_photos row as read for the gallery (the display read-model). */
 interface VenuePhotoReadRow {
   id: string;
@@ -122,6 +134,10 @@ interface VenuesNearRow {
   categories: string[];
   rating: number | null;
   distance_m: number;
+  // 0025: coordinates (for map pins) + the hero photo id (for the card cover image).
+  lat_out: number;
+  lng_out: number;
+  cover_photo_id: string | null;
 }
 
 /**
@@ -141,6 +157,9 @@ interface VenuesInCategoryNearRow {
   categories: string[];
   rating: number | null;
   distance_m: number;
+  lat_out: number;
+  lng_out: number;
+  cover_photo_id: string | null;
 }
 
 /**
@@ -313,6 +332,9 @@ export const venuesRouter = router({
         categories: v.categories,
         rating: v.rating,
         distanceM: v.distance_m,
+        lat: v.lat_out,
+        lng: v.lng_out,
+        coverPhotoId: v.cover_photo_id,
       }));
     }),
 
@@ -365,6 +387,9 @@ export const venuesRouter = router({
           categories: v.categories,
           rating: v.rating,
           distanceM: v.distance_m,
+          lat: v.lat_out,
+          lng: v.lng_out,
+          coverPhotoId: v.cover_photo_id,
         })),
         hasMore,
         nextOffset: input.pageOffset + page.length,
@@ -503,6 +528,11 @@ export const venuesRouter = router({
       if (!row.places_photo_ref) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Photo has no Places reference." });
       }
+      // Serve a still-fresh resolved URL from the process cache before re-billing Google.
+      const cached = photoUrlCache.get(input.photoId);
+      if (cached && cached.expires > Date.now()) {
+        return { url: cached.url };
+      }
       const reqUrl = buildPhotoMediaRequestUrl(
         row.places_photo_ref,
         ctx.env.places.apiKey,
@@ -527,6 +557,7 @@ export const venuesRouter = router({
       if (!json.photoUri) {
         throw new TRPCError({ code: "BAD_GATEWAY", message: "Places returned no photoUri." });
       }
+      photoUrlCache.set(input.photoId, { url: json.photoUri, expires: Date.now() + PHOTO_URL_TTL_MS });
       return { url: json.photoUri };
     }),
 
