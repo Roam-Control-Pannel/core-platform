@@ -43,6 +43,7 @@ import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
 import { isOpenNow } from "../lib/openNow";
+import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -877,10 +878,31 @@ function ActionRow({ address }: { address: string | null }) {
 }
 
 function DirectionsButton({ address }: { address: string | null }) {
+  // Hand off to the device's DEFAULT maps app (iOS → Apple Maps, Android → the user's
+  // default via geo:, desktop → Google web). SSR can't know the platform, so we render the
+  // web URL first and swap to the device-specific one after mount. Hooks run unconditionally
+  // (before the no-address early return) to satisfy the rules of hooks.
+  const [href, setHref] = useState(() => (address ? directionsUrl(address, "web") : ""));
+  useEffect(() => {
+    if (!address) return;
+    const platform = detectMapsPlatform(
+      navigator.userAgent,
+      navigator.maxTouchPoints,
+      navigator.platform,
+    );
+    setHref(directionsUrl(address, platform));
+  }, [address]);
+
   if (!address) return null;
-  const href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  // An app-scheme link (geo:) must navigate in place so the OS can intercept it; an https
+  // link (Apple/Google web) opens in a new tab so the user keeps Roam open.
+  const external = href.startsWith("http");
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      style={{ textDecoration: "none" }}
+    >
       <Button variant="neutral" size="sm">
         Get Directions ↗
       </Button>
