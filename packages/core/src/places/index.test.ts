@@ -156,7 +156,7 @@ describe("placeToVenueRow", () => {
       "Food & Drink",
     );
     expect(row!.price_level).toBeNull();
-    expect(row!.rating_count).toBeNull();
+    expect(row!.rating_count).toBe(0); // NOT NULL column → 0, not null, when Places gives none
     expect(row!.primary_type_label).toBeNull();
   });
 
