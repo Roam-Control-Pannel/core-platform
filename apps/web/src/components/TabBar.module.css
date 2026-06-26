@@ -1,0 +1,92 @@
+/*
+ * Mobile bottom tab bar (Discovery design's .tabbar). Phones only — hidden on desktop,
+ * where the TopBar carries the nav. A CSS Module for the same reason as TopBar: the
+ * show/hide is a media query, and globals.css (generated) must not be hand-edited.
+ */
+
+/* Reserves space so fixed bar never covers the last of the page content. Phones only. */
+.spacer {
+  display: none;
+}
+
+.bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .spacer {
+    display: block;
+    height: calc(62px + env(safe-area-inset-bottom));
+  }
+
+  .bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    background: var(--card);
+    border-top: 1px solid var(--line);
+  }
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--faint);
+  flex: 1;
+}
+
+.tab svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active {
+  color: var(--crimson);
+}
+
+/* Dormant tab (Stage-2 surface not built yet): faint, non-interactive. */
+.dormant {
+  color: var(--faint);
+  opacity: 0.6;
+}
+
+/* Center ＋ Create — a raised crimson disc. Dormant until the composer ships. */
+.fab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.fab span {
+  width: 44px;
+  height: 44px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--crimson);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: var(--sh-2);
+  opacity: 0.85;
+}

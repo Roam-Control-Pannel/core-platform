@@ -28,14 +28,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Seg, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
-import { AuthModal } from "./AuthModal";
 import { FeedList } from "./FeedList";
-import { CATEGORY_GROUPS } from "../lib/categories";
+import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
 
 type Mode = "browse" | "feed";
 
@@ -74,9 +72,9 @@ export function Explore() {
   // The selected leaf type within a category view, or null for "all sub-categories".
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Signed-out sign-in affordance: the AuthModal hosts AuthPanel over a scrim, so
-  // auth is reachable from the header without a form blocking the home page.
-  const [authOpen, setAuthOpen] = useState(false);
+  // Free-text filter over the loaded set (client-side, by name). Sign-in now lives in the
+  // global TopBar, so Explore's header is just the place switcher + Browse/Feed segment.
+  const [query, setQuery] = useState("");
 
   // Generation counter: every load (All or category) bumps this; a completing load only
   // commits if it is still the latest. Guards against races from rapid pill switching
@@ -209,13 +207,16 @@ export function Explore() {
 
   const shown = useMemo(() => {
     if (!venues) return [];
-    if (activeSub === null) return venues;
-    return venues.filter((v) => (v.categories ?? []).includes(activeSub));
-  }, [venues, activeSub]);
+    const q = query.trim().toLowerCase();
+    let list = activeSub === null ? venues : venues.filter((v) => (v.categories ?? []).includes(activeSub));
+    if (q) list = list.filter((v) => v.name.toLowerCase().includes(q));
+    return list;
+  }, [venues, activeSub, query]);
 
   return (
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      {/* place header — a live switcher */}
+      {/* place header — a live switcher + the Browse/Feed segment. (Brand, primary nav and
+          sign-in live in the global TopBar now.) */}
       <header
         style={{
           display: "flex",
@@ -225,66 +226,42 @@ export function Explore() {
         }}
       >
         <PlaceSwitcher value={place} onChange={setPlace} />
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          {session ? (
-            <Link
-              href="/following"
-              style={{
-                fontFamily: "var(--ui)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--ink-2)",
-                textDecoration: "none",
-              }}
-            >
-              Following
-            </Link>
-          ) : null}
-          {session ? (
-            <Link
-              href="/threads"
-              style={{
-                fontFamily: "var(--ui)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--ink-2)",
-                textDecoration: "none",
-              }}
-            >
-              Chats
-            </Link>
-          ) : null}
-          {!session ? (
-            <button
-              onClick={() => setAuthOpen(true)}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontFamily: "var(--ui)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--ink-2)",
-              }}
-            >
-              Sign in
-            </button>
-          ) : null}
-          <Seg
-            options={[
-              { value: "browse", label: "Browse" },
-              { value: "feed", label: "Feed" },
-            ]}
-            value={mode}
-            onChange={(v) => setMode(v as Mode)}
-          />
-        </div>
+        <Seg
+          options={[
+            { value: "browse", label: "Browse" },
+            { value: "feed", label: "Feed" },
+          ]}
+          value={mode}
+          onChange={(v) => setMode(v as Mode)}
+        />
       </header>
 
       {mode === "feed" ? (
         <FeedList placeName={place.name} />
       ) : (
         <>
-          {/* top-level category pills — the nine canonical groups */}
+          {/* search — filters the loaded set by name (client-side, place-scoped) */}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search venues in ${place.name}…`}
+            aria-label="Search venues"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "10px 16px",
+              marginBottom: "var(--space-3)",
+              background: "var(--paper-2)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-full)",
+              fontFamily: "var(--ui)",
+              fontSize: 13,
+              color: "var(--ink)",
+              outline: "none",
+            }}
+          />
+
+          {/* top-level category pills — the nine canonical groups, friendly labels */}
           <div
             style={{
               display: "flex",
@@ -302,9 +279,15 @@ export function Explore() {
                 onClick={() => loadCategory(c)}
                 style={{ all: "unset", cursor: "pointer" }}
               >
-                <Pill variant={activeCategory === c ? "on" : "neutral"}>{c}</Pill>
+                <Pill variant={activeCategory === c ? "on" : "neutral"}>{categoryLabel(c)}</Pill>
               </button>
             ))}
+            {/* Marketplace seam — dormant (Stage 5), present in the IA so lighting it up needs no reshuffle. */}
+            <span title="Marketplace is coming soon" style={{ cursor: "default" }}>
+              <Pill variant="neutral" style={{ borderStyle: "dashed", color: "var(--faint)" }}>
+                Market ◇
+              </Pill>
+            </span>
           </div>
 
           {/* sub-category sliding strip — leaf types in the loaded category view */}
@@ -361,12 +344,6 @@ export function Explore() {
         </>
       )}
 
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        emailRedirectTo={typeof window !== "undefined" ? window.location.origin + "/" : ""}
-        intro="Sign in to follow venues and manage notifications."
-      />
     </main>
   );
 }

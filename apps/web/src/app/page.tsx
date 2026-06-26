@@ -13,13 +13,8 @@
  */
 export const dynamic = "force-dynamic";
 
-import { TrpcProvider } from "../components/TrpcProvider";
 import { Explore } from "../components/Explore";
 
 export default function Home() {
-  return (
-    <TrpcProvider>
-      <Explore />
-    </TrpcProvider>
-  );
+  return <Explore />;
 }
