@@ -17,7 +17,12 @@ import styles from "./TabBar.module.css";
 function activeKey(pathname: string): "explore" | "chat" | "you" | null {
   if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/threads")) return "chat";
-  if (pathname.startsWith("/following")) return "you";
+  if (
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/following")
+  )
+    return "you";
   return null;
 }
 
@@ -72,7 +77,7 @@ export function TabBar() {
           Chat
         </Link>
         <Link
-          href="/following"
+          href="/account"
           className={`${styles.tab} ${active === "you" ? styles.active : ""}`}
         >
           {icons.you}

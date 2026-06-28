@@ -25,7 +25,12 @@ import styles from "./TopBar.module.css";
 function activeKey(pathname: string): "explore" | "chat" | "you" | null {
   if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/threads")) return "chat";
-  if (pathname.startsWith("/following")) return "you";
+  if (
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/following")
+  )
+    return "you";
   return null;
 }
 
@@ -57,7 +62,7 @@ export function TopBar() {
           Chat
         </Link>
         <Link
-          href="/following"
+          href="/account"
           className={`${styles.link} ${active === "you" ? styles.active : ""}`}
         >
           You
@@ -71,7 +76,7 @@ export function TopBar() {
           ＋ Create
         </span>
         {session ? (
-          <Link href="/following" className={styles.avatar} aria-label="Your account" />
+          <Link href="/account" className={styles.avatar} aria-label="Your account" />
         ) : (
           <button className={styles.signin} onClick={() => setAuthOpen(true)}>
             Sign in
