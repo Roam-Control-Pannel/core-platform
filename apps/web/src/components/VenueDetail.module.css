@@ -1,0 +1,71 @@
+/*
+ * Venue detail layout. Mobile-first single column; on web (≥1024) it reflows to the design's
+ * parity: a sticky info/action ASIDE (title, meta, actions, links) beside a scrolling tabbed
+ * CONTENT column. A CSS Module because the reflow is a media query and globals.css is generated.
+ */
+.layout {
+  display: block;
+}
+
+.content {
+  margin-top: var(--space-5);
+}
+
+/* Tab strip (Details · Posts · Offers · Shop◇) — crimson underline on the active tab. */
+.tabstrip {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: var(--space-4);
+}
+
+.tab {
+  all: unset;
+  cursor: pointer;
+  padding: 11px 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  font-family: var(--ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--ink-2);
+}
+
+.tabActive {
+  color: var(--crimson-700);
+  border-bottom-color: var(--crimson);
+}
+
+.tabDormant {
+  color: var(--faint);
+  cursor: default;
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  /* The info/action column sticks under the TopBar as the tabbed content scrolls. */
+  .aside {
+    position: sticky;
+    top: 84px;
+  }
+
+  .content {
+    margin-top: 0;
+    min-width: 0;
+  }
+}

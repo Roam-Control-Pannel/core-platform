@@ -39,12 +39,10 @@ import { Card, Pill, Rate, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
-import { OwnerMediaManager } from "./OwnerMediaManager";
-import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
-import { OwnerHoursEditor } from "./OwnerHoursEditor";
 import { ReportVenue } from "./ReportVenue";
 import { isOpenNow } from "../lib/openNow";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
+import styles from "./VenueDetail.module.css";
 
 /**
  * The byId result is the full venues Row (select("*")). We read it loosely here —
@@ -226,7 +224,6 @@ export function VenueDetail({ venueId }: { venueId: string }) {
           venueId={venueId}
           initialFollowing={following ?? false}
           isOwner={session?.user?.id === venue.owner_id}
-          onSaved={loadVenue}
         />
       ) : venue.status === "pending_claim" ? (
         <PendingClaimDetail venue={venue} venueId={venueId} mineJustSubmitted={claimUi === "submitted"} />
@@ -440,87 +437,156 @@ function TitleRow({ name }: { name: string }) {
   );
 }
 
+/**
+ * The claimed venue content tabs. "Details" is the only real tab today (description, hours,
+ * the facts block); Posts · Offers · Shop are dormant seams (Stage-2 surfaces) — visible so
+ * the structure reads as designed, but faint and inert until those features ship.
+ */
+type VenueTab = "details" | "posts" | "offers" | "shop";
+
 function ClaimedDetail({
   venue,
   venueId,
   initialFollowing,
   isOwner,
-  onSaved,
 }: {
   venue: VenueDetailData;
   venueId: string;
   initialFollowing: boolean;
   isOwner: boolean;
-  onSaved: () => Promise<unknown> | void;
 }) {
   const links = linkEntries(venue.links);
+  // Only "details" is reachable today; keeping it in state lets the dormant tabs light up
+  // with no structural change once Posts/Offers/Shop ship.
+  const [tab, setTab] = useState<VenueTab>("details");
+
   return (
     <>
       <VenuePhotos venueId={venueId} claimed />
-      <TitleRow name={venue.name} />
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-3)",
-          marginTop: "var(--space-2)",
-          fontSize: 13.5,
-          color: "var(--ink-2)",
-        }}
-      >
-        {/* Claimed shows ★rating (gold) — the sanctioned confidence signal on a verified venue. */}
-        {venue.rating != null ? (
-          <Rate value={`${venue.rating.toFixed(1)}${venue.rating_count ? ` (${venue.rating_count})` : ""}`} />
-        ) : null}
-        {venue.category ? <span>{venue.category}</span> : null}
-      </div>
+      <div className={styles.layout}>
+        {/* Sticky info/action column on web; the first block on mobile. */}
+        <aside className={styles.aside}>
+          <TitleRow name={venue.name} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-3)",
+              marginTop: "var(--space-2)",
+              fontSize: 13.5,
+              color: "var(--ink-2)",
+            }}
+          >
+            {/* Claimed shows ★rating (gold) — the sanctioned confidence signal on a verified venue. */}
+            {venue.rating != null ? (
+              <Rate value={`${venue.rating.toFixed(1)}${venue.rating_count ? ` (${venue.rating_count})` : ""}`} />
+            ) : null}
+            {venue.category ? <span>{venue.category}</span> : null}
+          </div>
 
-      <div style={{ marginTop: "var(--space-4)" }}>
-        <FollowButton
-          venueId={venueId}
-          initialFollowing={initialFollowing}
-          emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
-        />
-      </div>
+          {isOwner ? (
+            <Link
+              href={`/dashboard/${venueId}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                marginTop: "var(--space-3)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--crimson-700)",
+                textDecoration: "none",
+              }}
+            >
+              Manage this venue <span aria-hidden>→</span>
+            </Link>
+          ) : null}
 
-      <ActionRow address={venue.address} />
+          <VenueActions venueId={venueId} initialFollowing={initialFollowing} address={venue.address} />
 
-      {isOwner ? <OwnerMediaManager venueId={venueId} /> : null}
+          {links.length > 0 ? (
+            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
+              {links.map(([label, url]) => (
+                <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                  <Pill variant="crim">{capitalise(label)}</Pill>
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </aside>
 
-      {isOwner ? (
-        <OwnerDetailsEditor
-          venueId={venueId}
-          initialDescription={venue.description}
-          initialLinks={venue.links}
-          onSaved={onSaved}
-        />
-      ) : null}
+        {/* Scrolling tabbed content column on web. */}
+        <div className={styles.content}>
+          <div className={styles.tabstrip} role="tablist" aria-label="Venue sections">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "details"}
+              className={tab === "details" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setTab("details")}
+            >
+              Details
+            </button>
+            <DormantTab label="Posts" />
+            <DormantTab label="Offers" />
+            <DormantTab label="Shop ◇" />
+          </div>
 
-      {isOwner ? (
-        <OwnerHoursEditor
-          venueId={venueId}
-          initialPeriods={venue.opening_times?.periods ?? null}
-          onSaved={onSaved}
-        />
-      ) : null}
+          {venue.description ? (
+            <p style={{ marginTop: 0, lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
+          ) : null}
 
-      {venue.description ? (
-        <p style={{ marginTop: "var(--space-4)", lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
-      ) : null}
-
-      {links.length > 0 ? (
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
-          {links.map(([label, url]) => (
-            <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-              <Pill variant="crim">{capitalise(label)}</Pill>
-            </a>
-          ))}
+          <OpeningHours openingTimes={venue.opening_times} />
+          <DetailsBlock venue={venue} />
         </div>
-      ) : null}
-
-      <OpeningHours openingTimes={venue.opening_times} />
-      <DetailsBlock venue={venue} />
+      </div>
     </>
+  );
+}
+
+/** A faint, inert tab — a Stage-2 surface seam (Posts · Offers · Shop) not yet built. */
+function DormantTab({ label }: { label: string }) {
+  return (
+    <span className={`${styles.tab} ${styles.tabDormant}`} title="Coming soon" aria-disabled>
+      {label}
+    </span>
+  );
+}
+
+/**
+ * The claimed-venue action cluster (Discovery design #3): Follow · ＋Add to Plan · Get
+ * Directions in a single row. Follow is the live primary; Add to Plan is a dormant Stage-2
+ * (Social) seam; Directions hands off to the device maps app. Lives in the sticky aside so
+ * it stays reachable as the tabbed content scrolls.
+ */
+function VenueActions({
+  venueId,
+  initialFollowing,
+  address,
+}: {
+  venueId: string;
+  initialFollowing: boolean;
+  address: string | null;
+}) {
+  return (
+    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
+      <FollowButton
+        venueId={venueId}
+        initialFollowing={initialFollowing}
+        emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+      />
+      <Button
+        variant="neutral"
+        size="sm"
+        aria-disabled
+        title="Plans are coming soon"
+        onClick={(e) => e.preventDefault()}
+        style={{ opacity: 0.6, cursor: "default" }}
+      >
+        ＋ Add to Plan
+      </Button>
+      <DirectionsButton address={address} />
+    </div>
   );
 }
 
