@@ -12,6 +12,7 @@ import { socialRouter } from "./social.js";
 import { meetupRouter } from "./meetup.js";
 import { chatRouter } from "./chat.js";
 import { placesRouter } from "./places.js";
+import { geoRouter } from "./geo.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   meetup: meetupRouter,
   chat: chatRouter,
   places: placesRouter,
+  geo: geoRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */

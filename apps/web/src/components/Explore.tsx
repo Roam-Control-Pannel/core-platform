@@ -381,7 +381,9 @@ export function Explore() {
                 border: "1px solid var(--line)",
                 borderRadius: "var(--r-full)",
                 fontFamily: "var(--ui)",
-                fontSize: 13,
+                // 16px (not 13): iOS Safari zooms the page when a focused input's font is
+                // < 16px. This is the search field's only job on mobile, so keep it zoom-free.
+                fontSize: 16,
                 color: "var(--ink)",
                 outline: "none",
               }}
@@ -439,13 +441,7 @@ export function Explore() {
               <EmptyState />
             ) : (
               <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                    gap: "var(--space-4)",
-                  }}
-                >
+                <div className={styles.grid}>
                   {visible.map((v) => (
                     <VenueCard
                       key={v.id}
@@ -528,13 +524,7 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill"
 
 function VenueGridSkeleton() {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-        gap: "var(--space-4)",
-      }}
-    >
+    <div className={styles.grid}>
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}

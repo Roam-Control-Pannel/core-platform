@@ -1,23 +1,21 @@
 /**
  * PlaceSwitcher — the live place selector that re-roots Explore.
  *
- * This is the slice that replaces Explore's HARDCODED Darlington centre with a
- * SELECTED place's centre. `venues.near` already takes lat/lng, so re-rooting is just
- * feeding it the chosen place's coordinates — no API change needed.
+ * Re-roots Explore by feeding `venues.near` a chosen centre (lat/lng). Three ways to choose:
+ *   1. SEARCH — type a town or postcode; geocoded server-side via geo.search (Nominatim,
+ *      debounced + cached). Pick a result to browse there.
+ *   2. SAVED — pin localities (Darlington, Yarm, Westminster…) kept per-device (localStorage,
+ *      via useSavedPlaces) so they're one tap away. Save the current place, or any result.
+ *   3. SUGGESTED / geolocation — the built-in seed centres, plus "Use my location".
  *
- * Scope honesty: there is no `places` table yet (the build plan models locality as a
- * Stage-0 seam but Stage 1 hasn't lit it). So the selectable set here is a small,
- * explicit list of the localities the seed actually covers, plus the natural next step
- * — the user's own geolocation — offered when the browser supports it. When a real
- * places table lands, this component swaps its `PLACES` source for a query and keeps
- * the same onChange contract; Explore doesn't change.
- *
- * Presentation matches the existing Explore place header exactly (the crimson dot +
- * display-font name + caret), now as a real popover control rather than a static label.
+ * `PLACES` / `DEFAULT_PLACE` remain exported (MeetupPanel consumes them) — they're now the
+ * "suggested" set rather than the only set.
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useTrpc } from "./TrpcProvider";
+import { useSavedPlaces } from "../lib/savedPlaces";
 
 export interface Place {
   id: string;
@@ -29,9 +27,8 @@ export interface Place {
 }
 
 /**
- * Known place centres covering the seeded venues. Coordinates are the same locality
- * centres the seed clusters around (Darlington town centre; Stockton-on-Tees). When a
- * places table exists these become rows; the shape and the onChange contract stay.
+ * Suggested place centres covering the seeded venues. Search + saved places extend this; it
+ * is no longer the only way to choose a place. (When a places table exists these become rows.)
  */
 export const PLACES: readonly Place[] = [
   { id: "darlington", name: "Darlington", hint: "County Durham", lat: 54.5253, lng: -1.5536 },
@@ -46,13 +43,103 @@ export interface PlaceSwitcherProps {
   onChange: (place: Place) => void;
 }
 
+/* ── shared row styles (hoisted) ─────────────────────────────────────────────── */
+const rowBase: CSSProperties = {
+  all: "unset",
+  cursor: "pointer",
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  flex: 1,
+  minWidth: 0,
+  boxSizing: "border-box",
+  padding: "9px 11px",
+  borderRadius: "var(--r-sm)",
+};
+const sectionLabel: CSSProperties = {
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "var(--muted)",
+  padding: "6px 11px 2px",
+};
+const nameText = (active: boolean): CSSProperties => ({
+  fontFamily: "var(--ui)",
+  fontSize: 14,
+  fontWeight: 600,
+  color: active ? "var(--crimson-700)" : "var(--ink-hi)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+});
+const hintText: CSSProperties = {
+  fontFamily: "var(--ui)",
+  fontSize: 12,
+  color: "var(--muted)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const iconBtn: CSSProperties = {
+  all: "unset",
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+  width: 30,
+  height: 30,
+  borderRadius: "var(--r-sm)",
+  fontSize: 15,
+  flexShrink: 0,
+};
+
+/** A selectable place row + an optional trailing action (save star / remove ✕). */
+function PlaceRow({
+  place,
+  active,
+  onSelect,
+  trailing,
+}: {
+  place: Place;
+  active: boolean;
+  onSelect: () => void;
+  trailing?: ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        borderRadius: "var(--r-sm)",
+        background: active ? "var(--crimson-tint)" : "transparent",
+      }}
+    >
+      <button role="option" aria-selected={active} onClick={onSelect} style={rowBase}>
+        <span style={nameText(active)}>{place.name}</span>
+        {place.hint ? <span style={hintText}>{place.hint}</span> : null}
+      </button>
+      {trailing}
+    </div>
+  );
+}
+
 export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
+  const trpc = useTrpc();
+  const { saved, isSaved, toggle, remove } = useSavedPlaces();
   const [open, setOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+
+  // Search state.
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Place[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const rootRef = useRef<HTMLDivElement | null>(null);
-  // Tracks mount state so the async geolocation callbacks (up to 8s later) don't setState
-  // or call onChange after the switcher has unmounted.
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const reqIdRef = useRef(0);
   const mountedRef = useRef(true);
   useEffect(
     () => () => {
@@ -61,7 +148,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
     [],
   );
 
-  // Close on outside click / Escape — a popover that traps focus would be overkill here.
+  // Close on outside click / Escape.
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
@@ -78,6 +165,51 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
     };
   }, [open]);
 
+  // Focus the search field when the popover opens.
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // Debounced geocode. Each keystroke bumps a generation id so a slow earlier response can't
+  // overwrite a newer one; queries under 2 chars clear the results.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults(null);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+    setSearching(true);
+    setSearchError(null);
+    const id = ++reqIdRef.current;
+    const search = trpc.geo.search as unknown as {
+      query: (input: { q: string }) => Promise<Place[]>;
+    };
+    const t = setTimeout(() => {
+      search
+        .query({ q })
+        .then((res) => {
+          if (!mountedRef.current || reqIdRef.current !== id) return;
+          setResults(res ?? []);
+          setSearching(false);
+        })
+        .catch(() => {
+          if (!mountedRef.current || reqIdRef.current !== id) return;
+          setSearchError("Couldn't search just now. Try again.");
+          setSearching(false);
+        });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query, trpc]);
+
+  function pick(place: Place) {
+    onChange(place);
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+  }
+
   const supportsGeo = typeof navigator !== "undefined" && "geolocation" in navigator;
 
   function handleUseMyLocation() {
@@ -88,8 +220,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
       (pos) => {
         if (!mountedRef.current) return;
         setLocating(false);
-        setOpen(false);
-        onChange({
+        pick({
           id: "my-location",
           name: "Near me",
           hint: "Your location",
@@ -105,6 +236,24 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
   }
+
+  const star = (place: Place) => (
+    <button
+      type="button"
+      aria-label={isSaved(place.id) ? `Unsave ${place.name}` : `Save ${place.name}`}
+      title={isSaved(place.id) ? "Saved" : "Save this place"}
+      onClick={(e) => {
+        e.stopPropagation();
+        toggle(place);
+      }}
+      style={{ ...iconBtn, color: isSaved(place.id) ? "var(--gold)" : "var(--faint)" }}
+    >
+      {isSaved(place.id) ? "★" : "☆"}
+    </button>
+  );
+
+  const searchMode = query.trim().length >= 2;
+  const suggested = PLACES.filter((p) => !saved.some((s) => s.id === p.id));
 
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
@@ -124,10 +273,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
           color: "var(--ink-hi)",
         }}
       >
-        <span
-          aria-hidden
-          style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--crimson)" }}
-        />
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--crimson)" }} />
         {value.name}
         <span style={{ color: "var(--muted)", fontSize: 14 }}>▾</span>
       </button>
@@ -139,7 +285,8 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
             position: "absolute",
             top: "calc(100% + 8px)",
             insetInlineStart: 0,
-            minWidth: 240,
+            width: 300,
+            maxWidth: "calc(100vw - 32px)",
             background: "#fff",
             border: "1px solid var(--line)",
             borderRadius: "var(--r-md)",
@@ -148,89 +295,152 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
             zIndex: 20,
           }}
         >
-          {PLACES.map((p) => {
-            const active = p.id === value.id;
-            return (
-              <button
-                key={p.id}
-                role="option"
-                aria-selected={active}
-                onClick={() => {
-                  onChange(p);
-                  setOpen(false);
-                }}
-                style={{
-                  all: "unset",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "9px 11px",
-                  borderRadius: "var(--r-sm)",
-                  background: active ? "var(--crimson-tint)" : "transparent",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--ui)",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: active ? "var(--crimson-700)" : "var(--ink-hi)",
-                  }}
-                >
-                  {p.name}
-                </span>
-                {p.hint ? (
-                  <span style={{ fontFamily: "var(--ui)", fontSize: 12, color: "var(--muted)" }}>
-                    {p.hint}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+          {/* search */}
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search town or postcode…"
+            aria-label="Search for a place"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "10px 12px",
+              marginBottom: "var(--space-2)",
+              background: "var(--paper-2)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--r-full)",
+              fontFamily: "var(--ui)",
+              fontSize: 16, // ≥16px so iOS Safari doesn't zoom on focus
+              color: "var(--ink)",
+              outline: "none",
+            }}
+          />
 
-          {supportsGeo ? (
+          {searchMode ? (
+            /* ── search results ── */
+            searching ? (
+              <div style={{ ...sectionLabel, textTransform: "none", padding: "8px 11px" }}>Searching…</div>
+            ) : searchError ? (
+              <div style={{ ...hintText, color: "var(--crimson-700)", padding: "6px 11px" }} role="alert">
+                {searchError}
+              </div>
+            ) : results && results.length > 0 ? (
+              results.map((p) => (
+                <PlaceRow key={p.id} place={p} active={false} onSelect={() => pick(p)} trailing={star(p)} />
+              ))
+            ) : (
+              <div style={{ ...hintText, padding: "8px 11px" }}>No matches for “{query.trim()}”.</div>
+            )
+          ) : (
+            /* ── saved · suggested · locate ── */
             <>
-              <div style={{ height: 1, background: "var(--line)", margin: "var(--space-2) 0" }} />
-              <button
-                onClick={handleUseMyLocation}
-                disabled={locating}
-                style={{
-                  all: "unset",
-                  cursor: locating ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "9px 11px",
-                  borderRadius: "var(--r-sm)",
-                  fontFamily: "var(--ui)",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--ink-hi)",
-                }}
-              >
-                <span aria-hidden style={{ color: "var(--crimson)" }}>◎</span>
-                {locating ? "Locating…" : "Use my location"}
-              </button>
-              {geoError ? (
-                <div
+              {/* Save the current place (when it isn't already saved). */}
+              {!isSaved(value.id) ? (
+                <button
+                  type="button"
+                  onClick={() => toggle(value)}
                   style={{
+                    all: "unset",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "8px 11px",
+                    borderRadius: "var(--r-sm)",
                     fontFamily: "var(--ui)",
-                    fontSize: 12,
-                    color: "var(--crimson-700)",
-                    padding: "0 11px 6px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--ink-2)",
                   }}
-                  role="alert"
                 >
-                  {geoError}
-                </div>
+                  <span aria-hidden style={{ color: "var(--faint)", fontSize: 15 }}>☆</span>
+                  Save “{value.name}”
+                </button>
+              ) : null}
+
+              {saved.length > 0 ? (
+                <>
+                  <div style={sectionLabel}>Saved</div>
+                  {saved.map((p) => (
+                    <PlaceRow
+                      key={p.id}
+                      place={p}
+                      active={p.id === value.id}
+                      onSelect={() => pick(p)}
+                      trailing={
+                        <button
+                          type="button"
+                          aria-label={`Remove ${p.name}`}
+                          title="Remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            remove(p.id);
+                          }}
+                          style={{ ...iconBtn, color: "var(--faint)" }}
+                        >
+                          ✕
+                        </button>
+                      }
+                    />
+                  ))}
+                </>
+              ) : null}
+
+              {suggested.length > 0 ? (
+                <>
+                  <div style={sectionLabel}>Suggested</div>
+                  {suggested.map((p) => (
+                    <PlaceRow
+                      key={p.id}
+                      place={p}
+                      active={p.id === value.id}
+                      onSelect={() => pick(p)}
+                      trailing={star(p)}
+                    />
+                  ))}
+                </>
+              ) : null}
+
+              {supportsGeo ? (
+                <>
+                  <div style={{ height: 1, background: "var(--line)", margin: "var(--space-2) 0" }} />
+                  <button
+                    onClick={handleUseMyLocation}
+                    disabled={locating}
+                    style={{
+                      all: "unset",
+                      cursor: locating ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "9px 11px",
+                      borderRadius: "var(--r-sm)",
+                      fontFamily: "var(--ui)",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--ink-hi)",
+                    }}
+                  >
+                    <span aria-hidden style={{ color: "var(--crimson)" }}>◎</span>
+                    {locating ? "Locating…" : "Use my location"}
+                  </button>
+                  {geoError ? (
+                    <div
+                      style={{ fontFamily: "var(--ui)", fontSize: 12, color: "var(--crimson-700)", padding: "0 11px 6px" }}
+                      role="alert"
+                    >
+                      {geoError}
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </>
-          ) : null}
+          )}
         </div>
       ) : null}
     </div>

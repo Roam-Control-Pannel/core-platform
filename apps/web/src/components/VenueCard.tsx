@@ -130,20 +130,42 @@ const claimedBody: CSSProperties = {
 
 const nameStyle: CSSProperties = { fontFamily: "var(--display)", fontWeight: 600 };
 
+// One line, no wrapping: the rating/price/distance atoms stay intact and the type label
+// is the single flexible element — it truncates with an ellipsis when space is tight,
+// instead of the whole row reflowing (which previously squeezed the distance pill into a
+// cramped "19 / m" circle on narrow cards).
 const metaRow: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--space-2)",
   fontSize: 12.5,
   color: "var(--ink-2)",
+  flexWrap: "nowrap",
+  minWidth: 0,
 };
 
-const distanceRight: CSSProperties = { marginLeft: "auto" };
+// The type label ("Clothing Store") — the only element allowed to shrink; ellipsis when it
+// can't fit so it never wraps to a second line.
+const labelStyle: CSSProperties = {
+  flex: "1 1 auto",
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const distanceRight: CSSProperties = { marginLeft: "auto", flexShrink: 0, whiteSpace: "nowrap" };
 
 // Rating + its count sit together ("4.6 ★ (1.2k)"); the count is a quiet secondary cue.
-const ratingCluster: CSSProperties = { display: "flex", alignItems: "center", gap: 4 };
+const ratingCluster: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  flex: "0 0 auto",
+  whiteSpace: "nowrap",
+};
 const ratingCountStyle: CSSProperties = { color: "var(--faint)", fontSize: 12 };
-const priceStyle: CSSProperties = { color: "var(--ink-2)", fontWeight: 600 };
+const priceStyle: CSSProperties = { color: "var(--ink-2)", fontWeight: 600, flex: "0 0 auto" };
 
 // Temporarily-closed badge — a quiet warning chip over the cover, top-left.
 const closedBadge: CSSProperties = {
@@ -242,7 +264,7 @@ function CardMeta({ venue }: { venue: VenueCardData }) {
           ) : null}
         </span>
       ) : null}
-      {label ? <span>{label}</span> : null}
+      {label ? <span style={labelStyle}>{label}</span> : null}
       {price ? <span style={priceStyle}>{price}</span> : null}
       {venue.distanceM != null ? (
         <DistanceChip style={distanceRight}>{formatDistance(venue.distanceM)}</DistanceChip>
