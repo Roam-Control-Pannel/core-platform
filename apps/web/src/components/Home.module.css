@@ -1,0 +1,35 @@
+/*
+ * Home hub layout. A single dashboard of sections (recent chats · your town · town forum ·
+ * upcoming plans · market). Mobile-first single column; on web (≥900) a two-column grid where
+ * the live, content-rich sections span the full width and the two "coming soon" seams pair up
+ * in one row. A CSS Module because the reflow is a media query and globals.css is generated.
+ */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The venue peek inside "your town": one column on phones, two from small tablets up. */
+.venuePeek {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .venuePeek {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  /* Live sections get the full width; the paired seams (plans · market) sit in the last row. */
+  .spanAll {
+    grid-column: 1 / -1;
+  }
+}
