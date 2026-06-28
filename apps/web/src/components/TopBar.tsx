@@ -22,8 +22,9 @@ import { AuthModal } from "./AuthModal";
 import styles from "./TopBar.module.css";
 
 /** Which primary nav item the current path belongs to (for the active pill). */
-function activeKey(pathname: string): "explore" | "chat" | "you" | null {
+function activeKey(pathname: string): "explore" | "townhall" | "chat" | "you" | null {
   if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
+  if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
   if (
     pathname.startsWith("/account") ||
@@ -51,6 +52,9 @@ export function TopBar() {
       <nav className={styles.nav} aria-label="Primary">
         <Link href="/" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
           Explore
+        </Link>
+        <Link href="/town-hall" className={`${styles.link} ${active === "townhall" ? styles.active : ""}`}>
+          Town Hall
         </Link>
         <span className={styles.dormant} aria-disabled title="Plans is coming soon">
           Plans
