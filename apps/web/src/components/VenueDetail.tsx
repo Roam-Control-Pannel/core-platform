@@ -517,7 +517,12 @@ function ClaimedDetail({
 
         {/* Scrolling tabbed content column on web. */}
         <div className={styles.content}>
+          {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop).
+              Details is the only built tab today; the rest are faint Stage-2 seams. */}
           <div className={styles.tabstrip} role="tablist" aria-label="Venue sections">
+            <DormantTab label="Posts" />
+            <DormantTab label="Offers" />
+            <DormantTab label="Gallery" />
             <button
               type="button"
               role="tab"
@@ -527,8 +532,6 @@ function ClaimedDetail({
             >
               Details
             </button>
-            <DormantTab label="Posts" />
-            <DormantTab label="Offers" />
             <DormantTab label="Shop ◇" />
           </div>
 
@@ -554,10 +557,10 @@ function DormantTab({ label }: { label: string }) {
 }
 
 /**
- * The claimed-venue action cluster (Discovery design #3): Follow · ＋Add to Plan · Get
- * Directions in a single row. Follow is the live primary; Add to Plan is a dormant Stage-2
- * (Social) seam; Directions hands off to the device maps app. Lives in the sticky aside so
- * it stays reachable as the tabbed content scrolls.
+ * The claimed-venue action cluster (venue design): Follow · ＋Add to Plan · Get Directions,
+ * STACKED full-width in the sticky aside (matching the design's left action column). Follow is
+ * the live primary; Add to Plan is a dormant Stage-2 (Social) seam; Directions hands off to the
+ * device maps app.
  */
 function VenueActions({
   venueId,
@@ -569,7 +572,7 @@ function VenueActions({
   address: string | null;
 }) {
   return (
-    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
+    <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
       <FollowButton
         venueId={venueId}
         initialFollowing={initialFollowing}
@@ -577,7 +580,7 @@ function VenueActions({
       />
       <Button
         variant="neutral"
-        size="sm"
+        block
         aria-disabled
         title="Plans are coming soon"
         onClick={(e) => e.preventDefault()}
@@ -585,7 +588,7 @@ function VenueActions({
       >
         ＋ Add to Plan
       </Button>
-      <DirectionsButton address={address} />
+      <DirectionsButton address={address} block />
     </div>
   );
 }
@@ -949,7 +952,7 @@ function ActionRow({ address }: { address: string | null }) {
   );
 }
 
-function DirectionsButton({ address }: { address: string | null }) {
+function DirectionsButton({ address, block = false }: { address: string | null; block?: boolean }) {
   // Hand off to the device's DEFAULT maps app (iOS → Apple Maps, Android → the user's
   // default via geo:, desktop → Google web). SSR can't know the platform, so we render the
   // web URL first and swap to the device-specific one after mount. Hooks run unconditionally
@@ -973,9 +976,9 @@ function DirectionsButton({ address }: { address: string | null }) {
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      style={{ textDecoration: "none" }}
+      style={{ textDecoration: "none", ...(block ? { display: "block" } : {}) }}
     >
-      <Button variant="neutral" size="sm">
+      <Button variant="neutral" block={block} size={block ? "md" : "sm"}>
         Get Directions ↗
       </Button>
     </a>
