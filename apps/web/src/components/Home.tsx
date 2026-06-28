@@ -163,6 +163,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
             <Link
               key={t.id}
               href={`/threads/${t.id}`}
+              className={styles.row}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -228,10 +229,10 @@ function YourTown({ place }: { place: Place }) {
     setVenues(undefined);
     setError(false);
     trpc.venues.near
-      .query({ lat: place.lat, lng: place.lng, limit: 4 })
+      .query({ lat: place.lat, lng: place.lng, limit: 12 })
       .then((rows: unknown) => {
         if (cancelled) return;
-        const list = Array.isArray(rows) ? (rows as NearRow[]).slice(0, 4).map(toCard) : [];
+        const list = Array.isArray(rows) ? (rows as NearRow[]).slice(0, 12).map(toCard) : [];
         setVenues(list);
       })
       .catch(() => {
@@ -323,6 +324,7 @@ function TownForum({ place }: { place: Place }) {
             <Link
               key={t.id}
               href={`/town-hall/${t.id}`}
+              className={styles.row}
               style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
             >
               <span
@@ -577,6 +579,7 @@ function LocalNews() {
             <Link
               key={p.id}
               href={`/venue/${p.venueId}`}
+              className={styles.row}
               style={{ display: "flex", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
             >
               <span aria-hidden style={{ fontSize: 16, lineHeight: "20px", flexShrink: 0 }}>

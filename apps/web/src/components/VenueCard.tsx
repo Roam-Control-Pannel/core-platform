@@ -30,6 +30,7 @@
 "use client";
 
 import { memo, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import styles from "./VenueCard.module.css";
 import Link from "next/link";
 import { Card, Pill, Rate, DistanceChip } from "@roam/design";
 import { FollowButton } from "./FollowButton";
@@ -351,7 +352,7 @@ export const VenueCard = memo(function VenueCard({
   coverUrl,
 }: VenueCardProps) {
   return (
-    <Link href={venuePath(venue.id)} style={linkStyle}>
+    <Link href={venuePath(venue.id)} style={linkStyle} className={styles.card}>
       {venue.claimed ? (
         <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} />
       ) : (

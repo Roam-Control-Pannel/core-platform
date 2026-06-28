@@ -9,16 +9,45 @@
   gap: var(--space-4);
 }
 
-/* The venue peek inside "your town": one column on phones, two from small tablets up. */
-.venuePeek {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
+/* Interactive list rows (recent chats · town forum · local news): a quiet hover wash so the
+   rows read as tappable. Touch devices get no sticky hover. */
+.row {
+  border-radius: var(--r-md);
+  transition: background var(--motion-transition) var(--ease);
 }
 
+@media (hover: hover) {
+  .row:hover {
+    background: var(--paper-2);
+  }
+}
+
+/* The venue peek inside "your town": a single horizontally-scrolling track (a carousel),
+   not a vertical 2-up grid. One card dominates the view with the next peeking in; swipe/scroll
+   sideways. Scroll-snap gives the carousel a tidy resting position per card. */
+.venuePeek {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 82%;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-2);
+  /* a calm, thin scrollbar (where shown) */
+  scrollbar-width: thin;
+}
+
+.venuePeek > * {
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+/* Roomier cards once there's width: a fixed track width so several show and the rest scroll. */
 @media (min-width: 560px) {
   .venuePeek {
-    grid-template-columns: 1fr 1fr;
+    grid-auto-columns: 300px;
   }
 }
 
