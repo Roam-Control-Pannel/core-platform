@@ -1,21 +1,21 @@
 /**
- * OpenStreetMap Nominatim geocoding client — the outbound fetch for place search.
+ * Photon geocoding client — the outbound fetch for place search.
  *
  * WHERE THIS LIVES (and why not core): like the Places client and push, this is Node/runtime
  * I/O (an https call). @roam/core stays transport-agnostic, so it owns only the PURE parse
- * (geocode.parseNominatim); this module does the call and hands the raw JSON to that parser.
+ * (geocode.parsePhoton); this module does the call and hands the raw JSON to that parser.
  *
- * PROVIDER POLICY: Nominatim is free and key-less (the same posture as our OSM map tiles),
- * but its usage policy REQUIRES an identifying User-Agent and discourages heavy traffic. So
- * the call is made SERVER-SIDE with a fixed UA (never from the browser, which can't set one),
- * and the router in front caches results — an interactive search box must not hammer it. A
- * paid/self-hosted geocoder later swaps in here without touching core or the web.
+ * PROVIDER: Photon (photon.komoot.io) — free, key-less, OpenStreetMap-based, built for
+ * autocomplete. Chosen over Nominatim's public instance because that one blocks datacenter
+ * IPs (our api runs on one) — the same no-cost/no-key posture as our OSM map tiles. A paid or
+ * self-hosted geocoder later swaps in here without touching core or the web. We still send an
+ * identifying User-Agent (good manners) and the router in front caches results.
  */
 import { geocode as coreGeocode } from "@roam/core";
 
-const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+const PHOTON_SEARCH_URL = "https://photon.komoot.io/api";
 
-/** Identifies the app to Nominatim per its usage policy. */
+/** Identifies the app to the provider. */
 const USER_AGENT = "Roam/0.1 (+https://roam-everywhere.com)";
 
 /** How many results we ask for (and cap to). A short, scannable list. */
@@ -35,17 +35,14 @@ export async function geocodeSearch(
 ): Promise<coreGeocode.GeocodeResult[]> {
   const params = new URLSearchParams({
     q: query,
-    format: "jsonv2",
-    addressdetails: "1",
     limit: String(SEARCH_LIMIT),
+    lang: "en",
   });
 
-  const res = await fetchImpl(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, {
+  const res = await fetchImpl(`${PHOTON_SEARCH_URL}?${params.toString()}`, {
     method: "GET",
     headers: {
       "User-Agent": USER_AGENT,
-      // Nominatim also accepts Referer for identification; harmless to include.
-      Referer: "https://roam-everywhere.com",
       Accept: "application/json",
     },
   });
@@ -58,10 +55,10 @@ export async function geocodeSearch(
       detail = "(no response body)";
     }
     throw new Error(
-      `Nominatim search failed: ${res.status} ${res.statusText} — ${detail.slice(0, 200)}`,
+      `Photon search failed: ${res.status} ${res.statusText} — ${detail.slice(0, 200)}`,
     );
   }
 
   const json = (await res.json()) as unknown;
-  return coreGeocode.parseNominatim(json, SEARCH_LIMIT);
+  return coreGeocode.parsePhoton(json, SEARCH_LIMIT);
 }
