@@ -597,7 +597,7 @@ function ClaimSection({
   if (claimUi === "auth") {
     return (
       <AuthPanel
-        intro="Claiming is free. Sign in or create an account to submit your claim — we'll verify it before it goes live."
+        intro="Claiming is free. Sign in or create an account and this venue is yours to manage right away."
         emailRedirectTo={claimReturnUrl(venueId)}
         onAuthed={onAuthed}
       />
@@ -615,7 +615,7 @@ function ClaimSection({
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
           Claim it free to add photos, opening times, your menu and links, and post offers and
-          events to people nearby — about 90 seconds. We&apos;ll verify it before it goes live.
+          events to people nearby — about 90 seconds, and you can start editing straight away.
         </p>
         {claimUi === "error" && claimError ? (
           <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-3)" }} role="alert">
@@ -623,7 +623,7 @@ function ClaimSection({
           </div>
         ) : null}
         <Button variant="pri" onClick={onClaimPressed} disabled={claimUi === "submitting"}>
-          {claimUi === "submitting" ? "Submitting…" : claimUi === "error" ? "Try again" : "Claim this venue"}
+          {claimUi === "submitting" ? "Claiming…" : claimUi === "error" ? "Try again" : "Claim this venue"}
         </Button>
       </Card>
 
