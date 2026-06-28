@@ -1,20 +1,21 @@
 /**
- * AccountHub — the /account home: the signed-in user's hub. Edit your profile, and jump to
- * the other "you" surfaces (Following, your Business dashboard). Signed out shows the same
- * just-in-time AuthPanel as /following.
+ * AccountHub — the /account "You" surface. Signed in, it LEADS WITH YOUR OWN WALL: the
+ * ProfileWall rendered in `editable` mode, so your profile (avatar, header, name, handle, bio,
+ * links) edits inline via its "Edit profile" toggle, and your posts compose right there. The
+ * other "you" surfaces (Following, Business dashboard) and Sign out ride along as secondary
+ * controls in the wall header + a slim top bar.
  *
- * The Business link is always present — the dashboard itself handles the "you own nothing
- * yet, here's how to claim" state, so the hub stays simple and doesn't need its own query.
+ * Signed out shows the same just-in-time AuthPanel as before.
  */
 "use client";
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Card } from "@roam/design";
+import { Button, Pill } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
-import { ProfileEditor } from "./ProfileEditor";
+import { ProfileWall } from "./ProfileWall";
 import { getSupabaseBrowser } from "../lib/supabase";
 
 export function AccountHub() {
@@ -34,14 +35,62 @@ export function AccountHub() {
 
   const userId = session?.user?.id ?? null;
 
+  if (!userId) {
+    return (
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "var(--space-2) 0 var(--space-4)",
+          }}
+        >
+          <Link
+            href="/explore"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
+          >
+            <span aria-hidden>←</span> Explore
+          </Link>
+          <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
+            Your account
+          </h1>
+          <span style={{ width: 1 }} />
+        </header>
+
+        <AuthPanel
+          intro="Sign in to set up your profile and post to your wall."
+          emailRedirectTo={returnUrl()}
+          onAuthed={() => {
+            /* session change re-renders this hub signed-in */
+          }}
+        />
+      </main>
+    );
+  }
+
+  // The secondary "you" surfaces, surfaced beneath the profile header on your own wall.
+  const ownerNav = (
+    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+      <Link href="/following" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Following</Pill>
+      </Link>
+      <Link href="/dashboard" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Business dashboard</Pill>
+      </Link>
+    </div>
+  );
+
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <header
+    <>
+      <div
         style={{
+          maxWidth: 680,
+          margin: "0 auto",
+          padding: "var(--space-3) var(--space-4)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "var(--space-2) 0 var(--space-4)",
         }}
       >
         <Link
@@ -50,56 +99,13 @@ export function AccountHub() {
         >
           <span aria-hidden>←</span> Explore
         </Link>
-        <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
-          Your account
-        </h1>
-        <span style={{ width: 1 }} />
-      </header>
+        <Button variant="neutral" size="sm" onClick={() => void signOut()} disabled={signingOut}>
+          {signingOut ? "Signing out…" : "Sign out"}
+        </Button>
+      </div>
 
-      {!userId ? (
-        <AuthPanel
-          intro="Sign in to set up your profile and manage your account."
-          emailRedirectTo={returnUrl()}
-          onAuthed={() => {
-            /* session change re-renders this hub signed-in */
-          }}
-        />
-      ) : (
-        <>
-          <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <ProfileEditor userId={userId} />
-          </Card>
-
-          <div style={{ display: "grid", gap: "var(--space-2)" }}>
-            <HubLink href={`/u/${userId}`} title="Your wall" hint="Your public profile — post updates and photos, and see likes and comments." />
-            <HubLink href="/dashboard" title="Business dashboard" hint="Manage venues you've claimed — details, hours and photos." />
-            <HubLink href="/following" title="Following" hint="Venues you follow and their notifications." />
-          </div>
-
-          <div style={{ marginTop: "var(--space-6)", textAlign: "center" }}>
-            <Button variant="neutral" onClick={() => void signOut()} disabled={signingOut}>
-              {signingOut ? "Signing out…" : "Sign out"}
-            </Button>
-          </div>
-        </>
-      )}
-    </main>
-  );
-}
-
-function HubLink({ href, title, hint }: { href: string; title: string; hint: string }) {
-  return (
-    <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>
-      <Card style={{ padding: "var(--space-4)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-          <div style={{ minWidth: 0 }}>
-            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>{title}</div>
-            <div style={{ marginTop: 2, fontSize: 12.5, color: "var(--ink-2)" }}>{hint}</div>
-          </div>
-          <span aria-hidden style={{ color: "var(--muted)", fontSize: 18 }}>→</span>
-        </div>
-      </Card>
-    </Link>
+      <ProfileWall userId={userId} editable ownerNav={ownerNav} />
+    </>
   );
 }
 

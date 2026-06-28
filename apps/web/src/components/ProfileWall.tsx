@@ -11,10 +11,11 @@
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { ProfileEditor } from "./ProfileEditor";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 
@@ -42,7 +43,22 @@ interface WallPost {
   viewerLiked: boolean;
 }
 
-export function ProfileWall({ userId }: { userId: string }) {
+/**
+ * @param editable  when true and the viewer owns this wall, profile editing happens INLINE
+ *                  (the header's "Edit profile" toggles a ProfileEditor) instead of linking to
+ *                  /account. Used by the "You" surface, which leads with your own wall.
+ * @param ownerNav  extra owner controls (e.g. Following / dashboard / sign-out) rendered in the
+ *                  header beneath the bio. Only shown to the wall's owner.
+ */
+export function ProfileWall({
+  userId,
+  editable = false,
+  ownerNav,
+}: {
+  userId: string;
+  editable?: boolean;
+  ownerNav?: ReactNode;
+}) {
   const trpc = useTrpc();
   const session = useSession();
   const isOwner = session?.user?.id === userId;
@@ -50,6 +66,14 @@ export function ProfileWall({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
   const [posts, setPosts] = useState<WallPost[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    const byId = trpc.profiles.byId as unknown as {
+      query: (input: { userId: string }) => Promise<PublicProfile | null>;
+    };
+    return byId.query({ userId });
+  }, [trpc, userId]);
 
   const loadPosts = useCallback(async () => {
     const list = trpc.profileWall.list as unknown as {
@@ -64,10 +88,8 @@ export function ProfileWall({ userId }: { userId: string }) {
     setProfile(undefined);
     setPosts(undefined);
     setError(null);
-    const byId = trpc.profiles.byId as unknown as {
-      query: (input: { userId: string }) => Promise<PublicProfile | null>;
-    };
-    Promise.all([byId.query({ userId }), loadPosts()])
+    setEditing(false);
+    Promise.all([loadProfile(), loadPosts()])
       .then(([p, ps]) => {
         if (cancelled) return;
         setProfile(p);
@@ -79,7 +101,11 @@ export function ProfileWall({ userId }: { userId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [trpc, userId, loadPosts]);
+  }, [loadProfile, loadPosts]);
+
+  const reloadProfile = useCallback(() => {
+    void loadProfile().then((p) => setProfile(p)).catch(() => {});
+  }, [loadProfile]);
 
   const onPosted = useCallback(() => {
     void loadPosts().then((ps) => setPosts(ps)).catch(() => {});
@@ -108,8 +134,25 @@ export function ProfileWall({ userId }: { userId: string }) {
         </div>
       ) : (
         <>
-          <ProfileHeader profile={profile} isOwner={isOwner} />
+          <ProfileHeader
+            profile={profile}
+            isOwner={isOwner}
+            editable={editable}
+            editing={editing}
+            onToggleEdit={() => setEditing((e) => !e)}
+            ownerNav={ownerNav}
+          />
           <div style={{ padding: "0 var(--space-4)" }}>
+            {isOwner && editable && editing ? (
+              <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+                <ProfileEditor userId={userId} onSaved={reloadProfile} />
+                <div style={{ marginTop: "var(--space-3)", textAlign: "right" }}>
+                  <Button variant="neutral" size="sm" onClick={() => setEditing(false)}>
+                    Done
+                  </Button>
+                </div>
+              </Card>
+            ) : null}
             {isOwner ? <WallComposer userId={userId} onPosted={onPosted} /> : null}
 
             {posts === undefined ? (
@@ -140,7 +183,21 @@ export function ProfileWall({ userId }: { userId: string }) {
   );
 }
 
-function ProfileHeader({ profile, isOwner }: { profile: PublicProfile; isOwner: boolean }) {
+function ProfileHeader({
+  profile,
+  isOwner,
+  editable,
+  editing,
+  onToggleEdit,
+  ownerNav,
+}: {
+  profile: PublicProfile;
+  isOwner: boolean;
+  editable: boolean;
+  editing: boolean;
+  onToggleEdit: () => void;
+  ownerNav?: ReactNode;
+}) {
   return (
     <div style={{ marginBottom: "var(--space-4)" }}>
       {/* Header banner */}
@@ -161,9 +218,15 @@ function ProfileHeader({ profile, isOwner }: { profile: PublicProfile; isOwner: 
                 {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
               </h1>
               {isOwner ? (
-                <Link href="/account" style={{ textDecoration: "none" }}>
-                  <Button variant="neutral" size="sm">Edit profile</Button>
-                </Link>
+                editable ? (
+                  <Button variant="neutral" size="sm" onClick={onToggleEdit}>
+                    {editing ? "Close" : "Edit profile"}
+                  </Button>
+                ) : (
+                  <Link href="/account" style={{ textDecoration: "none" }}>
+                    <Button variant="neutral" size="sm">Edit profile</Button>
+                  </Link>
+                )
               ) : null}
             </div>
             {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)" }}>@{profile.handle}</div> : null}
@@ -174,6 +237,7 @@ function ProfileHeader({ profile, isOwner }: { profile: PublicProfile; isOwner: 
             {profile.bio}
           </p>
         ) : null}
+        {isOwner && ownerNav ? <div style={{ marginTop: "var(--space-3)" }}>{ownerNav}</div> : null}
       </div>
     </div>
   );

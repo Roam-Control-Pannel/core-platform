@@ -73,7 +73,7 @@ type UpdateMeMutation = {
   }) => Promise<{ ok: boolean }>;
 };
 
-export function ProfileEditor({ userId }: { userId: string }) {
+export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: () => void }) {
   const trpc = useTrpc();
   const [state, setState] = useState<ProfileState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -153,12 +153,13 @@ export function ProfileEditor({ userId }: { userId: string }) {
         return;
       }
       setSaved(true);
+      onSaved?.();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Couldn't save your profile.");
     } finally {
       setBusy(false);
     }
-  }, [trpc, state]);
+  }, [trpc, state, onSaved]);
 
   if (loadError) {
     return <p style={{ color: "var(--crimson-700)" }} role="alert">{loadError}</p>;
