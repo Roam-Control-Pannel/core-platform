@@ -9,6 +9,7 @@
 export * as meetup from "./meetup/index.js";
 export * as credits from "./credits/index.js";
 export * as geo from "./geo/index.js";
+export * as geocode from "./geocode/index.js";
 export * as posts from "./posts/index.js";
 export * as push from "./push/index.js";
 export * as routes from "./routes/index.js";
