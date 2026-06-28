@@ -86,7 +86,7 @@ export function FeedList({ placeName }: { placeName: string }) {
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
         {FILTERS.map((f) => (
           <button key={f.value} onClick={() => setFilter(f.value)} style={{ all: "unset", cursor: "pointer" }}>
-            <Pill variant={filter === f.value ? "on" : "neutral"} size="sm">
+            <Pill variant={filter === f.value ? "crim" : "neutral"} size="sm">
               {f.label}
             </Pill>
           </button>

@@ -11,7 +11,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card } from "@roam/design";
+import { Button, Card } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { ProfileEditor } from "./ProfileEditor";
@@ -76,22 +76,9 @@ export function AccountHub() {
           </div>
 
           <div style={{ marginTop: "var(--space-6)", textAlign: "center" }}>
-            <button
-              onClick={() => void signOut()}
-              disabled={signingOut}
-              style={{
-                all: "unset",
-                cursor: signingOut ? "default" : "pointer",
-                fontFamily: "var(--ui)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--muted)",
-                padding: "8px 14px",
-                borderRadius: 999,
-              }}
-            >
+            <Button variant="neutral" onClick={() => void signOut()} disabled={signingOut}>
               {signingOut ? "Signing out…" : "Sign out"}
-            </button>
+            </Button>
           </div>
         </>
       )}

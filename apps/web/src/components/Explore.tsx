@@ -87,6 +87,9 @@ export function Explore() {
   // venue_ids the caller follows — read once per session, used to seed each card's
   // FollowButton so N cards don't each fetch. Empty when signed out (no follow state).
   const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+  // Phones: the venue map is collapsed by default so the venue cards are the first thing you
+  // see (an always-on 220px map pushed them below the fold). A toggle reveals it on demand.
+  const [showMobileMap, setShowMobileMap] = useState(false);
   // null = the "All" view (venues.near). A group name = a category view (ingest + read).
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // The selected leaf type within a category view, or null for "all sub-categories".
@@ -304,7 +307,7 @@ export function Explore() {
         onClick={() => loadAll()}
         style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
       >
-        <Pill variant={activeCategory === null ? "on" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
+        <Pill variant={activeCategory === null ? "crim" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
           All
         </Pill>
       </button>
@@ -314,7 +317,7 @@ export function Explore() {
           onClick={() => loadCategory(c)}
           style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
         >
-          <Pill variant={activeCategory === c ? "on" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
+          <Pill variant={activeCategory === c ? "crim" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
             {categoryLabel(c)}
           </Pill>
         </button>
@@ -392,13 +395,40 @@ export function Explore() {
             {/* category pills — phones only; on web the rail above carries them */}
             <div className={styles.mobilePills}>{renderCategories(false)}</div>
 
-            {/* phones only: a compact map of the shown venues + the hand-off to the device's
-                default maps app (the desktop map column carries the same on web) */}
+            {/* phones only: the map is collapsed behind a toggle so venue cards lead; the
+                desktop map column carries the same map always-on on web. */}
             <div className={styles.mobileMap}>
-              <VenueMap venues={mapVenues} center={place} className={styles.mobileMapEmbed} />
-              <div style={{ marginTop: "var(--space-2)" }}>
-                <OpenInMaps place={place} variant="pill" />
-              </div>
+              <button
+                onClick={() => setShowMobileMap((v) => !v)}
+                aria-expanded={showMobileMap}
+                style={{
+                  all: "unset",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  minHeight: 40,
+                  padding: "8px 14px",
+                  borderRadius: "var(--r-full)",
+                  border: "1px solid var(--line)",
+                  background: "var(--paper-2)",
+                  fontFamily: "var(--ui)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--ink-2)",
+                }}
+              >
+                <span aria-hidden style={{ color: "var(--crimson-700)" }}>◍</span>
+                {showMobileMap ? "Hide map" : "Show map"}
+              </button>
+              {showMobileMap ? (
+                <div style={{ marginTop: "var(--space-3)" }}>
+                  <VenueMap venues={mapVenues} center={place} className={styles.mobileMapEmbed} />
+                  <div style={{ marginTop: "var(--space-2)" }}>
+                    <OpenInMaps place={place} variant="pill" />
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {/* sub-category sliding strip — leaf types in the loaded category view */}
@@ -413,7 +443,7 @@ export function Explore() {
                 }}
               >
                 <button onClick={() => setActiveSub(null)} style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}>
-                  <Pill variant={activeSub === null ? "on" : "neutral"} size="sm">
+                  <Pill variant={activeSub === null ? "crim" : "neutral"} size="sm">
                     All
                   </Pill>
                 </button>
@@ -423,7 +453,7 @@ export function Explore() {
                     onClick={() => setActiveSub(t)}
                     style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}
                   >
-                    <Pill variant={activeSub === t ? "on" : "neutral"} size="sm">
+                    <Pill variant={activeSub === t ? "crim" : "neutral"} size="sm">
                       {t.replace(/_/g, " ")}
                     </Pill>
                   </button>

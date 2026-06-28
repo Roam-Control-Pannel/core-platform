@@ -266,16 +266,22 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
           cursor: "pointer",
           display: "inline-flex",
           alignItems: "center",
-          gap: "var(--space-2)",
-          fontFamily: "var(--display)",
+          gap: 8,
+          minHeight: 40,
+          padding: "7px 14px",
+          borderRadius: 999,
+          background: "var(--crimson-tint)",
+          border: "1px solid var(--crimson-tint-2)",
+          boxSizing: "border-box",
+          fontFamily: "var(--ui)",
           fontWeight: 600,
-          fontSize: 20,
-          color: "var(--ink-hi)",
+          fontSize: 15,
+          color: "var(--crimson-700)",
         }}
       >
         <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--crimson)" }} />
         {value.name}
-        <span style={{ color: "var(--muted)", fontSize: 14 }}>▾</span>
+        <span style={{ fontSize: 12 }}>▾</span>
       </button>
 
       {open ? (
