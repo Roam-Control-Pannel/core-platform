@@ -14,6 +14,7 @@ import { chatRouter } from "./chat.js";
 import { placesRouter } from "./places.js";
 import { geoRouter } from "./geo.js";
 import { profilesRouter } from "./profiles.js";
+import { moderationRouter } from "./moderation.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   places: placesRouter,
   geo: geoRouter,
   profiles: profilesRouter,
+  moderation: moderationRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */
