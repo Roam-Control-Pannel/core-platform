@@ -14,7 +14,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
 
-function activeKey(pathname: string): "explore" | "townhall" | "chat" | "you" | null {
+function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
+  if (pathname.startsWith("/home")) return "home";
   if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
@@ -29,6 +30,11 @@ function activeKey(pathname: string): "explore" | "townhall" | "chat" | "you" | 
 
 /* Minimal line icons (currentColor), in the calm Foundations spirit — no icon dependency. */
 const icons = {
+  home: (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M4 11.5 12 4l8 7.5M6 10v9.5h12V10" />
+    </svg>
+  ),
   explore: (
     <svg viewBox="0 0 24 24" aria-hidden>
       <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />
@@ -62,6 +68,10 @@ export function TabBar() {
     <>
       <div className={styles.spacer} aria-hidden />
       <nav className={styles.bar} aria-label="Primary">
+        <Link href="/home" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
+          {icons.home}
+          Home
+        </Link>
         <Link href="/" className={`${styles.tab} ${active === "explore" ? styles.active : ""}`}>
           {icons.explore}
           Explore
@@ -70,9 +80,6 @@ export function TabBar() {
           {icons.townhall}
           Town Hall
         </Link>
-        <span className={styles.fab} aria-disabled title="Creating posts & plans is coming soon">
-          <span>＋</span>
-        </span>
         <Link href="/threads" className={`${styles.tab} ${active === "chat" ? styles.active : ""}`}>
           {icons.chat}
           Chat
