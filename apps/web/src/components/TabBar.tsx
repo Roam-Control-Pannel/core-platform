@@ -14,8 +14,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
 
-function activeKey(pathname: string): "explore" | "chat" | "you" | null {
+function activeKey(pathname: string): "explore" | "townhall" | "chat" | "you" | null {
   if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
+  if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
   if (
     pathname.startsWith("/account") ||
@@ -34,10 +35,10 @@ const icons = {
       <circle cx="12" cy="10" r="2.4" />
     </svg>
   ),
-  plans: (
+  townhall: (
+    // A civic "columns" mark — the town-hall building, in the calm line-icon spirit.
     <svg viewBox="0 0 24 24" aria-hidden>
-      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
-      <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" />
+      <path d="M12 3 3.5 7.5h17zM5 11v6M9 11v6M15 11v6M19 11v6M3.5 20h17" />
     </svg>
   ),
   chat: (
@@ -65,10 +66,10 @@ export function TabBar() {
           {icons.explore}
           Explore
         </Link>
-        <span className={`${styles.tab} ${styles.dormant}`} aria-disabled title="Plans is coming soon">
-          {icons.plans}
-          Plans
-        </span>
+        <Link href="/town-hall" className={`${styles.tab} ${active === "townhall" ? styles.active : ""}`}>
+          {icons.townhall}
+          Town Hall
+        </Link>
         <span className={styles.fab} aria-disabled title="Creating posts & plans is coming soon">
           <span>＋</span>
         </span>

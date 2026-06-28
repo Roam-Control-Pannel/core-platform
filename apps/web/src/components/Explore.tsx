@@ -31,7 +31,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Seg, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
-import { PlaceSwitcher, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
+import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
+import { useCurrentPlace } from "../lib/currentPlace";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
@@ -82,7 +83,9 @@ export function Explore() {
   const trpc = useTrpc();
   const session = useSession();
   const [mode, setMode] = useState<Mode>("browse");
-  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
+  // The active place is shared with Town Hall and persisted per-device (so it survives
+  // navigation and reloads), not local to Explore. See useCurrentPlace.
+  const { place, setPlace } = useCurrentPlace();
   const [venues, setVenues] = useState<VenueCardData[] | null>(null);
   // venue_ids the caller follows — read once per session, used to seed each card's
   // FollowButton so N cards don't each fetch. Empty when signed out (no follow state).
