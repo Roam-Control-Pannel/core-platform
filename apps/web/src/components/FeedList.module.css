@@ -1,0 +1,52 @@
+/*
+ * Feed layout. Mobile-first single column (a post opens the /feed/[postId] screen). On web
+ * (≥1024) it reflows to the design's master-detail two-pane: the post list on the left, the
+ * selected post's detail sticky on the right. A CSS Module because the reflow is a media query
+ * and globals.css is generated. Tokens only.
+ */
+.layout {
+  display: block;
+  max-width: 640px;
+}
+
+/* The detail pane only exists on web; on phones a tap navigates to the post-detail route. */
+.detail {
+  display: none;
+}
+
+.card {
+  border-radius: 16px;
+  transition:
+    transform var(--motion-transition) var(--ease),
+    box-shadow var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: var(--space-6);
+    align-items: start;
+    max-width: 980px;
+  }
+
+  .detail {
+    display: block;
+    position: sticky;
+    top: 84px;
+  }
+
+  /* On web the active card reads as "selected" (it drives the detail pane), so its own
+     hover-lift is dropped — selection, not hover, is the signal. */
+  .card:hover {
+    transform: none;
+    box-shadow: var(--sh-1);
+  }
+}

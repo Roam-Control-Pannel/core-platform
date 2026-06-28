@@ -1,41 +1,28 @@
 /**
- * FeedList — the Explore Feed tab's real content (Discovery design Flow C).
+ * FeedList — the Explore Feed tab (Discovery design Flow C).
  *
- * Reads `posts.feed` (published, moderation-approved, feed-destination posts, newest
- * first) and renders post cards with the design's type filter (All · Offers · Events ·
- * News) and a tagged card head (avatar · venue · time · OFFER/EVENT/NEWS tag). Ships every
- * applicable state WITH the feature (States matrix): content-shaped skeleton while loading,
- * an honest first-run empty state, and an error state — never a spinner, never "looks dead".
+ * Reads `posts.feed` (published, moderation-approved, feed-destination posts, newest first)
+ * and renders the design's type filter (All · Offers · Events · News) over a list of tagged
+ * post cards. Ships every applicable state WITH the feature (States matrix): content-shaped
+ * skeleton, an honest first-run empty state, and an error state.
  *
- * Why the empty state matters here specifically: at launch there are no claimed venues, so
- * no posts, so the feed IS empty for essentially everyone on day one — the MEDIAN experience
- * worldwide (ARCHITECTURE.md), not an edge case. It must read as "new and waiting".
+ * Layout (design parity):
+ *   - Mobile: a single column; tapping a post opens the /feed/[postId] detail screen.
+ *   - Web (≥1024): the master-detail two-pane — the list on the left, the SELECTED post's
+ *     detail sticky on the right (clicking a card selects it in place rather than navigating).
  *
- * Honesty over the mockup: the design card also shows a post image, a like count and a
- * distance. The feed data carries none of those yet, so we DON'T fake them — the card
- * renders what exists (kind, venue, time, title, body, link) and grows when the post model
- * does. The full post-detail / web two-pane reflow waits on that richer post data.
- *
- * Presentation reuses the established kit and tokens, so a token change repaints it.
+ * Why the empty state matters here: at launch there are no claimed venues, so no posts, so the
+ * feed IS empty for essentially everyone on day one — the MEDIAN experience (ARCHITECTURE.md),
+ * not an edge case. It must read as "new and waiting".
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { Card, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { venuePath } from "../lib/routes";
-
-export interface FeedPost {
-  id: string;
-  kind: "news" | "offer" | "event";
-  title: string | null;
-  body: string | null;
-  publishedAt: string | null;
-  venueId: string;
-  venueName: string | null;
-  venueLocality: string | null;
-}
+import { type FeedPost, KindTag, formatWhen, PostDetail } from "./PostDetail";
+import styles from "./FeedList.module.css";
 
 type KindFilter = "all" | "offer" | "event" | "news";
 
@@ -51,6 +38,7 @@ export function FeedList({ placeName }: { placeName: string }) {
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<KindFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,152 +62,121 @@ export function FeedList({ placeName }: { placeName: string }) {
     [posts, filter],
   );
 
+  // Keep a valid selection for the web detail pane: default to the first shown post, and
+  // re-point if the current selection filtered out.
+  useEffect(() => {
+    if (shown.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((cur) => (cur && shown.some((p) => p.id === cur) ? cur : shown[0]!.id));
+  }, [shown]);
+
   if (error) return <FeedError message={error} />;
   if (posts === null) return <FeedSkeleton />;
-  // Empty BEFORE filtering — a genuinely empty feed gets the inviting first-run state, not
-  // a filter row over nothing.
+  // Empty BEFORE filtering — a genuinely empty feed gets the inviting first-run state.
   if (posts.length === 0) return <FeedEmpty placeName={placeName} />;
 
-  return (
-    <div style={{ maxWidth: 640 }}>
-      {/* type filters — map to the composer's post types */}
-      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
-        {FILTERS.map((f) => (
-          <button key={f.value} onClick={() => setFilter(f.value)} style={{ all: "unset", cursor: "pointer" }}>
-            <Pill variant={filter === f.value ? "crim" : "neutral"} size="sm">
-              {f.label}
-            </Pill>
-          </button>
-        ))}
-      </div>
+  const selected = shown.find((p) => p.id === selectedId) ?? shown[0] ?? null;
 
-      {shown.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontSize: 14, padding: "var(--space-4) 0" }}>
-          No {filter === "all" ? "" : `${filter} `}posts here yet.
-        </p>
-      ) : (
-        <div style={{ display: "grid", gap: "var(--space-4)" }}>
-          {shown.map((p) => (
-            <PostCard key={p.id} post={p} />
+  // On web a click selects in-pane; on phones it falls through to the Link (the detail route).
+  const onCardClick = (e: MouseEvent, post: FeedPost) => {
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+      e.preventDefault();
+      setSelectedId(post.id);
+    }
+  };
+
+  return (
+    <div className={styles.layout}>
+      <div>
+        {/* type filters — map to the composer's post types */}
+        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+          {FILTERS.map((f) => (
+            <button key={f.value} onClick={() => setFilter(f.value)} style={{ all: "unset", cursor: "pointer" }}>
+              <Pill variant={filter === f.value ? "crim" : "neutral"} size="sm">
+                {f.label}
+              </Pill>
+            </button>
           ))}
         </div>
-      )}
+
+        {shown.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 14, padding: "var(--space-4) 0" }}>
+            No {filter === "all" ? "" : `${filter} `}posts here yet.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: "var(--space-4)" }}>
+            {shown.map((p) => (
+              <PostCard key={p.id} post={p} active={selected?.id === p.id} onClick={(e) => onCardClick(e, p)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Web-only detail pane (the master-detail right side). */}
+      <div className={styles.detail}>{selected ? <PostDetail post={selected} /> : null}</div>
     </div>
   );
 }
 
-/** Post-kind tag — OFFER carries the crimson emphasis; EVENT/NEWS are neutral. */
-function KindTag({ kind }: { kind: FeedPost["kind"] }) {
-  const isOffer = kind === "offer";
+/**
+ * A feed list card. The whole card is a link to the post-detail route (/feed/[postId]) — the
+ * mobile navigation; on web, onClick intercepts to select the post in the detail pane. `active`
+ * marks the card that drives the web pane.
+ */
+function PostCard({ post, active, onClick }: { post: FeedPost; active: boolean; onClick: (e: MouseEvent) => void }) {
   return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: 9.5,
-        fontWeight: 700,
-        letterSpacing: ".08em",
-        textTransform: "uppercase",
-        padding: "3px 9px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-        background: isOffer ? "var(--crimson-tint)" : "var(--paper-2)",
-        color: isOffer ? "var(--crimson-700)" : "var(--muted)",
-        border: `1px solid ${isOffer ? "var(--crimson-tint-2)" : "var(--line)"}`,
-      }}
-    >
-      {kind}
-    </span>
-  );
-}
+    <Link href={`/feed/${post.id}`} onClick={onClick} className={styles.card} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+      <Card style={active ? { borderColor: "var(--crimson-tint-2)", boxShadow: "var(--shadow-pop)" } : undefined}>
+        {/* head: avatar · venue + time · kind tag */}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "var(--space-3) var(--space-4) 0" }}>
+          <span
+            aria-hidden
+            style={{ flex: "0 0 auto", width: 30, height: 30, borderRadius: "50%", background: "var(--paper-2)", border: "1px solid var(--line)" }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {post.venueName ? (
+              <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 13.5, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {post.venueName}
+              </div>
+            ) : null}
+            {post.publishedAt ? (
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", marginTop: 1 }}>
+                {formatWhen(post.publishedAt)}
+                {post.venueLocality ? ` · ${post.venueLocality}` : ""}
+              </div>
+            ) : null}
+          </div>
+          <KindTag kind={post.kind} />
+        </div>
 
-function PostCard({ post }: { post: FeedPost }) {
-  return (
-    <Card style={{ overflow: "hidden" }}>
-      {/* head: avatar · venue + time · kind tag */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-          padding: "var(--space-3) var(--space-4) 0",
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            flex: "0 0 auto",
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            background: "var(--paper-2)",
-            border: "1px solid var(--line)",
-          }}
-        />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {post.venueName ? (
-            <div
+        <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)" }}>
+          {post.title ? (
+            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-1)" }}>
+              {post.title}
+            </div>
+          ) : null}
+          {post.body ? (
+            <p
               style={{
-                fontFamily: "var(--display)",
-                fontWeight: 600,
-                fontSize: 13.5,
-                color: "var(--ink)",
+                margin: 0,
+                lineHeight: 1.55,
+                color: "var(--ink-2)",
+                fontSize: 14.5,
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
               }}
             >
-              {post.venueName}
-            </div>
-          ) : null}
-          {post.publishedAt ? (
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", marginTop: 1 }}>
-              {formatWhen(post.publishedAt)}
-              {post.venueLocality ? ` · ${post.venueLocality}` : ""}
-            </div>
+              {post.body}
+            </p>
           ) : null}
         </div>
-        <KindTag kind={post.kind} />
-      </div>
-
-      <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)" }}>
-        {post.title ? (
-          <div
-            className="t-h3"
-            style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-1)" }}
-          >
-            {post.title}
-          </div>
-        ) : null}
-
-        {post.body ? (
-          <p style={{ margin: 0, lineHeight: 1.55, color: "var(--ink-2)", fontSize: 14.5 }}>{post.body}</p>
-        ) : null}
-
-        {post.venueName ? (
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href={venuePath(post.venueId)} style={{ textDecoration: "none" }}>
-              <Pill variant="ghost-crim" size="sm">
-                View venue →
-              </Pill>
-            </Link>
-          </div>
-        ) : null}
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
-}
-
-/** Compact relative-ish date. Localisation of the exact format is a later concern. */
-function formatWhen(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const diffMs = Date.now() - then;
-  const day = 86_400_000;
-  if (diffMs < day) return "Today";
-  if (diffMs < 2 * day) return "Yesterday";
-  const days = Math.floor(diffMs / day);
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
 }
 
 function FeedSkeleton() {
