@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
@@ -42,6 +42,14 @@ export function Home() {
       <div className={styles.grid}>
         <div className={styles.spanAll}>
           <RecentChats hasSession={!!session} />
+        </div>
+
+        <div className={styles.spanAll}>
+          <FollowedVenues hasSession={!!session} />
+        </div>
+
+        <div className={styles.spanAll}>
+          <LocalNews />
         </div>
 
         <div className={styles.spanAll}>
@@ -89,6 +97,13 @@ function Section({
 
 const mutedNote: React.CSSProperties = { color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, margin: 0 };
 const rowSkeleton: React.CSSProperties = { height: 44, borderRadius: "var(--r-md)", background: "var(--paper-2)" };
+
+/** A short "12 Jun" date for an offer's end — tolerant of an unparseable value. */
+function shortDate(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
 
 /* ── Recent chats (live, auth-gated) ───────────────────────────────────────────────────── */
 
@@ -323,6 +338,257 @@ function TownForum({ place }: { place: Place }) {
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>
                   {townHallAuthor(t.author)} · {t.replyCount === 1 ? "1 reply" : `${t.replyCount} replies`}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/* ── Followed venues + their exclusive loyalty deals (live, auth-gated) ─────────────────── */
+
+interface FollowVenue {
+  venue_id: string;
+  venues: { id: string; name: string; category: string | null } | null;
+}
+interface Deal {
+  id: string;
+  venueId: string;
+  venueName: string | null;
+  title: string;
+  details: string | null;
+  code: string | null;
+  endsAt: string | null;
+}
+
+function FollowedVenues({ hasSession }: { hasSession: boolean }) {
+  const trpc = useTrpc();
+  const [follows, setFollows] = useState<FollowVenue[] | undefined>(undefined);
+  const [deals, setDeals] = useState<Deal[] | undefined>(undefined);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!hasSession) return;
+    let cancelled = false;
+    const myFollows = trpc.social.myFollows as unknown as {
+      query: () => Promise<{ ok: boolean; follows?: FollowVenue[] }>;
+    };
+    const forFollowed = trpc.offers.forFollowed as unknown as { query: () => Promise<Deal[]> };
+    Promise.all([myFollows.query(), forFollowed.query().catch(() => [] as Deal[])])
+      .then(([f, d]) => {
+        if (cancelled) return;
+        setFollows(f.ok ? (f.follows ?? []) : []);
+        setDeals(Array.isArray(d) ? d : []);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, hasSession]);
+
+  return (
+    <Section title="Followed venues" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
+      {!hasSession ? (
+        <div>
+          <p style={mutedNote}>
+            Follow a business to unlock its exclusive loyalty deals — they&apos;ll appear here, just for followers.
+          </p>
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Link href="/account" style={{ textDecoration: "none" }}>
+              <Button variant="pri" size="sm">Sign in</Button>
+            </Link>
+          </div>
+        </div>
+      ) : error ? (
+        <p style={mutedNote}>Couldn&apos;t load your followed venues just now.</p>
+      ) : follows === undefined ? (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          <div style={rowSkeleton} />
+          <div style={rowSkeleton} />
+        </div>
+      ) : follows.length === 0 ? (
+        <div>
+          <p style={mutedNote}>
+            You&apos;re not following any businesses yet. Follow one to get its exclusive loyalty deals here.
+          </p>
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Link href="/" style={{ textDecoration: "none" }}>
+              <Button variant="neutral" size="sm">Find businesses to follow</Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-4)" }}>
+          {/* The businesses you follow — quick chips into each. */}
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            {follows.map((f) => (
+              <Link
+                key={f.venue_id}
+                href={`/venue/${f.venues?.id ?? f.venue_id}`}
+                style={{ textDecoration: "none" }}
+              >
+                <Pill variant="neutral">{f.venues?.name ?? "Venue"}</Pill>
+              </Link>
+            ))}
+          </div>
+
+          {/* Their exclusive deals. */}
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: ".06em",
+                textTransform: "uppercase",
+                color: "var(--muted)",
+                marginBottom: "var(--space-2)",
+              }}
+            >
+              Exclusive deals for you
+            </div>
+            {deals && deals.length > 0 ? (
+              <div style={{ display: "grid", gap: "var(--space-2)" }}>
+                {deals.map((d) => (
+                  <DealCard key={d.id} deal={d} />
+                ))}
+              </div>
+            ) : (
+              <p style={mutedNote}>
+                No live deals from your venues right now — we&apos;ll show them here the moment one posts a loyalty offer.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function DealCard({ deal }: { deal: Deal }) {
+  return (
+    <Link href={`/venue/${deal.venueId}`} style={{ textDecoration: "none", color: "inherit" }}>
+      <div
+        style={{
+          padding: "var(--space-3) var(--space-4)",
+          borderRadius: "var(--r-lg)",
+          background: "var(--crimson-tint)",
+          border: "1px solid var(--crimson-tint-2)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 2 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 9.5,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "var(--crimson-700)",
+              border: "1px solid var(--crimson-tint-2)",
+              borderRadius: 999,
+              padding: "1px 7px",
+              background: "#fff",
+            }}
+          >
+            Deal
+          </span>
+          {deal.venueName ? <span style={{ fontSize: 12.5, color: "var(--ink-2)", fontWeight: 600 }}>{deal.venueName}</span> : null}
+        </div>
+        <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{deal.title}</div>
+        {deal.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{deal.details}</p> : null}
+        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+          {deal.code ? (
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--crimson-700)",
+                background: "#fff",
+                border: "1px dashed var(--crimson-tint-2)",
+                borderRadius: "var(--r-sm)",
+                padding: "2px 8px",
+              }}
+            >
+              {deal.code}
+            </span>
+          ) : null}
+          {deal.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Ends {shortDate(deal.endsAt)}</span> : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Local news from businesses (live, public) ─────────────────────────────────────────── */
+
+interface NewsPost {
+  id: string;
+  kind: "news" | "offer" | "event";
+  title: string | null;
+  body: string | null;
+  publishedAt: string | null;
+  venueId: string;
+  venueName: string | null;
+  venueLocality: string | null;
+}
+
+function LocalNews() {
+  const trpc = useTrpc();
+  const [posts, setPosts] = useState<NewsPost[] | undefined>(undefined);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPosts(undefined);
+    setError(false);
+    trpc.posts.feed
+      .query({ limit: 6 })
+      .then((rows: unknown) => {
+        if (cancelled) return;
+        setPosts(Array.isArray(rows) ? (rows as NewsPost[]).slice(0, 5) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc]);
+
+  return (
+    <Section title="Local news">
+      {error ? (
+        <p style={mutedNote}>Couldn&apos;t load local updates just now.</p>
+      ) : posts === undefined ? (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          <div style={rowSkeleton} />
+          <div style={rowSkeleton} />
+        </div>
+      ) : posts.length === 0 ? (
+        <p style={mutedNote}>No updates from local businesses yet. Follow a few and their news will land here.</p>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+          {posts.map((p) => (
+            <Link
+              key={p.id}
+              href={`/venue/${p.venueId}`}
+              style={{ display: "flex", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
+            >
+              <span aria-hidden style={{ fontSize: 16, lineHeight: "20px", flexShrink: 0 }}>
+                {p.kind === "offer" ? "✦" : p.kind === "event" ? "◷" : "›"}
+              </span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.title ?? p.body ?? "Update"}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {p.venueName ?? "A local business"}
+                  {p.publishedAt ? ` · ${timeAgo(p.publishedAt)}` : ""}
                 </span>
               </span>
             </Link>
