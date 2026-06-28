@@ -71,6 +71,7 @@ export function AccountHub() {
           </Card>
 
           <div style={{ display: "grid", gap: "var(--space-2)" }}>
+            <HubLink href={`/u/${userId}`} title="Your wall" hint="Your public profile — post updates and photos, and see likes and comments." />
             <HubLink href="/dashboard" title="Business dashboard" hint="Manage venues you've claimed — details, hours and photos." />
             <HubLink href="/following" title="Following" hint="Venues you follow and their notifications." />
           </div>

@@ -37,7 +37,7 @@ export interface UploadResult {
 export async function uploadProfileImage(
   userId: string,
   file: File,
-  kind: "avatar" | "header",
+  kind: "avatar" | "header" | "wall",
 ): Promise<UploadResult> {
   if (!(ALLOWED_MIME as readonly string[]).includes(file.type)) {
     throw new Error("Please pick a JPEG, PNG or WebP image.");

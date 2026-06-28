@@ -15,7 +15,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 import {
   normaliseDisplayName,
   normaliseHandle,
@@ -45,6 +45,43 @@ async function currentUserId(ctx: { db: { auth: { getUser: () => Promise<{ data:
 }
 
 export const profilesRouter = router({
+  /**
+   * Public: read another user's public profile by id (for their wall header etc.).
+   * profiles_read RLS is `using (true)`, so this surfaces only the public-facing columns —
+   * the same fields shown wherever a user appears. Returns null if no such profile.
+   */
+  byId: publicProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      type LooseProfileRead = {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: ProfileRow | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseProfileRead;
+      const { data, error } = await db
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url, header_url, bio, social_links")
+        .eq("id", input.userId)
+        .maybeSingle();
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load profile: ${error.message}` });
+      }
+      if (!data) return null;
+      return {
+        id: data.id,
+        handle: data.handle ?? null,
+        displayName: data.display_name ?? null,
+        avatarUrl: data.avatar_url ?? null,
+        headerUrl: data.header_url ?? null,
+        bio: data.bio ?? null,
+      };
+    }),
+
   /** Protected: read the caller's own profile. */
   me: protectedProcedure.query(async ({ ctx }) => {
     const uid = await currentUserId(ctx);
