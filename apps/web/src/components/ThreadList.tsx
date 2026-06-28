@@ -97,7 +97,7 @@ export function ThreadList() {
         }}
       >
         <Link
-          href="/"
+          href="/explore"
           style={{
             display: "inline-flex",
             alignItems: "center",

@@ -146,7 +146,7 @@ function EmptyState() {
         No claimed venues yet
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Find your business in <Link href="/" style={{ color: "var(--crimson-700)" }}>Explore</Link>, open its page and tap
+        Find your business in <Link href="/explore" style={{ color: "var(--crimson-700)" }}>Explore</Link>, open its page and tap
         “Claim it free”. Once it’s approved it shows up here, ready to edit.
       </p>
       <p style={{ marginTop: "var(--space-3)" }}>

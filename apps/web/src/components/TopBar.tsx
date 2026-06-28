@@ -23,8 +23,8 @@ import styles from "./TopBar.module.css";
 
 /** Which primary nav item the current path belongs to (for the active pill). */
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
-  if (pathname.startsWith("/home")) return "home";
-  if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
+  if (pathname === "/" || pathname.startsWith("/home")) return "home";
+  if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
   if (
@@ -51,10 +51,10 @@ export function TopBar() {
       </Link>
 
       <nav className={styles.nav} aria-label="Primary">
-        <Link href="/home" className={`${styles.link} ${active === "home" ? styles.active : ""}`}>
+        <Link href="/" className={`${styles.link} ${active === "home" ? styles.active : ""}`}>
           Home
         </Link>
-        <Link href="/" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
+        <Link href="/explore" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
           Explore
         </Link>
         <Link href="/town-hall" className={`${styles.link} ${active === "townhall" ? styles.active : ""}`}>

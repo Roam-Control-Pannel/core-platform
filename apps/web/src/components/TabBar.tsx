@@ -15,8 +15,8 @@ import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
 
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
-  if (pathname.startsWith("/home")) return "home";
-  if (pathname === "/" || pathname.startsWith("/venue")) return "explore";
+  if (pathname === "/" || pathname.startsWith("/home")) return "home";
+  if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
   if (
@@ -68,11 +68,11 @@ export function TabBar() {
     <>
       <div className={styles.spacer} aria-hidden />
       <nav className={styles.bar} aria-label="Primary">
-        <Link href="/home" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
+        <Link href="/" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
           {icons.home}
           Home
         </Link>
-        <Link href="/" className={`${styles.tab} ${active === "explore" ? styles.active : ""}`}>
+        <Link href="/explore" className={`${styles.tab} ${active === "explore" ? styles.active : ""}`}>
           {icons.explore}
           Explore
         </Link>

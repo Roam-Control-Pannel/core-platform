@@ -85,7 +85,7 @@ export function TownHall() {
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link
-        href="/"
+        href="/explore"
         style={{
           display: "inline-flex",
           alignItems: "center",

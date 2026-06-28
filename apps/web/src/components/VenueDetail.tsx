@@ -248,7 +248,7 @@ export function VenueDetail({ venueId }: { venueId: string }) {
 function BackLink() {
   return (
     <Link
-      href="/"
+      href="/explore"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -841,7 +841,7 @@ function NotFoundState() {
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
         This venue may have been removed, or the link is wrong.
       </p>
-      <Link href="/" style={{ textDecoration: "none" }}>
+      <Link href="/explore" style={{ textDecoration: "none" }}>
         <Pill variant="ghost-crim">← Back to Explore</Pill>
       </Link>
     </div>
