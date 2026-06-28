@@ -105,6 +105,23 @@
   white-space: nowrap;
 }
 
+/* Quiet "For businesses" door — present but not a primary nav pill. Desktop only. */
+.forbiz {
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 7px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.forbiz:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
 .signin {
   all: unset;
   font-family: var(--ui);
@@ -133,7 +150,8 @@
    and keep the bar to brand + sign-in/avatar. Tablets (≥ 768px) keep the top nav. */
 @media (max-width: 767px) {
   .nav,
-  .create {
+  .create,
+  .forbiz {
     display: none;
   }
 }

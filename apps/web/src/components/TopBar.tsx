@@ -72,6 +72,9 @@ export function TopBar() {
       <div className={styles.spacer} />
 
       <div className={styles.actions}>
+        <Link href="/business" className={styles.forbiz}>
+          For businesses
+        </Link>
         <span className={styles.create} aria-disabled title="Creating posts & plans is coming soon">
           ＋ Create
         </span>

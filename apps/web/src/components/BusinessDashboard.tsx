@@ -149,6 +149,11 @@ function EmptyState() {
         Find your business in <Link href="/" style={{ color: "var(--crimson-700)" }}>Explore</Link>, open its page and tap
         “Claim it free”. Once it’s approved it shows up here, ready to edit.
       </p>
+      <p style={{ marginTop: "var(--space-3)" }}>
+        <Link href="/business" style={{ color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none" }}>
+          How claiming works →
+        </Link>
+      </p>
     </div>
   );
 }
