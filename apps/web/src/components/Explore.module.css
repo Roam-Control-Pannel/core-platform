@@ -28,6 +28,14 @@
   padding-bottom: var(--space-3);
 }
 
+/* The venue grid. Mobile-first: auto-fill so phones show one column and small tablets two;
+   the tablet/desktop breakpoints below pin sensible column counts so cards never get cramped. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
 /* Phones: a compact map of the shown venues + the "open in maps" hand-off pill (the
    desktop map column is hidden there). */
 .mobileMap {
@@ -54,9 +62,20 @@
   z-index: 0;
 }
 
-/* Web ≥ 900px: rail · list · map. The rail and map stick under the TopBar as the list
-   scrolls; the horizontal pills hide (the rail is the desktop category nav). */
-@media (min-width: 900px) {
+/* Tablet (≥ 768px, < 1024px): no rail/map column yet (not enough width for three), but the
+   inline pills + compact map read well and the auto-fill grid gives two roomy columns. The
+   chrome's top nav is already showing here (≤767px is the bottom-tab phone tier), so this
+   tier is a coherent "top nav + two-column browse", not a stretched phone layout. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop ≥ 1024px: rail · list · map. The rail and map stick under the TopBar as the list
+   scrolls; the horizontal pills + compact map hide (the rail is the desktop category nav and
+   the map column carries the pins). */
+@media (min-width: 1024px) {
   .rail {
     display: flex;
     flex-direction: column;

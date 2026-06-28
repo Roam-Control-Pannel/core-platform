@@ -129,9 +129,9 @@
   display: block;
 }
 
-/* Phones: the primary nav + Create move into the bottom TabBar, so hide them here and
-   keep the bar to brand + sign-in/avatar. */
-@media (max-width: 720px) {
+/* Phones (< 768px): the primary nav + Create move into the bottom TabBar, so hide them here
+   and keep the bar to brand + sign-in/avatar. Tablets (≥ 768px) keep the top nav. */
+@media (max-width: 767px) {
   .nav,
   .create {
     display: none;
