@@ -23,7 +23,8 @@ import { AuthPanel } from "./AuthPanel";
 import { PlaceSwitcher } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { TopicUpvote } from "./TopicUpvote";
-import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { AuthorLink } from "./AuthorLink";
+import { timeAgo, type TownHallAuthor } from "../lib/townHall";
 
 interface TopicListItem {
   id: string;
@@ -199,7 +200,7 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
             {topic.body}
           </p>
           <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
-            <span>{townHallAuthor(topic.author)}</span>
+            <AuthorLink author={topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
             <span aria-hidden>·</span>
             <span>{timeAgo(topic.createdAt)}</span>
             <span aria-hidden>·</span>

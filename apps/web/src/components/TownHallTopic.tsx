@@ -14,7 +14,8 @@ import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { TopicUpvote } from "./TopicUpvote";
-import { townHallAuthor, authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { AuthorLink } from "./AuthorLink";
 
 interface TopicView {
   id: string;
@@ -124,7 +125,7 @@ export function TownHallTopic({ topicId }: { topicId: string }) {
                   {data.topic.title}
                 </h1>
                 <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
-                  <span>{townHallAuthor(data.topic.author)}</span>
+                  <AuthorLink author={data.topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
                   <span aria-hidden>·</span>
                   <span>{timeAgo(data.topic.createdAt)}</span>
                 </div>
@@ -204,7 +205,7 @@ function ReplyRow({ reply }: { reply: ReplyView }) {
         >
           {authorInitial(reply.author)}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{townHallAuthor(reply.author)}</span>
+        <AuthorLink author={reply.author} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }} />
         <span aria-hidden style={{ color: "var(--muted)" }}>·</span>
         <span style={{ fontSize: 12, color: "var(--muted)" }}>{timeAgo(reply.createdAt)}</span>
       </div>
