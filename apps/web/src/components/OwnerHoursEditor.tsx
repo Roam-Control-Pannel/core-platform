@@ -296,7 +296,7 @@ export function OwnerHoursEditor({
     border: "1px solid var(--line-2)",
     borderRadius: 10,
     background: "#fff",
-    color: "var(--ink-1)",
+    color: "var(--ink)",
     font: "inherit",
     boxSizing: "border-box",
   };
@@ -320,7 +320,7 @@ export function OwnerHoursEditor({
         {days.map((d) => (
           <div key={d.day} style={{ display: "grid", gap: "var(--space-2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
-              <strong style={{ minWidth: 96, color: "var(--ink-1)" }}>{DAY_NAMES[d.day]}</strong>
+              <strong style={{ minWidth: 96, color: "var(--ink)" }}>{DAY_NAMES[d.day]}</strong>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}>
                 <input
                   type="checkbox"

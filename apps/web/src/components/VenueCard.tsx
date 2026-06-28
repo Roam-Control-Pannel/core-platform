@@ -128,7 +128,8 @@ const claimedBody: CSSProperties = {
   gap: "var(--space-1)",
 };
 
-const nameStyle: CSSProperties = { fontFamily: "var(--display)", fontWeight: 600 };
+// Card title at the design's in-frame scale (~15px), not the 20px page .t-h3 — calmer grids.
+const nameStyle: CSSProperties = { fontFamily: "var(--display)", fontWeight: 600, fontSize: 15.5, lineHeight: 1.25 };
 
 // One line, no wrapping: the rating/price/distance atoms stay intact and the type label
 // is the single flexible element — it truncates with an ellipsis when space is tight,

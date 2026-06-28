@@ -256,7 +256,7 @@ export function ProfileEditor({ userId }: { userId: string }) {
         <Button variant="pri" onClick={() => void save()} disabled={busy || uploading !== null}>
           {busy ? "Saving…" : "Save profile"}
         </Button>
-        {saved ? <span style={{ fontSize: 13, color: "var(--ok, #2e7d32)" }}>Saved ✓</span> : null}
+        {saved ? <span style={{ fontSize: 13, color: "var(--success)" }}>Saved ✓</span> : null}
         {error ? <span role="alert" style={{ fontSize: 13, color: "var(--crimson-700)" }}>{error}</span> : null}
       </div>
     </div>

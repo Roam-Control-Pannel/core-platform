@@ -76,6 +76,12 @@
    scrolls; the horizontal pills + compact map hide (the rail is the desktop category nav and
    the map column carries the pins). */
 @media (min-width: 1024px) {
+  /* Pin the centre to exactly two columns (the design's calmer 2-up rhythm) — the auto-fill
+     base would crowd 3–4 cards into the narrow rail+map centre. */
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .rail {
     display: flex;
     flex-direction: column;

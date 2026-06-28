@@ -414,10 +414,11 @@ function Hero({ claimed }: { claimed: boolean }) {
                 "linear-gradient(150deg, #c96b43, #8f3f29)",
             }
           : {
-              background: "var(--crimson-tint)",
+              // Calm "locality tile" (design): a soft warm gradient, not a dashed
+              // placeholder — an intentional stand-in when there's no photo.
+              background: "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
               display: "grid",
               placeItems: "center",
-              border: "1px dashed var(--line-2)",
             }),
       }}
     >
@@ -432,7 +433,7 @@ function TitleRow({ name }: { name: string }) {
   return (
     <h1
       className="t-h1"
-      style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}
+      style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, letterSpacing: "-.02em", margin: 0 }}
     >
       {name}
     </h1>
@@ -511,7 +512,7 @@ function ClaimedDetail({
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
           {links.map(([label, url]) => (
             <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-              <Pill variant="ghost-crim">{capitalise(label)}</Pill>
+              <Pill variant="crim">{capitalise(label)}</Pill>
             </a>
           ))}
         </div>
@@ -839,8 +840,8 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
             padding: "2px 10px",
             borderRadius: 999,
             marginBottom: "var(--space-3)",
-            color: pill.on ? "var(--ink-1)" : "var(--ink-2)",
-            background: pill.on ? "var(--line-1)" : "transparent",
+            color: pill.on ? "var(--ink)" : "var(--ink-2)",
+            background: pill.on ? "var(--line)" : "transparent",
             border: pill.on ? "none" : "1px solid var(--line-2)",
           }}
         >

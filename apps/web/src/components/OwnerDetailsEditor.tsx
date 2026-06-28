@@ -192,7 +192,7 @@ export function OwnerDetailsEditor({
     border: "1px solid var(--line-2)",
     borderRadius: 10,
     background: "#fff",
-    color: "var(--ink-1)",
+    color: "var(--ink)",
     font: "inherit",
     boxSizing: "border-box",
   };
