@@ -104,7 +104,7 @@ export function Following() {
         }}
       >
         <Link
-          href="/"
+          href="/explore"
           style={{
             display: "inline-flex",
             alignItems: "center",

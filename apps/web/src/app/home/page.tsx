@@ -1,13 +1,9 @@
 /**
- * /home — the hub: recent chats, your town, the town forum, plus the upcoming-plans and
- * market seams. Like Explore, force-dynamic: live per-request data (chats, venues, topics)
- * read through the session-bound TrpcProvider mounted once in the root layout. Public to
- * view; the auth-gated section nudges sign-in rather than gating the page.
+ * /home now redirects to the landing page (/), which is the Home hub. Kept so any existing
+ * /home links and bookmarks resolve rather than 404.
  */
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
-import { Home } from "../../components/Home";
-
-export default function HomePage() {
-  return <Home />;
+export default function HomeRedirect() {
+  redirect("/");
 }

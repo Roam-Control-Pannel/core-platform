@@ -1,20 +1,17 @@
 /**
- * Explore is the web app's home. The TrpcProvider supplies the typed client (wired to
- * the live Supabase session) to everything beneath it; Explore is its first consumer.
+ * The web app's landing page is the Home hub. The TrpcProvider (root layout) supplies the
+ * typed client wired to the live Supabase session; Home is its first consumer.
  *
- * The home is Explore alone — browsing needs no account (the "browse freely, auth on
- * action" contract). Sign-in is reachable from the Explore header (a "Sign in" button
- * that opens the AuthModal) rather than a form gating the page. The notifications
- * capture lives on /following, the account-ish surface where you manage follows.
+ * Home pulls together the day-to-day surfaces (recent chats, followed venues + their deals,
+ * local news, your town, the town forum). Browsing needs no account — the auth-gated widgets
+ * nudge sign-in rather than gating the page. Explore now lives at /explore.
  *
- * force-dynamic: this screen fetches per-request from the API and depends on runtime
- * env (the API URL, the Supabase session). It is NOT a static page, so we opt out of
- * build-time prerendering — the honest rendering mode for a live-data surface.
+ * force-dynamic: live per-request data + runtime env (API URL, Supabase session); not static.
  */
 export const dynamic = "force-dynamic";
 
-import { Explore } from "../components/Explore";
+import { Home } from "../components/Home";
 
-export default function Home() {
-  return <Explore />;
+export default function RootPage() {
+  return <Home />;
 }

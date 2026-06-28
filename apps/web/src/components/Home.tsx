@@ -243,7 +243,7 @@ function YourTown({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title={`${place.name} online`} action={{ label: "Explore", href: "/" }}>
+    <Section title={`${place.name} online`} action={{ label: "Explore", href: "/explore" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load venues near you just now.</p>
       ) : venues === undefined ? (
@@ -417,7 +417,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
             You&apos;re not following any businesses yet. Follow one to get its exclusive loyalty deals here.
           </p>
           <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
+            <Link href="/explore" style={{ textDecoration: "none" }}>
               <Button variant="neutral" size="sm">Find businesses to follow</Button>
             </Link>
           </div>

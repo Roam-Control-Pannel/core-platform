@@ -45,7 +45,7 @@ export function AccountHub() {
         }}
       >
         <Link
-          href="/"
+          href="/explore"
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
         >
           <span aria-hidden>←</span> Explore
