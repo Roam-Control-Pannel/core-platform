@@ -20,37 +20,36 @@ function fakeFetch(
 }
 
 describe("geocodeSearch", () => {
-  it("GETs Nominatim search with the query, jsonv2, addressdetails and a User-Agent", async () => {
-    const { impl, calls } = fakeFetch([]);
+  it("GETs Photon with the query, limit and a User-Agent", async () => {
+    const { impl, calls } = fakeFetch({ features: [] });
     await geocodeSearch("Darlington", impl);
 
     expect(calls.length).toBe(1);
     const { url, init } = calls[0]!;
-    expect(url.startsWith("https://nominatim.openstreetmap.org/search?")).toBe(true);
+    expect(url.startsWith("https://photon.komoot.io/api?")).toBe(true);
     expect(url).toContain("q=Darlington");
-    expect(url).toContain("format=jsonv2");
-    expect(url).toContain("addressdetails=1");
+    expect(url).toContain("limit=6");
     const headers = init.headers as Record<string, string>;
     expect(headers["User-Agent"]).toContain("Roam");
   });
 
   it("url-encodes a postcode query", async () => {
-    const { impl, calls } = fakeFetch([]);
-    await geocodeSearch("DL1 1AA", impl);
-    expect(calls[0]!.url).toContain("q=DL1+1AA");
+    const { impl, calls } = fakeFetch({ features: [] });
+    await geocodeSearch("DH1 3LE", impl);
+    expect(calls[0]!.url).toContain("q=DH1+3LE");
   });
 
-  it("parses results through core (name + coords)", async () => {
-    const { impl } = fakeFetch([
-      {
-        osm_type: "relation",
-        osm_id: 1,
-        lat: "54.5253",
-        lon: "-1.5536",
-        display_name: "Darlington, County Durham, England",
-        address: { town: "Darlington", county: "County Durham", state: "England" },
-      },
-    ]);
+  it("parses the FeatureCollection through core (name + coords)", async () => {
+    const { impl } = fakeFetch({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-1.5536, 54.5253] },
+          properties: { osm_type: "R", osm_id: 1, name: "Darlington", county: "County Durham" },
+        },
+      ],
+    });
     const out = await geocodeSearch("Darlington", impl);
     expect(out.length).toBe(1);
     expect(out[0]!.name).toBe("Darlington");

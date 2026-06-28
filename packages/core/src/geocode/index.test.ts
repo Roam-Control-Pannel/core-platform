@@ -1,104 +1,99 @@
 import { describe, it, expect } from "vitest";
-import { parseNominatim } from "./index.js";
+import { parsePhoton } from "./index.js";
 
-describe("parseNominatim", () => {
-  it("maps a town result to name + region hint + coords", () => {
-    const raw = [
-      {
-        osm_type: "relation",
-        osm_id: 123,
-        lat: "54.5253",
-        lon: "-1.5536",
-        display_name: "Darlington, County Durham, England, United Kingdom",
-        address: { town: "Darlington", county: "County Durham", state: "England", country: "United Kingdom" },
-      },
-    ];
-    const [r] = parseNominatim(raw);
+/** A Photon feature with [lon, lat] geometry + properties. */
+function feat(coordinates: [number, number], properties: Record<string, unknown>) {
+  return { type: "Feature", geometry: { type: "Point", coordinates }, properties };
+}
+
+describe("parsePhoton", () => {
+  it("maps a town feature to name + region hint + coords (from a FeatureCollection)", () => {
+    const raw = {
+      type: "FeatureCollection",
+      features: [
+        feat([-1.5536, 54.5253], {
+          osm_type: "R",
+          osm_id: 123,
+          name: "Darlington",
+          county: "County Durham",
+          state: "England",
+          country: "United Kingdom",
+        }),
+      ],
+    };
+    const [r] = parsePhoton(raw);
     expect(r!.name).toBe("Darlington");
     expect(r!.hint).toBe("County Durham, England");
     expect(r!.lat).toBeCloseTo(54.5253);
     expect(r!.lng).toBeCloseTo(-1.5536);
-    expect(r!.id).toBe("geo:relation123");
+    expect(r!.id).toBe("geo:R123");
   });
 
-  it("uses the most specific locality and excludes it from the hint (Westminster/London)", () => {
-    const raw = [
-      {
-        osm_type: "node",
-        osm_id: 9,
-        lat: "51.4975",
-        lon: "-0.1357",
-        address: { suburb: "Westminster", state_district: "Greater London", state: "England", country: "UK" },
-        display_name: "Westminster, Greater London, England, UK",
-      },
-    ];
-    const [r] = parseNominatim(raw);
+  it("excludes a city that duplicates the name from the hint (Westminster/London)", () => {
+    const raw = {
+      features: [
+        feat([-0.1357, 51.4975], {
+          osm_type: "N",
+          osm_id: 9,
+          name: "Westminster",
+          city: "London",
+          state: "England",
+          country: "United Kingdom",
+        }),
+      ],
+    };
+    const [r] = parsePhoton(raw);
     expect(r!.name).toBe("Westminster");
-    expect(r!.hint).toBe("Greater London, England");
+    expect(r!.hint).toBe("London, England");
   });
 
-  it("returns the postcode as the name for a postcode lookup", () => {
-    const raw = [
-      {
-        osm_type: "way",
-        osm_id: 5,
-        lat: "54.523",
-        lon: "-1.55",
-        address: { postcode: "DL1 1AA", county: "County Durham", country: "United Kingdom" },
-        display_name: "DL1 1AA, Darlington, County Durham, United Kingdom",
-      },
-    ];
-    const [r] = parseNominatim(raw);
-    // county is a PRIMARY fallback, so a bare postcode result names by the first display part.
-    expect(r!.name === "DL1 1AA" || r!.name === "County Durham").toBe(true);
+  it("names a postcode result by its postcode", () => {
+    const raw = {
+      features: [
+        feat([-1.55, 54.523], { osm_type: "W", osm_id: 5, postcode: "DH1 3LE", city: "Durham", county: "County Durham" }),
+      ],
+    };
+    const [r] = parsePhoton(raw);
+    expect(r!.name).toBe("DH1 3LE");
+    expect(r!.hint).toContain("Durham");
     expect(r!.lat).toBeCloseTo(54.523);
   });
 
-  it("falls back to display_name parts when there is no structured address", () => {
-    const raw = [
-      { osm_type: "node", osm_id: 1, lat: "54.0", lon: "-1.0", display_name: "Yarm, Stockton-on-Tees, England" },
-    ];
-    const [r] = parseNominatim(raw);
+  it("accepts the features array directly (not just the wrapper)", () => {
+    const raw = [feat([-1.0, 54.0], { osm_type: "N", osm_id: 1, name: "Yarm", county: "Stockton-on-Tees" })];
+    const [r] = parsePhoton(raw);
     expect(r!.name).toBe("Yarm");
-    expect(r!.hint).toBe("Stockton-on-Tees, England");
+    expect(r!.hint).toBe("Stockton-on-Tees");
   });
 
-  it("drops entries with no usable coordinates", () => {
-    const raw = [
-      { display_name: "Nowhere", lat: "not-a-number", lon: "12" },
-      { osm_type: "node", osm_id: 2, lat: "1.0", lon: "2.0", display_name: "Somewhere, Region" },
-    ];
-    const out = parseNominatim(raw);
+  it("drops features with no usable coordinates or no label", () => {
+    const raw = {
+      features: [
+        feat([Number.NaN, 12] as [number, number], { name: "Bad coords" }),
+        { type: "Feature", geometry: { coordinates: [1, 2] }, properties: {} }, // no name
+        feat([2.0, 1.0], { osm_type: "N", osm_id: 2, name: "Good" }),
+      ],
+    };
+    const out = parsePhoton(raw);
     expect(out.length).toBe(1);
-    expect(out[0]!.name).toBe("Somewhere");
+    expect(out[0]!.name).toBe("Good");
   });
 
-  it("de-dups near-identical coordinates and caps the count", () => {
-    const raw = Array.from({ length: 10 }, (_, i) => ({
-      osm_type: "node",
-      osm_id: i,
-      lat: "54.50000",
-      lon: "-1.50000",
-      display_name: `Dup ${i}, Region`,
-    }));
-    const out = parseNominatim(raw);
-    expect(out.length).toBe(1); // all collapse to one grid cell
+  it("de-dups near-identical coordinates and honors the limit", () => {
+    const dup = Array.from({ length: 5 }, (_, i) =>
+      feat([-1.5, 54.5], { osm_type: "N", osm_id: i, name: `Dup ${i}`, county: "Region" }),
+    );
+    expect(parsePhoton({ features: dup }).length).toBe(1);
+
+    const many = Array.from({ length: 8 }, (_, i) =>
+      feat([-1.5 - i * 0.01, 54.5 + i * 0.01], { osm_type: "N", osm_id: i, name: `P${i}` }),
+    );
+    expect(parsePhoton({ features: many }, 3).length).toBe(3);
   });
 
-  it("returns [] for non-array / empty input", () => {
-    expect(parseNominatim(null)).toEqual([]);
-    expect(parseNominatim({})).toEqual([]);
-    expect(parseNominatim([])).toEqual([]);
-  });
-
-  it("honors the limit argument", () => {
-    const raw = Array.from({ length: 8 }, (_, i) => ({
-      osm_type: "node",
-      osm_id: i,
-      lat: `54.${500 + i}`,
-      lon: `-1.${500 + i}`,
-      display_name: `Place ${i}, Region`,
-    }));
-    expect(parseNominatim(raw, 3).length).toBe(3);
+  it("returns [] for non-feature input", () => {
+    expect(parsePhoton(null)).toEqual([]);
+    expect(parsePhoton({})).toEqual([]);
+    expect(parsePhoton({ features: "nope" })).toEqual([]);
   });
 });
