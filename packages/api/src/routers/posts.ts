@@ -102,6 +102,40 @@ export const postsRouter = router({
       });
     }),
 
+  /**
+   * Public: one published post by id — the post-detail surface (mobile screen + the web feed's
+   * detail pane). Same RLS as the feed (posts_read_public restricts to published + approved), so
+   * an unpublished/hidden post resolves to null rather than leaking. Inline-typed (no leak).
+   */
+  byId: publicProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.db
+        .from("posts")
+        .select("id, kind, title, body, published_at, venue_id, venues(name, locality)")
+        .eq("id", input.postId)
+        .not("published_at", "is", null)
+        .maybeSingle();
+      if (error) throw new Error(`Failed to load post: ${error.message}`);
+      if (!data) return null;
+
+      type EmbeddedVenue = { name: string; locality: string | null };
+      const raw = (data as { venues?: unknown }).venues;
+      const v: EmbeddedVenue | null = Array.isArray(raw)
+        ? ((raw[0] as EmbeddedVenue | undefined) ?? null)
+        : ((raw as EmbeddedVenue | null) ?? null);
+      return {
+        id: data.id,
+        kind: data.kind,
+        title: data.title,
+        body: data.body,
+        publishedAt: data.published_at,
+        venueId: data.venue_id,
+        venueName: v?.name ?? null,
+        venueLocality: v?.locality ?? null,
+      };
+    }),
+
   /** Pure preview: validate a composition + report timing and push cost. No write. */
   validate: protectedProcedure
     .input(composeInput)
