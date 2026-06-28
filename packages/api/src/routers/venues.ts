@@ -284,6 +284,10 @@ const CLAIM_ERROR_BY_SQLSTATE: Record<string, { code: TRPCError["code"]; message
     code: "CONFLICT",
     message: "You've already submitted a claim for this venue. It's awaiting review.",
   },
+  "42501": {
+    code: "FORBIDDEN",
+    message: "Your account isn't able to claim venues.",
+  },
 };
 
 /**

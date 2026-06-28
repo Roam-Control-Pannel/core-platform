@@ -42,6 +42,7 @@ import { FollowButton } from "./FollowButton";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
+import { ReportVenue } from "./ReportVenue";
 import { isOpenNow } from "../lib/openNow";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 
@@ -239,6 +240,10 @@ export function VenueDetail({ venueId }: { venueId: string }) {
           venueId={venueId}
         />
       )}
+
+      {/* Quiet report affordance — the user-facing half of the moderation backstop. Shown on
+          any real venue (not the loading / not-found / error states). */}
+      {venue ? <ReportVenue venueId={venueId} /> : null}
     </main>
   );
 }
