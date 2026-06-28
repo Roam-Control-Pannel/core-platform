@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
+import { AuthorLink } from "./AuthorLink";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 
@@ -451,7 +452,7 @@ function PostCard({
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
         <Avatar url={post.author.avatarUrl} name={townHallAuthor(post.author)} size={32} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{townHallAuthor(post.author)}</div>
+          <AuthorLink author={post.author} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }} />
           <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{timeAgo(post.createdAt)}</div>
         </div>
         {isOwner ? (
@@ -634,7 +635,7 @@ function Comments({ postId, canInteract, onChanged }: { postId: string; canInter
             <div key={c.id} style={{ display: "flex", gap: 8 }}>
               <Avatar url={c.author.avatarUrl} name={townHallAuthor(c.author)} size={26} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>{townHallAuthor(c.author)}</span>
+                <AuthorLink author={c.author} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }} />
                 <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>{timeAgo(c.createdAt)}</span>
                 <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{c.body}</p>
               </div>
