@@ -15,6 +15,7 @@ import "./globals.css";
 import { TrpcProvider } from "../components/TrpcProvider";
 import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
+import { CreateFab } from "../components/CreateFab";
 
 export const metadata = {
   title: "Roam",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <TrpcProvider>
           <TopBar />
           {children}
+          <CreateFab />
           <TabBar />
         </TrpcProvider>
       </body>
