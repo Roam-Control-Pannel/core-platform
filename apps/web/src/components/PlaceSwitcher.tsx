@@ -16,6 +16,18 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTrpc } from "./TrpcProvider";
 import { useSavedPlaces } from "../lib/savedPlaces";
+import styles from "./PlaceSwitcher.module.css";
+
+/** Small filled location pin — crisper than an ambiguous dot for the location chip. */
+function PinIcon() {
+  return (
+    <span className={styles.pin} aria-hidden>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
+      </svg>
+    </span>
+  );
+}
 
 export interface Place {
   id: string;
@@ -258,30 +270,16 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        style={{
-          all: "unset",
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          minHeight: 40,
-          padding: "7px 14px",
-          borderRadius: 999,
-          background: "var(--crimson-tint)",
-          border: "1px solid var(--crimson-tint-2)",
-          boxSizing: "border-box",
-          fontFamily: "var(--ui)",
-          fontWeight: 600,
-          fontSize: 15,
-          color: "var(--crimson-700)",
-        }}
+        aria-label={`Browsing ${value.name} — change place`}
+        className={styles.trigger}
       >
-        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--crimson)" }} />
-        {value.name}
-        <span style={{ fontSize: 12 }}>▾</span>
+        <PinIcon />
+        <span className={styles.label}>{value.name}</span>
+        <span className={`${styles.caret} ${open ? styles.caretOpen : ""}`} aria-hidden>▾</span>
       </button>
 
       {open ? (

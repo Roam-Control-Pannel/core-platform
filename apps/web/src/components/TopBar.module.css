@@ -142,12 +142,22 @@
 }
 
 .avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--paper-2);
-  border: 1px solid var(--line-2);
-  display: block;
+  background: var(--crimson-tint);
+  border: 1px solid var(--crimson-tint-2);
+  color: var(--crimson-700);
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  transition: background var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .avatar:hover {
+    background: var(--crimson-tint-2);
+  }
 }
 
 /* Phones (< 768px): the primary nav + Create move into the bottom TabBar, so hide them here

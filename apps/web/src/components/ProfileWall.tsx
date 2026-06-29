@@ -21,6 +21,7 @@ import { AddFriendButton } from "./AddFriendButton";
 import { MessageButton } from "./MessageButton";
 import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import actions from "./inlineActions.module.css";
 
 interface PublicProfile {
   id: string;
@@ -512,17 +513,17 @@ function PostCard({
         </div>
         {isOwner && !editing ? (
           confirming ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-              <span style={{ fontSize: 12, color: "var(--ink-2)" }}>Delete?</span>
-              <button type="button" onClick={() => void remove()} disabled={removing} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontWeight: 600, fontSize: 12, textDecoration: "underline" }}>
+            <div className={actions.row}>
+              <span className={actions.confirm}>Delete?</span>
+              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={removing}>
                 {removing ? "Deleting…" : "Yes"}
               </button>
-              <button type="button" onClick={() => setConfirming(false)} disabled={removing} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>No</button>
+              <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={removing}>No</button>
             </div>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-              <button type="button" onClick={() => setEditing(true)} title="Edit post" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>Edit</button>
-              <button type="button" onClick={() => setConfirming(true)} title="Delete post" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>Delete</button>
+            <div className={actions.row}>
+              <button type="button" className={actions.action} onClick={() => setEditing(true)} title="Edit post">Edit</button>
+              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)} title="Delete post">Delete</button>
             </div>
           )
         ) : null}
@@ -835,8 +836,6 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
     }
   }, [trpc, comment.id, onChanged]);
 
-  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 11, color: "var(--muted)", textDecoration: "underline" };
-
   return (
     <div style={{ display: "flex", gap: 8 }}>
       <Avatar url={comment.author.avatarUrl} name={townHallAuthor(comment.author)} size={26} />
@@ -866,15 +865,15 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
             <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{comment.body}</p>
             {mine ? (
               confirming ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: 2 }}>
-                  <span style={{ fontSize: 11, color: "var(--ink-2)" }}>Delete?</span>
-                  <button type="button" onClick={() => void remove()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? "…" : "Yes"}</button>
-                  <button type="button" onClick={() => setConfirming(false)} disabled={busy} style={linkStyle}>No</button>
+                <div className={actions.row} style={{ marginTop: 4 }}>
+                  <span className={actions.confirm}>Delete?</span>
+                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : "Yes"}</button>
+                  <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>No</button>
                 </div>
               ) : (
-                <div style={{ display: "flex", gap: "var(--space-3)", marginTop: 2 }}>
-                  <button type="button" onClick={() => setEditing(true)} style={linkStyle}>Edit</button>
-                  <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+                <div className={actions.row} style={{ marginTop: 4 }}>
+                  <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button>
+                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
                 </div>
               )
             ) : null}
