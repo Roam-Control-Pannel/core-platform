@@ -22,6 +22,160 @@
   }
 }
 
+/* A gentle lift on tappable cards (plan cards, news cards, forum cards). */
+.lift {
+  transition:
+    transform var(--motion-transition) var(--ease),
+    box-shadow var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* Hero quick-action pills — one-tap into the core create actions. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.qpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-family: var(--ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    background var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease),
+    color var(--motion-transition) var(--ease);
+}
+
+.qpill .qglyph {
+  color: var(--crimson);
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .qpill:hover {
+    background: var(--crimson-tint);
+    border-color: var(--crimson-tint-2);
+    color: var(--crimson-700);
+  }
+}
+
+/* Section header icon chip — a small rounded glyph that gives each section identity. */
+.iconChip {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Plan cards: a horizontal track of compact cards (date · title · venue pill). */
+.planTrack {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 84%;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
+}
+
+.planTrack > * {
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+@media (min-width: 560px) {
+  .planTrack {
+    grid-auto-columns: 240px;
+  }
+}
+
+.planCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--card);
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Local-news cards: a responsive grid of compact update cards. */
+.newsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+
+@media (min-width: 560px) {
+  .newsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.newsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--card);
+  text-decoration: none;
+  color: inherit;
+}
+
+/* A small follow chip with an initial avatar. */
+.venueChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .venueChip:hover {
+    background: var(--crimson-tint);
+  }
+}
+
 /* The venue peek inside "your town": a single horizontally-scrolling track (a carousel),
    not a vertical 2-up grid. One card dominates the view with the next peeking in; swipe/scroll
    sideways. Scroll-snap gives the carousel a tidy resting position per card. */

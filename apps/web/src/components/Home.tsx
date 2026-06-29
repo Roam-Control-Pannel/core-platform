@@ -1,15 +1,17 @@
 /**
  * Home — the signed-in hub (/home). One place that pulls together the surfaces a local cares
- * about day-to-day: your recent chats, what's on near you, and your town's forum — plus the
- * Stage-2/Stage-5 seams (upcoming plans, the local market) shown honestly as "coming soon".
+ * about day-to-day: your recent chats, your plans, what's happening near you, and your town's
+ * forum — plus the Stage-5 market seam shown honestly as "coming soon".
  *
- * PUBLIC to view (browse-freely): the live sections that need an account (Recent chats) show a
- * gentle sign-in nudge rather than gating the whole page. The local sections re-root off the
- * shared current place (useCurrentPlace) via the same PlaceSwitcher as Explore/Town Hall, so
- * Home, Explore and Town Hall always agree on "where you are".
+ * PUBLIC to view (browse-freely): the live sections that need an account (Recent chats, Your
+ * plans, Followed venues) show a gentle sign-in nudge rather than gating the whole page. Local
+ * sections re-root off the shared current place (useCurrentPlace) via the same PlaceSwitcher as
+ * Explore/Town Hall, so Home, Explore and Town Hall always agree on "where you are".
  *
- * Each live section loads independently (its own query + skeleton/empty/error), so a slow or
- * failed one never blocks the rest of the hub.
+ * Layout is a real dashboard: a hero (greeting · place · quick actions), then a grid where the
+ * content-rich sections (Recent chats, Your town carousel) span full width and the lighter
+ * widgets pair up two-across on desktop. Each section loads independently (its own query +
+ * skeleton/empty/error), so a slow or failed one never blocks the rest of the hub.
  */
 "use client";
 
@@ -24,6 +26,14 @@ import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
 import styles from "./Home.module.css";
 
+/** Time-aware greeting — a warmer header than a flat "Home". */
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 export function Home() {
   const session = useSession();
   const { place, setPlace } = useCurrentPlace();
@@ -32,12 +42,20 @@ export function Home() {
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ marginBottom: "var(--space-5)" }}>
         <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, letterSpacing: "-.02em", margin: 0 }}>
-          Home
+          {greeting()}
         </h1>
         <p style={{ marginTop: 4, marginBottom: "var(--space-4)", color: "var(--ink-2)", fontSize: 14, lineHeight: 1.5 }}>
           Your chats, your plans, and what&apos;s happening in your town — all in one place.
         </p>
-        <PlaceSwitcher value={place} onChange={setPlace} />
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)" }}>
+          <PlaceSwitcher value={place} onChange={setPlace} />
+        </div>
+        <div className={styles.quickActions}>
+          <QuickAction href="/plans" glyph="＋" label="New plan" />
+          <QuickAction href="/town-hall" glyph="✲" label="Start a topic" />
+          <QuickAction href="/explore" glyph="✦" label="Find venues" />
+          <QuickAction href="/friends" glyph="✉" label="Message a friend" />
+        </div>
       </header>
 
       <div className={styles.grid}>
@@ -45,25 +63,15 @@ export function Home() {
           <RecentChats hasSession={!!session} />
         </div>
 
-        <div className={styles.spanAll}>
-          <FollowedVenues hasSession={!!session} />
-        </div>
-
-        <div className={styles.spanAll}>
-          <UpcomingPlans hasSession={!!session} />
-        </div>
-
-        <div className={styles.spanAll}>
-          <LocalNews />
-        </div>
+        <UpcomingPlans hasSession={!!session} />
+        <FollowedVenues hasSession={!!session} />
 
         <div className={styles.spanAll}>
           <YourTown place={place} />
         </div>
 
-        <div className={styles.spanAll}>
-          <TownForum place={place} />
-        </div>
+        <LocalNews />
+        <TownForum place={place} />
 
         <div className={styles.spanAll}>
           <MarketSeam place={place} />
@@ -73,23 +81,40 @@ export function Home() {
   );
 }
 
+function QuickAction({ href, glyph, label }: { href: string; glyph: string; label: string }) {
+  return (
+    <Link href={href} className={styles.qpill}>
+      <span className={styles.qglyph} aria-hidden>{glyph}</span>
+      {label}
+    </Link>
+  );
+}
+
 /* ── Section shell ─────────────────────────────────────────────────────────────────────── */
 
 function Section({
   title,
+  icon,
+  count,
   action,
   children,
 }: {
   title: string;
+  icon: string;
+  count?: number;
   action?: { label: string; href: string };
   children: React.ReactNode;
 }) {
   return (
     <Card style={{ padding: "var(--space-4)" }}>
-      <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
-        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>
-          {title}
-        </h2>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
+          <span className={styles.iconChip} aria-hidden>{icon}</span>
+          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>
+            {title}
+          </h2>
+          {count != null && count > 0 ? <Pill variant="neutral" size="sm">{count}</Pill> : null}
+        </div>
         {action ? (
           <Link href={action.href} style={{ fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}>
             {action.label} <span aria-hidden>→</span>
@@ -111,15 +136,31 @@ function shortDate(iso: string): string {
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+/** Initial letter for an avatar fallback. */
+function initial(name: string | null | undefined): string {
+  return (name ?? "").trim().replace(/^@/, "").charAt(0).toUpperCase() || "·";
+}
+
 /* ── Recent chats (live, auth-gated) ───────────────────────────────────────────────────── */
+
+type ChatKind = "plan" | "group" | "direct";
 
 interface ChatRow {
   id: string;
   isGroup: boolean;
+  planId: string | null;
+  kind: ChatKind;
   title: string | null;
+  name: string | null;
   updatedAt: string;
   participantCount: number;
 }
+
+const CHAT_KIND: Record<ChatKind, { glyph: string; label: string; crim: boolean }> = {
+  plan: { glyph: "🗓", label: "Plan chat", crim: true },
+  group: { glyph: "◍", label: "Group", crim: false },
+  direct: { glyph: "✉", label: "Direct", crim: false },
+};
 
 function RecentChats({ hasSession }: { hasSession: boolean }) {
   const trpc = useTrpc();
@@ -133,7 +174,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
     listThreads
       .query()
       .then((res) => {
-        if (!cancelled) setRows(Array.isArray(res) ? res.slice(0, 4) : []);
+        if (!cancelled) setRows(Array.isArray(res) ? res.slice(0, 5) : []);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -144,16 +185,9 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Recent chats" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
+    <Section title="Recent chats" icon="✦" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
       {!hasSession ? (
-        <div>
-          <p style={mutedNote}>Sign in to see your conversations and plans with people nearby.</p>
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href="/account" style={{ textDecoration: "none" }}>
-              <Button variant="pri" size="sm">Sign in</Button>
-            </Link>
-          </div>
-        </div>
+        <SignInNudge note="Sign in to see your conversations and plans with people nearby." />
       ) : error ? (
         <p style={mutedNote}>Couldn&apos;t load your chats just now.</p>
       ) : rows === undefined ? (
@@ -162,30 +196,44 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
           <div style={rowSkeleton} />
         </div>
       ) : rows.length === 0 ? (
-        <p style={mutedNote}>No chats yet. Start a plan with people nearby and it&apos;ll show up here.</p>
+        <p style={mutedNote}>No chats yet. Message a friend or open a plan to start one — it&apos;ll show up here.</p>
       ) : (
         <div style={{ display: "grid", gap: "var(--space-1)" }}>
-          {rows.map((t) => (
-            <Link
-              key={t.id}
-              href={`/threads/${t.id}`}
-              className={styles.row}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                <span
-                  aria-hidden
-                  style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 13, flexShrink: 0 }}
-                >
-                  {t.isGroup ? "◇" : "✦"}
+          {rows.map((t) => {
+            const meta = CHAT_KIND[t.kind] ?? CHAT_KIND.group;
+            const name = t.name?.trim() || t.title?.trim() || meta.label;
+            return (
+              <Link
+                key={t.id}
+                href={`/threads/${t.id}`}
+                className={styles.row}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 14, flexShrink: 0,
+                      background: meta.crim ? "var(--crimson-tint)" : "var(--paper-2)",
+                      color: meta.crim ? "var(--crimson-700)" : "var(--ink-2)",
+                      border: "1px solid var(--line)",
+                    }}
+                  >
+                    {meta.glyph}
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {name}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                      {meta.label}{t.kind !== "direct" ? ` · ${t.participantCount} ${t.participantCount === 1 ? "person" : "people"}` : ""}
+                    </span>
+                  </span>
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {t.title ?? (t.isGroup ? "Group chat" : "Direct message")}
-                </span>
-              </span>
-              <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{timeAgo(t.updatedAt)}</span>
-            </Link>
-          ))}
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{timeAgo(t.updatedAt)}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </Section>
@@ -250,7 +298,7 @@ function YourTown({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title={`${place.name} online`} action={{ label: "Explore", href: "/explore" }}>
+    <Section title={`${place.name} online`} icon="✦" action={{ label: "Explore", href: "/explore" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load venues near you just now.</p>
       ) : venues === undefined ? (
@@ -298,7 +346,7 @@ function TownForum({ place }: { place: Place }) {
     listTopics
       .query({ localityName: place.name, sort: "popular" })
       .then((res) => {
-        if (!cancelled) setTopics((res.topics ?? []).slice(0, 3));
+        if (!cancelled) setTopics((res.topics ?? []).slice(0, 4));
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -309,7 +357,7 @@ function TownForum({ place }: { place: Place }) {
   }, [trpc, place.name]);
 
   return (
-    <Section title="Town forum" action={{ label: "Town Hall", href: "/town-hall" }}>
+    <Section title="Town forum" icon="✲" action={{ label: "Town Hall", href: "/town-hall" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load the forum just now.</p>
       ) : topics === undefined ? (
@@ -325,20 +373,20 @@ function TownForum({ place }: { place: Place }) {
           </Link>
         </p>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
           {topics.map((t) => (
             <Link
               key={t.id}
               href={`/town-hall/${t.id}`}
-              className={styles.row}
-              style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
+              className={`${styles.newsCard} ${styles.lift}`}
+              style={{ flexDirection: "row", alignItems: "center", gap: "var(--space-3)" }}
             >
               <span
                 aria-hidden
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34, color: "var(--crimson-700)" }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 38, height: 38, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}
               >
-                <span style={{ fontSize: 11, lineHeight: 1 }}>▲</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{t.upvoteCount}</span>
+                <span style={{ fontSize: 10, lineHeight: 1 }}>▲</span>
+                <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{t.upvoteCount}</span>
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -400,18 +448,9 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Followed venues" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
+    <Section title="Followed venues" icon="♥" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
       {!hasSession ? (
-        <div>
-          <p style={mutedNote}>
-            Follow a business to unlock its exclusive loyalty deals — they&apos;ll appear here, just for followers.
-          </p>
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href="/account" style={{ textDecoration: "none" }}>
-              <Button variant="pri" size="sm">Sign in</Button>
-            </Link>
-          </div>
-        </div>
+        <SignInNudge note="Follow a business to unlock its exclusive loyalty deals — they'll appear here, just for followers." />
       ) : error ? (
         <p style={mutedNote}>Couldn&apos;t load your followed venues just now.</p>
       ) : follows === undefined ? (
@@ -432,17 +471,19 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
         </div>
       ) : (
         <div style={{ display: "grid", gap: "var(--space-4)" }}>
-          {/* The businesses you follow — quick chips into each. */}
+          {/* The businesses you follow — chips with an initial avatar. */}
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            {follows.map((f) => (
-              <Link
-                key={f.venue_id}
-                href={`/venue/${f.venues?.id ?? f.venue_id}`}
-                style={{ textDecoration: "none" }}
-              >
-                <Pill variant="neutral">{f.venues?.name ?? "Venue"}</Pill>
-              </Link>
-            ))}
+            {follows.map((f) => {
+              const name = f.venues?.name ?? "Venue";
+              return (
+                <Link key={f.venue_id} href={`/venue/${f.venues?.id ?? f.venue_id}`} className={styles.venueChip}>
+                  <span aria-hidden style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>
+                    {initial(name)}
+                  </span>
+                  {name}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Their exclusive deals. */}
@@ -479,7 +520,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
 
 function DealCard({ deal }: { deal: Deal }) {
   return (
-    <Link href={`/venue/${deal.venueId}`} style={{ textDecoration: "none", color: "inherit" }}>
+    <Link href={`/venue/${deal.venueId}`} className={styles.lift} style={{ textDecoration: "none", color: "inherit", display: "block", borderRadius: "var(--r-lg)" }}>
       <div
         style={{
           padding: "var(--space-3) var(--space-4)",
@@ -545,6 +586,12 @@ interface NewsPost {
   venueLocality: string | null;
 }
 
+const NEWS_KIND: Record<NewsPost["kind"], { label: string; glyph: string }> = {
+  news: { label: "News", glyph: "›" },
+  offer: { label: "Offer", glyph: "✦" },
+  event: { label: "Event", glyph: "◷" },
+};
+
 function LocalNews() {
   const trpc = useTrpc();
   const [posts, setPosts] = useState<NewsPost[] | undefined>(undefined);
@@ -558,7 +605,7 @@ function LocalNews() {
       .query({ limit: 6 })
       .then((rows: unknown) => {
         if (cancelled) return;
-        setPosts(Array.isArray(rows) ? (rows as NewsPost[]).slice(0, 5) : []);
+        setPosts(Array.isArray(rows) ? (rows as NewsPost[]).slice(0, 4) : []);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -569,63 +616,38 @@ function LocalNews() {
   }, [trpc]);
 
   return (
-    <Section title="Local news">
+    <Section title="Local news" icon="✦">
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load local updates just now.</p>
       ) : posts === undefined ? (
-        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+        <div className={styles.newsGrid}>
           <div style={rowSkeleton} />
           <div style={rowSkeleton} />
         </div>
       ) : posts.length === 0 ? (
         <p style={mutedNote}>No updates from local businesses yet. Follow a few and their news will land here.</p>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-1)" }}>
-          {posts.map((p) => (
-            <Link
-              key={p.id}
-              href={`/venue/${p.venueId}`}
-              className={styles.row}
-              style={{ display: "flex", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
-            >
-              <span aria-hidden style={{ fontSize: 16, lineHeight: "20px", flexShrink: 0 }}>
-                {p.kind === "offer" ? "✦" : p.kind === "event" ? "◷" : "›"}
-              </span>
-              <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className={styles.newsGrid}>
+          {posts.map((p) => {
+            const meta = NEWS_KIND[p.kind] ?? NEWS_KIND.news;
+            return (
+              <Link key={p.id} href={`/venue/${p.venueId}`} className={`${styles.newsCard} ${styles.lift}`}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 999, padding: "1px 8px" }}>
+                    {meta.label}
+                  </span>
+                  {p.publishedAt ? <span style={{ fontSize: 11, color: "var(--muted)" }}>{timeAgo(p.publishedAt)}</span> : null}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {p.title ?? p.body ?? "Update"}
                 </span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                  {p.venueName ?? "A local business"}
-                  {p.publishedAt ? ` · ${timeAgo(p.publishedAt)}` : ""}
-                </span>
-              </span>
-            </Link>
-          ))}
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.venueName ?? "A local business"}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </Section>
-  );
-}
-
-/* ── Dormant seams (honest "coming soon") ──────────────────────────────────────────────── */
-
-function SeamCard({ title, glyph, blurb }: { title: string; glyph: string; blurb: string }) {
-  return (
-    <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)", borderStyle: "dashed" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-        <span aria-hidden style={{ fontSize: 18, color: "var(--crimson-700)", opacity: 0.6 }}>{glyph}</span>
-        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, margin: 0, color: "var(--ink-2)" }}>
-          {title}
-        </h2>
-        <span
-          style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line-2)", borderRadius: 999, padding: "2px 8px" }}
-        >
-          Coming soon
-        </span>
-      </header>
-      <p style={mutedNote}>{blurb}</p>
-    </Card>
   );
 }
 
@@ -650,7 +672,7 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
     list
       .query()
       .then((res) => {
-        if (!cancelled) setPlans((res.plans ?? []).slice(0, 4));
+        if (!cancelled) setPlans((res.plans ?? []).slice(0, 6));
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -661,16 +683,9 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Your plans" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
+    <Section title="Your plans" icon="🗓" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
       {!hasSession ? (
-        <div>
-          <p style={mutedNote}>Make plans — a night out, a weekend, a list to try — and save venues to them.</p>
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <Link href="/account" style={{ textDecoration: "none" }}>
-              <Button variant="pri" size="sm">Sign in</Button>
-            </Link>
-          </div>
-        </div>
+        <SignInNudge note="Make plans — a night out, a weekend, a list to try — and save venues to them." />
       ) : error ? (
         <p style={mutedNote}>Couldn&apos;t load your plans just now.</p>
       ) : plans === undefined ? (
@@ -688,17 +703,25 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+        <div className={styles.planTrack}>
           {plans.map((p) => (
-            <Link
-              key={p.id}
-              href={`/plans/${p.id}`}
-              className={styles.row}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
-            >
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                {p.plannedFor ? `${planDateLabel(p.plannedFor)} · ` : ""}
+            <Link key={p.id} href={`/plans/${p.id}`} className={`${styles.planCard} ${styles.lift}`}>
+              <span
+                style={{
+                  alignSelf: "flex-start",
+                  fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".04em", textTransform: "uppercase",
+                  color: p.plannedFor ? "var(--crimson-700)" : "var(--muted)",
+                  background: p.plannedFor ? "var(--crimson-tint)" : "var(--paper-2)",
+                  border: `1px solid ${p.plannedFor ? "var(--crimson-tint-2)" : "var(--line)"}`,
+                  borderRadius: 999, padding: "2px 9px",
+                }}
+              >
+                {p.plannedFor ? planDateLabel(p.plannedFor) : "No date yet"}
+              </span>
+              <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, color: "var(--ink)", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {p.title}
+              </span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
                 {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
               </span>
             </Link>
@@ -716,5 +739,40 @@ function MarketSeam({ place }: { place: Place }) {
       glyph="◇"
       blurb="Buy, sell and swap with people in your town — a local marketplace, right where you already browse."
     />
+  );
+}
+
+/* ── Shared bits ───────────────────────────────────────────────────────────────────────── */
+
+/** A consistent sign-in nudge for the auth-gated sections. */
+function SignInNudge({ note }: { note: string }) {
+  return (
+    <div>
+      <p style={mutedNote}>{note}</p>
+      <div style={{ marginTop: "var(--space-3)" }}>
+        <Link href="/account" style={{ textDecoration: "none" }}>
+          <Button variant="pri" size="sm">Sign in</Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function SeamCard({ title, glyph, blurb }: { title: string; glyph: string; blurb: string }) {
+  return (
+    <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)", borderStyle: "dashed" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+        <span aria-hidden style={{ fontSize: 18, color: "var(--crimson-700)", opacity: 0.6 }}>{glyph}</span>
+        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, margin: 0, color: "var(--ink-2)" }}>
+          {title}
+        </h2>
+        <span
+          style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line-2)", borderRadius: 999, padding: "2px 8px" }}
+        >
+          Coming soon
+        </span>
+      </header>
+      <p style={mutedNote}>{blurb}</p>
+    </Card>
   );
 }
