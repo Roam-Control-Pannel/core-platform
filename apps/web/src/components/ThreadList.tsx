@@ -7,9 +7,10 @@
  * the list. Ships every state with the feature (States matrix): content-shaped
  * skeleton while loading, an honest first-run empty state, and an error state.
  *
- * Create is the minimum viable thread for this slice: a GROUP thread with a title,
- * empty of other people (participants are added later from the detail screen). No
- * friends list exists yet, so we don't pretend to pick people at creation time.
+ * Three kinds of chat share this inbox: DIRECT (1:1, started from a friend's wall or
+ * the friends list via MessageButton), PLAN (a plan's group chat, opened from the plan),
+ * and free-standing GROUP threads created here with "New group". Each row shows a kind
+ * badge and the right name (the other person for a DM, the title for group/plan).
  *
  * Timestamps arrive as ISO strings (the client has no transformer), formatted in
  * the UI — same as FeedList.
@@ -23,10 +24,15 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import rowStyles from "./listRow.module.css";
 
+type ThreadKind = "plan" | "group" | "direct";
+
 interface ThreadRow {
   id: string;
   isGroup: boolean;
+  planId: string | null;
+  kind: ThreadKind;
   title: string | null;
+  name: string | null;
   updatedAt: string;
   participantCount: number;
 }
@@ -70,7 +76,7 @@ export function ThreadList() {
   const createThread = useCallback(async () => {
     const title = newTitle.trim();
     if (!title) {
-      setCreateError("Give your chat a name.");
+      setCreateError("Give your group a name.");
       return;
     }
     setCreating(true);
@@ -118,7 +124,7 @@ export function ThreadList() {
         </h1>
         {session ? (
           <Button variant="pri" size="sm" onClick={() => setShowCreate((s) => !s)}>
-            {showCreate ? "Cancel" : "New chat"}
+            {showCreate ? "Cancel" : "New group"}
           </Button>
         ) : (
           <span style={{ width: 1 }} />
@@ -137,7 +143,7 @@ export function ThreadList() {
                 color: "var(--muted)",
               }}
             >
-              Chat name
+              Group name
             </span>
             <input
               value={newTitle}
@@ -163,7 +169,7 @@ export function ThreadList() {
           ) : null}
           <div style={{ marginTop: "var(--space-3)" }}>
             <Button variant="pri" onClick={createThread} disabled={creating}>
-              {creating ? "Creating…" : "Create chat"}
+              {creating ? "Creating…" : "Create group"}
             </Button>
           </div>
         </Card>
@@ -188,21 +194,31 @@ export function ThreadList() {
   );
 }
 
+const KIND_META: Record<ThreadKind, { label: string; glyph: string; fallback: string }> = {
+  plan: { label: "Plan chat", glyph: "🗓", fallback: "Plan chat" },
+  group: { label: "Group", glyph: "◍", fallback: "Untitled group" },
+  direct: { label: "Direct", glyph: "✉", fallback: "Direct chat" },
+};
+
 function ThreadRowCard({ thread }: { thread: ThreadRow }) {
-  const name = thread.title?.trim() || (thread.isGroup ? "Untitled group" : "Direct chat");
+  const meta = KIND_META[thread.kind];
+  const name = thread.name?.trim() || thread.title?.trim() || meta.fallback;
   return (
     <Link href={`/threads/${thread.id}`} className={rowStyles.cardLift} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Card style={{ padding: "var(--space-4)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>
-            {name}
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
+            <span aria-hidden style={{ fontSize: 16, flexShrink: 0 }}>{meta.glyph}</span>
+            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {name}
+            </div>
           </div>
-          <Pill variant="neutral" size="sm">
-            {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"}
+          <Pill variant={thread.kind === "plan" ? "ghost-crim" : "neutral"} size="sm">
+            {meta.label}
           </Pill>
         </div>
         <div style={{ marginTop: "var(--space-2)", fontSize: 12, color: "var(--faint)", fontFamily: "var(--ui)" }}>
-          {thread.isGroup ? "Group" : "Direct"} · updated {formatWhen(thread.updatedAt)}
+          {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"} · updated {formatWhen(thread.updatedAt)}
         </div>
       </Card>
     </Link>
@@ -290,7 +306,8 @@ function EmptyState() {
         No chats yet
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Start a group chat to plan a meet-up with friends. Create one with “New chat”, then add people to it.
+        Message a friend from their profile to start a direct chat, open a plan to chat with everyone
+        on it, or tap “New group” to start a group here.
       </p>
     </div>
   );

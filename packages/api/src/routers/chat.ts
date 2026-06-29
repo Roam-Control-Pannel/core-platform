@@ -196,21 +196,60 @@ export const chatRouter = router({
     }),
 
   /**
+   * Get-or-create the 1:1 direct chat between the caller and another profile. Delegates to
+   * the get_or_create_direct_thread RPC (migration 0035, SECURITY DEFINER), which DEDUPES —
+   * returns the existing DM if one already joins exactly the two of them, else makes one with
+   * both as participants. This is the "Message someone" entry point from a wall / friends list,
+   * the direct-chat half of the chat/plans split (plan chats are plans.chat).
+   */
+  directThread: protectedProcedure
+    .input(z.object({ profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+
+      const { data, error } = await rpc("get_or_create_direct_thread", { p_other: input.profileId });
+      if (error) {
+        const mapped = error.code ? THREAD_ERROR_BY_SQLSTATE[error.code] : undefined;
+        if (mapped) throw new TRPCError({ code: mapped.code, message: mapped.message });
+        if (error.code === "22023") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "You can't start a chat with yourself." });
+        }
+        if (error.code === "P0002") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "That person no longer exists." });
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't open the chat. Please try again." });
+      }
+      const thread = data as ChatThreadRow | null;
+      if (!thread?.id) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't open the chat. Please try again." });
+      }
+      return { threadId: thread.id };
+    }),
+
+  /**
    * List the caller's threads, most-recently-active first. RLS (chat_threads_read,
    * gated on in_thread) already scopes the select to threads the caller is a
    * participant of, so a plain select returns exactly their inbox — no explicit
-   * membership filter needed. Lean by design: enough to render a thread list.
+   * membership filter needed.
    *
-   * participantCount comes from the chat_participants(count) FK-embed. Under RLS the
-   * embedded rows are those the caller can read (chat_participants_read = in_thread),
-   * which for a thread they're in is ALL its participants — so the count is accurate.
-   * PostgREST returns the aggregate as `[{ count: n }]`; we read it through unknown
-   * and normalise (the same array/object widening idiom posts.ts uses for its embed).
+   * Each thread is classified into a `kind` so the inbox can distinguish the three
+   * surfaces of the chat/plans split: 'plan' (a plan's group chat — plan_id set),
+   * 'group' (a free-standing group), 'direct' (a 1:1 DM). The display `name` is derived
+   * per kind: the title for group/plan, and the OTHER person's name for a DM (a 1:1
+   * has no title). Participants embed their profiles (RLS scopes the embed to rows the
+   * caller can read, which for a thread they're in is all of them), normalised
+   * array-or-object the same way getThread does.
    */
   listThreads: protectedProcedure.query(async ({ ctx }) => {
+    const me = await callerId(ctx.db);
     const { data, error } = await ctx.db
       .from("chat_threads")
-      .select("id, is_group, title, updated_at, chat_participants(count)")
+      .select(
+        "id, is_group, plan_id, title, updated_at, chat_participants(profile_id, profiles(display_name, handle, avatar_url))",
+      )
       .order("updated_at", { ascending: false });
     if (error) {
       throw new TRPCError({
@@ -219,19 +258,35 @@ export const chatRouter = router({
       });
     }
 
+    type EmbeddedProfile = { display_name: string | null; handle: string | null; avatar_url: string | null };
+    type PartRow = { profile_id: string; profiles?: unknown };
+
     return (data ?? []).map((t) => {
-      // The count embed arrives as `[{ count: n }]` (array) for a to-many relation.
-      // Read through unknown and normalise; never assume the shape blindly.
       const raw = (t as { chat_participants?: unknown }).chat_participants;
-      const countRow = Array.isArray(raw)
-        ? (raw[0] as { count?: number } | undefined)
-        : (raw as { count?: number } | null);
+      const parts: PartRow[] = Array.isArray(raw) ? (raw as PartRow[]) : raw ? [raw as PartRow] : [];
+
+      const kind: "plan" | "group" | "direct" = t.plan_id ? "plan" : t.is_group ? "group" : "direct";
+
+      // For a DM, the display name is the OTHER participant; for group/plan it's the title.
+      let name = t.title?.trim() || null;
+      if (kind === "direct") {
+        const other = parts.find((p) => p.profile_id !== me) ?? parts[0];
+        const rawProf = (other as { profiles?: unknown } | undefined)?.profiles;
+        const prof: EmbeddedProfile | null = Array.isArray(rawProf)
+          ? ((rawProf[0] as EmbeddedProfile | undefined) ?? null)
+          : ((rawProf as EmbeddedProfile | null) ?? null);
+        name = prof?.display_name?.trim() || (prof?.handle ? `@${prof.handle}` : null);
+      }
+
       return {
         id: t.id,
         isGroup: t.is_group,
+        planId: t.plan_id,
+        kind,
         title: t.title,
+        name,
         updatedAt: t.updated_at,
-        participantCount: countRow?.count ?? 0,
+        participantCount: parts.length,
       };
     });
   }),

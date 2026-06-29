@@ -26,6 +26,26 @@ interface Plan {
   plannedFor: string | null;
   venues: PlanVenue[];
 }
+interface PlanMember {
+  profileId: string;
+  role: "owner" | "member";
+  accepted: boolean;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+interface Friend {
+  id: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+function personName(p: { displayName: string | null; handle: string | null }): string {
+  if (p.displayName && p.displayName.trim()) return p.displayName.trim();
+  if (p.handle && p.handle.trim()) return `@${p.handle.trim()}`;
+  return "Roam member";
+}
 
 export function PlanDetail({ planId }: { planId: string }) {
   const trpc = useTrpc();
@@ -85,6 +105,18 @@ export function PlanDetail({ planId }: { planId: string }) {
     }
   }, [trpc, planId, router]);
 
+  const [openingChat, setOpeningChat] = useState(false);
+  const openChat = useCallback(async () => {
+    setOpeningChat(true);
+    const mut = trpc.plans.chat as unknown as { mutate: (i: { planId: string }) => Promise<{ threadId: string }> };
+    try {
+      const { threadId } = await mut.mutate({ planId });
+      router.push(`/threads/${threadId}`);
+    } catch {
+      setOpeningChat(false);
+    }
+  }, [trpc, planId, router]);
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link
@@ -118,10 +150,17 @@ export function PlanDetail({ planId }: { planId: string }) {
               <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, letterSpacing: "-.02em", margin: 0 }}>{plan.title}</h1>
               {plan.plannedFor ? <div style={{ marginTop: 4, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>{planDateLabel(plan.plannedFor)}</div> : null}
             </div>
-            <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+            <div style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0 }}>
+              <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
+                {openingChat ? "Opening…" : "💬 Group chat"}
+              </Button>
+              <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+            </div>
           </header>
 
           {plan.notes ? <p style={{ marginTop: "var(--space-3)", color: "var(--ink-2)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{plan.notes}</p> : null}
+
+          <PlanMembers planId={plan.id} />
 
           <div style={{ marginTop: "var(--space-5)", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
             {plan.venues.length === 1 ? "1 venue" : `${plan.venues.length} venues`}
@@ -198,6 +237,161 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
         </button>
       </div>
     </Card>
+  );
+}
+
+/**
+ * PlanMembers — the people on a plan: the owner plus invited friends. The owner can invite from
+ * their friends list and remove members; everyone shares the plan and its group chat. Loads
+ * plans.members; the invite picker loads social.myFriends and hides anyone already on the plan.
+ */
+function PlanMembers({ planId }: { planId: string }) {
+  const trpc = useTrpc();
+  const session = useSession();
+  const me = session?.user?.id ?? null;
+  const [members, setMembers] = useState<PlanMember[] | undefined>(undefined);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [inviting, setInviting] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const loadMembers = useCallback(async () => {
+    const q = trpc.plans.members as unknown as { query: (i: { planId: string }) => Promise<{ members: PlanMember[] }> };
+    const res = await q.query({ planId });
+    return res.members ?? [];
+  }, [trpc, planId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadMembers()
+      .then((m) => { if (!cancelled) setMembers(m); })
+      .catch(() => { if (!cancelled) setMembers([]); });
+    return () => { cancelled = true; };
+  }, [loadMembers]);
+
+  const isOwner = !!me && !!members?.some((m) => m.role === "owner" && m.profileId === me);
+
+  const openInvite = useCallback(async () => {
+    setInviting(true);
+    const q = trpc.social.myFriends as unknown as { query: () => Promise<{ ok: boolean; friends?: Friend[] }> };
+    try {
+      const r = await q.query();
+      setFriends(r.ok ? r.friends ?? [] : []);
+    } catch {
+      setFriends([]);
+    }
+  }, [trpc]);
+
+  const invite = useCallback(async (friendId: string) => {
+    setBusyId(friendId);
+    const m = trpc.plans.invite as unknown as { mutate: (i: { planId: string; profileId: string }) => Promise<unknown> };
+    try {
+      await m.mutate({ planId, profileId: friendId });
+      setMembers(await loadMembers());
+    } catch {
+      /* no-op */
+    } finally {
+      setBusyId(null);
+    }
+  }, [trpc, planId, loadMembers]);
+
+  const remove = useCallback(async (profileId: string) => {
+    setBusyId(profileId);
+    const m = trpc.plans.removeMember as unknown as { mutate: (i: { planId: string; profileId: string }) => Promise<unknown> };
+    try {
+      await m.mutate({ planId, profileId });
+      setMembers((prev) => (prev ? prev.filter((x) => x.profileId !== profileId) : prev));
+    } catch {
+      /* no-op */
+    } finally {
+      setBusyId(null);
+    }
+  }, [trpc, planId]);
+
+  if (members === undefined) {
+    return <div style={{ marginTop: "var(--space-5)", height: 40, borderRadius: "var(--r-md)", background: "var(--paper-2)" }} />;
+  }
+
+  const memberIds = new Set(members.map((m) => m.profileId));
+  const invitable = friends.filter((f) => !memberIds.has(f.id));
+
+  return (
+    <section style={{ marginTop: "var(--space-5)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
+          {members.length === 1 ? "Just you" : `${members.length} people`}
+        </div>
+        {isOwner ? (
+          <button
+            type="button"
+            onClick={() => (inviting ? setInviting(false) : void openInvite())}
+            style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 13, fontWeight: 600 }}
+          >
+            {inviting ? "Done" : "＋ Invite friends"}
+          </button>
+        ) : null}
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+        {members.map((m) => (
+          <div key={m.profileId} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 6px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)" }}>
+            <MemberAvatar p={m} size={24} />
+            <Link href={`/u/${m.profileId}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textDecoration: "none" }}>
+              {personName(m)}
+            </Link>
+            {m.role === "owner" ? (
+              <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: ".05em" }}>host</span>
+            ) : isOwner ? (
+              <button
+                type="button"
+                onClick={() => void remove(m.profileId)}
+                disabled={busyId === m.profileId}
+                title="Remove from plan"
+                aria-label={`Remove ${personName(m)} from plan`}
+                style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {isOwner && inviting ? (
+        <Card flat style={{ marginTop: "var(--space-3)", padding: "var(--space-3) var(--space-4)" }}>
+          {invitable.length === 0 ? (
+            <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+              {friends.length === 0
+                ? "No friends to invite yet. Add friends from their profile walls, then invite them here."
+                : "All your friends are already on this plan."}
+            </p>
+          ) : (
+            <div style={{ display: "grid", gap: "var(--space-2)" }}>
+              {invitable.map((f) => (
+                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  <MemberAvatar p={{ displayName: f.displayName, handle: f.handle, avatarUrl: f.avatarUrl }} size={28} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{personName(f)}</span>
+                  <Button variant="neutral" size="sm" onClick={() => void invite(f.id)} disabled={busyId === f.id}>
+                    {busyId === f.id ? "…" : "Add"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      ) : null}
+    </section>
+  );
+}
+
+function MemberAvatar({ p, size }: { p: { displayName: string | null; handle: string | null; avatarUrl: string | null }; size: number }) {
+  if (p.avatarUrl) {
+    // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+    return <img src={p.avatarUrl} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
+  }
+  return (
+    <span aria-hidden style={{ width: size, height: size, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: size * 0.42, flexShrink: 0 }}>
+      {personName(p).replace(/^@/, "").charAt(0).toUpperCase() || "·"}
+    </span>
   );
 }
 

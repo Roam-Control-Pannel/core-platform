@@ -42,16 +42,41 @@ interface ThreadData {
   participants: Participant[];
 }
 
+interface Friend {
+  id: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+function friendName(f: Friend): string {
+  if (f.displayName && f.displayName.trim()) return f.displayName.trim();
+  if (f.handle && f.handle.trim()) return `@${f.handle.trim()}`;
+  return "Roam member";
+}
+
+/** Heading for the thread: its title for group/plan; the OTHER person for a 1:1 DM. */
+function threadHeading(thread: ThreadData, myId: string | null): string {
+  if (thread.title?.trim()) return thread.title.trim();
+  if (!thread.isGroup) {
+    const other = thread.participants.find((p) => p.profileId !== myId) ?? thread.participants[0];
+    if (other) return other.displayName?.trim() || (other.handle ? `@${other.handle}` : "Direct chat");
+    return "Direct chat";
+  }
+  return "Untitled group";
+}
+
 export function ThreadDetail({ threadId }: { threadId: string }) {
   const trpc = useTrpc();
   const session = useSession();
+  const myId = session?.user?.id ?? null;
   const [thread, setThread] = useState<ThreadData | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  const [addProfileId, setAddProfileId] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -82,25 +107,33 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
     return load();
   }, [session, load]);
 
-  const addParticipant = useCallback(async () => {
-    const profileId = addProfileId.trim();
-    if (!profileId) {
-      setAddError("Enter a profile ID to add.");
-      return;
-    }
-    setAdding(true);
+  const openAdd = useCallback(async () => {
+    setShowAdd(true);
     setAddError(null);
+    const q = trpc.social.myFriends as unknown as { query: () => Promise<{ ok: boolean; friends?: Friend[] }> };
     try {
-      await trpc.chat.addThreadParticipant.mutate({ threadId, profileId });
-      setAddProfileId("");
-      setShowAdd(false);
-      load(); // refresh participants from server-truth
-    } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : "Couldn't add that person.");
-    } finally {
-      setAdding(false);
+      const r = await q.query();
+      setFriends(r.ok ? r.friends ?? [] : []);
+    } catch {
+      setFriends([]);
     }
-  }, [trpc, threadId, addProfileId, load]);
+  }, [trpc]);
+
+  const addParticipant = useCallback(
+    async (profileId: string) => {
+      setAdding(profileId);
+      setAddError(null);
+      try {
+        await trpc.chat.addThreadParticipant.mutate({ threadId, profileId });
+        load(); // refresh participants from server-truth
+      } catch (e: unknown) {
+        setAddError(e instanceof Error ? e.message : "Couldn't add that person.");
+      } finally {
+        setAdding(null);
+      }
+    },
+    [trpc, threadId, load],
+  );
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -134,15 +167,24 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
               className="t-h1"
               style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, margin: 0 }}
             >
-              {thread.title?.trim() || (thread.isGroup ? "Untitled group" : "Direct chat")}
+              {threadHeading(thread, myId)}
             </h1>
-            <Pill variant="neutral" size="sm">
-              {thread.isGroup ? "Group" : "Direct"}
+            <Pill variant={thread.planId ? "ghost-crim" : "neutral"} size="sm">
+              {thread.planId ? "Plan chat" : thread.isGroup ? "Group" : "Direct"}
             </Pill>
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: "var(--space-6)" }}>
-            Created {formatWhen(thread.createdAt)}
-          </div>
+          {thread.planId ? (
+            <Link
+              href={`/plans/${thread.planId}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none", marginBottom: "var(--space-6)" }}
+            >
+              🗓 View the plan <span aria-hidden>→</span>
+            </Link>
+          ) : (
+            <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: "var(--space-6)" }}>
+              Created {formatWhen(thread.createdAt)}
+            </div>
+          )}
 
           <MessagePanel threadId={thread.id} />
 
@@ -163,50 +205,45 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
             <div style={{ marginTop: "var(--space-6)" }}>
               {showAdd ? (
                 <Card flat style={{ padding: "var(--space-4)" }}>
-                  <label style={{ display: "grid", gap: 5 }}>
-                    <span
-                      style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 10,
-                        letterSpacing: ".06em",
-                        textTransform: "uppercase",
-                        color: "var(--muted)",
-                      }}
-                    >
-                      Profile ID to add
-                    </span>
-                    <input
-                      value={addProfileId}
-                      onChange={(e) => setAddProfileId(e.target.value)}
-                      placeholder="00000000-0000-0000-0000-000000000000"
-                      style={{
-                        fontFamily: "var(--mono)",
-                        fontSize: 13,
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        border: "1px solid var(--line-2)",
-                        background: "#fff",
-                        color: "var(--ink)",
-                        outline: "none",
-                      }}
-                    />
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
+                    <SectionLabel>Add a friend</SectionLabel>
+                    <button type="button" onClick={() => { setShowAdd(false); setAddError(null); }} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>
+                      Done
+                    </button>
+                  </div>
+                  {(() => {
+                    const here = new Set(thread.participants.map((p) => p.profileId));
+                    const addable = friends.filter((f) => !here.has(f.id));
+                    if (addable.length === 0) {
+                      return (
+                        <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                          {friends.length === 0
+                            ? "No friends to add yet. Add friends from their profile walls, then bring them in here."
+                            : "All your friends are already in this chat."}
+                        </p>
+                      );
+                    }
+                    return (
+                      <div style={{ display: "grid", gap: "var(--space-2)" }}>
+                        {addable.map((f) => (
+                          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friendName(f)}</span>
+                            <Button variant="neutral" size="sm" onClick={() => void addParticipant(f.id)} disabled={adding === f.id}>
+                              {adding === f.id ? "…" : "Add"}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {addError ? (
                     <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
                       {addError}
                     </div>
                   ) : null}
-                  <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
-                    <Button variant="pri" onClick={addParticipant} disabled={adding}>
-                      {adding ? "Adding…" : "Add to chat"}
-                    </Button>
-                    <Button variant="neutral" onClick={() => { setShowAdd(false); setAddError(null); }}>
-                      Cancel
-                    </Button>
-                  </div>
                 </Card>
               ) : (
-                <Button variant="neutral" onClick={() => setShowAdd(true)}>
+                <Button variant="neutral" onClick={() => void openAdd()}>
                   Add someone
                 </Button>
               )}

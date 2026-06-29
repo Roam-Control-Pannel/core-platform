@@ -18,6 +18,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
 import { AddFriendButton } from "./AddFriendButton";
+import { MessageButton } from "./MessageButton";
 import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 
@@ -230,7 +231,10 @@ function ProfileHeader({
                   </Link>
                 )
               ) : (
-                <AddFriendButton userId={profile.id} />
+                <div style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0 }}>
+                  <MessageButton profileId={profile.id} />
+                  <AddFriendButton userId={profile.id} />
+                </div>
               )}
             </div>
             {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)" }}>@{profile.handle}</div> : null}
