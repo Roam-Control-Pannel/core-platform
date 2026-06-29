@@ -17,6 +17,7 @@ import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
+import { AddFriendButton } from "./AddFriendButton";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 
@@ -228,7 +229,9 @@ function ProfileHeader({
                     <Button variant="neutral" size="sm">Edit profile</Button>
                   </Link>
                 )
-              ) : null}
+              ) : (
+                <AddFriendButton userId={profile.id} />
+              )}
             </div>
             {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)" }}>@{profile.handle}</div> : null}
           </div>

@@ -28,6 +28,8 @@ const GLYPH: Record<string, string> = {
   wall_comment: "💬",
   townhall_reply: "🏛",
   venue_follow: "✦",
+  friend_request: "👋",
+  friend_accept: "🤝",
 };
 
 export function NotificationCenter() {
