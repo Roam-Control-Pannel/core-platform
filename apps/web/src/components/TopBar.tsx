@@ -47,9 +47,8 @@ export function TopBar() {
   return (
     <header className={styles.bar}>
       <Link href="/" className={styles.brand} aria-label="Roam home">
-        {/* eslint-disable-next-line @next/next/no-img-element -- tiny static mark; next/image is overkill in the chrome */}
-        <img src="/roam-mark.png" alt="" className={styles.mark} />
-        ROAM
+        {/* eslint-disable-next-line @next/next/no-img-element -- static brand lockup; next/image is overkill in the chrome */}
+        <img src="/roam-logo.png" alt="Roam" className={styles.logo} />
       </Link>
 
       <nav className={styles.nav} aria-label="Primary">
