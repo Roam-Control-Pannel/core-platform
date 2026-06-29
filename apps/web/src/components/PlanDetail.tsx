@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Button } from "@roam/design";
@@ -270,11 +270,16 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const onPickHeader = useCallback(
     async (file: File | null) => {
       const uid = session?.user?.id;
-      if (!file || !uid) return;
+      if (!file) return;
+      if (!uid) {
+        setErr("You need to be signed in to add an image.");
+        return;
+      }
       setUploading(true);
       setErr(null);
       try {
@@ -307,40 +312,54 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
 
   return (
     <Card style={{ padding: "var(--space-4)" }}>
-      {/* Header image picker — preview (image or gradient) + change / remove. */}
+      {/* Header image picker — the whole banner is clickable (ref-based, like ProfileEditor),
+          with explicit Change / Remove controls below. A hidden input we trigger by ref is more
+          reliable than a label-wrapped input across browsers. */}
       <div style={{ marginBottom: "var(--space-3)" }}>
         <div
+          role="button"
+          tabIndex={0}
+          aria-label={headerUrl ? "Change header image" : "Add header image"}
+          onClick={() => { if (!uploading) fileRef.current?.click(); }}
+          onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !uploading) fileRef.current?.click(); }}
           style={{
             position: "relative", height: 132, borderRadius: "var(--r-lg)", overflow: "hidden",
             background: headerUrl ? "var(--paper-2)" : PLAN_GRADIENT, border: "1px solid var(--line)",
-            display: "flex", alignItems: "flex-end",
+            display: "flex", alignItems: "flex-end", cursor: uploading ? "default" : "pointer",
           }}
         >
           {headerUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
             <img src={headerUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span style={{ position: "relative", padding: "var(--space-3)", color: "rgba(255,255,255,.85)", fontSize: 12.5, fontFamily: "var(--ui)" }}>
-              No header image yet
+          ) : null}
+          <span
+            style={{
+              position: "absolute", right: 8, bottom: 8, padding: "4px 10px", borderRadius: 999,
+              fontSize: 11.5, fontWeight: 600, color: "#fff", background: "rgba(33,29,26,.72)",
+            }}
+          >
+            {uploading ? "Uploading…" : headerUrl ? "Change" : "＋ Add image"}
+          </span>
+          {!headerUrl ? (
+            <span style={{ position: "relative", padding: "var(--space-3)", color: "rgba(255,255,255,.9)", fontSize: 12.5, fontFamily: "var(--ui)" }}>
+              Tap to add a header image
             </span>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-          <label style={{ cursor: uploading ? "default" : "pointer" }}>
-            <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} disabled={uploading} onChange={(e) => void onPickHeader(e.target.files?.[0] ?? null)} />
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}>
-              {uploading ? "Uploading…" : headerUrl ? "Change image" : "＋ Add header image"}
-            </span>
-          </label>
-          {headerUrl ? (
-            <>
-              <span aria-hidden style={{ color: "var(--faint)" }}>·</span>
-              <button type="button" onClick={() => setHeaderUrl(null)} disabled={uploading} style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)", textDecoration: "underline" }}>
-                Remove
-              </button>
-            </>
           ) : null}
         </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0] ?? null; e.currentTarget.value = ""; void onPickHeader(f); }}
+        />
+        {headerUrl ? (
+          <div style={{ marginTop: "var(--space-2)" }}>
+            <button type="button" onClick={() => setHeaderUrl(null)} disabled={uploading} style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)", textDecoration: "underline" }}>
+              Remove image
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Plan title" maxLength={120} style={editInput} />
