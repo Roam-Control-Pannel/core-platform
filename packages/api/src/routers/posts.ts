@@ -162,6 +162,73 @@ export const postsRouter = router({
       }));
     }),
 
+  /**
+   * Owner: every post for a venue you own — including drafts and scheduled, newest first —
+   * for the console's manage view. RLS posts_owner_all (for ALL commands) scopes selects to
+   * the caller's own venues, so a venue you don't own returns nothing. Inline-typed.
+   */
+  mine: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), limit: z.number().int().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.db
+        .from("posts")
+        .select("id, kind, title, body, destinations, is_draft, publish_at, published_at, created_at")
+        .eq("venue_id", input.venueId)
+        .order("created_at", { ascending: false })
+        .limit(input.limit);
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your posts: ${error.message}` });
+      return (data ?? []).map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        title: p.title,
+        body: p.body,
+        destinations: (p.destinations ?? []) as string[],
+        isDraft: p.is_draft,
+        publishAt: p.publish_at,
+        publishedAt: p.published_at,
+        createdAt: p.created_at,
+      }));
+    }),
+
+  /**
+   * Owner: edit a post's title / body (RLS posts_owner_all gates to the caller's venues).
+   * Scope is deliberately the text only — kind, destinations and publish timing are fixed once
+   * composed (a follower_push may already have fanned out, so re-targeting after the fact would
+   * be misleading). Selects the row back so an edit that matched nothing fails loudly.
+   */
+  update: protectedProcedure
+    .input(
+      z.object({
+        postId: z.string().uuid(),
+        title: z.string().max(200).nullish(),
+        body: z.string().max(5000).nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const patch: { title?: string | null; body?: string | null } = {};
+      if ("title" in input) patch.title = input.title?.trim() ? input.title.trim() : null;
+      if ("body" in input) patch.body = input.body?.trim() ? input.body.trim() : null;
+      if (Object.keys(patch).length === 0) return { ok: true as const };
+      const { data, error } = await ctx.db
+        .from("posts")
+        .update(patch)
+        .eq("id", input.postId)
+        .select("id")
+        .maybeSingle();
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't update that post: ${error.message}` });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Post not found, or it isn't yours to edit." });
+      return { ok: true as const };
+    }),
+
+  /** Owner: delete a post (RLS posts_owner_all). Removes it from the feed, the venue wall and detail. */
+  remove: protectedProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { error } = await ctx.db.from("posts").delete().eq("id", input.postId);
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't delete that post: ${error.message}` });
+      return { ok: true as const };
+    }),
+
   /** Pure preview: validate a composition + report timing and push cost. No write. */
   validate: protectedProcedure
     .input(composeInput)
