@@ -26,7 +26,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 /** Mirror of the API caps (packages/api/src/venue-details.ts). Kept in lockstep; these
@@ -198,14 +198,7 @@ export function OwnerDetailsEditor({
   };
 
   return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
-      <div style={labelStyle}>Edit details</div>
-
-      <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-        Add a description and the links people need — your menu, booking page, or website.
-        These show on your venue&apos;s public page.
-      </p>
-
+    <div>
       {/* Description */}
       <div style={{ marginBottom: "var(--space-5)" }}>
         <div style={labelStyle}>Description</div>
@@ -318,6 +311,6 @@ export function OwnerDetailsEditor({
           <span style={{ fontSize: 13, color: "var(--ink-2)" }}>Saved.</span>
         ) : null}
       </div>
-    </Card>
+    </div>
   );
 }

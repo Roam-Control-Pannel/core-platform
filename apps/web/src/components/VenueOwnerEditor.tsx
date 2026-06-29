@@ -17,6 +17,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
+import { LocalPosts } from "./LocalPosts";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -83,36 +84,81 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
         />
       ) : (
         <>
-          <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: "0 0 var(--space-1)", fontSize: 24 }}>
-            {venue.name}
-          </h1>
-          <p style={{ marginTop: 0, marginBottom: "var(--space-4)", fontSize: 13, color: "var(--muted)" }}>
-            Add photos, a description, links and opening hours. Changes appear on your public venue page.
-          </p>
+          {/* Hero */}
+          <div style={{ marginBottom: "var(--space-5)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 4 }}>
+              <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 28, letterSpacing: "-.02em" }}>
+                {venue.name}
+              </h1>
+              <StatusPill status={venue.status} />
+            </div>
+            <p style={{ margin: 0, fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5 }}>
+              Your business dashboard — post local updates, manage photos, details and hours. Everything here
+              shows on your public venue page.
+            </p>
+          </div>
 
-          <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <OwnerMediaManager venueId={venueId} />
-          </Card>
+          <div style={{ display: "grid", gap: "var(--space-4)" }}>
+            <DashSection
+              icon="📣"
+              title="Local posts"
+              subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed."
+            >
+              <LocalPosts venueId={venueId} />
+            </DashSection>
 
-          <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <OwnerDetailsEditor
-              venueId={venueId}
-              initialDescription={venue.description}
-              initialLinks={venue.links}
-              onSaved={load}
-            />
-          </Card>
+            <DashSection icon="✦" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
+              <OwnerMediaManager venueId={venueId} />
+            </DashSection>
 
-          <Card style={{ padding: "var(--space-4)" }}>
-            <OwnerHoursEditor
-              venueId={venueId}
-              initialPeriods={(venue.opening_times?.periods ?? null) as never}
-              onSaved={load}
-            />
-          </Card>
+            <DashSection icon="✎" title="Details" subtitle="A description and the links people need — menu, booking, website.">
+              <OwnerDetailsEditor
+                venueId={venueId}
+                initialDescription={venue.description}
+                initialLinks={venue.links}
+                onSaved={load}
+              />
+            </DashSection>
+
+            <DashSection icon="◷" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
+              <OwnerHoursEditor
+                venueId={venueId}
+                initialPeriods={(venue.opening_times?.periods ?? null) as never}
+                onSaved={load}
+              />
+            </DashSection>
+          </div>
         </>
       )}
     </main>
+  );
+}
+
+/** A dashboard section shell — icon chip + title + subtitle, then the editor. Matches the
+ *  consumer Home dashboard's section rhythm. */
+function DashSection({ icon, title, subtitle, children }: { icon: string; title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <Card style={{ padding: "var(--space-4)" }}>
+      <header style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 16, flexShrink: 0 }}>
+          {icon}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{title}</h2>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>{subtitle}</p>
+        </div>
+      </header>
+      {children}
+    </Card>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const claimed = status === "claimed";
+  return (
+    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase", fontWeight: 700, color: claimed ? "var(--crimson-700)" : "var(--muted)", background: claimed ? "var(--crimson-tint)" : "var(--paper-2)", border: `1px solid ${claimed ? "var(--crimson-tint-2)" : "var(--line)"}` }}>
+      {claimed ? "Claimed" : status.replace(/_/g, " ")}
+    </span>
   );
 }
 
