@@ -17,6 +17,7 @@ import { router, protectedProcedure } from "../trpc.js";
 
 type LooseDb = {
   from: (t: string) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   auth: { getUser: () => Promise<{ data: { user: { id: string } | null }; error: unknown }> };
 };
 
@@ -78,6 +79,37 @@ export const notificationsRouter = router({
     }
     return { count: count ?? 0 };
   }),
+
+  /**
+   * Protected (venue owner): send an in-app notification to followers — ALL of them (collective)
+   * or ONE specific follower (recipientId). Delegates to send_venue_notification (0042,
+   * SECURITY DEFINER), which gates on venue ownership and only lands individual sends on real
+   * followers. Returns how many notifications were created.
+   */
+  sendToFollowers: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        text: z.string().trim().min(1).max(500),
+        recipientId: z.string().uuid().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { data, error } = await db.rpc("send_venue_notification", {
+        p_venue: input.venueId,
+        p_text: input.text,
+        p_recipient: input.recipientId ?? null,
+      });
+      if (error) {
+        if (error.code === "42501") throw new TRPCError({ code: "FORBIDDEN", message: "Only the venue owner can notify its followers." });
+        if (error.code === "P0002") throw new TRPCError({ code: "NOT_FOUND", message: "Venue not found." });
+        if (error.code === "22023") throw new TRPCError({ code: "BAD_REQUEST", message: "Write a message to send." });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't send the notification." });
+      }
+      return { sent: typeof data === "number" ? data : 0 };
+    }),
 
   /** Protected: mark all the caller's unread notifications read. */
   markAllRead: protectedProcedure.mutation(async ({ ctx }) => {

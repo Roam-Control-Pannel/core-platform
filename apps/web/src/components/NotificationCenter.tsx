@@ -31,6 +31,7 @@ const GLYPH: Record<string, string> = {
   venue_follow: "✦",
   friend_request: "👋",
   friend_accept: "🤝",
+  venue_message: "🔔",
 };
 
 export function NotificationCenter() {
