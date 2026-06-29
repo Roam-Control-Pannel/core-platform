@@ -18,7 +18,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
 import { AddFriendButton } from "./AddFriendButton";
-import { uploadProfileImage } from "../lib/uploadProfileImage";
+import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 
 interface PublicProfile {
@@ -30,7 +30,7 @@ interface PublicProfile {
   bio: string | null;
 }
 interface WallMedia {
-  type: "image";
+  type: "image" | "video";
   url: string;
 }
 interface WallPost {
@@ -284,7 +284,7 @@ function Avatar({ url, name, size, ring }: { url: string | null; name: string; s
 
 /* ── Composer (owner only) ─────────────────────────────────────────────────────────────── */
 
-const MAX_IMAGES = 4;
+const MAX_MEDIA = 4;
 
 function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => void }) {
   const trpc = useTrpc();
@@ -294,14 +294,15 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLInputElement | null>(null);
 
   const onPickFiles = useCallback(
     async (files: FileList | null) => {
       if (!files || files.length === 0) return;
       setErr(null);
-      const room = MAX_IMAGES - media.length;
+      const room = MAX_MEDIA - media.length;
       if (room <= 0) {
-        setErr(`You can add up to ${MAX_IMAGES} images.`);
+        setErr(`You can add up to ${MAX_MEDIA} items.`);
         return;
       }
       const chosen = Array.from(files).slice(0, room);
@@ -318,6 +319,29 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       } finally {
         setUploading(false);
         if (fileRef.current) fileRef.current.value = "";
+      }
+    },
+    [userId, media.length],
+  );
+
+  const onPickVideo = useCallback(
+    async (files: FileList | null) => {
+      const file = files?.[0];
+      if (!file) return;
+      setErr(null);
+      if (media.length >= MAX_MEDIA) {
+        setErr(`You can add up to ${MAX_MEDIA} items.`);
+        return;
+      }
+      setUploading(true);
+      try {
+        const { url } = await uploadWallVideo(userId, file);
+        setMedia((m) => [...m, { type: "video", url }]);
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Couldn't upload that video.");
+      } finally {
+        setUploading(false);
+        if (videoRef.current) videoRef.current.value = "";
       }
     },
     [userId, media.length],
@@ -371,11 +395,15 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
           {media.map((m) => (
             <div key={m.url} style={{ position: "relative" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- local preview of just-uploaded image */}
-              <img src={m.url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--r-md)", display: "block" }} />
+              {m.type === "video" ? (
+                <video src={m.url} muted playsInline style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--r-md)", display: "block", background: "#000" }} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- local preview of just-uploaded image
+                <img src={m.url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--r-md)", display: "block" }} />
+              )}
               <button
                 type="button"
-                aria-label="Remove image"
+                aria-label="Remove media"
                 onClick={() => setMedia((cur) => cur.filter((x) => x.url !== m.url))}
                 style={{
                   all: "unset", cursor: "pointer", position: "absolute", top: -6, right: -6,
@@ -405,13 +433,28 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
           onChange={(e) => void onPickFiles(e.target.files)}
           style={{ display: "none" }}
         />
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          onChange={(e) => void onPickVideo(e.target.files)}
+          style={{ display: "none" }}
+        />
         <Button
           variant="neutral"
           size="sm"
           onClick={() => fileRef.current?.click()}
-          disabled={uploading || media.length >= MAX_IMAGES}
+          disabled={uploading || media.length >= MAX_MEDIA}
         >
-          {uploading ? "Uploading…" : `＋ Photo${media.length > 0 ? ` (${media.length}/${MAX_IMAGES})` : ""}`}
+          {uploading ? "Uploading…" : `＋ Photo${media.length > 0 ? ` (${media.length}/${MAX_MEDIA})` : ""}`}
+        </Button>
+        <Button
+          variant="neutral"
+          size="sm"
+          onClick={() => videoRef.current?.click()}
+          disabled={uploading || media.length >= MAX_MEDIA}
+        >
+          ＋ Video
         </Button>
         <span style={{ flex: 1 }} />
         <Button variant="pri" size="sm" onClick={() => void submit()} disabled={!canPost}>
@@ -496,18 +539,30 @@ function PostCard({
 
 function MediaGrid({ media }: { media: WallMedia[] }) {
   const cols = media.length === 1 ? 1 : 2;
+  const single = media.length === 1;
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 4, borderRadius: "var(--r-md)", overflow: "hidden" }}>
-      {media.map((m) => (
-        // eslint-disable-next-line @next/next/no-img-element -- public bucket URL; next/image optimizer adds no value
-        <img
-          key={m.url}
-          src={m.url}
-          alt=""
-          loading="lazy"
-          style={{ width: "100%", height: media.length === 1 ? "auto" : 180, maxHeight: 460, objectFit: "cover", display: "block" }}
-        />
-      ))}
+      {media.map((m) =>
+        m.type === "video" ? (
+          <video
+            key={m.url}
+            src={m.url}
+            controls
+            playsInline
+            preload="metadata"
+            style={{ width: "100%", height: single ? "auto" : 180, maxHeight: 460, objectFit: "cover", display: "block", background: "#000" }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- public bucket URL; next/image optimizer adds no value
+          <img
+            key={m.url}
+            src={m.url}
+            alt=""
+            loading="lazy"
+            style={{ width: "100%", height: single ? "auto" : 180, maxHeight: 460, objectFit: "cover", display: "block" }}
+          />
+        ),
+      )}
     </div>
   );
 }
