@@ -14,10 +14,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { Button } from "@roam/design";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
 import { LocalPosts } from "./LocalPosts";
+import { BusinessStats } from "./BusinessStats";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -29,6 +31,11 @@ interface OwnerVenue {
   description: string | null;
   links: Record<string, unknown> | null;
   opening_times: { periods?: unknown[] | null } | null;
+  rating: number | null;
+  rating_count: number | null;
+  locality: string | null;
+  region: string | null;
+  category: string | null;
 }
 
 type ByIdQuery = { query: (input: { venueId: string }) => Promise<OwnerVenue | null> };
@@ -62,13 +69,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
         <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}>
           <span aria-hidden>←</span> Business
         </Link>
-        {venue !== null && venue !== "missing" ? (
-          <Link href={venuePath(venueId)} style={{ fontSize: 13, color: "var(--crimson-700)", textDecoration: "none" }}>
-            View public page →
-          </Link>
-        ) : (
-          <span style={{ width: 1 }} />
-        )}
+        <span style={{ width: 1 }} />
       </header>
 
       {error ? (
@@ -86,17 +87,28 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
         <>
           {/* Hero */}
           <div style={{ marginBottom: "var(--space-5)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 4 }}>
-              <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 28, letterSpacing: "-.02em" }}>
-                {venue.name}
-              </h1>
-              <StatusPill status={venue.status} />
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 4, flexWrap: "wrap" }}>
+                  <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 30, letterSpacing: "-.02em" }}>
+                    {venue.name}
+                  </h1>
+                  <StatusPill status={venue.status} />
+                </div>
+                <div style={{ fontSize: 13.5, color: "var(--ink-2)" }}>
+                  {[venue.category, [venue.locality, venue.region].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <Link href={venuePath(venueId)} style={{ textDecoration: "none", flexShrink: 0 }}>
+                <Button variant="neutral" size="sm">View public page →</Button>
+              </Link>
             </div>
-            <p style={{ margin: 0, fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5 }}>
-              Your business dashboard — post local updates, manage photos, details and hours. Everything here
-              shows on your public venue page.
+            <p style={{ margin: "var(--space-3) 0 0", fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5 }}>
+              Post local updates, manage photos, details and hours. Everything here shows on your public venue page.
             </p>
           </div>
+
+          <BusinessStats venueId={venueId} rating={venue.rating} ratingCount={venue.rating_count} />
 
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
             <DashSection

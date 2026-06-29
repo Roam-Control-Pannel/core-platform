@@ -135,6 +135,39 @@ export const socialRouter = router({
       return { ok: true as const, pushEnabled: updated.push_enabled };
     }),
 
+  /**
+   * A venue's followers — count + the most recent profiles — for the owner's dashboard
+   * ("see who follows you"). follows_read RLS is public, so this is a straightforward read;
+   * we embed the follower profile via the follows -> profiles FK and surface the public card
+   * fields. Returns the TOTAL count (not limited) plus the first `limit` followers.
+   */
+  venueFollowers: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), limit: z.number().int().min(1).max(50).default(12) }))
+    .query(async ({ ctx, input }) => {
+      type Embed = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null };
+      type Row = { follower_id: string; created_at: string; profiles: Embed | Embed[] | null };
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error, count } = (await db
+        .from("follows")
+        .select("follower_id, created_at, profiles!follows_follower_id_fkey(id, handle, display_name, avatar_url)", { count: "exact" })
+        .eq("venue_id", input.venueId)
+        .order("created_at", { ascending: false })
+        .limit(input.limit)) as { data: Row[] | null; error: { message: string } | null; count: number | null };
+      if (error) return { ok: false as const, error: error.message, count: 0, followers: [] };
+      const one = (e: Embed | Embed[] | null): Embed | null => (Array.isArray(e) ? (e[0] ?? null) : e);
+      const followers = (data ?? []).map((r) => {
+        const p = one(r.profiles);
+        return {
+          id: p?.id ?? r.follower_id,
+          handle: p?.handle ?? null,
+          displayName: p?.display_name ?? null,
+          avatarUrl: p?.avatar_url ?? null,
+        };
+      });
+      return { ok: true as const, count: count ?? followers.length, followers };
+    }),
+
   /** Venues the caller follows, newest first, with each follow's push preference. */
   myFollows: protectedProcedure
     .query(async ({ ctx }) => {
