@@ -127,6 +127,56 @@ export const chatRouter = router({
     }),
 
   /**
+   * Create a GROUP thread with members in one call — the WhatsApp "New group" flow. Creates the
+   * thread (creator added atomically by create_thread_with_creator) then bulk-adds the chosen
+   * members. RLS (chat_participants_write = in_thread) passes because the caller is already a
+   * participant after the RPC. Idempotent on the PK; self/dupes are filtered out. For a 1:1 the
+   * client uses directThread instead (deduped DM) — this is strictly multi-person.
+   */
+  createGroupThread: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        memberIds: z.array(z.string().uuid()).min(1).max(50),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const me = await callerId(ctx.db);
+
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+      const { data, error } = await rpc("create_thread_with_creator", {
+        p_is_group: true,
+        p_plan_id: null,
+        p_title: input.title,
+      });
+      if (error) {
+        const mapped = error.code ? THREAD_ERROR_BY_SQLSTATE[error.code] : undefined;
+        if (mapped) throw new TRPCError({ code: mapped.code, message: mapped.message });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't create the group. Please try again." });
+      }
+      const thread = data as ChatThreadRow;
+
+      // Bulk-add the members (excluding the creator + duplicates). One insert; RLS checks each row.
+      const others = Array.from(new Set(input.memberIds)).filter((id) => id !== me);
+      if (others.length > 0) {
+        const { error: addErr } = await ctx.db
+          .from("chat_participants")
+          .upsert(
+            others.map((profile_id) => ({ thread_id: thread.id, profile_id })),
+            { onConflict: "thread_id,profile_id", ignoreDuplicates: true },
+          );
+        if (addErr) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Group created but adding people failed: ${addErr.message}` });
+        }
+      }
+
+      return { id: thread.id, title: thread.title };
+    }),
+
+  /**
    * Add another profile to an existing GROUP thread. RLS (chat_participants_write)
    * enforces that the caller is already in the thread; this guard rejects adding to
    * a 1:1 thread (promote to group first — a separate, deliberate action). Idempotent

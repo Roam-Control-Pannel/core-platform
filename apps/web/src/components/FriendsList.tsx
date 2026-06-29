@@ -10,6 +10,8 @@ import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { MessageButton } from "./MessageButton";
+import { AddFriendButton } from "./AddFriendButton";
+import { UserSearch } from "./UserSearch";
 import rowStyles from "./listRow.module.css";
 
 interface Person {
@@ -101,6 +103,23 @@ export function FriendsList() {
         </Card>
       ) : (
         <>
+          {/* Find people — search by name / @handle, then connect or message. */}
+          <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-5)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
+              Find people
+            </div>
+            <UserSearch
+              placeholder="Search by name or @handle"
+              linkToProfile
+              trailing={(p) => (
+                <span style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0 }}>
+                  <MessageButton profileId={p.id} />
+                  <AddFriendButton userId={p.id} />
+                </span>
+              )}
+            />
+          </Card>
+
           {/* Incoming requests */}
           {requests && requests.length > 0 ? (
             <section style={{ marginBottom: "var(--space-5)" }}>
