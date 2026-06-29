@@ -188,6 +188,39 @@ export const profileWallRouter = router({
       return { id: data.id };
     }),
 
+  /** Protected: edit your own post — body and/or media (RLS author_id = auth.uid()). Full replace
+   *  of the editable fields, mirroring create's normalisation; an empty post is rejected. */
+  update: protectedProcedure
+    .input(
+      z.object({
+        postId: z.string().uuid(),
+        body: z.string().max(WALL_BODY_MAX + 1000).nullish(),
+        media: z.array(z.object({ type: z.enum(["image", "video"]), url: z.string().max(4096) })).max(8).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      let body: string | null;
+      let media: { type: "image" | "video"; url: string }[];
+      try {
+        body = normaliseWallBody(input.body ?? null);
+        media = normaliseWallMedia(input.media);
+        assertPostNotEmpty(body, media);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid post." });
+      }
+      const { data, error } = (await db
+        .from("profile_posts")
+        .update({ body, media })
+        .eq("id", input.postId)
+        .select("id")
+        .maybeSingle()) as PgResult<{ id: string } | null>;
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update that post." });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Post not found, or it isn't yours to edit." });
+      return { ok: true as const };
+    }),
+
   /** Protected: delete your own post (RLS enforces ownership). */
   remove: protectedProcedure
     .input(z.object({ postId: z.string().uuid() }))
@@ -282,6 +315,29 @@ export const profileWallRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't post your comment." });
       }
       return { id: data.id };
+    }),
+
+  /** Protected: edit your own comment's body (RLS author_id = auth.uid()). */
+  updateComment: protectedProcedure
+    .input(z.object({ commentId: z.string().uuid(), body: z.string().min(1).max(COMMENT_BODY_MAX + 500) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      let body: string;
+      try {
+        body = normaliseCommentBody(input.body);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid comment." });
+      }
+      const { data, error } = (await db
+        .from("profile_post_comments")
+        .update({ body })
+        .eq("id", input.commentId)
+        .select("id")
+        .maybeSingle()) as PgResult<{ id: string } | null>;
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update that comment." });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found, or it isn't yours to edit." });
+      return { ok: true as const };
     }),
 
   /** Protected: delete your own comment. */

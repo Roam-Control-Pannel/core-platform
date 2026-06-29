@@ -175,7 +175,7 @@ export function ProfileWall({
             ) : (
               <div style={{ display: "grid", gap: "var(--space-4)" }}>
                 {posts.map((p) => (
-                  <PostCard key={p.id} post={p} canInteract={!!session} isOwner={isOwner} onChanged={onPosted} />
+                  <PostCard key={p.id} post={p} canInteract={!!session} isOwner={isOwner} myId={session?.user?.id ?? null} onChanged={onPosted} />
                 ))}
               </div>
             )}
@@ -475,16 +475,20 @@ function PostCard({
   post,
   canInteract,
   isOwner,
+  myId,
   onChanged,
 }: {
   post: WallPost;
   canInteract: boolean;
   isOwner: boolean;
+  myId: string | null;
   onChanged: () => void;
 }) {
   const trpc = useTrpc();
   const [showComments, setShowComments] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const remove = useCallback(async () => {
     setRemoving(true);
@@ -494,6 +498,7 @@ function PostCard({
       onChanged();
     } catch {
       setRemoving(false);
+      setConfirming(false);
     }
   }, [trpc, post.id, onChanged]);
 
@@ -505,39 +510,105 @@ function PostCard({
           <AuthorLink author={post.author} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }} />
           <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{timeAgo(post.createdAt)}</div>
         </div>
-        {isOwner ? (
-          <button
-            type="button"
-            onClick={() => void remove()}
-            disabled={removing}
-            title="Delete post"
-            style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}
-          >
-            {removing ? "Deleting…" : "Delete"}
-          </button>
+        {isOwner && !editing ? (
+          confirming ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+              <span style={{ fontSize: 12, color: "var(--ink-2)" }}>Delete?</span>
+              <button type="button" onClick={() => void remove()} disabled={removing} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontWeight: 600, fontSize: 12, textDecoration: "underline" }}>
+                {removing ? "Deleting…" : "Yes"}
+              </button>
+              <button type="button" onClick={() => setConfirming(false)} disabled={removing} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>No</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <button type="button" onClick={() => setEditing(true)} title="Edit post" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>Edit</button>
+              <button type="button" onClick={() => setConfirming(true)} title="Delete post" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline" }}>Delete</button>
+            </div>
+          )
         ) : null}
       </div>
 
-      {post.body ? (
-        <p style={{ margin: "0 0 var(--space-3)", color: "var(--ink)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{post.body}</p>
+      {editing ? (
+        <PostEditor
+          post={post}
+          onSaved={() => { setEditing(false); onChanged(); }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          {post.body ? (
+            <p style={{ margin: "0 0 var(--space-3)", color: "var(--ink)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{post.body}</p>
+          ) : null}
+
+          {post.media.length > 0 ? <MediaGrid media={post.media} /> : null}
+        </>
+      )}
+
+      {!editing ? (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginTop: "var(--space-3)" }}>
+            <LikeButton postId={post.id} initialLiked={post.viewerLiked} initialCount={post.likeCount} canInteract={canInteract} />
+            <button
+              type="button"
+              onClick={() => setShowComments((s) => !s)}
+              style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}
+            >
+              <span aria-hidden>💬</span>
+              {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
+            </button>
+          </div>
+
+          {showComments ? <Comments postId={post.id} canInteract={canInteract} myId={myId} onChanged={onChanged} /> : null}
+        </>
       ) : null}
-
-      {post.media.length > 0 ? <MediaGrid media={post.media} /> : null}
-
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginTop: "var(--space-3)" }}>
-        <LikeButton postId={post.id} initialLiked={post.viewerLiked} initialCount={post.likeCount} canInteract={canInteract} />
-        <button
-          type="button"
-          onClick={() => setShowComments((s) => !s)}
-          style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}
-        >
-          <span aria-hidden>💬</span>
-          {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
-        </button>
-      </div>
-
-      {showComments ? <Comments postId={post.id} canInteract={canInteract} onChanged={onChanged} /> : null}
     </Card>
+  );
+}
+
+/** Inline editor for a wall post — edits the body text; existing media is preserved (resent as-is). */
+function PostEditor({ post, onSaved, onCancel }: { post: WallPost; onSaved: () => void; onCancel: () => void }) {
+  const trpc = useTrpc();
+  const [body, setBody] = useState(post.body ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const mut = trpc.profileWall.update as unknown as {
+      mutate: (i: { postId: string; body: string | null; media: WallMedia[] }) => Promise<{ ok: true }>;
+    };
+    try {
+      await mut.mutate({ postId: post.id, body: body.trim() ? body : null, media: post.media });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setBusy(false);
+    }
+  }, [trpc, post.id, post.media, body, onSaved]);
+
+  const canSave = (body.trim().length > 0 || post.media.length > 0) && !busy;
+
+  return (
+    <div style={{ marginBottom: "var(--space-2)" }}>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        aria-label="Edit post"
+        rows={3}
+        style={{
+          width: "100%", boxSizing: "border-box", padding: "10px 12px", marginBottom: "var(--space-3)",
+          background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)",
+          fontFamily: "var(--ui)", fontSize: 16, color: "var(--ink)", outline: "none", resize: "vertical", minHeight: 72,
+        }}
+      />
+      {post.media.length > 0 ? <MediaGrid media={post.media} /> : null}
+      {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, margin: "var(--space-2) 0" }}>{err}</div> : null}
+      <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={!canSave}>{busy ? "Saving…" : "Save"}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </div>
+    </div>
   );
 }
 
@@ -641,7 +712,7 @@ interface WallComment {
   author: TownHallAuthor;
 }
 
-function Comments({ postId, canInteract, onChanged }: { postId: string; canInteract: boolean; onChanged: () => void }) {
+function Comments({ postId, canInteract, myId, onChanged }: { postId: string; canInteract: boolean; myId: string | null; onChanged: () => void }) {
   const trpc = useTrpc();
   const [comments, setComments] = useState<WallComment[] | undefined>(undefined);
   const [body, setBody] = useState("");
@@ -694,14 +765,12 @@ function Comments({ postId, canInteract, onChanged }: { postId: string; canInter
       ) : (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           {comments.map((c) => (
-            <div key={c.id} style={{ display: "flex", gap: 8 }}>
-              <Avatar url={c.author.avatarUrl} name={townHallAuthor(c.author)} size={26} />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <AuthorLink author={c.author} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }} />
-                <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>{timeAgo(c.createdAt)}</span>
-                <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{c.body}</p>
-              </div>
-            </div>
+            <CommentRow
+              key={c.id}
+              comment={c}
+              mine={!!myId && c.author.id === myId}
+              onChanged={async () => { const fresh = await load(); setComments(fresh); onChanged(); }}
+            />
           ))}
         </div>
       )}
@@ -728,6 +797,90 @@ function Comments({ postId, canInteract, onChanged }: { postId: string; canInter
           <Link href="/account" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>Sign in</Link> to like and comment.
         </p>
       )}
+    </div>
+  );
+}
+
+/** A single comment with inline edit / delete for its own author. */
+function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: boolean; onChanged: () => Promise<void> }) {
+  const trpc = useTrpc();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.body);
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    const mut = trpc.profileWall.updateComment as unknown as { mutate: (i: { commentId: string; body: string }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ commentId: comment.id, body: draft });
+      setEditing(false);
+      await onChanged();
+    } catch {
+      /* keep editing */
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, comment.id, draft, onChanged]);
+
+  const remove = useCallback(async () => {
+    setBusy(true);
+    const mut = trpc.profileWall.removeComment as unknown as { mutate: (i: { commentId: string }) => Promise<unknown> };
+    try {
+      await mut.mutate({ commentId: comment.id });
+      await onChanged();
+    } catch {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }, [trpc, comment.id, onChanged]);
+
+  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 11, color: "var(--muted)", textDecoration: "underline" };
+
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      <Avatar url={comment.author.avatarUrl} name={townHallAuthor(comment.author)} size={26} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <AuthorLink author={comment.author} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }} />
+        <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>{timeAgo(comment.createdAt)}</span>
+        {editing ? (
+          <div style={{ marginTop: 4 }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              aria-label="Edit comment"
+              rows={2}
+              style={{
+                width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "var(--paper-2)",
+                border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)",
+                fontSize: 16, color: "var(--ink)", outline: "none", resize: "vertical", minHeight: 56,
+              }}
+            />
+            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 4 }}>
+              <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
+              <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(comment.body); }} disabled={busy}>Cancel</Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{comment.body}</p>
+            {mine ? (
+              confirming ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: 2 }}>
+                  <span style={{ fontSize: 11, color: "var(--ink-2)" }}>Delete?</span>
+                  <button type="button" onClick={() => void remove()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? "…" : "Yes"}</button>
+                  <button type="button" onClick={() => setConfirming(false)} disabled={busy} style={linkStyle}>No</button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "var(--space-3)", marginTop: 2 }}>
+                  <button type="button" onClick={() => setEditing(true)} style={linkStyle}>Edit</button>
+                  <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+                </div>
+              )
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
