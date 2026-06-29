@@ -18,6 +18,7 @@ import { moderationRouter } from "./moderation.js";
 import { townHallRouter } from "./townHall.js";
 import { offersRouter } from "./offers.js";
 import { profileWallRouter } from "./profileWall.js";
+import { notificationsRouter } from "./notifications.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   townHall: townHallRouter,
   offers: offersRouter,
   profileWall: profileWallRouter,
+  notifications: notificationsRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */
