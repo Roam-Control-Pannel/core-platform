@@ -11,7 +11,8 @@
  * returned objects are inline structural types (no named-type leak into AppRouter).
  */
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc.js";
+import { z } from "zod";
+import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
 /** Resolve the signed-in caller (writes/private reads). RLS is the real gate; this 401s nicely. */
 async function callerId(ctx: { db: { auth: { getUser: () => Promise<{ data: { user: { id: string } | null }; error: unknown }> } } }): Promise<string> {
@@ -23,6 +24,32 @@ async function callerId(ctx: { db: { auth: { getUser: () => Promise<{ data: { us
 }
 
 export const offersRouter = router({
+  /** Public: a single venue's LIVE offers (its "Offers" tab). Offers are world-readable (RLS). */
+  forVenue: publicProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await ctx.db
+        .from("offers")
+        .select("id, title, details, code, starts_at, ends_at")
+        .eq("venue_id", input.venueId)
+        .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+        .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load offers: ${error.message}` });
+      }
+      return (data ?? []).map((o) => ({
+        id: o.id,
+        title: o.title,
+        details: o.details,
+        code: o.code,
+        startsAt: o.starts_at,
+        endsAt: o.ends_at,
+      }));
+    }),
+
   /** Protected: live offers from the venues the caller follows, newest first. */
   forFollowed: protectedProcedure.query(async ({ ctx }) => {
     const me = await callerId(ctx);
