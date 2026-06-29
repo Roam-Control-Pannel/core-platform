@@ -597,13 +597,12 @@ function shortDate(iso: string): string {
 /** A venue's published posts (Posts tab). Each row links to the post-detail screen. */
 function VenuePostsPanel({ venueId }: { venueId: string }) {
   const trpc = useTrpc();
-  const [posts, setPosts] = useState<
-    { id: string; kind: string; title: string | null; body: string | null; publishedAt: string | null }[] | undefined
-  >(undefined);
+  type PostRow = { id: string; kind: string; title: string | null; body: string | null; media: { type: "image"; url: string }[]; publishedAt: string | null };
+  const [posts, setPosts] = useState<PostRow[] | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     const byVenue = trpc.posts.byVenue as unknown as {
-      query: (i: { venueId: string }) => Promise<{ id: string; kind: string; title: string | null; body: string | null; publishedAt: string | null }[]>;
+      query: (i: { venueId: string }) => Promise<PostRow[]>;
     };
     byVenue
       .query({ venueId })
@@ -624,17 +623,23 @@ function VenuePostsPanel({ venueId }: { venueId: string }) {
     <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-1)" }}>
       {posts.map((p) => (
         <Link key={p.id} href={`/feed/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-          <Card flat style={{ padding: "var(--space-4)" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: p.kind === "offer" ? "var(--crimson-700)" : "var(--muted)" }}>
-              {p.kind}
-              {p.publishedAt ? <span style={{ color: "var(--faint)", fontWeight: 400 }}> · {shortDate(p.publishedAt)}</span> : null}
-            </div>
-            {p.title ? <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, marginTop: 4 }}>{p.title}</div> : null}
-            {p.body ? (
-              <p style={{ margin: "2px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {p.body}
-              </p>
+          <Card flat style={{ padding: 0, overflow: "hidden" }}>
+            {p.media && p.media.length > 0 ? (
+              // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+              <img src={p.media[0]!.url} alt="" loading="lazy" style={{ width: "100%", height: 168, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
             ) : null}
+            <div style={{ padding: "var(--space-4)" }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: p.kind === "offer" ? "var(--crimson-700)" : "var(--muted)" }}>
+                {p.kind}
+                {p.publishedAt ? <span style={{ color: "var(--faint)", fontWeight: 400 }}> · {shortDate(p.publishedAt)}</span> : null}
+              </div>
+              {p.title ? <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, marginTop: 4 }}>{p.title}</div> : null}
+              {p.body ? (
+                <p style={{ margin: "2px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {p.body}
+                </p>
+              ) : null}
+            </div>
           </Card>
         </Link>
       ))}

@@ -27,6 +27,19 @@ import { dispatchFollowerPush } from "../push/dispatch.js";
 const postKind = z.enum(["news", "offer", "event"]);
 const postDestination = z.enum(["profile", "feed", "follower_push"]);
 
+/** Post images live in posts.media (jsonb). v1 is images-only: [{type:'image', url}]. */
+const postMedia = z.array(z.object({ type: z.literal("image"), url: z.string().max(4096) })).max(4);
+type PostMedia = { type: "image"; url: string };
+
+/** Normalise the posts.media jsonb into a typed image list, dropping anything malformed. */
+function asMedia(v: unknown): PostMedia[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((m) => {
+    const o = m as { url?: unknown };
+    return typeof o?.url === "string" && o.url.length > 0 ? [{ type: "image" as const, url: o.url }] : [];
+  });
+}
+
 const composeInput = z.object({
   venueId: z.string().uuid(),
   kind: postKind,
@@ -35,6 +48,7 @@ const composeInput = z.object({
   destinations: z.array(postDestination).min(1),
   isDraft: z.boolean(),
   publishAt: z.string().datetime().optional(),
+  media: postMedia.optional(),
 });
 
 /** Map validated Zod input to core's ComposeInput (drops venueId — that's persistence). */
@@ -82,6 +96,7 @@ export const postsRouter = router({
         venueId: string;
         venueName: string | null;
         venueLocality: string | null;
+        media: PostMedia[];
       };
 
       // Geofenced path: delegate to the posts_feed_near RPC (PostGIS distance filter).
@@ -106,6 +121,7 @@ export const postsRouter = router({
           venue_id: string;
           venue_name: string | null;
           venue_locality: string | null;
+          media?: unknown;
         }> | null) ?? [];
         return rows.map(
           (r): FeedRow => ({
@@ -117,6 +133,7 @@ export const postsRouter = router({
             venueId: r.venue_id,
             venueName: r.venue_name,
             venueLocality: r.venue_locality,
+            media: asMedia(r.media),
           }),
         );
       }
@@ -125,7 +142,7 @@ export const postsRouter = router({
       const { data, error } = await ctx.db
         .from("posts")
         .select(
-          "id, kind, title, body, published_at, venue_id, venues(name, locality)",
+          "id, kind, title, body, media, published_at, venue_id, venues(name, locality)",
         )
         .contains("destinations", ["feed"])
         .not("published_at", "is", null)
@@ -154,6 +171,7 @@ export const postsRouter = router({
             venueId: p.venue_id,
             venueName: v?.name ?? null,
             venueLocality: v?.locality ?? null,
+            media: asMedia((p as { media?: unknown }).media),
           };
         },
       );
@@ -169,7 +187,7 @@ export const postsRouter = router({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.db
         .from("posts")
-        .select("id, kind, title, body, published_at, venue_id, venues(name, locality)")
+        .select("id, kind, title, body, media, published_at, venue_id, venues(name, locality)")
         .eq("id", input.postId)
         .not("published_at", "is", null)
         .maybeSingle();
@@ -186,6 +204,7 @@ export const postsRouter = router({
         kind: data.kind,
         title: data.title,
         body: data.body,
+        media: asMedia((data as { media?: unknown }).media),
         publishedAt: data.published_at,
         venueId: data.venue_id,
         venueName: v?.name ?? null,
@@ -203,7 +222,7 @@ export const postsRouter = router({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.db
         .from("posts")
-        .select("id, kind, title, body, published_at, venue_id")
+        .select("id, kind, title, body, media, published_at, venue_id")
         .eq("venue_id", input.venueId)
         .not("published_at", "is", null)
         .order("published_at", { ascending: false })
@@ -214,6 +233,7 @@ export const postsRouter = router({
         kind: p.kind,
         title: p.title,
         body: p.body,
+        media: asMedia((p as { media?: unknown }).media),
         publishedAt: p.published_at,
         venueId: p.venue_id,
       }));
@@ -229,7 +249,7 @@ export const postsRouter = router({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.db
         .from("posts")
-        .select("id, kind, title, body, destinations, is_draft, publish_at, published_at, created_at")
+        .select("id, kind, title, body, media, destinations, is_draft, publish_at, published_at, created_at")
         .eq("venue_id", input.venueId)
         .order("created_at", { ascending: false })
         .limit(input.limit);
@@ -239,6 +259,7 @@ export const postsRouter = router({
         kind: p.kind,
         title: p.title,
         body: p.body,
+        media: asMedia((p as { media?: unknown }).media),
         destinations: (p.destinations ?? []) as string[],
         isDraft: p.is_draft,
         publishAt: p.publish_at,
@@ -259,12 +280,14 @@ export const postsRouter = router({
         postId: z.string().uuid(),
         title: z.string().max(200).nullish(),
         body: z.string().max(5000).nullish(),
+        media: postMedia.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const patch: { title?: string | null; body?: string | null } = {};
+      const patch: { title?: string | null; body?: string | null; media?: PostMedia[] } = {};
       if ("title" in input) patch.title = input.title?.trim() ? input.title.trim() : null;
       if ("body" in input) patch.body = input.body?.trim() ? input.body.trim() : null;
+      if ("media" in input) patch.media = input.media ?? [];
       if (Object.keys(patch).length === 0) return { ok: true as const };
       const { data, error } = await ctx.db
         .from("posts")
@@ -356,6 +379,7 @@ export const postsRouter = router({
           kind: input.kind,
           title: input.title ?? null,
           body: input.body ?? null,
+          media: input.media ?? [],
           destinations: input.destinations,
           is_draft: isDraft,
           publish_at: publishAt,
