@@ -40,7 +40,7 @@ export function Home() {
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <header style={{ marginBottom: "var(--space-5)" }}>
+      <header style={{ marginBottom: "var(--space-8)" }}>
         <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, letterSpacing: "-.02em", margin: 0 }}>
           {greeting()}
         </h1>
