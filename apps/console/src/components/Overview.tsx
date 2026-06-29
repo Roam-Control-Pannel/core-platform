@@ -116,6 +116,7 @@ export function Overview() {
 
 function VenueOverviewCard({ venue }: { venue: OwnedVenue }) {
   const [composing, setComposing] = useState(false);
+  const [postsVersion, setPostsVersion] = useState(0);
   const place = [venue.locality, venue.region].filter(Boolean).join(", ");
   return (
     <Card style={{ padding: "var(--space-5)" }}>
@@ -162,12 +163,162 @@ function VenueOverviewCard({ venue }: { venue: OwnedVenue }) {
           venueId={venue.id}
           venueName={venue.name}
           onClose={() => setComposing(false)}
-          onPublished={() => {}}
+          onPublished={() => setPostsVersion((v) => v + 1)}
         />
       ) : null}
+
+      <VenuePosts venueId={venue.id} version={postsVersion} />
     </Card>
   );
 }
+
+interface ManagedPost {
+  id: string;
+  kind: string;
+  title: string | null;
+  body: string | null;
+  isDraft: boolean;
+  publishAt: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+function postState(p: ManagedPost): { label: string; live: boolean } {
+  if (p.publishedAt) return { label: "Live", live: true };
+  if (p.publishAt) return { label: "Scheduled", live: false };
+  return { label: "Draft", live: false };
+}
+
+/**
+ * VenuePosts — the venue's posts with edit + delete, so an owner can correct or pull anything
+ * they've published (the self-protection contract: anything you post, you can edit or remove).
+ * Loads posts.mine (owner-scoped, includes drafts/scheduled); `version` bumps re-fetch after a
+ * new post is published from the composer above.
+ */
+function VenuePosts({ venueId, version }: { venueId: string; version: number }) {
+  const trpc = useTrpc();
+  const [posts, setPosts] = useState<ManagedPost[] | undefined>(undefined);
+
+  const load = useCallback(async () => {
+    const q = trpc.posts.mine as unknown as { query: (i: { venueId: string }) => Promise<ManagedPost[]> };
+    return q.query({ venueId });
+  }, [trpc, venueId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    load()
+      .then((p) => { if (!cancelled) setPosts(p); })
+      .catch(() => { if (!cancelled) setPosts([]); });
+    return () => { cancelled = true; };
+  }, [load, version]);
+
+  if (posts === undefined) {
+    return <div style={{ marginTop: "var(--space-4)", height: 40, borderRadius: 10, background: "var(--paper-2)" }} />;
+  }
+  if (posts.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--line)" }}>
+      <SectionLabel>Your posts</SectionLabel>
+      <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+        {posts.map((p) => (
+          <PostManageRow key={p.id} post={p} onChanged={() => load().then(setPosts).catch(() => {})} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () => void }) {
+  const trpc = useTrpc();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(post.title ?? "");
+  const [body, setBody] = useState(post.body ?? "");
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const state = postState(post);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    const mut = trpc.posts.update as unknown as { mutate: (i: { postId: string; title: string | null; body: string | null }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ postId: post.id, title: title.trim() || null, body: body.trim() || null });
+      setEditing(false);
+      onChanged();
+    } catch {
+      /* keep editing */
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, post.id, title, body, onChanged]);
+
+  const remove = useCallback(async () => {
+    setBusy(true);
+    const mut = trpc.posts.remove as unknown as { mutate: (i: { postId: string }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ postId: post.id });
+      onChanged();
+    } catch {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }, [trpc, post.id, onChanged]);
+
+  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 12, color: "var(--muted)", textDecoration: "underline" };
+
+  return (
+    <Card flat style={{ padding: "var(--space-3) var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+        <Pill variant={state.live ? "ghost-crim" : "neutral"} size="sm">{state.label}</Pill>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--muted)" }}>{post.kind}</span>
+        <span style={{ flex: 1 }} />
+        {!editing ? (
+          confirming ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", fontSize: 12, color: "var(--ink-2)" }}>
+              Delete?
+              <button type="button" onClick={() => void remove()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? "…" : "Yes"}</button>
+              <button type="button" onClick={() => setConfirming(false)} disabled={busy} style={linkStyle}>No</button>
+            </span>
+          ) : (
+            <span style={{ display: "inline-flex", gap: "var(--space-3)" }}>
+              <button type="button" onClick={() => setEditing(true)} style={linkStyle}>Edit</button>
+              <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+            </span>
+          )
+        ) : null}
+      </div>
+
+      {editing ? (
+        <div style={{ marginTop: "var(--space-3)", display: "grid", gap: "var(--space-2)" }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" aria-label="Post title" style={manageInput} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body" aria-label="Post body" rows={3} style={{ ...manageInput, resize: "vertical", minHeight: 72 }} />
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || (title.trim().length === 0 && body.trim().length === 0)}>{busy ? "Saving…" : "Save"}</Button>
+            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setTitle(post.title ?? ""); setBody(post.body ?? ""); }} disabled={busy}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 6 }}>
+          {post.title ? <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-hi)" }}>{post.title}</div> : null}
+          {post.body ? <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, marginTop: 2, whiteSpace: "pre-wrap" }}>{post.body}</div> : null}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const manageInput: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "8px 12px",
+  background: "var(--paper-2)",
+  border: "1px solid var(--line)",
+  borderRadius: 10,
+  fontFamily: "var(--ui)",
+  fontSize: 14,
+  color: "var(--ink)",
+  outline: "none",
+};
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
