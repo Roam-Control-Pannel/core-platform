@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, Pill, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
@@ -249,9 +250,91 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
               )}
             </div>
           ) : null}
+
+          <ThreadActions thread={thread} onRenamed={load} />
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * ThreadActions — manage-this-chat controls at the foot of the thread. A free-standing group
+ * can be renamed; a group or direct chat can be left (a plan chat is managed via its plan, so
+ * neither applies). Leaving routes back to the inbox.
+ */
+function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: () => void }) {
+  const trpc = useTrpc();
+  const router = useRouter();
+  const canRename = thread.isGroup && !thread.planId;
+  const canLeave = !thread.planId; // group or direct; a plan chat re-adds you on open
+
+  const [renaming, setRenaming] = useState(false);
+  const [title, setTitle] = useState(thread.title ?? "");
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const save = useCallback(async () => {
+    const t = title.trim();
+    if (!t) return;
+    setBusy(true);
+    try {
+      await trpc.chat.renameThread.mutate({ threadId: thread.id, title: t });
+      setRenaming(false);
+      onRenamed();
+    } catch {
+      /* keep editing */
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, thread.id, title, onRenamed]);
+
+  const leave = useCallback(async () => {
+    setBusy(true);
+    try {
+      await trpc.chat.leaveThread.mutate({ threadId: thread.id });
+      router.push("/threads");
+    } catch {
+      setBusy(false);
+      setConfirmLeave(false);
+    }
+  }, [trpc, thread.id, router]);
+
+  if (!canRename && !canLeave) return null;
+
+  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 12.5, color: "var(--muted)", textDecoration: "underline" };
+
+  return (
+    <div style={{ marginTop: "var(--space-8)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--line)" }}>
+      {renaming ? (
+        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            aria-label="Group name"
+            maxLength={200}
+            style={{ flex: 1, minWidth: 180, fontFamily: "var(--ui)", fontSize: 14, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--line-2)", background: "#fff", color: "var(--ink)", outline: "none" }}
+          />
+          <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0}>{busy ? "…" : "Save"}</Button>
+          <Button variant="neutral" size="sm" onClick={() => { setRenaming(false); setTitle(thread.title ?? ""); }} disabled={busy}>Cancel</Button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
+          {canRename ? <button type="button" onClick={() => setRenaming(true)} style={linkStyle}>Rename chat</button> : null}
+          {canLeave ? (
+            confirmLeave ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", fontSize: 12.5, color: "var(--ink-2)" }}>
+                Leave this chat?
+                <button type="button" onClick={() => void leave()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? "Leaving…" : "Yes, leave"}</button>
+                <button type="button" onClick={() => setConfirmLeave(false)} disabled={busy} style={linkStyle}>Cancel</button>
+              </span>
+            ) : (
+              <button type="button" onClick={() => setConfirmLeave(true)} style={{ ...linkStyle, color: "var(--crimson-700)" }}>Leave chat</button>
+            )
+          ) : null}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -362,7 +445,12 @@ function MessagePanel({ threadId }: { threadId: string }) {
               </p>
             ) : (
               messages.map((m) => (
-                <MessageRow key={m.id} message={m} mine={m.senderId !== null && m.senderId === myId} />
+                <MessageRow
+                  key={m.id}
+                  message={m}
+                  mine={m.senderId !== null && m.senderId === myId}
+                  onChanged={load}
+                />
               ))
             )}
           </div>
@@ -410,7 +498,8 @@ function MessagePanel({ threadId }: { threadId: string }) {
   );
 }
 
-function MessageRow({ message, mine }: { message: ThreadMessage; mine: boolean }) {
+function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine: boolean; onChanged: () => void }) {
+  const trpc = useTrpc();
   const name =
     message.senderName?.trim() ||
     (message.senderHandle ? `@${message.senderHandle}` : null) ||
@@ -418,6 +507,37 @@ function MessageRow({ message, mine }: { message: ThreadMessage; mine: boolean }
 
   // Rich-kind seam: only text renders this slice; other kinds get a neutral note.
   const isText = message.kind === "text";
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.body ?? "");
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const saveEdit = useCallback(async () => {
+    const body = draft.trim();
+    if (!body) return;
+    setBusy(true);
+    try {
+      await trpc.chat.editMessage.mutate({ messageId: message.id, body });
+      setEditing(false);
+      onChanged();
+    } catch {
+      setBusy(false);
+    }
+  }, [trpc, message.id, draft, onChanged]);
+
+  const remove = useCallback(async () => {
+    setBusy(true);
+    try {
+      await trpc.chat.deleteMessage.mutate({ messageId: message.id });
+      onChanged();
+    } catch {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }, [trpc, message.id, onChanged]);
+
+  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 10.5, color: "var(--faint)", textDecoration: "underline" };
 
   return (
     <div
@@ -431,28 +551,65 @@ function MessageRow({ message, mine }: { message: ThreadMessage; mine: boolean }
       <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--faint)" }}>
         {mine ? "You" : name} · {formatWhen(message.createdAt)}
       </span>
-      <div
-        style={{
-          maxWidth: "78%",
-          padding: "8px 12px",
-          borderRadius: 12,
-          fontSize: 14,
-          lineHeight: 1.45,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
-          color: "var(--ink-hi)",
-          border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
-        }}
-      >
-        {isText ? (
-          message.body ?? ""
-        ) : (
-          <span style={{ color: "var(--muted)", fontStyle: "italic" }}>
-            Unsupported message type
-          </span>
-        )}
-      </div>
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, maxWidth: "85%", width: "100%" }}>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            maxLength={4000}
+            aria-label="Edit message"
+            style={{
+              width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "var(--ui)", fontSize: 14,
+              lineHeight: 1.45, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line-2)",
+              background: "#fff", color: "var(--ink)", outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            <Button variant="pri" size="sm" onClick={() => void saveEdit()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
+            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(message.body ?? ""); }} disabled={busy}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              maxWidth: "78%",
+              padding: "8px 12px",
+              borderRadius: 12,
+              fontSize: 14,
+              lineHeight: 1.45,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
+              color: "var(--ink-hi)",
+              border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
+            }}
+          >
+            {isText ? (
+              message.body ?? ""
+            ) : (
+              <span style={{ color: "var(--muted)", fontStyle: "italic" }}>
+                Unsupported message type
+              </span>
+            )}
+          </div>
+          {mine && isText ? (
+            confirming ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                <span style={{ fontSize: 10.5, color: "var(--faint)" }}>Delete?</span>
+                <button type="button" onClick={() => void remove()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)" }}>{busy ? "…" : "Yes"}</button>
+                <button type="button" onClick={() => setConfirming(false)} disabled={busy} style={linkStyle}>No</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button type="button" onClick={() => setEditing(true)} style={linkStyle}>Edit</button>
+                <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+              </div>
+            )
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
