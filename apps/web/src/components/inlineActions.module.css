@@ -1,0 +1,73 @@
+/*
+ * Inline content actions — the quiet "Edit · Delete" controls on things a user owns
+ * (Town Hall topics & replies, wall posts & comments, chat messages). Subtle bordered
+ * pills rather than raw underlined links: clearer affordance, a real tap target on mobile,
+ * and a consistent look everywhere the self-edit/delete contract appears.
+ */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+  transition:
+    background var(--motion-transition) var(--ease),
+    color var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .action:hover {
+    background: var(--paper-2);
+    color: var(--ink-2);
+    border-color: var(--line-2);
+  }
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--crimson);
+  outline-offset: 1px;
+}
+
+.action:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Destructive variant — stays calm until hovered, then reads clearly as delete. */
+.danger {
+  color: var(--crimson-700);
+  border-color: var(--crimson-tint-2);
+}
+
+@media (hover: hover) {
+  .danger:hover {
+    background: var(--crimson-tint);
+    color: var(--crimson-700);
+    border-color: var(--crimson-tint-2);
+  }
+}
+
+/* The "Delete this? Yes / Cancel" confirm prompt that replaces the row briefly. */
+.confirm {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-right: 2px;
+}

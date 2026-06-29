@@ -17,6 +17,7 @@ import { AuthPanel } from "./AuthPanel";
 import { TopicUpvote } from "./TopicUpvote";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { AuthorLink } from "./AuthorLink";
+import actions from "./inlineActions.module.css";
 
 interface TopicView {
   id: string;
@@ -271,28 +272,27 @@ function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string |
 function OwnerActions({ onEdit, onDelete, confirmLabel }: { onEdit: () => void; onDelete: () => Promise<void>; confirmLabel: string }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 12, color: "var(--muted)", textDecoration: "underline" };
 
   if (confirming) {
     return (
-      <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-        <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{confirmLabel}</span>
+      <div className={actions.row} style={{ marginTop: "var(--space-3)" }}>
+        <span className={actions.confirm}>{confirmLabel}</span>
         <button
           type="button"
+          className={`${actions.action} ${actions.danger}`}
           disabled={busy}
           onClick={async () => { setBusy(true); try { await onDelete(); } catch { setBusy(false); setConfirming(false); } }}
-          style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}
         >
           {busy ? "Deleting…" : "Yes, delete"}
         </button>
-        <button type="button" disabled={busy} onClick={() => setConfirming(false)} style={linkStyle}>Cancel</button>
+        <button type="button" className={actions.action} disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
       </div>
     );
   }
   return (
-    <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-      <button type="button" onClick={onEdit} style={linkStyle}>Edit</button>
-      <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+    <div className={actions.row} style={{ marginTop: "var(--space-3)" }}>
+      <button type="button" className={actions.action} onClick={onEdit}>Edit</button>
+      <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
     </div>
   );
 }

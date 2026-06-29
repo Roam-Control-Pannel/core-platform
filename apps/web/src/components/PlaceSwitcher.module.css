@@ -1,0 +1,60 @@
+/*
+ * PlaceSwitcher trigger — the location chip that opens the place picker. A calm, tappable
+ * pill: a crimson location pin, the place name, and a chevron that rotates when open. Reads
+ * as "where you're browsing", not a generic button. Hover/active states only where a pointer
+ * exists (no sticky hover on touch).
+ */
+.trigger {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 12px 6px 11px;
+  border-radius: 999px;
+  background: var(--crimson-tint);
+  border: 1px solid var(--crimson-tint-2);
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--crimson-700);
+  transition:
+    background var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .trigger:hover {
+    background: var(--crimson-tint-2);
+  }
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--crimson);
+  outline-offset: 2px;
+}
+
+.pin {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--crimson);
+}
+
+.label {
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caret {
+  font-size: 11px;
+  opacity: 0.8;
+  transition: transform var(--motion-transition) var(--ease);
+}
+
+.caretOpen {
+  transform: rotate(180deg);
+}
