@@ -442,7 +442,7 @@ function TitleRow({ name }: { name: string }) {
  * the facts block); Posts · Offers · Shop are dormant seams (Stage-2 surfaces) — visible so
  * the structure reads as designed, but faint and inert until those features ship.
  */
-type VenueTab = "details" | "posts" | "offers" | "shop";
+type VenueTab = "posts" | "offers" | "gallery" | "details" | "shop";
 
 function ClaimedDetail({
   venue,
@@ -456,8 +456,8 @@ function ClaimedDetail({
   isOwner: boolean;
 }) {
   const links = linkEntries(venue.links);
-  // Only "details" is reachable today; keeping it in state lets the dormant tabs light up
-  // with no structural change once Posts/Offers/Shop ship.
+  // Posts · Offers · Gallery · Details are live (data already exists); Shop is the one
+  // remaining Stage-5 seam. Details leads — it always has something to show.
   const [tab, setTab] = useState<VenueTab>("details");
 
   return (
@@ -518,41 +518,217 @@ function ClaimedDetail({
         {/* Scrolling tabbed content column on web. */}
         <div className={styles.content}>
           {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop).
-              Details is the only built tab today; the rest are faint Stage-2 seams. */}
+              Posts/Offers/Gallery/Details are live; Shop is the one remaining seam. */}
           <div className={styles.tabstrip} role="tablist" aria-label="Venue sections">
-            <DormantTab label="Posts" />
-            <DormantTab label="Offers" />
-            <DormantTab label="Gallery" />
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "details"}
-              className={tab === "details" ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => setTab("details")}
-            >
-              Details
-            </button>
+            <TabButton label="Posts" value="posts" active={tab} onSelect={setTab} />
+            <TabButton label="Offers" value="offers" active={tab} onSelect={setTab} />
+            <TabButton label="Gallery" value="gallery" active={tab} onSelect={setTab} />
+            <TabButton label="Details" value="details" active={tab} onSelect={setTab} />
             <DormantTab label="Shop ◇" />
           </div>
 
-          {venue.description ? (
-            <p style={{ marginTop: 0, lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
+          {tab === "details" ? (
+            <>
+              {venue.description ? (
+                <p style={{ marginTop: 0, lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
+              ) : null}
+              <OpeningHours openingTimes={venue.opening_times} />
+              <DetailsBlock venue={venue} />
+            </>
+          ) : tab === "posts" ? (
+            <VenuePostsPanel venueId={venueId} />
+          ) : tab === "offers" ? (
+            <VenueOffersPanel venueId={venueId} />
+          ) : tab === "gallery" ? (
+            <VenueGalleryPanel venueId={venueId} />
           ) : null}
-
-          <OpeningHours openingTimes={venue.opening_times} />
-          <DetailsBlock venue={venue} />
         </div>
       </div>
     </>
   );
 }
 
-/** A faint, inert tab — a Stage-2 surface seam (Posts · Offers · Shop) not yet built. */
+/** A live, selectable tab. */
+function TabButton({
+  label,
+  value,
+  active,
+  onSelect,
+}: {
+  label: string;
+  value: VenueTab;
+  active: VenueTab;
+  onSelect: (v: VenueTab) => void;
+}) {
+  const on = active === value;
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={on}
+      className={on ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+      onClick={() => onSelect(value)}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** A faint, inert tab — the one remaining Stage-5 seam (Shop) not yet built. */
 function DormantTab({ label }: { label: string }) {
   return (
     <span className={`${styles.tab} ${styles.tabDormant}`} title="Coming soon" aria-disabled>
       {label}
     </span>
+  );
+}
+
+/** Shared empty/loading note for the tab panels. */
+const panelNote = { color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, margin: "var(--space-3) 0 0" };
+
+/** A short "12 Jun" date — tolerant of an unparseable value. */
+function shortDate(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+/** A venue's published posts (Posts tab). Each row links to the post-detail screen. */
+function VenuePostsPanel({ venueId }: { venueId: string }) {
+  const trpc = useTrpc();
+  const [posts, setPosts] = useState<
+    { id: string; kind: string; title: string | null; body: string | null; publishedAt: string | null }[] | undefined
+  >(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const byVenue = trpc.posts.byVenue as unknown as {
+      query: (i: { venueId: string }) => Promise<{ id: string; kind: string; title: string | null; body: string | null; publishedAt: string | null }[]>;
+    };
+    byVenue
+      .query({ venueId })
+      .then((rows) => {
+        if (!cancelled) setPosts(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setPosts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, venueId]);
+
+  if (posts === undefined) return <PanelSkeleton />;
+  if (posts.length === 0) return <p style={panelNote}>No posts yet — when this venue posts news, offers or events they&apos;ll show here.</p>;
+  return (
+    <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-1)" }}>
+      {posts.map((p) => (
+        <Link key={p.id} href={`/feed/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <Card flat style={{ padding: "var(--space-4)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: p.kind === "offer" ? "var(--crimson-700)" : "var(--muted)" }}>
+              {p.kind}
+              {p.publishedAt ? <span style={{ color: "var(--faint)", fontWeight: 400 }}> · {shortDate(p.publishedAt)}</span> : null}
+            </div>
+            {p.title ? <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, marginTop: 4 }}>{p.title}</div> : null}
+            {p.body ? (
+              <p style={{ margin: "2px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {p.body}
+              </p>
+            ) : null}
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** A venue's live offers (Offers tab). */
+function VenueOffersPanel({ venueId }: { venueId: string }) {
+  const trpc = useTrpc();
+  const [offers, setOffers] = useState<
+    { id: string; title: string; details: string | null; code: string | null; endsAt: string | null }[] | undefined
+  >(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const forVenue = trpc.offers.forVenue as unknown as {
+      query: (i: { venueId: string }) => Promise<{ id: string; title: string; details: string | null; code: string | null; endsAt: string | null }[]>;
+    };
+    forVenue
+      .query({ venueId })
+      .then((rows) => {
+        if (!cancelled) setOffers(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOffers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, venueId]);
+
+  if (offers === undefined) return <PanelSkeleton />;
+  if (offers.length === 0) return <p style={panelNote}>No live offers right now — check back, or follow to be notified.</p>;
+  return (
+    <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
+      {offers.map((o) => (
+        <div key={o.id} style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-lg)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)" }}>
+          <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{o.title}</div>
+          {o.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{o.details}</p> : null}
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            {o.code ? (
+              <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--crimson-700)", background: "#fff", border: "1px dashed var(--crimson-tint-2)", borderRadius: "var(--r-sm)", padding: "2px 8px" }}>
+                {o.code}
+              </span>
+            ) : null}
+            {o.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Ends {shortDate(o.endsAt)}</span> : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A venue's full photo set (Gallery tab) — a responsive grid. */
+function VenueGalleryPanel({ venueId }: { venueId: string }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const photosByVenue = trpc.venues.photosByVenue as unknown as {
+      query: (i: { venueId: string }) => Promise<PhotoRow[]>;
+    };
+    photosByVenue
+      .query({ venueId })
+      .then((res) => {
+        if (!cancelled) setRows(Array.isArray(res) ? res : []);
+      })
+      .catch(() => {
+        if (!cancelled) setRows([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, venueId]);
+
+  if (rows === undefined) return <PanelSkeleton />;
+  const gallery = galleryOrder(rows);
+  if (gallery.length === 0) return <p style={panelNote}>No photos yet.</p>;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
+      {gallery.map((p) => (
+        <div key={p.id} style={{ borderRadius: 12, overflow: "hidden" }}>
+          <VenuePhoto photoId={p.id} alt="" heightPx={120} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PanelSkeleton() {
+  return (
+    <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+      <div style={{ height: 64, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+      <div style={{ height: 64, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+    </div>
   );
 }
 

@@ -136,6 +136,32 @@ export const postsRouter = router({
       };
     }),
 
+  /**
+   * Public: a single venue's published posts (its "Posts" tab), newest first. Same RLS as the
+   * feed (published + approved only); unlike the feed this is NOT limited to the feed
+   * destination — it's the venue's own wall of updates. Inline-typed.
+   */
+  byVenue: publicProcedure
+    .input(z.object({ venueId: z.string().uuid(), limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.db
+        .from("posts")
+        .select("id, kind, title, body, published_at, venue_id")
+        .eq("venue_id", input.venueId)
+        .not("published_at", "is", null)
+        .order("published_at", { ascending: false })
+        .limit(input.limit);
+      if (error) throw new Error(`Failed to load venue posts: ${error.message}`);
+      return (data ?? []).map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        title: p.title,
+        body: p.body,
+        publishedAt: p.published_at,
+        venueId: p.venue_id,
+      }));
+    }),
+
   /** Pure preview: validate a composition + report timing and push cost. No write. */
   validate: protectedProcedure
     .input(composeInput)
