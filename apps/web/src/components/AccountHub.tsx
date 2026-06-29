@@ -75,6 +75,12 @@ export function AccountHub() {
       <Link href="/notifications" style={{ textDecoration: "none" }}>
         <Pill variant="neutral">Notifications</Pill>
       </Link>
+      <Link href="/friends" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Friends</Pill>
+      </Link>
+      <Link href="/plans" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Plans</Pill>
+      </Link>
       <Link href="/following" style={{ textDecoration: "none" }}>
         <Pill variant="neutral">Following</Pill>
       </Link>

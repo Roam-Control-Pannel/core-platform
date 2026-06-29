@@ -191,4 +191,94 @@ export const socialRouter = router({
       if (error) return { ok: false as const, error: error.message };
       return { ok: true as const, status: "declined" as const };
     }),
+
+  /**
+   * The caller's accepted friends — the OTHER profile in each accepted friendship. RLS scopes
+   * friendships to the two parties; we embed both ends and pick the one that isn't the caller.
+   */
+  myFriends: protectedProcedure.query(async ({ ctx }) => {
+    const me = await callerId(ctx.db);
+    type Embed = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null };
+    type Row = {
+      requester_id: string;
+      addressee_id: string;
+      requester: Embed | Embed[] | null;
+      addressee: Embed | Embed[] | null;
+    };
+    type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const db = ctx.db as unknown as Loose;
+    const { data, error } = (await db
+      .from("friendships")
+      .select(
+        "requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, handle, display_name, avatar_url), addressee:profiles!friendships_addressee_id_fkey(id, handle, display_name, avatar_url)",
+      )
+      .eq("status", "accepted")) as { data: Row[] | null; error: { message: string } | null };
+    if (error) return { ok: false as const, error: error.message };
+    const one = (e: Embed | Embed[] | null): Embed | null => (Array.isArray(e) ? (e[0] ?? null) : e);
+    const friends = (data ?? []).map((r) => {
+      const other = r.requester_id === me ? one(r.addressee) : one(r.requester);
+      return {
+        id: other?.id ?? (r.requester_id === me ? r.addressee_id : r.requester_id),
+        handle: other?.handle ?? null,
+        displayName: other?.display_name ?? null,
+        avatarUrl: other?.avatar_url ?? null,
+      };
+    });
+    return { ok: true as const, friends };
+  }),
+
+  /** Incoming pending friend requests (the caller is the addressee), with the requester's profile. */
+  friendRequests: protectedProcedure.query(async ({ ctx }) => {
+    const me = await callerId(ctx.db);
+    type Embed = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null };
+    type Row = { requester_id: string; requester: Embed | Embed[] | null; created_at: string };
+    type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const db = ctx.db as unknown as Loose;
+    const { data, error } = (await db
+      .from("friendships")
+      .select("requester_id, created_at, requester:profiles!friendships_requester_id_fkey(id, handle, display_name, avatar_url)")
+      .eq("addressee_id", me)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })) as { data: Row[] | null; error: { message: string } | null };
+    if (error) return { ok: false as const, error: error.message };
+    const one = (e: Embed | Embed[] | null): Embed | null => (Array.isArray(e) ? (e[0] ?? null) : e);
+    const requests = (data ?? []).map((r) => {
+      const p = one(r.requester);
+      return {
+        id: r.requester_id,
+        handle: p?.handle ?? null,
+        displayName: p?.display_name ?? null,
+        avatarUrl: p?.avatar_url ?? null,
+        createdAt: r.created_at,
+      };
+    });
+    return { ok: true as const, requests };
+  }),
+
+  /**
+   * The caller's relationship to another profile — drives the wall "Add friend" button.
+   * 'none' | 'friends' | 'pending_out' (caller requested) | 'pending_in' (they requested).
+   */
+  friendshipStatus: protectedProcedure
+    .input(z.object({ otherId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const me = await callerId(ctx.db);
+      type Row = { requester_id: string; addressee_id: string; status: string };
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("friendships")
+        .select("requester_id, addressee_id, status")
+        .or(
+          `and(requester_id.eq.${me},addressee_id.eq.${input.otherId}),and(requester_id.eq.${input.otherId},addressee_id.eq.${me})`,
+        )
+        .maybeSingle()) as { data: Row | null; error: { message: string } | null };
+      if (error) return { status: "none" as const };
+      if (!data) return { status: "none" as const };
+      if (data.status === "accepted") return { status: "friends" as const };
+      if (data.status === "pending") {
+        return { status: data.requester_id === me ? ("pending_out" as const) : ("pending_in" as const) };
+      }
+      return { status: "none" as const };
+    }),
 });
