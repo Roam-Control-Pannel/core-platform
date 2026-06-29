@@ -152,7 +152,7 @@ export function PlanDetail({ planId }: { planId: string }) {
         <>
           <PlanBanner plan={plan} />
 
-          <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
               {openingChat ? "Opening…" : "💬 Group chat"}
             </Button>
@@ -446,14 +446,14 @@ function PlanMembers({ planId }: { planId: string }) {
   }, [trpc, planId]);
 
   if (members === undefined) {
-    return <div style={{ marginTop: "var(--space-5)", height: 40, borderRadius: "var(--r-md)", background: "var(--paper-2)" }} />;
+    return <div style={{ marginTop: "var(--space-6)", height: 40, borderRadius: "var(--r-md)", background: "var(--paper-2)" }} />;
   }
 
   const memberIds = new Set(members.map((m) => m.profileId));
   const invitable = friends.filter((f) => !memberIds.has(f.id));
 
   return (
-    <section style={{ marginTop: "var(--space-5)" }}>
+    <section style={{ marginTop: "var(--space-6)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
           {members.length === 1 ? "Just you" : `${members.length} people`}
