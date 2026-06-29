@@ -5,13 +5,31 @@
  * Public to view (browse-freely); posting is owner-only, liking/commenting need a session —
  * all prompted just-in-time, so the page does not gate. force-dynamic: live per-request data.
  *
+ * SEO: this server component resolves the profile once (anonymous, cached) for per-page
+ * metadata and a Person JSON-LD block in the initial HTML. The wall itself hydrates client-side.
+ *
  * Next 15+/16 passes route params as a Promise — we await it before use.
  */
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import { ProfileWall } from "../../../components/ProfileWall";
+import { JsonLd } from "../../../components/JsonLd";
+import { getProfile } from "../../../lib/serverApi";
+import { profileMetadata, profileJsonLd } from "../../../lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return profileMetadata(await getProfile(id), id);
+}
 
 export default async function ProfileWallPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <ProfileWall userId={id} />;
+  const profile = await getProfile(id);
+  return (
+    <>
+      {profile ? <JsonLd data={profileJsonLd(profile, id)} /> : null}
+      <ProfileWall userId={id} />
+    </>
+  );
 }

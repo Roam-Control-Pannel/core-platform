@@ -11,16 +11,41 @@
  *   - TabBar — the mobile bottom tab bar (phones only; hidden on desktop).
  */
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import "./globals.css";
 import { TrpcProvider } from "../components/TrpcProvider";
 import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
+import { siteUrl } from "../lib/seo";
 
-export const metadata = {
-  title: "Roam",
-  description: "Hyper-local discovery + social planning.",
+const DESCRIPTION = "Discover the best local venues, read reviews, follow your town's news and plan days out with friends — all on Roam.";
+
+/**
+ * Root metadata + the defaults every page inherits. `metadataBase` makes relative Open Graph
+ * image URLs absolute; the title `template` gives each page a "<Page> · Roam" title while
+ * `default` covers routes without their own generateMetadata. Per-page generateMetadata
+ * (venue/profile/post/topic) overrides title, description, canonical and the share card.
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
+  title: { default: "Roam — hyper-local discovery & social planning", template: "%s · Roam" },
+  description: DESCRIPTION,
+  applicationName: "Roam",
   icons: { icon: "/roam-mark.png" },
+  openGraph: {
+    type: "website",
+    siteName: "Roam",
+    title: "Roam — hyper-local discovery & social planning",
+    description: DESCRIPTION,
+    images: [{ url: "/roam-mark.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Roam — hyper-local discovery & social planning",
+    description: DESCRIPTION,
+    images: ["/roam-mark.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
