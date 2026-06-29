@@ -14,6 +14,7 @@ import { Card } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { timeAgo } from "../lib/townHall";
+import rowStyles from "./listRow.module.css";
 
 interface Notification {
   id: string;
@@ -63,7 +64,7 @@ export function NotificationCenter() {
   }, [trpc, hasSession]);
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link
         href="/"
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
@@ -112,13 +113,14 @@ function NotificationRow({ n }: { n: Notification }) {
   const unread = n.readAt == null;
   const body = (
     <div
+      className={unread ? undefined : rowStyles.row}
       style={{
         display: "flex",
         alignItems: "center",
         gap: "var(--space-3)",
         padding: "12px 12px",
         borderRadius: "var(--r-md)",
-        background: unread ? "var(--crimson-tint)" : "transparent",
+        ...(unread ? { background: "var(--crimson-tint)" } : {}),
       }}
     >
       <span aria-hidden style={{ fontSize: 18, flexShrink: 0 }}>{GLYPH[n.type] ?? "•"}</span>

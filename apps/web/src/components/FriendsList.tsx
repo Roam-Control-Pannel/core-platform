@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import rowStyles from "./listRow.module.css";
 
 interface Person {
   id: string;
@@ -85,7 +86,7 @@ export function FriendsList() {
   );
 
   return (
-    <main style={{ maxWidth: 680, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}>
         <span aria-hidden>←</span> Home
       </Link>
@@ -143,7 +144,7 @@ export function FriendsList() {
               </div>
               <div style={{ display: "grid", gap: "var(--space-1)" }}>
                 {friends.map((p) => (
-                  <Link key={p.id} href={`/u/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}>
+                  <Link key={p.id} href={`/u/${p.id}`} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}>
                     <Avatar p={p} size={32} />
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{name(p)}</span>
                   </Link>

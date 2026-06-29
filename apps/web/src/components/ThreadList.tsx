@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Card, Pill, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import rowStyles from "./listRow.module.css";
 
 interface ThreadRow {
   id: string;
@@ -190,7 +191,7 @@ export function ThreadList() {
 function ThreadRowCard({ thread }: { thread: ThreadRow }) {
   const name = thread.title?.trim() || (thread.isGroup ? "Untitled group" : "Direct chat");
   return (
-    <Link href={`/threads/${thread.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+    <Link href={`/threads/${thread.id}`} className={rowStyles.cardLift} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Card style={{ padding: "var(--space-4)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>

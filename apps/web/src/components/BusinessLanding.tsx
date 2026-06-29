@@ -47,7 +47,7 @@ export function BusinessLanding() {
   const signedIn = !!session?.user?.id;
 
   return (
-    <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ padding: "var(--space-2) 0 var(--space-4)" }}>
         <Link href="/explore" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}>
           <span aria-hidden>←</span> Explore
