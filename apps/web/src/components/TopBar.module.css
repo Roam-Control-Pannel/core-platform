@@ -32,9 +32,9 @@
   text-decoration: none;
 }
 
-.mark {
-  width: 26px;
-  height: 26px;
+.logo {
+  height: 30px;
+  width: auto;
   object-fit: contain;
   display: block;
 }
