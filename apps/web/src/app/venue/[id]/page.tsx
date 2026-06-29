@@ -14,7 +14,7 @@
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
-import { VenueDetail } from "../../../components/VenueDetail";
+import { VenueDetail, type VenueDetailData } from "../../../components/VenueDetail";
 import { JsonLd } from "../../../components/JsonLd";
 import { getVenue } from "../../../lib/serverApi";
 import { venueMetadata, venueJsonLd } from "../../../lib/seo";
@@ -27,10 +27,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function VenuePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const venue = await getVenue(id);
+  // Seed the client with the venue so its name, description, category and locality are in the
+  // initial HTML. venues.byId returns the full row at runtime; the seo type is a narrow subset,
+  // so we cast to the component's view shape (photos + follow state still hydrate client-side).
+  const initialVenue = (venue as unknown as VenueDetailData | null) ?? null;
   return (
     <>
       {venue ? <JsonLd data={venueJsonLd(venue, id)} /> : null}
-      <VenueDetail venueId={id} />
+      <VenueDetail venueId={id} initialVenue={initialVenue} />
     </>
   );
 }

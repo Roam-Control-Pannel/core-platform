@@ -37,37 +37,49 @@ interface ReplyView {
   author: TownHallAuthor;
 }
 
-export function TownHallTopic({ topicId }: { topicId: string }) {
+/** The loaded topic + its replies — also the shape the server passes as the SSR seed. */
+export interface TopicDetailData {
+  topic: TopicView;
+  replies: ReplyView[];
+}
+
+export function TownHallTopic({ topicId, initialData }: { topicId: string; initialData?: TopicDetailData | null }) {
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
   const myId = session?.user?.id ?? null;
-  const [data, setData] = useState<{ topic: TopicView; replies: ReplyView[] } | null | undefined>(undefined);
+  const [data, setData] = useState<TopicDetailData | null | undefined>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [editingTopic, setEditingTopic] = useState(false);
 
   const load = useCallback(async () => {
     const getTopic = trpc.townHall.getTopic as unknown as {
-      query: (input: { topicId: string }) => Promise<{ topic: TopicView; replies: ReplyView[] } | null>;
+      query: (input: { topicId: string }) => Promise<TopicDetailData | null>;
     };
     return getTopic.query({ topicId });
   }, [trpc, topicId]);
 
   useEffect(() => {
     let cancelled = false;
-    setData(undefined);
-    setError(null);
+    // When the server seeded the thread (SSR), refresh silently — pick up the viewer's upvote
+    // state and any new replies without blanking the already-rendered content. Only the
+    // unseeded path shows the skeleton / surfaces a load error.
+    const seeded = initialData !== undefined;
+    if (!seeded) {
+      setData(undefined);
+      setError(null);
+    }
     load()
       .then((d) => {
         if (!cancelled) setData(d);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load this topic.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Couldn't load this topic.");
       });
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, initialData]);
 
   const onReplied = useCallback(() => {
     void load().then((d) => setData(d)).catch(() => {});

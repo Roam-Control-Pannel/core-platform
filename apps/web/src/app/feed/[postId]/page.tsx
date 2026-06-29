@@ -11,7 +11,7 @@
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
-import { PostDetailScreen } from "../../../components/PostDetail";
+import { PostDetailScreen, type FeedPost } from "../../../components/PostDetail";
 import { JsonLd } from "../../../components/JsonLd";
 import { getPost } from "../../../lib/serverApi";
 import { postMetadata, postJsonLd } from "../../../lib/seo";
@@ -24,10 +24,14 @@ export async function generateMetadata({ params }: { params: Promise<{ postId: s
 export default async function FeedPostPage({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
   const post = await getPost(postId);
+  // Seed the client screen so the post's text + image are in the initial HTML (the SSR body),
+  // not just the metadata. The runtime shape matches FeedPost (posts.byId); the seo type is a
+  // defensively-widened subset, so we narrow with the same cast the client uses for this query.
+  const initialPost = (post as unknown as FeedPost | null) ?? null;
   return (
     <>
       {post ? <JsonLd data={postJsonLd(post, postId)} /> : null}
-      <PostDetailScreen postId={postId} />
+      <PostDetailScreen postId={postId} initialPost={initialPost} />
     </>
   );
 }
