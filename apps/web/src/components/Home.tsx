@@ -658,8 +658,12 @@ interface PlanRow {
   id: string;
   title: string;
   plannedFor: string | null;
+  headerUrl: string | null;
   venueCount: number;
 }
+
+/** Calm crimson gradient for plans without a custom header — matches PlanDetail / PlansList. */
+const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
 
 function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
   const trpc = useTrpc();
@@ -706,24 +710,38 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
       ) : (
         <div className={styles.planTrack}>
           {plans.map((p) => (
-            <Link key={p.id} href={`/plans/${p.id}`} className={`${styles.planCard} ${styles.lift}`}>
-              <span
-                style={{
-                  alignSelf: "flex-start",
-                  fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".04em", textTransform: "uppercase",
-                  color: p.plannedFor ? "var(--crimson-700)" : "var(--muted)",
-                  background: p.plannedFor ? "var(--crimson-tint)" : "var(--paper-2)",
-                  border: `1px solid ${p.plannedFor ? "var(--crimson-tint-2)" : "var(--line)"}`,
-                  borderRadius: 999, padding: "2px 9px",
-                }}
-              >
-                {p.plannedFor ? planDateLabel(p.plannedFor) : "No date yet"}
-              </span>
-              <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, color: "var(--ink)", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {p.title}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
+            <Link
+              key={p.id}
+              href={`/plans/${p.id}`}
+              className={styles.lift}
+              style={{
+                position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end",
+                minHeight: 140, padding: "var(--space-4)", borderRadius: "var(--r-lg)", overflow: "hidden",
+                textDecoration: "none", color: "#fff",
+                background: p.headerUrl ? "var(--paper-2)" : PLAN_GRADIENT,
+                border: "1px solid var(--line)",
+              }}
+            >
+              {p.headerUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+                <img src={p.headerUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : null}
+              <span aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.1) 52%, rgba(0,0,0,0) 80%)" }} />
+              <span style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6 }}>
+                <span
+                  style={{
+                    alignSelf: "flex-start", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase",
+                    color: "#fff", background: "rgba(255,255,255,.18)", borderRadius: 999, padding: "2px 9px",
+                  }}
+                >
+                  {p.plannedFor ? planDateLabel(p.plannedFor) : "No date yet"}
+                </span>
+                <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, lineHeight: 1.3, textShadow: "0 1px 12px rgba(0,0,0,.4)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {p.title}
+                </span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,.85)" }}>
+                  {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
+                </span>
               </span>
             </Link>
           ))}
