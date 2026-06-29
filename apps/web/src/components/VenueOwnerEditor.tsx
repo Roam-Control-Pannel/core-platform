@@ -20,6 +20,7 @@ import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
 import { LocalPosts } from "./LocalPosts";
 import { BusinessStats } from "./BusinessStats";
+import { VenueNotify } from "./VenueNotify";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -117,6 +118,14 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
               subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed."
             >
               <LocalPosts venueId={venueId} />
+            </DashSection>
+
+            <DashSection
+              icon="🔔"
+              title="Send a notification"
+              subtitle="Message your followers' notifications inbox — everyone at once, or one person individually."
+            >
+              <VenueNotify venueId={venueId} />
             </DashSection>
 
             <DashSection icon="✦" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
