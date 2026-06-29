@@ -282,6 +282,86 @@ export const townHallRouter = router({
       return { id: data.id };
     }),
 
+  /** Protected: edit your own topic's title / body (RLS author_id = auth.uid() is the gate). */
+  updateTopic: protectedProcedure
+    .input(
+      z.object({
+        topicId: z.string().uuid(),
+        title: z.string().min(1).max(TOPIC_TITLE_MAX + 50),
+        body: z.string().min(1).max(TOPIC_BODY_MAX + 1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      let patch: { title: string; body: string };
+      try {
+        patch = { title: normaliseTopicTitle(input.title), body: normaliseTopicBody(input.body) };
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid topic." });
+      }
+      // RLS limits the update to the caller's own row; select it back so a no-op (not yours /
+      // gone) fails loudly rather than reporting phantom success.
+      const { data, error } = (await db
+        .from("town_hall_topics")
+        .update(patch)
+        .eq("id", input.topicId)
+        .select("id")
+        .maybeSingle()) as PgResult<{ id: string } | null>;
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update your topic." });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Topic not found, or it isn't yours to edit." });
+      return { ok: true as const };
+    }),
+
+  /** Protected: delete your own topic (RLS author_id = auth.uid()). Replies cascade in the schema. */
+  removeTopic: protectedProcedure
+    .input(z.object({ topicId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { error } = (await db.from("town_hall_topics").delete().eq("id", input.topicId)) as {
+        error: { message: string } | null;
+      };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't delete your topic." });
+      return { ok: true as const };
+    }),
+
+  /** Protected: edit your own reply's body (RLS author_id = auth.uid()). */
+  updateReply: protectedProcedure
+    .input(z.object({ replyId: z.string().uuid(), body: z.string().min(1).max(REPLY_BODY_MAX + 1000) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      let body: string;
+      try {
+        body = normaliseReplyBody(input.body);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid reply." });
+      }
+      const { data, error } = (await db
+        .from("town_hall_replies")
+        .update({ body })
+        .eq("id", input.replyId)
+        .select("id")
+        .maybeSingle()) as PgResult<{ id: string } | null>;
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update your reply." });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Reply not found, or it isn't yours to edit." });
+      return { ok: true as const };
+    }),
+
+  /** Protected: delete your own reply (RLS author_id = auth.uid()). Trigger decrements reply_count. */
+  removeReply: protectedProcedure
+    .input(z.object({ replyId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { error } = (await db.from("town_hall_replies").delete().eq("id", input.replyId)) as {
+        error: { message: string } | null;
+      };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't delete your reply." });
+      return { ok: true as const };
+    }),
+
   /** Protected: toggle the caller's single upvote on a topic. Returns the fresh state + count. */
   toggleUpvote: protectedProcedure
     .input(z.object({ topicId: z.string().uuid() }))

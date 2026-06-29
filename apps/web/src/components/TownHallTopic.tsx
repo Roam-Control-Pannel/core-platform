@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -38,8 +39,11 @@ interface ReplyView {
 export function TownHallTopic({ topicId }: { topicId: string }) {
   const trpc = useTrpc();
   const session = useSession();
+  const router = useRouter();
+  const myId = session?.user?.id ?? null;
   const [data, setData] = useState<{ topic: TopicView; replies: ReplyView[] } | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [editingTopic, setEditingTopic] = useState(false);
 
   const load = useCallback(async () => {
     const getTopic = trpc.townHall.getTopic as unknown as {
@@ -121,17 +125,40 @@ export function TownHallTopic({ topicId }: { topicId: string }) {
                 >
                   {data.topic.localityLabel}
                 </div>
-                <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, lineHeight: 1.25, margin: 0 }}>
-                  {data.topic.title}
-                </h1>
-                <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
-                  <AuthorLink author={data.topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
-                  <span aria-hidden>·</span>
-                  <span>{timeAgo(data.topic.createdAt)}</span>
-                </div>
-                <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                  {data.topic.body}
-                </p>
+                {editingTopic ? (
+                  <TopicEditor
+                    topicId={data.topic.id}
+                    initialTitle={data.topic.title}
+                    initialBody={data.topic.body}
+                    onSaved={() => { setEditingTopic(false); void load().then((d) => setData(d)).catch(() => {}); }}
+                    onCancel={() => setEditingTopic(false)}
+                  />
+                ) : (
+                  <>
+                    <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, lineHeight: 1.25, margin: 0 }}>
+                      {data.topic.title}
+                    </h1>
+                    <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
+                      <AuthorLink author={data.topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
+                      <span aria-hidden>·</span>
+                      <span>{timeAgo(data.topic.createdAt)}</span>
+                    </div>
+                    <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                      {data.topic.body}
+                    </p>
+                    {myId && data.topic.author.id === myId ? (
+                      <OwnerActions
+                        onEdit={() => setEditingTopic(true)}
+                        onDelete={async () => {
+                          const del = trpc.townHall.removeTopic as unknown as { mutate: (i: { topicId: string }) => Promise<unknown> };
+                          await del.mutate({ topicId });
+                          router.push("/town-hall");
+                        }}
+                        confirmLabel="Delete this topic?"
+                      />
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -156,7 +183,7 @@ export function TownHallTopic({ topicId }: { topicId: string }) {
             </div>
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
               {data.replies.map((r) => (
-                <ReplyRow key={r.id} reply={r} />
+                <ReplyRow key={r.id} reply={r} myId={myId} onChanged={onReplied} />
               ))}
             </div>
           </div>
@@ -185,7 +212,11 @@ export function TownHallTopic({ topicId }: { topicId: string }) {
   );
 }
 
-function ReplyRow({ reply }: { reply: ReplyView }) {
+function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string | null; onChanged: () => void }) {
+  const trpc = useTrpc();
+  const [editing, setEditing] = useState(false);
+  const mine = !!myId && reply.author.id === myId;
+
   return (
     <Card flat style={{ padding: "var(--space-4)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -209,10 +240,140 @@ function ReplyRow({ reply }: { reply: ReplyView }) {
         <span aria-hidden style={{ color: "var(--muted)" }}>·</span>
         <span style={{ fontSize: 12, color: "var(--muted)" }}>{timeAgo(reply.createdAt)}</span>
       </div>
-      <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+      {editing ? (
+        <ReplyEditor
+          replyId={reply.id}
+          initialBody={reply.body}
+          onSaved={() => { setEditing(false); onChanged(); }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+          {mine ? (
+            <OwnerActions
+              onEdit={() => setEditing(true)}
+              onDelete={async () => {
+                const del = trpc.townHall.removeReply as unknown as { mutate: (i: { replyId: string }) => Promise<unknown> };
+                await del.mutate({ replyId: reply.id });
+                onChanged();
+              }}
+              confirmLabel="Delete this reply?"
+            />
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }
+
+/** A quiet Edit · Delete control row for content the viewer owns. Delete asks once inline. */
+function OwnerActions({ onEdit, onDelete, confirmLabel }: { onEdit: () => void; onDelete: () => Promise<void>; confirmLabel: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const linkStyle: React.CSSProperties = { all: "unset", cursor: "pointer", fontSize: 12, color: "var(--muted)", textDecoration: "underline" };
+
+  if (confirming) {
+    return (
+      <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{confirmLabel}</span>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => { setBusy(true); try { await onDelete(); } catch { setBusy(false); setConfirming(false); } }}
+          style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}
+        >
+          {busy ? "Deleting…" : "Yes, delete"}
+        </button>
+        <button type="button" disabled={busy} onClick={() => setConfirming(false)} style={linkStyle}>Cancel</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+      <button type="button" onClick={onEdit} style={linkStyle}>Edit</button>
+      <button type="button" onClick={() => setConfirming(true)} style={linkStyle}>Delete</button>
+    </div>
+  );
+}
+
+function TopicEditor({ topicId, initialTitle, initialBody, onSaved, onCancel }: { topicId: string; initialTitle: string; initialBody: string; onSaved: () => void; onCancel: () => void }) {
+  const trpc = useTrpc();
+  const [title, setTitle] = useState(initialTitle);
+  const [body, setBody] = useState(initialBody);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const mut = trpc.townHall.updateTopic as unknown as { mutate: (i: { topicId: string; title: string; body: string }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ topicId, title, body });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setBusy(false);
+    }
+  }, [trpc, topicId, title, body, onSaved]);
+
+  return (
+    <div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Topic title" maxLength={140} style={editInput} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label="Topic detail" rows={4} style={{ ...editInput, resize: "vertical", minHeight: 96 }} />
+      {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
+      <div style={{ display: "flex", gap: "var(--space-2)" }}>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0 || body.trim().length === 0}>{busy ? "Saving…" : "Save"}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+function ReplyEditor({ replyId, initialBody, onSaved, onCancel }: { replyId: string; initialBody: string; onSaved: () => void; onCancel: () => void }) {
+  const trpc = useTrpc();
+  const [body, setBody] = useState(initialBody);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const mut = trpc.townHall.updateReply as unknown as { mutate: (i: { replyId: string; body: string }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ replyId, body });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setBusy(false);
+    }
+  }, [trpc, replyId, body, onSaved]);
+
+  return (
+    <div>
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label="Edit reply" rows={3} style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
+      {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
+      <div style={{ display: "flex", gap: "var(--space-2)" }}>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || body.trim().length === 0}>{busy ? "Saving…" : "Save"}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+const editInput: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  marginBottom: "var(--space-3)",
+  background: "var(--paper-2)",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--r-md)",
+  fontFamily: "var(--ui)",
+  fontSize: 16,
+  color: "var(--ink)",
+  outline: "none",
+};
 
 function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () => void }) {
   const trpc = useTrpc();
