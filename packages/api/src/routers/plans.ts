@@ -1,8 +1,8 @@
 /**
- * Plans router — personal venue itineraries (v1). A plan is an owned collection of venues with
- * a title, optional notes, and an optional date ("Friday night out"). The schema (0002) already
- * supports members and a linked plan-chat; this v1 surfaces the OWNER + venues path. Group
- * invites / plan-chat / meet-up wiring land with the friends graph (a later slice).
+ * Plans router — collaborative venue itineraries. A plan is a titled collection of venues
+ * (optional notes + date, e.g. "Friday night out") that the OWNER and invited FRIENDS share,
+ * and every plan has its own group chat. Surfaces: owner + venues (create/edit/add/remove),
+ * membership (members/invite/removeMember), and the plan chat (chat → get_or_create_plan_thread).
  *
  * All procedures are protected and act as the caller under RLS (plans_*: owner manages; members
  * can add venues; reads gated to owner-or-member). The plan_* tables aren't in the generated DB
@@ -16,6 +16,7 @@ import { normalisePlanTitle, normalisePlanNotes, normalisePlannedFor, PLAN_TITLE
 type PgResult<T> = { data: T; error: { message: string; code?: string } | null };
 type LooseDb = {
   from: (t: string) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   auth: { getUser: () => Promise<{ data: { user: { id: string } | null }; error: unknown }> };
 };
 
@@ -218,5 +219,117 @@ export const plansRouter = router({
         .eq("venue_id", input.venueId)) as { error: { message: string } | null };
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't remove that from the plan." });
       return { ok: true as const };
+    }),
+
+  /**
+   * Protected: the plan's people — the owner plus invited members, each with their profile.
+   * RLS (plan_members_read, plans_read) scopes both reads to plans the caller can see, so an
+   * out-of-scope plan simply yields an empty list. role is 'owner' | 'member'.
+   */
+  members: protectedProcedure
+    .input(z.object({ planId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      type Embed = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null };
+      const one = (e: Embed | Embed[] | null | undefined): Embed | null =>
+        Array.isArray(e) ? (e[0] ?? null) : (e ?? null);
+
+      // Owner (from plans, embedding their profile).
+      const { data: plan } = (await db
+        .from("plans")
+        .select("owner_id, owner:profiles!plans_owner_id_fkey(id, handle, display_name, avatar_url)")
+        .eq("id", input.planId)
+        .maybeSingle()) as PgResult<{ owner_id: string; owner: Embed | Embed[] | null } | null>;
+      if (!plan) return { members: [] };
+
+      // Invited members.
+      const { data: rows } = (await db
+        .from("plan_members")
+        .select("profile_id, accepted, profiles(id, handle, display_name, avatar_url)")
+        .eq("plan_id", input.planId)) as PgResult<
+        { profile_id: string; accepted: boolean; profiles: Embed | Embed[] | null }[] | null
+      >;
+
+      const shape = (e: Embed | null, id: string, role: "owner" | "member", accepted: boolean) => ({
+        profileId: id,
+        role,
+        accepted,
+        handle: e?.handle ?? null,
+        displayName: e?.display_name ?? null,
+        avatarUrl: e?.avatar_url ?? null,
+      });
+
+      const ownerProfile = one(plan.owner);
+      const members = [shape(ownerProfile, plan.owner_id, "owner", true)];
+      for (const r of rows ?? []) {
+        if (r.profile_id === plan.owner_id) continue; // owner is implicit; never list twice
+        members.push(shape(one(r.profiles), r.profile_id, "member", r.accepted));
+      }
+      return { members };
+    }),
+
+  /**
+   * Protected: invite a friend onto the plan (owner only, via plan_members_write RLS). v1 adds
+   * them directly (accepted=true) — a plan is a shared list among friends, not a request flow.
+   * Idempotent on the (plan, profile) PK. If the plan's chat already exists the new member
+   * self-joins it lazily the first time they open it (get_or_create_plan_thread).
+   */
+  invite: protectedProcedure
+    .input(z.object({ planId: z.string().uuid(), profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { error } = (await db
+        .from("plan_members")
+        .upsert(
+          { plan_id: input.planId, profile_id: input.profileId, accepted: true },
+          { onConflict: "plan_id,profile_id" },
+        )) as { error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't add them to the plan." });
+      return { ok: true as const };
+    }),
+
+  /** Protected: remove a member from the plan (owner or self, via plan_members_delete RLS). */
+  removeMember: protectedProcedure
+    .input(z.object({ planId: z.string().uuid(), profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { error } = (await db
+        .from("plan_members")
+        .delete()
+        .eq("plan_id", input.planId)
+        .eq("profile_id", input.profileId)) as { error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't remove that member." });
+      return { ok: true as const };
+    }),
+
+  /**
+   * Protected: open (get-or-create) the plan's group chat. Delegates to the
+   * get_or_create_plan_thread RPC (migration 0035, SECURITY DEFINER): caller must be the plan
+   * owner or a member, the thread is created once (seeded with owner + members) and reused
+   * after. Returns the thread id so the client can route to /threads/[id].
+   */
+  chat: protectedProcedure
+    .input(z.object({ planId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { data, error } = await db.rpc("get_or_create_plan_thread", { p_plan_id: input.planId });
+      if (error) {
+        if (error.code === "42501") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You're not a member of this plan." });
+        }
+        if (error.code === "P0002") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Plan not found." });
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't open the plan chat." });
+      }
+      const thread = data as { id: string } | null;
+      if (!thread?.id) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't open the plan chat." });
+      }
+      return { threadId: thread.id };
     }),
 });

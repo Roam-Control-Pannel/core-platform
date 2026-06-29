@@ -2,8 +2,8 @@
  * PlansList — the /plans surface: your plans (personal venue itineraries) and a quick composer
  * to start one. Private (protected); signed out shows the just-in-time sign-in.
  *
- * v1 scope: a plan is an owned collection of venues with a title, optional date and notes.
- * Group invites / plan-chat / meet-ups come with the friends graph (a later slice).
+ * A plan is a collection of venues with a title, optional date and notes — shared with the
+ * friends you invite, and each plan has its own group chat (managed on the plan's detail page).
  */
 "use client";
 

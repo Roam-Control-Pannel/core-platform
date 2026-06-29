@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { MessageButton } from "./MessageButton";
 import rowStyles from "./listRow.module.css";
 
 interface Person {
@@ -144,10 +145,13 @@ export function FriendsList() {
               </div>
               <div style={{ display: "grid", gap: "var(--space-1)" }}>
                 {friends.map((p) => (
-                  <Link key={p.id} href={`/u/${p.id}`} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}>
-                    <Avatar p={p} size={32} />
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{name(p)}</span>
-                  </Link>
+                  <div key={p.id} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "8px 8px", borderRadius: "var(--r-md)" }}>
+                    <Link href={`/u/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+                      <Avatar p={p} size={32} />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name(p)}</span>
+                    </Link>
+                    <MessageButton profileId={p.id} />
+                  </div>
                 ))}
               </div>
             </section>
