@@ -14,7 +14,7 @@
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
-import { TownHallTopic } from "../../../components/TownHallTopic";
+import { TownHallTopic, type TopicDetailData } from "../../../components/TownHallTopic";
 import { JsonLd } from "../../../components/JsonLd";
 import { getTopic } from "../../../lib/serverApi";
 import { topicMetadata, topicJsonLd } from "../../../lib/seo";
@@ -27,10 +27,14 @@ export async function generateMetadata({ params }: { params: Promise<{ topicId: 
 export default async function TownHallTopicPage({ params }: { params: Promise<{ topicId: string }> }) {
   const { topicId } = await params;
   const data = await getTopic(topicId);
+  // Seed the client with the topic + replies so the full thread is in the initial HTML. The
+  // server fetch is anonymous, so viewer-specific bits (upvote state) refresh on hydration; the
+  // runtime shape matches the component's view type (the seo type widens it defensively).
+  const initialData = (data as unknown as TopicDetailData | null) ?? null;
   return (
     <>
       {data ? <JsonLd data={topicJsonLd(data, topicId)} /> : null}
-      <TownHallTopic topicId={topicId} />
+      <TownHallTopic topicId={topicId} initialData={initialData} />
     </>
   );
 }

@@ -23,7 +23,7 @@ import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import actions from "./inlineActions.module.css";
 
-interface PublicProfile {
+export interface PublicProfile {
   id: string;
   handle: string | null;
   displayName: string | null;
@@ -58,16 +58,18 @@ export function ProfileWall({
   userId,
   editable = false,
   ownerNav,
+  initialProfile,
 }: {
   userId: string;
   editable?: boolean;
   ownerNav?: ReactNode;
+  initialProfile?: PublicProfile | null;
 }) {
   const trpc = useTrpc();
   const session = useSession();
   const isOwner = session?.user?.id === userId;
 
-  const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
+  const [profile, setProfile] = useState<PublicProfile | null | undefined>(initialProfile);
   const [posts, setPosts] = useState<WallPost[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -87,11 +89,17 @@ export function ProfileWall({
     return res.posts ?? [];
   }, [trpc, userId]);
 
+  const seeded = initialProfile !== undefined;
   useEffect(() => {
     let cancelled = false;
-    setProfile(undefined);
+    // When the server seeded the profile header (SSR), keep it rendered while we refresh; only
+    // the unseeded path blanks the header to its skeleton and surfaces a load error. Posts are
+    // never seeded, so they always load (and show their own skeleton) on hydration.
+    if (!seeded) {
+      setProfile(undefined);
+      setError(null);
+    }
     setPosts(undefined);
-    setError(null);
     setEditing(false);
     Promise.all([loadProfile(), loadPosts()])
       .then(([p, ps]) => {
@@ -100,12 +108,12 @@ export function ProfileWall({
         setPosts(ps);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load this profile.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Couldn't load this profile.");
       });
     return () => {
       cancelled = true;
     };
-  }, [loadProfile, loadPosts]);
+  }, [loadProfile, loadPosts, seeded]);
 
   const reloadProfile = useCallback(() => {
     void loadProfile().then((p) => setProfile(p)).catch(() => {});

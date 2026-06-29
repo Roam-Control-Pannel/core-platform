@@ -50,7 +50,7 @@ import styles from "./VenueDetail.module.css";
  * the fields we render are a stable subset; `geo` (PostGIS `unknown`) is never touched
  * client-side (proximity is the RPC's job, not this page's).
  */
-interface VenueDetailData {
+export interface VenueDetailData {
   id: string;
   name: string;
   owner_id: string | null;
@@ -81,10 +81,10 @@ type ClaimUiState =
   | "submitted" // success — under review
   | "error"; // requestClaim failed (message in claimError)
 
-export function VenueDetail({ venueId }: { venueId: string }) {
+export function VenueDetail({ venueId, initialVenue }: { venueId: string; initialVenue?: VenueDetailData | null }) {
   const trpc = useTrpc();
   const session = useSession();
-  const [venue, setVenue] = useState<VenueDetailData | null | undefined>(undefined);
+  const [venue, setVenue] = useState<VenueDetailData | null | undefined>(initialVenue);
   const [error, setError] = useState<string | null>(null);
 
   const [claimUi, setClaimUi] = useState<ClaimUiState>("idle");
@@ -96,8 +96,6 @@ export function VenueDetail({ venueId }: { venueId: string }) {
   const [following, setFollowing] = useState<boolean | undefined>(undefined);
 
   const loadVenue = useCallback(async () => {
-    setVenue(undefined);
-    setError(null);
     // The byId procedure returns the full generated `venues` Row (select("*")), a
     // deeply-nested type (Json fields, enum refs). Inferring it through the tRPC
     // client's promise chain trips TS2589 (instantiation too deep), so we widen the
@@ -115,17 +113,24 @@ export function VenueDetail({ venueId }: { venueId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    // When the server seeded the venue (SSR), refresh silently so the already-rendered content
+    // stays put; only the unseeded path shows the skeleton and surfaces a load error.
+    const seeded = initialVenue !== undefined;
+    if (!seeded) {
+      setVenue(undefined);
+      setError(null);
+    }
     loadVenue()
       .then((v) => {
         if (!cancelled) setVenue(v);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load venue.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Failed to load venue.");
       });
     return () => {
       cancelled = true;
     };
-  }, [loadVenue]);
+  }, [loadVenue, initialVenue]);
 
   // Read whether the caller already follows this venue. Signed-out → not following.
   // We load the full myFollows set and check membership: one extra query on a detail

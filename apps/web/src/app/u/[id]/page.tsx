@@ -13,7 +13,7 @@
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
-import { ProfileWall } from "../../../components/ProfileWall";
+import { ProfileWall, type PublicProfile } from "../../../components/ProfileWall";
 import { JsonLd } from "../../../components/JsonLd";
 import { getProfile } from "../../../lib/serverApi";
 import { profileMetadata, profileJsonLd } from "../../../lib/seo";
@@ -26,10 +26,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ProfileWallPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const profile = await getProfile(id);
+  // Seed the header (name, @handle, bio, avatar) into the initial HTML; the wall's posts still
+  // hydrate client-side. The seo + component profile shapes match (profiles.byId).
+  const initialProfile = (profile as unknown as PublicProfile | null) ?? null;
   return (
     <>
       {profile ? <JsonLd data={profileJsonLd(profile, id)} /> : null}
-      <ProfileWall userId={id} />
+      <ProfileWall userId={id} initialProfile={initialProfile} />
     </>
   );
 }

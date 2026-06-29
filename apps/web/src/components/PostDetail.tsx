@@ -187,12 +187,15 @@ function ShareButton({ postId, title }: { postId: string; title: string }) {
  * PostDetailScreen — the /feed/[postId] route body. Fetches one post and renders it, with a
  * back link to the feed and the loading / not-found / error states.
  */
-export function PostDetailScreen({ postId }: { postId: string }) {
+export function PostDetailScreen({ postId, initialPost }: { postId: string; initialPost?: FeedPost | null }) {
   const trpc = useTrpc();
-  const [post, setPost] = useState<FeedPost | null | undefined>(undefined);
+  const [post, setPost] = useState<FeedPost | null | undefined>(initialPost);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // When the server already resolved the post (SSR seed), trust it — a post detail carries no
+    // viewer-specific state, so there's nothing to refetch and we avoid a hydration flash.
+    if (initialPost !== undefined) return;
     let cancelled = false;
     setPost(undefined);
     setError(null);
@@ -210,7 +213,7 @@ export function PostDetailScreen({ postId }: { postId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [trpc, postId]);
+  }, [trpc, postId, initialPost]);
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
