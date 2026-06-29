@@ -23,10 +23,11 @@ import { NotificationBell } from "./NotificationCenter";
 import styles from "./TopBar.module.css";
 
 /** Which primary nav item the current path belongs to (for the active pill). */
-function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
+function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" | "chat" | "you" | null {
   if (pathname === "/" || pathname.startsWith("/home")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
+  if (pathname.startsWith("/plans")) return "plans";
   if (pathname.startsWith("/threads")) return "chat";
   if (
     pathname.startsWith("/account") ||
@@ -61,9 +62,9 @@ export function TopBar() {
         <Link href="/town-hall" className={`${styles.link} ${active === "townhall" ? styles.active : ""}`}>
           Town Hall
         </Link>
-        <span className={styles.dormant} aria-disabled title="Plans is coming soon">
+        <Link href="/plans" className={`${styles.link} ${active === "plans" ? styles.active : ""}`}>
           Plans
-        </span>
+        </Link>
         <Link
           href="/threads"
           className={`${styles.link} ${active === "chat" ? styles.active : ""}`}
@@ -84,9 +85,9 @@ export function TopBar() {
         <Link href="/business" className={styles.forbiz}>
           For businesses
         </Link>
-        <span className={styles.create} aria-disabled title="Creating posts & plans is coming soon">
+        <Link href="/plans" className={styles.create}>
           ＋ Create
-        </span>
+        </Link>
         {session ? <NotificationBell /> : null}
         {session ? (
           <Link href="/account" className={styles.avatar} aria-label="Your account" />
