@@ -204,42 +204,46 @@ function ProfileHeader({
 }) {
   return (
     <div style={{ marginBottom: "var(--space-4)" }}>
-      {/* Header banner */}
+      {/* Header banner — actions sit top-right ON the banner (buttons carry their own solid
+          background so they stay legible over any image). Only the avatar overlaps below. */}
       <div
         style={{
-          height: 140,
+          position: "relative",
+          height: 150,
           background: profile.headerUrl
             ? `center / cover no-repeat url(${profile.headerUrl})`
             : "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
         }}
-      />
+      >
+        <div style={{ position: "absolute", top: "var(--space-3)", right: "var(--space-3)", display: "flex", gap: "var(--space-2)" }}>
+          {isOwner ? (
+            editable ? (
+              <Button variant="neutral" size="sm" onClick={onToggleEdit}>
+                {editing ? "Close" : "Edit profile"}
+              </Button>
+            ) : (
+              <Link href="/account" style={{ textDecoration: "none" }}>
+                <Button variant="neutral" size="sm">Edit profile</Button>
+              </Link>
+            )
+          ) : (
+            <>
+              <MessageButton profileId={profile.id} />
+              <AddFriendButton userId={profile.id} />
+            </>
+          )}
+        </div>
+      </div>
       <div style={{ padding: "0 var(--space-4)" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "var(--space-3)", marginTop: -36 }}>
-          <Avatar url={profile.avatarUrl} name={townHallAuthor(profileToAuthor(profile))} size={72} ring />
-          <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)" }}>
-              <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 21, margin: 0, lineHeight: 1.2 }}>
-                {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
-              </h1>
-              {isOwner ? (
-                editable ? (
-                  <Button variant="neutral" size="sm" onClick={onToggleEdit}>
-                    {editing ? "Close" : "Edit profile"}
-                  </Button>
-                ) : (
-                  <Link href="/account" style={{ textDecoration: "none" }}>
-                    <Button variant="neutral" size="sm">Edit profile</Button>
-                  </Link>
-                )
-              ) : (
-                <div style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0 }}>
-                  <MessageButton profileId={profile.id} />
-                  <AddFriendButton userId={profile.id} />
-                </div>
-              )}
-            </div>
-            {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)" }}>@{profile.handle}</div> : null}
-          </div>
+        {/* Avatar overlaps the banner; name + handle sit cleanly below it. */}
+        <div style={{ marginTop: -38, width: "fit-content", position: "relative" }}>
+          <Avatar url={profile.avatarUrl} name={townHallAuthor(profileToAuthor(profile))} size={76} ring />
+        </div>
+        <div style={{ marginTop: "var(--space-2)" }}>
+          <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, margin: 0, lineHeight: 1.2 }}>
+            {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
+          </h1>
+          {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>@{profile.handle}</div> : null}
         </div>
         {profile.bio ? (
           <p style={{ margin: "var(--space-3) 0 0", color: "var(--ink-2)", lineHeight: 1.55, fontSize: 14, whiteSpace: "pre-wrap" }}>
