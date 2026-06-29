@@ -361,7 +361,7 @@ export function Explore() {
       </header>
 
       {mode === "feed" ? (
-        <FeedList placeName={place.name} />
+        <FeedList placeName={place.name} lat={place.lat} lng={place.lng} />
       ) : (
         <div className={styles.browse}>
           {/* desktop categories rail (hidden on phones — there the pills sit inline) */}

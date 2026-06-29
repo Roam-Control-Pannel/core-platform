@@ -33,7 +33,7 @@ const FILTERS: { value: KindFilter; label: string }[] = [
   { value: "news", label: "News" },
 ];
 
-export function FeedList({ placeName }: { placeName: string }) {
+export function FeedList({ placeName, lat, lng }: { placeName: string; lat: number; lng: number }) {
   const trpc = useTrpc();
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +44,10 @@ export function FeedList({ placeName }: { placeName: string }) {
     let cancelled = false;
     setPosts(null);
     setError(null);
+    // Geofenced to the browsing town: pass the place centre so the feed shows only the
+    // businesses in (and around) this town, not the whole network.
     trpc.posts.feed
-      .query({ limit: 25 })
+      .query({ limit: 25, lat, lng })
       .then((rows) => {
         if (!cancelled) setPosts(rows as FeedPost[]);
       })
@@ -55,7 +57,7 @@ export function FeedList({ placeName }: { placeName: string }) {
     return () => {
       cancelled = true;
     };
-  }, [trpc]);
+  }, [trpc, lat, lng]);
 
   const shown = useMemo(
     () => (!posts ? [] : filter === "all" ? posts : posts.filter((p) => p.kind === filter)),

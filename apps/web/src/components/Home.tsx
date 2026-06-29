@@ -70,7 +70,7 @@ export function Home() {
           <YourTown place={place} />
         </div>
 
-        <LocalNews />
+        <LocalNews place={place} />
         <TownForum place={place} />
 
         <div className={styles.spanAll}>
@@ -592,7 +592,7 @@ const NEWS_KIND: Record<NewsPost["kind"], { label: string; glyph: string }> = {
   event: { label: "Event", glyph: "◷" },
 };
 
-function LocalNews() {
+function LocalNews({ place }: { place: Place }) {
   const trpc = useTrpc();
   const [posts, setPosts] = useState<NewsPost[] | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -601,8 +601,9 @@ function LocalNews() {
     let cancelled = false;
     setPosts(undefined);
     setError(false);
+    // Geofenced to the current town (same place centre as the rest of Home).
     trpc.posts.feed
-      .query({ limit: 6 })
+      .query({ limit: 6, lat: place.lat, lng: place.lng })
       .then((rows: unknown) => {
         if (cancelled) return;
         setPosts(Array.isArray(rows) ? (rows as NewsPost[]).slice(0, 4) : []);
@@ -613,10 +614,10 @@ function LocalNews() {
     return () => {
       cancelled = true;
     };
-  }, [trpc]);
+  }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title="Local news" icon="✦">
+    <Section title={`${place.name} news`} icon="✦">
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load local updates just now.</p>
       ) : posts === undefined ? (

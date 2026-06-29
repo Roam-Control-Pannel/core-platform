@@ -64,9 +64,64 @@ export const postsRouter = router({
     .input(
       z.object({
         limit: z.number().int().min(1).max(50).default(25),
+        // When a place centre is supplied, the feed is GEOFENCED to that town — only posts
+        // from businesses within radiusM of the origin (the product rule: a business posts
+        // into its own town's feed). Omitting lat/lng falls back to the global feed.
+        lat: z.number().min(-90).max(90).optional(),
+        lng: z.number().min(-180).max(180).optional(),
+        radiusM: z.number().int().min(500).max(100_000).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      type FeedRow = {
+        id: string;
+        kind: string;
+        title: string | null;
+        body: string | null;
+        publishedAt: string | null;
+        venueId: string;
+        venueName: string | null;
+        venueLocality: string | null;
+      };
+
+      // Geofenced path: delegate to the posts_feed_near RPC (PostGIS distance filter).
+      if (input.lat != null && input.lng != null) {
+        const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+        const { data, error } = await rpc("posts_feed_near", {
+          lat: input.lat,
+          lng: input.lng,
+          radius_m: input.radiusM ?? 25_000,
+          max_results: input.limit,
+        });
+        if (error) throw new Error(`Failed to load feed: ${error.message}`);
+        const rows = (data as Array<{
+          id: string;
+          kind: string;
+          title: string | null;
+          body: string | null;
+          published_at: string | null;
+          venue_id: string;
+          venue_name: string | null;
+          venue_locality: string | null;
+        }> | null) ?? [];
+        return rows.map(
+          (r): FeedRow => ({
+            id: r.id,
+            kind: r.kind,
+            title: r.title,
+            body: r.body,
+            publishedAt: r.published_at,
+            venueId: r.venue_id,
+            venueName: r.venue_name,
+            venueLocality: r.venue_locality,
+          }),
+        );
+      }
+
+      // Global path (no origin): the original whole-network feed.
       const { data, error } = await ctx.db
         .from("posts")
         .select(
@@ -84,22 +139,24 @@ export const postsRouter = router({
       // the byId result in VenueDetail. Never fabricate a venue name if the embed is
       // absent.
       type EmbeddedVenue = { name: string; locality: string | null };
-      return (data ?? []).map((p) => {
-        const raw = (p as { venues?: unknown }).venues;
-        const v: EmbeddedVenue | null = Array.isArray(raw)
-          ? ((raw[0] as EmbeddedVenue | undefined) ?? null)
-          : ((raw as EmbeddedVenue | null) ?? null);
-        return {
-          id: p.id,
-          kind: p.kind,
-          title: p.title,
-          body: p.body,
-          publishedAt: p.published_at,
-          venueId: p.venue_id,
-          venueName: v?.name ?? null,
-          venueLocality: v?.locality ?? null,
-        };
-      });
+      return (data ?? []).map(
+        (p): FeedRow => {
+          const raw = (p as { venues?: unknown }).venues;
+          const v: EmbeddedVenue | null = Array.isArray(raw)
+            ? ((raw[0] as EmbeddedVenue | undefined) ?? null)
+            : ((raw as EmbeddedVenue | null) ?? null);
+          return {
+            id: p.id,
+            kind: p.kind,
+            title: p.title,
+            body: p.body,
+            publishedAt: p.published_at,
+            venueId: p.venue_id,
+            venueName: v?.name ?? null,
+            venueLocality: v?.locality ?? null,
+          };
+        },
+      );
     }),
 
   /**

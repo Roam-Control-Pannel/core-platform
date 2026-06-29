@@ -126,6 +126,10 @@ export function Following() {
         <SignedOut />
       ) : (
         <>
+          <p style={{ marginTop: 0, marginBottom: "var(--space-4)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+            Following a business opts you into its exclusive offers &amp; promotions. Mute any of them
+            below without unfollowing — you stay following, you just stop the notifications.
+          </p>
           <div style={{ marginBottom: "var(--space-4)" }}>
             <EnableNotifications />
           </div>
@@ -230,16 +234,21 @@ function FollowRowCard({ row }: { row: FollowRow }) {
           gap: "var(--space-3)",
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 10,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "var(--muted)",
-          }}
-        >
-          Push when it posts
+        <span style={{ display: "grid", gap: 1 }}>
+          <span
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+            }}
+          >
+            Offers &amp; promotions
+          </span>
+          <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
+            {pushEnabled ? "You'll be notified of new deals" : "Notifications muted — you still follow"}
+          </span>
         </span>
         <div style={{ opacity: busy ? 0.7 : 1 }}>
           <Seg
