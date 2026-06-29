@@ -580,6 +580,7 @@ interface NewsPost {
   kind: "news" | "offer" | "event";
   title: string | null;
   body: string | null;
+  media?: { type: "image"; url: string }[];
   publishedAt: string | null;
   venueId: string;
   venueName: string | null;
@@ -632,17 +633,23 @@ function LocalNews({ place }: { place: Place }) {
           {posts.map((p) => {
             const meta = NEWS_KIND[p.kind] ?? NEWS_KIND.news;
             return (
-              <Link key={p.id} href={`/venue/${p.venueId}`} className={`${styles.newsCard} ${styles.lift}`}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 999, padding: "1px 8px" }}>
-                    {meta.label}
+              <Link key={p.id} href={`/venue/${p.venueId}`} className={`${styles.newsCard} ${styles.lift}`} style={{ padding: 0, overflow: "hidden" }}>
+                {p.media && p.media.length > 0 ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+                  <img src={p.media[0]!.url} alt="" loading="lazy" style={{ width: "100%", height: 120, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
+                ) : null}
+                <span style={{ display: "flex", flexDirection: "column", gap: 6, padding: "var(--space-3) var(--space-4)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 999, padding: "1px 8px" }}>
+                      {meta.label}
+                    </span>
+                    {p.publishedAt ? <span style={{ fontSize: 11, color: "var(--muted)" }}>{timeAgo(p.publishedAt)}</span> : null}
                   </span>
-                  {p.publishedAt ? <span style={{ fontSize: 11, color: "var(--muted)" }}>{timeAgo(p.publishedAt)}</span> : null}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {p.title ?? p.body ?? "Update"}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.venueName ?? "A local business"}</span>
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  {p.title ?? p.body ?? "Update"}
-                </span>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.venueName ?? "A local business"}</span>
               </Link>
             );
           })}

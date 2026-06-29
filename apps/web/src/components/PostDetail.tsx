@@ -25,6 +25,7 @@ export interface FeedPost {
   kind: "news" | "offer" | "event";
   title: string | null;
   body: string | null;
+  media?: { type: "image"; url: string }[];
   publishedAt: string | null;
   venueId: string;
   venueName: string | null;
@@ -73,22 +74,37 @@ export function PostDetail({ post }: { post: FeedPost }) {
   const isOffer = post.kind === "offer";
   return (
     <Card>
-      {/* Hero — a kind-tinted gradient stand-in (no faked photo). */}
-      <div
-        aria-hidden
-        style={{
-          height: 200,
-          background: isOffer
-            ? "radial-gradient(120% 90% at 20% 10%, var(--crimson-tint), transparent 60%), linear-gradient(150deg, #c96b43, #8f3f29)"
-            : "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        <span style={{ fontSize: 30, color: "var(--crimson-700)", opacity: 0.5 }}>
-          {isOffer ? "✦" : post.kind === "event" ? "◷" : "›"}
-        </span>
-      </div>
+      {/* Hero — the post's own image when it has one; otherwise a kind-tinted gradient (no faked photo). */}
+      {post.media && post.media.length > 0 ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- public bucket URL */}
+          <img src={post.media[0]!.url} alt="" style={{ width: "100%", height: 240, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
+          {post.media.length > 1 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, padding: 4, background: "var(--card)" }}>
+              {post.media.slice(1, 4).map((m) => (
+                // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+                <img key={m.url} src={m.url} alt="" loading="lazy" style={{ width: "100%", height: 80, objectFit: "cover", display: "block", borderRadius: 6 }} />
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div
+          aria-hidden
+          style={{
+            height: 200,
+            background: isOffer
+              ? "radial-gradient(120% 90% at 20% 10%, var(--crimson-tint), transparent 60%), linear-gradient(150deg, #c96b43, #8f3f29)"
+              : "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <span style={{ fontSize: 30, color: "var(--crimson-700)", opacity: 0.5 }}>
+            {isOffer ? "✦" : post.kind === "event" ? "◷" : "›"}
+          </span>
+        </div>
+      )}
 
       <div style={{ padding: "var(--space-4)" }}>
         {/* meta: avatar · posted time · venue · kind tag */}

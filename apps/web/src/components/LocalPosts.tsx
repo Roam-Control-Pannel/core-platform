@@ -10,18 +10,22 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, Button, Seg } from "@roam/design";
-import { useTrpc } from "./TrpcProvider";
+import { useTrpc, useSession } from "./TrpcProvider";
+import { uploadProfileImage } from "../lib/uploadProfileImage";
 import actions from "./inlineActions.module.css";
 
 type PostKind = "news" | "offer" | "event";
+interface PostMedia { type: "image"; url: string }
+const MAX_POST_IMAGES = 4;
 
 interface ManagedPost {
   id: string;
   kind: string;
   title: string | null;
   body: string | null;
+  media: PostMedia[];
   isDraft: boolean;
   publishAt: string | null;
   publishedAt: string | null;
@@ -118,9 +122,12 @@ export function LocalPosts({ venueId }: { venueId: string }) {
 
 function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPosted: () => void; onCancel: () => void }) {
   const trpc = useTrpc();
+  const session = useSession();
   const [kind, setKind] = useState<PostKind>("news");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [media, setMedia] = useState<PostMedia[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [notify, setNotify] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -131,15 +138,15 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
       setErr("An offer needs a title.");
       return;
     }
-    if (title.trim().length === 0 && body.trim().length === 0) {
-      setErr("Add a title or some text to post.");
+    if (title.trim().length === 0 && body.trim().length === 0 && media.length === 0) {
+      setErr("Add a title, some text or a photo to post.");
       return;
     }
     setBusy(true);
     setErr(null);
     const destinations = notify ? ["profile", "feed", "follower_push"] : ["profile", "feed"];
     const create = trpc.posts.create as unknown as {
-      mutate: (i: { venueId: string; kind: PostKind; title?: string; body?: string; destinations: string[]; isDraft: boolean }) => Promise<CreateResult>;
+      mutate: (i: { venueId: string; kind: PostKind; title?: string; body?: string; media: PostMedia[]; destinations: string[]; isDraft: boolean }) => Promise<CreateResult>;
     };
     try {
       const res = await create.mutate({
@@ -147,6 +154,7 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
         kind,
         ...(title.trim() ? { title: title.trim() } : {}),
         ...(body.trim() ? { body: body.trim() } : {}),
+        media,
         destinations,
         isDraft: false,
       });
@@ -166,7 +174,7 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
       setErr(e instanceof Error ? e.message : "Couldn't post that.");
       setBusy(false);
     }
-  }, [trpc, venueId, kind, title, body, notify, onPosted]);
+  }, [trpc, venueId, kind, title, body, media, notify, onPosted]);
 
   return (
     <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)" }}>
@@ -187,13 +195,21 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
         rows={3}
         style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
       />
+      <MediaPicker
+        userId={session?.user?.id ?? null}
+        media={media}
+        onChange={setMedia}
+        uploading={uploading}
+        setUploading={setUploading}
+        onError={setErr}
+      />
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", cursor: "pointer" }}>
         <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
         Notify followers (uses 1 push credit)
       </label>
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
-        <Button variant="pri" onClick={() => void submit()} disabled={busy}>{busy ? "Posting…" : "Post"}</Button>
+        <Button variant="pri" onClick={() => void submit()} disabled={busy || uploading}>{busy ? "Posting…" : "Post"}</Button>
         <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
       </div>
       <p style={{ margin: "var(--space-3) 2px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
@@ -205,18 +221,22 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
 
 function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () => void }) {
   const trpc = useTrpc();
+  const session = useSession();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(post.title ?? "");
   const [body, setBody] = useState(post.body ?? "");
+  const [media, setMedia] = useState<PostMedia[]>(post.media);
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [editErr, setEditErr] = useState<string | null>(null);
   const state = postState(post);
 
   const save = useCallback(async () => {
     setBusy(true);
-    const mut = trpc.posts.update as unknown as { mutate: (i: { postId: string; title: string | null; body: string | null }) => Promise<{ ok: true }> };
+    const mut = trpc.posts.update as unknown as { mutate: (i: { postId: string; title: string | null; body: string | null; media: PostMedia[] }) => Promise<{ ok: true }> };
     try {
-      await mut.mutate({ postId: post.id, title: title.trim() || null, body: body.trim() || null });
+      await mut.mutate({ postId: post.id, title: title.trim() || null, body: body.trim() || null, media });
       setEditing(false);
       onChanged();
     } catch {
@@ -224,7 +244,7 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
     } finally {
       setBusy(false);
     }
-  }, [trpc, post.id, title, body, onChanged]);
+  }, [trpc, post.id, title, body, media, onChanged]);
 
   const remove = useCallback(async () => {
     setBusy(true);
@@ -266,17 +286,123 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
         <div style={{ marginTop: "var(--space-2)" }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" aria-label="Post title" style={inputStyle} />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body" aria-label="Post body" rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
+          <MediaPicker userId={session?.user?.id ?? null} media={media} onChange={setMedia} uploading={uploading} setUploading={setUploading} onError={setEditErr} />
+          {editErr ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{editErr}</div> : null}
           <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-            <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || (title.trim().length === 0 && body.trim().length === 0)}>{busy ? "Saving…" : "Save"}</Button>
-            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setTitle(post.title ?? ""); setBody(post.body ?? ""); }} disabled={busy}>Cancel</Button>
+            <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || uploading || (title.trim().length === 0 && body.trim().length === 0 && media.length === 0)}>{busy ? "Saving…" : "Save"}</Button>
+            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setTitle(post.title ?? ""); setBody(post.body ?? ""); setMedia(post.media); setEditErr(null); }} disabled={busy}>Cancel</Button>
           </div>
         </div>
       ) : (
         <div style={{ marginTop: 6 }}>
           {post.title ? <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-hi)" }}>{post.title}</div> : null}
           {post.body ? <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, marginTop: 2, whiteSpace: "pre-wrap" }}>{post.body}</div> : null}
+          {post.media.length > 0 ? <div style={{ marginTop: "var(--space-2)" }}><MediaGrid media={post.media} /></div> : null}
         </div>
       )}
     </Card>
+  );
+}
+
+/** MediaGrid — render a post's images (1 large, or a tidy 2-col grid for several). */
+function MediaGrid({ media }: { media: PostMedia[] }) {
+  if (media.length === 0) return null;
+  const single = media.length === 1;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: single ? "1fr" : "1fr 1fr", gap: 4, borderRadius: "var(--r-md)", overflow: "hidden" }}>
+      {media.map((m) => (
+        // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+        <img key={m.url} src={m.url} alt="" loading="lazy" style={{ width: "100%", height: single ? "auto" : 140, maxHeight: 420, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * MediaPicker — add/remove up to MAX_POST_IMAGES images for a post. Uploads to the profile-media
+ * bucket under the owner's folder (uploadProfileImage kind "post"); stores the public URLs.
+ */
+function MediaPicker({
+  userId,
+  media,
+  onChange,
+  uploading,
+  setUploading,
+  onError,
+}: {
+  userId: string | null;
+  media: PostMedia[];
+  onChange: (m: PostMedia[]) => void;
+  uploading: boolean;
+  setUploading: (b: boolean) => void;
+  onError: (e: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const pick = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      if (!userId) { onError("You need to be signed in to add images."); return; }
+      const room = MAX_POST_IMAGES - media.length;
+      if (room <= 0) return;
+      setUploading(true);
+      onError(null);
+      const next: PostMedia[] = [];
+      try {
+        for (const file of Array.from(files).slice(0, room)) {
+          const { url } = await uploadProfileImage(userId, file, "post");
+          next.push({ type: "image", url });
+        }
+        onChange([...media, ...next]);
+      } catch (e) {
+        onError(e instanceof Error ? e.message : "Couldn't upload that image.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [userId, media, onChange, setUploading, onError],
+  );
+
+  return (
+    <div style={{ marginTop: "var(--space-3)" }}>
+      {media.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+          {media.map((m, i) => (
+            <div key={m.url} style={{ position: "relative", width: 76, height: 76, borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--line)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- public bucket URL */}
+              <img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              <button
+                type="button"
+                aria-label="Remove image"
+                onClick={() => onChange(media.filter((_, j) => j !== i))}
+                style={{ position: "absolute", top: 3, right: 3, width: 20, height: 20, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(33,29,26,.72)", color: "#fff", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {media.length < MAX_POST_IMAGES ? (
+        <>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            style={{ all: "unset", cursor: uploading ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}
+          >
+            {uploading ? "Uploading…" : `＋ Add photo${media.length > 0 ? ` (${media.length}/${MAX_POST_IMAGES})` : ""}`}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => { const fs = e.target.files; e.currentTarget.value = ""; void pick(fs); }}
+          />
+        </>
+      ) : null}
+    </div>
   );
 }

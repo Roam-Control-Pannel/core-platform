@@ -153,6 +153,11 @@ function PostCard({ post, active, onClick }: { post: FeedPost; active: boolean; 
           <KindTag kind={post.kind} />
         </div>
 
+        {post.media && post.media.length > 0 ? (
+          // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+          <img src={post.media[0]!.url} alt="" loading="lazy" style={{ width: "100%", height: 200, objectFit: "cover", display: "block", marginTop: "var(--space-3)", background: "var(--paper-2)" }} />
+        ) : null}
+
         <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)" }}>
           {post.title ? (
             <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-1)" }}>
