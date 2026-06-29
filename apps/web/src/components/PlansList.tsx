@@ -18,8 +18,12 @@ interface PlanRow {
   id: string;
   title: string;
   plannedFor: string | null;
+  headerUrl: string | null;
   venueCount: number;
 }
+
+/** Calm crimson gradient for plans without a custom header — matches PlanDetail. */
+const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
 
 export function PlansList() {
   const trpc = useTrpc();
@@ -109,21 +113,49 @@ export function PlansList() {
           ) : (
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
               {plans.map((p) => (
-                <Link key={p.id} href={`/plans/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <Card style={{ padding: "var(--space-4)" }}>
-                    <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17 }}>{p.title}</div>
-                    <div style={{ marginTop: 4, fontSize: 12.5, color: "var(--muted)" }}>
-                      {p.plannedFor ? `${planDateLabel(p.plannedFor)} · ` : ""}
-                      {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
-                    </div>
-                  </Card>
-                </Link>
+                <PlanRowCard key={p.id} plan={p} />
               ))}
             </div>
           )}
         </>
       )}
     </main>
+  );
+}
+
+/** A plan in the list: a header banner (custom image or gradient) with the title + date
+ *  overlaid, and a venue-count footer. Reads like a card — the look that shines on mobile. */
+function PlanRowCard({ plan }: { plan: PlanRow }) {
+  return (
+    <Link href={`/plans/${plan.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div
+          style={{
+            position: "relative", minHeight: 124, display: "flex", alignItems: "flex-end",
+            background: plan.headerUrl ? "var(--paper-2)" : PLAN_GRADIENT,
+          }}
+        >
+          {plan.headerUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+            <img src={plan.headerUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : null}
+          <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.1) 50%, rgba(0,0,0,0) 78%)" }} />
+          <div style={{ position: "relative", padding: "var(--space-4)", width: "100%" }}>
+            {plan.plannedFor ? (
+              <span style={{ display: "inline-block", marginBottom: 6, fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase", color: "#fff", background: "rgba(255,255,255,.18)", borderRadius: 999, padding: "2px 9px" }}>
+                {planDateLabel(plan.plannedFor)}
+              </span>
+            ) : null}
+            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, color: "#fff", textShadow: "0 1px 12px rgba(0,0,0,.35)", lineHeight: 1.25 }}>
+              {plan.title}
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: "10px var(--space-4)", fontSize: 12.5, color: "var(--muted)" }}>
+          {plan.venueCount === 1 ? "1 venue" : `${plan.venueCount} venues`}
+        </div>
+      </Card>
+    </Link>
   );
 }
 

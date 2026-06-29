@@ -46,9 +46,9 @@ export const plansRouter = router({
     // PostgREST count-embeds are finicky); venue counts are a second, cheap lookup below.
     const { data, error } = (await db
       .from("plans")
-      .select("id, title, notes, planned_for, created_at")
+      .select("id, title, notes, planned_for, header_url, created_at")
       .order("created_at", { ascending: false })) as PgResult<
-      { id: string; title: string; notes: string | null; planned_for: string | null; created_at: string }[] | null
+      { id: string; title: string; notes: string | null; planned_for: string | null; header_url: string | null; created_at: string }[] | null
     >;
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your plans: ${error.message}` });
@@ -72,6 +72,7 @@ export const plansRouter = router({
         title: p.title,
         notes: p.notes,
         plannedFor: p.planned_for,
+        headerUrl: p.header_url,
         createdAt: p.created_at,
         venueCount: counts.get(p.id) ?? 0,
       })),
@@ -86,9 +87,9 @@ export const plansRouter = router({
       await callerId(db);
       const { data: plan, error } = (await db
         .from("plans")
-        .select("id, owner_id, title, notes, planned_for, created_at")
+        .select("id, owner_id, title, notes, planned_for, header_url, created_at")
         .eq("id", input.planId)
-        .maybeSingle()) as PgResult<{ id: string; owner_id: string; title: string; notes: string | null; planned_for: string | null; created_at: string } | null>;
+        .maybeSingle()) as PgResult<{ id: string; owner_id: string; title: string; notes: string | null; planned_for: string | null; header_url: string | null; created_at: string } | null>;
       if (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan: ${error.message}` });
       }
@@ -115,6 +116,7 @@ export const plansRouter = router({
         title: plan.title,
         notes: plan.notes,
         plannedFor: plan.planned_for,
+        headerUrl: plan.header_url,
         createdAt: plan.created_at,
         venues,
       };
@@ -161,6 +163,9 @@ export const plansRouter = router({
         title: z.string().min(1).max(PLAN_TITLE_MAX + 50).optional(),
         notes: z.string().max(PLAN_NOTES_MAX + 500).nullish(),
         plannedFor: z.string().max(40).nullish(),
+        // Custom banner image. A validated http(s) url (the uploaded object's public URL), or
+        // null to clear back to the default gradient.
+        headerUrl: z.string().url().max(2048).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -171,6 +176,7 @@ export const plansRouter = router({
         if (input.title !== undefined) patch["title"] = normalisePlanTitle(input.title);
         if ("notes" in input) patch["notes"] = normalisePlanNotes(input.notes ?? null);
         if ("plannedFor" in input) patch["planned_for"] = normalisePlannedFor(input.plannedFor ?? null);
+        if ("headerUrl" in input) patch["header_url"] = input.headerUrl ?? null;
       } catch (e) {
         throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid plan." });
       }

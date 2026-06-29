@@ -13,6 +13,10 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { venuePath } from "../lib/routes";
 import { planDateLabel, planDateInput } from "../lib/planDate";
+import { uploadProfileImage } from "../lib/uploadProfileImage";
+
+/** A calm crimson gradient used when a plan has no custom header image. */
+const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
 
 interface PlanVenue {
   venueId: string;
@@ -24,6 +28,7 @@ interface Plan {
   title: string;
   notes: string | null;
   plannedFor: string | null;
+  headerUrl: string | null;
   venues: PlanVenue[];
 }
 interface PlanMember {
@@ -145,18 +150,14 @@ export function PlanDetail({ planId }: { planId: string }) {
         <PlanEditor plan={plan} onSaved={() => { setEditing(false); reload(); }} onCancel={() => setEditing(false)} onDelete={() => void deletePlan()} />
       ) : (
         <>
-          <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)" }}>
-            <div style={{ minWidth: 0 }}>
-              <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, letterSpacing: "-.02em", margin: 0 }}>{plan.title}</h1>
-              {plan.plannedFor ? <div style={{ marginTop: 4, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>{planDateLabel(plan.plannedFor)}</div> : null}
-            </div>
-            <div style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0 }}>
-              <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
-                {openingChat ? "Opening…" : "💬 Group chat"}
-              </Button>
-              <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
-            </div>
-          </header>
+          <PlanBanner plan={plan} />
+
+          <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
+              {openingChat ? "Opening…" : "💬 Group chat"}
+            </Button>
+            <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+          </div>
 
           {plan.notes ? <p style={{ marginTop: "var(--space-3)", color: "var(--ink-2)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{plan.notes}</p> : null}
 
@@ -198,38 +199,156 @@ export function PlanDetail({ planId }: { planId: string }) {
   );
 }
 
+/**
+ * PlanBanner — the plan's hero. A custom header image (cover) or a calm crimson gradient when
+ * none is set, with the title + date overlaid on a dark scrim. Designed to read like a card —
+ * it's the part that shines on mobile/native.
+ */
+function PlanBanner({ plan }: { plan: Plan }) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: "var(--r-lg)",
+        overflow: "hidden",
+        minHeight: 168,
+        display: "flex",
+        alignItems: "flex-end",
+        background: plan.headerUrl ? "var(--paper-2)" : PLAN_GRADIENT,
+        border: "1px solid var(--line)",
+      }}
+    >
+      {plan.headerUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- public bucket URL; next/image adds no value here
+        <img
+          src={plan.headerUrl}
+          alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : null}
+      {/* Scrim so the title stays legible over any image. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(to top, rgba(0,0,0,.58) 0%, rgba(0,0,0,.12) 45%, rgba(0,0,0,0) 75%)",
+        }}
+      />
+      <div style={{ position: "relative", padding: "var(--space-4)", width: "100%" }}>
+        {plan.plannedFor ? (
+          <span
+            style={{
+              display: "inline-block",
+              marginBottom: 8,
+              fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".04em", textTransform: "uppercase",
+              color: "#fff", background: "rgba(255,255,255,.18)", backdropFilter: "blur(4px)",
+              borderRadius: 999, padding: "3px 10px",
+            }}
+          >
+            {planDateLabel(plan.plannedFor)}
+          </span>
+        ) : null}
+        <h1
+          className="t-h1"
+          style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.02em", margin: 0, color: "#fff", textShadow: "0 1px 14px rgba(0,0,0,.35)" }}
+        >
+          {plan.title}
+        </h1>
+      </div>
+    </div>
+  );
+}
+
 function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved: () => void; onCancel: () => void; onDelete: () => void }) {
   const trpc = useTrpc();
+  const session = useSession();
   const [title, setTitle] = useState(plan.title);
   const [date, setDate] = useState(planDateInput(plan.plannedFor));
   const [notes, setNotes] = useState(plan.notes ?? "");
+  const [headerUrl, setHeaderUrl] = useState<string | null>(plan.headerUrl);
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const onPickHeader = useCallback(
+    async (file: File | null) => {
+      const uid = session?.user?.id;
+      if (!file || !uid) return;
+      setUploading(true);
+      setErr(null);
+      try {
+        const { url } = await uploadProfileImage(uid, file, "plan-header");
+        setHeaderUrl(url);
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Couldn't upload that image.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [session],
+  );
 
   const save = useCallback(async () => {
     setBusy(true);
     setErr(null);
     const update = trpc.plans.update as unknown as {
-      mutate: (i: { planId: string; title: string; notes: string | null; plannedFor: string | null }) => Promise<{ ok: true }>;
+      mutate: (i: { planId: string; title: string; notes: string | null; plannedFor: string | null; headerUrl: string | null }) => Promise<{ ok: true }>;
     };
     try {
       const plannedFor = date ? new Date(`${date}T12:00:00`).toISOString() : null;
-      await update.mutate({ planId: plan.id, title, notes: notes.trim() ? notes : null, plannedFor });
+      await update.mutate({ planId: plan.id, title, notes: notes.trim() ? notes : null, plannedFor, headerUrl });
       onSaved();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't save the plan.");
       setBusy(false);
     }
-  }, [trpc, plan.id, title, date, notes, onSaved]);
+  }, [trpc, plan.id, title, date, notes, headerUrl, onSaved]);
 
   return (
     <Card style={{ padding: "var(--space-4)" }}>
+      {/* Header image picker — preview (image or gradient) + change / remove. */}
+      <div style={{ marginBottom: "var(--space-3)" }}>
+        <div
+          style={{
+            position: "relative", height: 132, borderRadius: "var(--r-lg)", overflow: "hidden",
+            background: headerUrl ? "var(--paper-2)" : PLAN_GRADIENT, border: "1px solid var(--line)",
+            display: "flex", alignItems: "flex-end",
+          }}
+        >
+          {headerUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+            <img src={headerUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ position: "relative", padding: "var(--space-3)", color: "rgba(255,255,255,.85)", fontSize: 12.5, fontFamily: "var(--ui)" }}>
+              No header image yet
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+          <label style={{ cursor: uploading ? "default" : "pointer" }}>
+            <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} disabled={uploading} onChange={(e) => void onPickHeader(e.target.files?.[0] ?? null)} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}>
+              {uploading ? "Uploading…" : headerUrl ? "Change image" : "＋ Add header image"}
+            </span>
+          </label>
+          {headerUrl ? (
+            <>
+              <span aria-hidden style={{ color: "var(--faint)" }}>·</span>
+              <button type="button" onClick={() => setHeaderUrl(null)} disabled={uploading} style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)", textDecoration: "underline" }}>
+                Remove
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
       <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Plan title" maxLength={120} style={editInput} />
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Planned date" style={editInput} />
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Notes" rows={3} placeholder="Notes (optional)" style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-        <Button variant="pri" onClick={() => void save()} disabled={title.trim().length === 0 || busy}>{busy ? "Saving…" : "Save"}</Button>
+        <Button variant="pri" onClick={() => void save()} disabled={title.trim().length === 0 || busy || uploading}>{busy ? "Saving…" : "Save"}</Button>
         <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={onDelete} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 13, textDecoration: "underline" }}>
