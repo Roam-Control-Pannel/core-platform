@@ -33,7 +33,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 /** Day labels, Monday-first (index 0=Mon … 6=Sun) — matches the server's WEEKDAY_NAMES
@@ -283,14 +283,6 @@ export function OwnerHoursEditor({
     }
   }, [trpc, venueId, days, onSaved]);
 
-  const labelStyle: React.CSSProperties = {
-    fontFamily: "var(--mono)",
-    fontSize: 10,
-    letterSpacing: ".06em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: "var(--space-2)",
-  };
   const timeInputStyle: React.CSSProperties = {
     padding: "var(--space-2) var(--space-3)",
     border: "1px solid var(--line-2)",
@@ -302,14 +294,7 @@ export function OwnerHoursEditor({
   };
 
   return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
-      <div style={labelStyle}>Edit hours</div>
-
-      <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-        Set when you&apos;re open. These show on your venue&apos;s public page and power the live
-        &ldquo;Open now&rdquo; status. Add a break to a day for split hours, like a lunch close.
-      </p>
-
+    <div>
       <div style={{ marginBottom: "var(--space-4)" }}>
         <Button variant="neutral" size="sm" disabled={busy} onClick={copyMondayToWeekdays}>
           Copy Monday to Tue–Fri
@@ -405,6 +390,6 @@ export function OwnerHoursEditor({
         </Button>
         {savedTick && !busy ? <span style={{ fontSize: 13, color: "var(--ink-2)" }}>Saved.</span> : null}
       </div>
-    </Card>
+    </div>
   );
 }

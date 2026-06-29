@@ -28,7 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, Button, Pill } from "@roam/design";
+import { Button, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { getSupabaseBrowser } from "../lib/supabase";
 
@@ -291,25 +291,7 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
     .sort((a, b) => a.position - b.position);
 
   return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "var(--space-3)",
-        }}
-      >
-        Manage photos
-      </div>
-
-      <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-        Upload your own photos — they take priority over photos from public sources. Set a
-        cover to choose what people see first, and drag the order with the arrows.
-      </p>
-
+    <div>
       {/* Hidden native file input, driven by the crimson primary CTA. */}
       <input
         ref={fileRef}
@@ -381,7 +363,7 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
           </p>
         </div>
       ) : null}
-    </Card>
+    </div>
   );
 }
 
