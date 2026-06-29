@@ -82,6 +82,53 @@ export const profilesRouter = router({
       };
     }),
 
+  /**
+   * Public: search people by display name or @handle (Instagram/LinkedIn-style find-and-connect).
+   * Case-insensitive substring match on either field (pg_trgm-accelerated, migration 0040).
+   * profiles_read RLS is `using (true)`, so this is a public discovery surface; we surface only
+   * the public card fields. A blank/short query returns nothing (no "list everyone"). The caller,
+   * when signed in, is excluded from results (you don't friend/message yourself).
+   */
+  search: publicProcedure
+    .input(z.object({ q: z.string().trim().min(2).max(80), limit: z.number().int().min(1).max(30).default(20) }))
+    .query(async ({ ctx, input }) => {
+      // Escape PostgREST/ILIKE wildcards in the user's query so they're treated literally.
+      const term = input.q.replace(/[%,()\\]/g, " ").trim();
+      if (term.length < 2) return { people: [] };
+
+      // Resolve the caller (if any) to exclude self — best-effort; anon search still works.
+      let me: string | null = null;
+      try {
+        const { data } = await ctx.db.auth.getUser();
+        me = data.user?.id ?? null;
+      } catch {
+        me = null;
+      }
+
+      type Row = { id: string; handle: string | null; display_name: string | null; avatar_url: string | null; bio: string | null };
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url, bio")
+        .or(`display_name.ilike.%${term}%,handle.ilike.%${term}%`)
+        .limit(input.limit + 1)) as { data: Row[] | null; error: { message: string } | null };
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Search failed: ${error.message}` });
+      }
+      const people = (data ?? [])
+        .filter((r) => r.id !== me)
+        .slice(0, input.limit)
+        .map((r) => ({
+          id: r.id,
+          handle: r.handle ?? null,
+          displayName: r.display_name ?? null,
+          avatarUrl: r.avatar_url ?? null,
+          bio: r.bio ?? null,
+        }));
+      return { people };
+    }),
+
   /** Protected: read the caller's own profile. */
   me: protectedProcedure.query(async ({ ctx }) => {
     const uid = await currentUserId(ctx);

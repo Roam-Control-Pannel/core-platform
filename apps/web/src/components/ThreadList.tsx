@@ -9,7 +9,8 @@
  *
  * Three kinds of chat share this inbox: DIRECT (1:1, started from a friend's wall or
  * the friends list via MessageButton), PLAN (a plan's group chat, opened from the plan),
- * and free-standing GROUP threads created here with "New group". Each row shows a kind
+ * and free-standing GROUP threads. "New chat" searches people and branches on how many you
+ * pick: one → a 1:1 DM (deduped), several → a named group. Each row shows a kind
  * badge and the right name (the other person for a DM, the title for group/plan).
  *
  * Timestamps arrive as ISO strings (the client has no transformer), formatted in
@@ -19,9 +20,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, Pill, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { UserSearch, PersonAvatar, personName, type SearchedPerson } from "./UserSearch";
 import rowStyles from "./listRow.module.css";
 
 type ThreadKind = "plan" | "group" | "direct";
@@ -40,12 +43,14 @@ interface ThreadRow {
 export function ThreadList() {
   const trpc = useTrpc();
   const session = useSession();
+  const router = useRouter();
   const [threads, setThreads] = useState<ThreadRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
+  const [selected, setSelected] = useState<SearchedPerson[]>([]);
+  const [groupTitle, setGroupTitle] = useState("");
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -73,25 +78,46 @@ export function ThreadList() {
     return load();
   }, [session, load]);
 
-  const createThread = useCallback(async () => {
-    const title = newTitle.trim();
-    if (!title) {
-      setCreateError("Give your group a name.");
-      return;
-    }
+  const toggle = useCallback((p: SearchedPerson) => {
+    setCreateError(null);
+    setSelected((cur) => (cur.some((x) => x.id === p.id) ? cur.filter((x) => x.id !== p.id) : [...cur, p]));
+  }, []);
+
+  const resetCreate = useCallback(() => {
+    setShowCreate(false);
+    setSelected([]);
+    setGroupTitle("");
+    setCreateError(null);
+  }, []);
+
+  // One entry point, WhatsApp-style: 1 person picked → a 1:1 DM; 2+ → a named group.
+  const startChat = useCallback(async () => {
+    if (selected.length === 0) return;
     setCreating(true);
     setCreateError(null);
     try {
-      await trpc.chat.createThread.mutate({ isGroup: true, title });
-      setNewTitle("");
-      setShowCreate(false);
-      load(); // refresh the list so the new thread appears (server-truth)
+      if (selected.length === 1) {
+        const dm = trpc.chat.directThread as unknown as { mutate: (i: { profileId: string }) => Promise<{ threadId: string }> };
+        const { threadId } = await dm.mutate({ profileId: selected[0]!.id });
+        router.push(`/threads/${threadId}`);
+        return;
+      }
+      const title = groupTitle.trim();
+      if (!title) {
+        setCreateError("Give your group a name.");
+        setCreating(false);
+        return;
+      }
+      const grp = trpc.chat.createGroupThread as unknown as {
+        mutate: (i: { title: string; memberIds: string[] }) => Promise<{ id: string }>;
+      };
+      const { id } = await grp.mutate({ title, memberIds: selected.map((p) => p.id) });
+      router.push(`/threads/${id}`);
     } catch (e: unknown) {
-      setCreateError(e instanceof Error ? e.message : "Couldn't create the chat.");
-    } finally {
+      setCreateError(e instanceof Error ? e.message : "Couldn't start that chat.");
       setCreating(false);
     }
-  }, [trpc, newTitle, load]);
+  }, [trpc, selected, groupTitle, router]);
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -123,8 +149,8 @@ export function ThreadList() {
           Chats
         </h1>
         {session ? (
-          <Button variant="pri" size="sm" onClick={() => setShowCreate((s) => !s)}>
-            {showCreate ? "Cancel" : "New group"}
+          <Button variant="pri" size="sm" onClick={() => (showCreate ? resetCreate() : setShowCreate(true))}>
+            {showCreate ? "Cancel" : "New chat"}
           </Button>
         ) : (
           <span style={{ width: 1 }} />
@@ -133,45 +159,63 @@ export function ThreadList() {
 
       {session && showCreate ? (
         <Card flat style={{ marginBottom: "var(--space-4)", padding: "var(--space-4)" }}>
-          <label style={{ display: "grid", gap: 5 }}>
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "var(--muted)",
-              }}
-            >
-              Group name
-            </span>
+          {/* Selected people — chips with remove. */}
+          {selected.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+              {selected.map((p) => (
+                <span key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 8px 4px 5px", borderRadius: 999, background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)" }}>
+                  <PersonAvatar p={p} size={20} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}>{personName(p)}</span>
+                  <button type="button" aria-label={`Remove ${personName(p)}`} onClick={() => toggle(p)} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <UserSearch
+            placeholder="Search people to chat with"
+            autoFocus
+            selectedIds={selected.map((p) => p.id)}
+            onRowClick={toggle}
+          />
+
+          {/* 2+ people → it's a group, which needs a name. */}
+          {selected.length >= 2 ? (
             <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="e.g. Friday night out"
+              value={groupTitle}
+              onChange={(e) => setGroupTitle(e.target.value)}
+              placeholder="Group name — e.g. Friday night out"
+              aria-label="Group name"
               maxLength={200}
               style={{
-                fontFamily: "var(--ui)",
-                fontSize: 14,
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--line-2)",
-                background: "#fff",
-                color: "var(--ink)",
-                outline: "none",
+                width: "100%", boxSizing: "border-box", marginTop: "var(--space-3)",
+                fontFamily: "var(--ui)", fontSize: 16, padding: "11px 12px", borderRadius: 10,
+                border: "1px solid var(--line-2)", background: "#fff", color: "var(--ink)", outline: "none",
               }}
             />
-          </label>
+          ) : null}
+
           {createError ? (
             <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
               {createError}
             </div>
           ) : null}
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <Button variant="pri" onClick={createThread} disabled={creating}>
-              {creating ? "Creating…" : "Create group"}
-            </Button>
-          </div>
+
+          {selected.length > 0 ? (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <Button variant="pri" onClick={() => void startChat()} disabled={creating}>
+                {creating
+                  ? "Starting…"
+                  : selected.length === 1
+                    ? `Message ${personName(selected[0]!)}`
+                    : `Create group · ${selected.length}`}
+              </Button>
+            </div>
+          ) : (
+            <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "var(--space-3) 2px 0", lineHeight: 1.5 }}>
+              Pick one person for a direct chat, or several for a group.
+            </p>
+          )}
         </Card>
       ) : null}
 
@@ -306,8 +350,9 @@ function EmptyState() {
         No chats yet
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Message a friend from their profile to start a direct chat, open a plan to chat with everyone
-        on it, or tap “New group” to start a group here.
+        Tap “New chat”, then search for someone — pick one person for a direct message, or several
+        for a group. You can also message a friend from their profile, or open a plan to chat with
+        everyone on it.
       </p>
     </div>
   );
