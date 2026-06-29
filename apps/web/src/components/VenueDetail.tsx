@@ -40,6 +40,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
+import { AddToPlan } from "./AddToPlan";
 import { isOpenNow } from "../lib/openNow";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 import styles from "./VenueDetail.module.css";
@@ -754,16 +755,7 @@ function VenueActions({
         initialFollowing={initialFollowing}
         emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
       />
-      <Button
-        variant="neutral"
-        block
-        aria-disabled
-        title="Plans are coming soon"
-        onClick={(e) => e.preventDefault()}
-        style={{ opacity: 0.6, cursor: "default" }}
-      >
-        ＋ Add to Plan
-      </Button>
+      <AddToPlan venueId={venueId} block />
       <DirectionsButton address={address} block />
     </div>
   );
@@ -818,7 +810,7 @@ function UnclaimedDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <ActionRow address={venue.address} />
+      <ActionRow venueId={venueId} address={venue.address} />
     </>
   );
 }
@@ -963,7 +955,7 @@ function PendingClaimDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <ActionRow address={venue.address} />
+      <ActionRow venueId={venueId} address={venue.address} />
     </>
   );
 }
@@ -1110,19 +1102,10 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
  * a dormant Stage-2 (Social) seam; Directions opens the device maps app by address text (not
  * lat/lng) so the provider resolves the named place rather than dropping an unlabelled pin.
  */
-function ActionRow({ address }: { address: string | null }) {
+function ActionRow({ venueId, address }: { venueId: string; address: string | null }) {
   return (
     <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
-      <Button
-        variant="neutral"
-        size="sm"
-        aria-disabled
-        title="Plans are coming soon"
-        onClick={(e) => e.preventDefault()}
-        style={{ opacity: 0.6, cursor: "default" }}
-      >
-        ＋ Add to Plan
-      </Button>
+      <AddToPlan venueId={venueId} />
       <DirectionsButton address={address} />
     </div>
   );

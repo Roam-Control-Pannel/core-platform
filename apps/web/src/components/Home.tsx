@@ -21,6 +21,7 @@ import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { planDateLabel } from "../lib/planDate";
 import styles from "./Home.module.css";
 
 export function Home() {
@@ -49,6 +50,10 @@ export function Home() {
         </div>
 
         <div className={styles.spanAll}>
+          <UpcomingPlans hasSession={!!session} />
+        </div>
+
+        <div className={styles.spanAll}>
           <LocalNews />
         </div>
 
@@ -60,8 +65,9 @@ export function Home() {
           <TownForum place={place} />
         </div>
 
-        <UpcomingPlansSeam />
-        <MarketSeam place={place} />
+        <div className={styles.spanAll}>
+          <MarketSeam place={place} />
+        </div>
       </div>
     </main>
   );
@@ -623,13 +629,83 @@ function SeamCard({ title, glyph, blurb }: { title: string; glyph: string; blurb
   );
 }
 
-function UpcomingPlansSeam() {
+/* ── Upcoming plans (live) ─────────────────────────────────────────────────────────────── */
+
+interface PlanRow {
+  id: string;
+  title: string;
+  plannedFor: string | null;
+  venueCount: number;
+}
+
+function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
+  const trpc = useTrpc();
+  const [plans, setPlans] = useState<PlanRow[] | undefined>(undefined);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!hasSession) return;
+    let cancelled = false;
+    const list = trpc.plans.list as unknown as { query: () => Promise<{ plans: PlanRow[] }> };
+    list
+      .query()
+      .then((res) => {
+        if (!cancelled) setPlans((res.plans ?? []).slice(0, 4));
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, hasSession]);
+
   return (
-    <SeamCard
-      title="Upcoming plans"
-      glyph="◷"
-      blurb="Make plans with friends and people nearby — meet-ups, nights out, who's in. You'll see what's coming up here."
-    />
+    <Section title="Your plans" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
+      {!hasSession ? (
+        <div>
+          <p style={mutedNote}>Make plans — a night out, a weekend, a list to try — and save venues to them.</p>
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Link href="/account" style={{ textDecoration: "none" }}>
+              <Button variant="pri" size="sm">Sign in</Button>
+            </Link>
+          </div>
+        </div>
+      ) : error ? (
+        <p style={mutedNote}>Couldn&apos;t load your plans just now.</p>
+      ) : plans === undefined ? (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          <div style={rowSkeleton} />
+          <div style={rowSkeleton} />
+        </div>
+      ) : plans.length === 0 ? (
+        <div>
+          <p style={mutedNote}>No plans yet — start one and add venues from anywhere on Roam.</p>
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <Link href="/plans" style={{ textDecoration: "none" }}>
+              <Button variant="pri" size="sm">＋ New plan</Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+          {plans.map((p) => (
+            <Link
+              key={p.id}
+              href={`/plans/${p.id}`}
+              className={styles.row}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
+            >
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
+              <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                {p.plannedFor ? `${planDateLabel(p.plannedFor)} · ` : ""}
+                {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 
