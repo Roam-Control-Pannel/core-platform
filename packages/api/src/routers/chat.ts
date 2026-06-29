@@ -480,4 +480,100 @@ export const chatRouter = router({
         createdAt: data.created_at,
       };
     }),
+
+  /**
+   * Edit your own message. RLS (chat_messages_update) scopes the write to the caller's
+   * own rows; we .select() the row back and throw NOT_FOUND on a zero-row result, so an
+   * edit that matched nothing (not yours / gone) fails loudly rather than reporting
+   * phantom success. Re-stamps moderation to 'auto_approved' — same optimistic-publish
+   * posture as sendMessage (the async scanner can still demote the edited text later).
+   */
+  editMessage: protectedProcedure
+    .input(z.object({ messageId: z.string().uuid(), body: z.string().trim().min(1).max(4000) }))
+    .mutation(async ({ ctx, input }) => {
+      await callerId(ctx.db);
+      const { data, error } = await ctx.db
+        .from("chat_messages")
+        .update({ body: input.body, moderation: "auto_approved" })
+        .eq("id", input.messageId)
+        .select("id, body, created_at")
+        .maybeSingle();
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to edit message: ${error.message}` });
+      }
+      if (!data) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Message not found, or it isn't yours to edit." });
+      }
+      return { id: data.id, body: data.body, createdAt: data.created_at };
+    }),
+
+  /** Delete your own message (RLS chat_messages_delete = sender_id is the caller). */
+  deleteMessage: protectedProcedure
+    .input(z.object({ messageId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await callerId(ctx.db);
+      const { error } = await ctx.db.from("chat_messages").delete().eq("id", input.messageId);
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to delete message: ${error.message}` });
+      }
+      return { ok: true as const };
+    }),
+
+  /**
+   * Rename a free-standing GROUP thread. Plan chats are excluded (their title tracks the
+   * plan) and direct chats have no title — both rejected here, mirroring addThreadParticipant's
+   * group-only guard. RLS (chat_threads_update) enforces the caller is a participant.
+   */
+  renameThread: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid(), title: z.string().trim().min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      await callerId(ctx.db);
+      const { data: thread, error: loadErr } = await ctx.db
+        .from("chat_threads")
+        .select("id, is_group, plan_id")
+        .eq("id", input.threadId)
+        .maybeSingle();
+      if (loadErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load thread: ${loadErr.message}` });
+      }
+      if (!thread) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Chat not found, or you do not have access to it." });
+      }
+      if (!thread.is_group || thread.plan_id) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: thread.plan_id ? "A plan chat is named after its plan." : "Only group chats can be renamed.",
+        });
+      }
+      const { data, error } = await ctx.db
+        .from("chat_threads")
+        .update({ title: input.title })
+        .eq("id", input.threadId)
+        .select("id, title")
+        .maybeSingle();
+      if (error || !data) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to rename chat: ${error?.message ?? "no row"}` });
+      }
+      return { id: data.id, title: data.title };
+    }),
+
+  /**
+   * Leave a thread — remove the caller's own participant row (RLS chat_participants_leave).
+   * For a plan chat the caller would simply be re-added the next time they open it while still
+   * a plan member, so leaving is meaningful for direct + free-standing group chats.
+   */
+  leaveThread: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await callerId(ctx.db);
+      const { error } = await ctx.db
+        .from("chat_participants")
+        .delete()
+        .eq("thread_id", input.threadId)
+        .eq("profile_id", me);
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to leave chat: ${error.message}` });
+      }
+      return { ok: true as const };
+    }),
 });
