@@ -1,0 +1,31 @@
+/*
+ * Shared interactive list-row hover — a quiet paper wash so tappable rows (chat threads,
+ * friends) read as interactive, matching Home's row treatment. No sticky hover on touch.
+ */
+.row {
+  border-radius: var(--r-md);
+  transition: background var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: var(--paper-2);
+  }
+}
+
+/* For Card-based rows (a Link wrapping a design Card): a gentle lift + deeper shadow,
+   matching the venue-card interaction. */
+.cardLift {
+  display: block;
+  border-radius: 16px;
+  transition:
+    transform var(--motion-transition) var(--ease),
+    box-shadow var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .cardLift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-pop);
+  }
+}
