@@ -17,7 +17,7 @@ export function AuthorLink({ author, style }: { author: TownHallAuthor; style?: 
   const name = townHallAuthor(author);
   if (!author.id) return <span style={style}>{name}</span>;
   return (
-    <Link href={`/u/${author.id}`} style={{ color: "inherit", textDecoration: "none", ...style }}>
+    <Link href={`/u/${author.handle ?? author.id}`} style={{ color: "inherit", textDecoration: "none", ...style }}>
       {name}
     </Link>
   );

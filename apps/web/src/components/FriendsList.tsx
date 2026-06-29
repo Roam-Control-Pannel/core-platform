@@ -130,7 +130,7 @@ export function FriendsList() {
                 {requests.map((p) => (
                   <Card key={p.id} style={{ padding: "var(--space-3) var(--space-4)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                      <Link href={`/u/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+                      <Link href={`/u/${p.handle ?? p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                         <Avatar p={p} size={36} />
                         <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name(p)}</span>
                       </Link>
@@ -165,7 +165,7 @@ export function FriendsList() {
               <div style={{ display: "grid", gap: "var(--space-1)" }}>
                 {friends.map((p) => (
                   <div key={p.id} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "8px 8px", borderRadius: "var(--r-md)" }}>
-                    <Link href={`/u/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+                    <Link href={`/u/${p.handle ?? p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                       <Avatar p={p} size={32} />
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name(p)}</span>
                     </Link>

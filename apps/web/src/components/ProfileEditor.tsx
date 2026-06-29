@@ -72,6 +72,12 @@ type UpdateMeMutation = {
     socialLinks: Record<string, string> | null;
   }) => Promise<{ ok: boolean }>;
 };
+type CheckHandleQuery = {
+  query: (input: { handle: string }) => Promise<{ available: boolean; normalized: string | null; reason?: string }>;
+};
+
+/** Live availability state for the handle field. */
+type HandleCheck = { status: "idle" | "checking" | "ok" | "bad"; reason?: string };
 
 export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: () => void }) {
   const trpc = useTrpc();
@@ -81,6 +87,10 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<null | "avatar" | "header">(null);
+  const [handleCheck, setHandleCheck] = useState<HandleCheck>({ status: "idle" });
+  // The handle the profile loaded with — an unchanged handle is always valid (and skips the
+  // network check), so editing other fields never reports your own handle as taken.
+  const loadedHandleRef = useRef<string>("");
 
   // Load the profile once per identity.
   useEffect(() => {
@@ -91,6 +101,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       .query()
       .then((p) => {
         if (cancelled) return;
+        loadedHandleRef.current = (p.handle ?? "").trim().toLowerCase();
         setState({
           displayName: p.displayName ?? "",
           handle: p.handle ?? "",
@@ -107,6 +118,38 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       cancelled = true;
     };
   }, [trpc, userId]);
+
+  // Live, debounced handle availability — only when it differs from the loaded handle.
+  const handleValue = state?.handle ?? null;
+  useEffect(() => {
+    if (handleValue === null) return;
+    const h = handleValue.trim().toLowerCase();
+    if (h === loadedHandleRef.current) {
+      setHandleCheck({ status: "ok" });
+      return;
+    }
+    if (h === "") {
+      setHandleCheck({ status: "bad", reason: "Choose a handle — it's your profile's web address." });
+      return;
+    }
+    setHandleCheck({ status: "checking" });
+    let cancelled = false;
+    const t = setTimeout(() => {
+      (trpc.profiles.checkHandle as unknown as CheckHandleQuery)
+        .query({ handle: h })
+        .then((r) => {
+          if (cancelled) return;
+          setHandleCheck(r.available ? { status: "ok" } : { status: "bad", reason: r.reason ?? "That handle isn't available." });
+        })
+        .catch(() => {
+          if (!cancelled) setHandleCheck({ status: "idle" });
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [trpc, handleValue]);
 
   const patch = useCallback((p: Partial<ProfileState>) => {
     setSaved(false);
@@ -142,7 +185,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       }
       const res = await (trpc.profiles.updateMe as unknown as UpdateMeMutation).mutate({
         displayName: state.displayName.trim() || null,
-        handle: state.handle.trim() || null,
+        handle: state.handle.trim(),
         bio: state.bio.trim() || null,
         avatarUrl: state.avatarUrl,
         headerUrl: state.headerUrl,
@@ -218,9 +261,17 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
             onChange={(e) => patch({ handle: e.target.value })}
           />
         </div>
-        <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>
-          Lowercase letters, numbers and underscores. Must be unique.
-        </p>
+        {handleCheck.status === "checking" ? (
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>Checking availability…</p>
+        ) : handleCheck.status === "ok" && state.handle.trim().toLowerCase() !== loadedHandleRef.current ? (
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--success)" }}>@{state.handle.trim().toLowerCase()} is available ✓</p>
+        ) : handleCheck.status === "bad" ? (
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--crimson-700)" }} role="alert">{handleCheck.reason}</p>
+        ) : (
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>
+            Lowercase letters, numbers and underscores. This is your profile&apos;s web address.
+          </p>
+        )}
       </div>
 
       <div style={fieldWrap}>
@@ -254,7 +305,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-2)" }}>
-        <Button variant="pri" onClick={() => void save()} disabled={busy || uploading !== null}>
+        <Button variant="pri" onClick={() => void save()} disabled={busy || uploading !== null || handleCheck.status === "checking" || handleCheck.status === "bad"}>
           {busy ? "Saving…" : "Save profile"}
         </Button>
         {saved ? <span style={{ fontSize: 13, color: "var(--success)" }}>Saved ✓</span> : null}
