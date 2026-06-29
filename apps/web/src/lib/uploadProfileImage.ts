@@ -64,3 +64,40 @@ export async function uploadProfileImage(
   }
   return { url: data.publicUrl, path };
 }
+
+const ALLOWED_VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime"] as const;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB — matches the bucket ceiling (0034).
+const VIDEO_EXT_BY_MIME: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
+
+/**
+ * Upload one short wall VIDEO to the profile-media bucket (under the caller's folder, per the
+ * 0027 RLS). Validates type/size client-side for fast feedback; Storage re-enforces at the edge
+ * (0034 allowed_mime_types + file_size_limit). Returns the stable public URL.
+ */
+export async function uploadWallVideo(userId: string, file: File): Promise<UploadResult> {
+  if (!(ALLOWED_VIDEO_MIME as readonly string[]).includes(file.type)) {
+    throw new Error("Please pick an MP4, WebM or MOV video.");
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    throw new Error("That video is over 50 MB. Please pick a shorter one.");
+  }
+  const ext = VIDEO_EXT_BY_MIME[file.type] ?? "mp4";
+  const path = `${userId}/wall-video-${crypto.randomUUID()}.${ext}`;
+
+  const supabase = getSupabaseBrowser();
+  const { error } = await supabase.storage
+    .from(PROFILE_MEDIA_BUCKET)
+    .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+  const { data } = supabase.storage.from(PROFILE_MEDIA_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) {
+    throw new Error("Upload succeeded but no public URL was returned.");
+  }
+  return { url: data.publicUrl, path };
+}

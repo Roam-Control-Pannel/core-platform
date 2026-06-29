@@ -9,11 +9,13 @@
 
 export const WALL_BODY_MAX = 5000;
 export const COMMENT_BODY_MAX = 3000;
-export const MAX_WALL_IMAGES = 4;
+export const MAX_WALL_MEDIA = 4;
+/** @deprecated alias kept for callers; media is images + short video, capped together. */
+export const MAX_WALL_IMAGES = MAX_WALL_MEDIA;
 
-/** A media item on a wall post. 'image' only today; 'video' lands later with no schema change. */
+/** A media item on a wall post: an image or a short video, by public URL. */
 export interface WallMediaItem {
-  type: "image";
+  type: "image" | "video";
   url: string;
 }
 
@@ -48,13 +50,13 @@ export function normaliseWallBody(body: string | null | undefined): string | nul
 export function normaliseWallMedia(media: unknown): WallMediaItem[] {
   if (media == null) return [];
   if (!Array.isArray(media)) throw new Error("Invalid media.");
-  if (media.length > MAX_WALL_IMAGES) throw new Error(`You can add up to ${MAX_WALL_IMAGES} images.`);
+  if (media.length > MAX_WALL_MEDIA) throw new Error(`You can add up to ${MAX_WALL_MEDIA} items.`);
   return media.map((raw) => {
     const item = raw as { type?: unknown; url?: unknown };
-    if (item?.type !== "image" || !isHttpUrl(item.url)) {
-      throw new Error("Each image must have a valid URL.");
+    if ((item?.type !== "image" && item?.type !== "video") || !isHttpUrl(item.url)) {
+      throw new Error("Each photo or video must have a valid URL.");
     }
-    return { type: "image", url: item.url };
+    return { type: item.type, url: item.url };
   });
 }
 

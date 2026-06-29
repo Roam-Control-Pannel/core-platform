@@ -24,17 +24,23 @@ describe("normaliseWallBody", () => {
 });
 
 describe("normaliseWallMedia", () => {
-  it("accepts valid image items and strips extra keys", () => {
-    const out = normaliseWallMedia([{ type: "image", url: "https://cdn.example.com/a.jpg", junk: 1 }]);
-    expect(out).toEqual([{ type: "image", url: "https://cdn.example.com/a.jpg" }]);
+  it("accepts valid image + video items and strips extra keys", () => {
+    const out = normaliseWallMedia([
+      { type: "image", url: "https://cdn.example.com/a.jpg", junk: 1 },
+      { type: "video", url: "https://cdn.example.com/clip.mp4" },
+    ]);
+    expect(out).toEqual([
+      { type: "image", url: "https://cdn.example.com/a.jpg" },
+      { type: "video", url: "https://cdn.example.com/clip.mp4" },
+    ]);
   });
   it("absent / empty → []", () => {
     expect(normaliseWallMedia(null)).toEqual([]);
     expect(normaliseWallMedia([])).toEqual([]);
   });
-  it("rejects non-array, bad type, non-http url", () => {
+  it("rejects non-array, unknown type, non-http url", () => {
     expect(() => normaliseWallMedia({})).toThrow();
-    expect(() => normaliseWallMedia([{ type: "video", url: "https://x.com/v.mp4" }])).toThrow();
+    expect(() => normaliseWallMedia([{ type: "audio", url: "https://x.com/a.mp3" }])).toThrow();
     expect(() => normaliseWallMedia([{ type: "image", url: "javascript:alert(1)" }])).toThrow();
     expect(() => normaliseWallMedia([{ type: "image", url: "not a url" }])).toThrow();
   });

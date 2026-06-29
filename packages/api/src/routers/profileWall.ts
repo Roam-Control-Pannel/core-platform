@@ -81,13 +81,15 @@ function shapeAuthor(a: AuthorEmbed | AuthorEmbed[] | null) {
   };
 }
 
-/** Media is stored as jsonb; surface only the image items with string urls (defensive). */
-function shapeMedia(media: unknown): { type: "image"; url: string }[] {
+/** Media is stored as jsonb; surface image + video items with string urls (defensive). */
+function shapeMedia(media: unknown): { type: "image" | "video"; url: string }[] {
   if (!Array.isArray(media)) return [];
-  const out: { type: "image"; url: string }[] = [];
+  const out: { type: "image" | "video"; url: string }[] = [];
   for (const m of media) {
     const item = m as { type?: unknown; url?: unknown };
-    if (item?.type === "image" && typeof item.url === "string") out.push({ type: "image", url: item.url });
+    if ((item?.type === "image" || item?.type === "video") && typeof item.url === "string") {
+      out.push({ type: item.type, url: item.url });
+    }
   }
   return out;
 }
@@ -160,14 +162,14 @@ export const profileWallRouter = router({
     .input(
       z.object({
         body: z.string().max(WALL_BODY_MAX + 1000).nullish(),
-        media: z.array(z.object({ type: z.literal("image"), url: z.string().max(4096) })).max(8).optional(),
+        media: z.array(z.object({ type: z.enum(["image", "video"]), url: z.string().max(4096) })).max(8).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const db = ctx.db as unknown as LooseDb;
       const author_id = await callerId(db);
       let body: string | null;
-      let media: { type: "image"; url: string }[];
+      let media: { type: "image" | "video"; url: string }[];
       try {
         body = normaliseWallBody(input.body ?? null);
         media = normaliseWallMedia(input.media);
