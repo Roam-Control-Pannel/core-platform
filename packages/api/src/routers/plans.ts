@@ -41,25 +41,38 @@ export const plansRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const db = ctx.db as unknown as LooseDb;
     await callerId(db);
-    // RLS plans_read already scopes to owner-or-member; we just order + count venues.
+    // RLS plans_read already scopes to owner-or-member. Plain select (no aggregate embed —
+    // PostgREST count-embeds are finicky); venue counts are a second, cheap lookup below.
     const { data, error } = (await db
       .from("plans")
-      .select("id, title, notes, planned_for, created_at, plan_venues(count)")
-      .order("planned_for", { ascending: true, nullsFirst: false })
+      .select("id, title, notes, planned_for, created_at")
       .order("created_at", { ascending: false })) as PgResult<
-      { id: string; title: string; notes: string | null; planned_for: string | null; created_at: string; plan_venues: { count: number }[] | null }[] | null
+      { id: string; title: string; notes: string | null; planned_for: string | null; created_at: string }[] | null
     >;
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your plans: ${error.message}` });
     }
+    const rows = data ?? [];
+
+    // Venue counts: one query over the visible plans (RLS scopes plan_venues to those), tallied
+    // in JS. Avoids the aggregate-embed; a plan with none simply has count 0.
+    const counts = new Map<string, number>();
+    if (rows.length > 0) {
+      const { data: pv } = (await db
+        .from("plan_venues")
+        .select("plan_id")
+        .in("plan_id", rows.map((r) => r.id))) as PgResult<{ plan_id: string }[] | null>;
+      for (const v of pv ?? []) counts.set(v.plan_id, (counts.get(v.plan_id) ?? 0) + 1);
+    }
+
     return {
-      plans: (data ?? []).map((p) => ({
+      plans: rows.map((p) => ({
         id: p.id,
         title: p.title,
         notes: p.notes,
         plannedFor: p.planned_for,
         createdAt: p.created_at,
-        venueCount: p.plan_venues?.[0]?.count ?? 0,
+        venueCount: counts.get(p.id) ?? 0,
       })),
     };
   }),
