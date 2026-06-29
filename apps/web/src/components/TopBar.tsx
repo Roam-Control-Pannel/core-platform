@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "./TrpcProvider";
 import { AuthModal } from "./AuthModal";
+import { NotificationBell } from "./NotificationCenter";
 import styles from "./TopBar.module.css";
 
 /** Which primary nav item the current path belongs to (for the active pill). */
@@ -86,6 +87,7 @@ export function TopBar() {
         <span className={styles.create} aria-disabled title="Creating posts & plans is coming soon">
           ＋ Create
         </span>
+        {session ? <NotificationBell /> : null}
         {session ? (
           <Link href="/account" className={styles.avatar} aria-label="Your account" />
         ) : (

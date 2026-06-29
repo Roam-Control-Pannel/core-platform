@@ -72,6 +72,9 @@ export function AccountHub() {
   // The secondary "you" surfaces, surfaced beneath the profile header on your own wall.
   const ownerNav = (
     <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+      <Link href="/notifications" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Notifications</Pill>
+      </Link>
       <Link href="/following" style={{ textDecoration: "none" }}>
         <Pill variant="neutral">Following</Pill>
       </Link>
