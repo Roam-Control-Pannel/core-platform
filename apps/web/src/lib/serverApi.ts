@@ -28,6 +28,15 @@ export const getVenue = cache(async (venueId: string): Promise<VenueSeo | null> 
   }
 });
 
+export const getVenueBySlug = cache(async (slug: string): Promise<VenueSeo | null> => {
+  try {
+    const c = anon() as unknown as { venues: { bySlug: { query: (i: { slug: string }) => Promise<VenueSeo | null> } } };
+    return (await c.venues.bySlug.query({ slug })) ?? null;
+  } catch {
+    return null;
+  }
+});
+
 export const getProfile = cache(async (userId: string): Promise<ProfileSeo | null> => {
   try {
     const c = anon() as unknown as { profiles: { byId: { query: (i: { userId: string }) => Promise<ProfileSeo | null> } } };
@@ -70,6 +79,9 @@ export interface SeoIdRow {
   id: string;
   lastmod: string | null;
 }
+export interface SeoVenueRow extends SeoIdRow {
+  slug: string | null;
+}
 export interface SeoProfileRow extends SeoIdRow {
   handle: string | null;
 }
@@ -77,7 +89,7 @@ export interface SeoTopicRow extends SeoIdRow {
   locality: string | null;
 }
 export interface SeoLists {
-  venues: SeoIdRow[];
+  venues: SeoVenueRow[];
   profiles: SeoProfileRow[];
   posts: SeoIdRow[];
   topics: SeoTopicRow[];
@@ -90,14 +102,14 @@ export const getSeoLists = cache(async (): Promise<SeoLists> => {
   try {
     const c = anon() as unknown as {
       seo: {
-        venues: { query: (i: { limit: number }) => Promise<SeoIdRow[]> };
+        venues: { query: (i: { limit: number }) => Promise<SeoVenueRow[]> };
         profiles: { query: (i: { limit: number }) => Promise<SeoProfileRow[]> };
         posts: { query: (i: { limit: number }) => Promise<SeoIdRow[]> };
         topics: { query: (i: { limit: number }) => Promise<SeoTopicRow[]> };
       };
     };
     const [venues, profiles, posts, topics] = await Promise.all([
-      c.seo.venues.query({ limit: 5000 }).catch(() => [] as SeoIdRow[]),
+      c.seo.venues.query({ limit: 5000 }).catch(() => [] as SeoVenueRow[]),
       c.seo.profiles.query({ limit: 5000 }).catch(() => [] as SeoProfileRow[]),
       c.seo.posts.query({ limit: 5000 }).catch(() => [] as SeoIdRow[]),
       c.seo.topics.query({ limit: 5000 }).catch(() => [] as SeoTopicRow[]),

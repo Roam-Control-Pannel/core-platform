@@ -487,6 +487,31 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Public: load a venue by its slug — the canonical, human-readable lookup behind /venue/{slug}.
+   * Same full-row shape as byId; an unknown slug resolves to null. venues_read RLS is public.
+   */
+  bySlug: publicProcedure
+    .input(z.object({ slug: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }) => {
+      // `slug` (migration 0044) isn't in the generated DB types until db:types is re-run, so the
+      // typed client rejects .eq("slug", …) — read through a widened surface (same idiom as
+      // venues_near / venue_photos in this file). Runtime is unchanged; the row is the full venue.
+      type LooseVenueRead = {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseVenueRead;
+      const { data, error } = await db.from("venues").select("*").eq("slug", input.slug.toLowerCase()).maybeSingle();
+      if (error) throw new Error(`Failed to load venue: ${error.message}`);
+      return data ?? null;
+    }),
+
+  /**
    * Public: ordered photo rows for a venue's gallery. RLS venue_photos_select_public
    * is `using (true)`, so the anon ctx.db read is permitted. Ordering (owner-first,
    * then places, each by position) is applied client-side via @roam/core photos

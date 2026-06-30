@@ -46,6 +46,7 @@ function compact<T extends Record<string, unknown>>(obj: T): T {
 
 export interface VenueSeo {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   locality: string | null;
@@ -131,8 +132,9 @@ function notFoundMeta(canonicalPath: string): Metadata {
 }
 
 export function venueMetadata(venue: VenueSeo | null, id: string): Metadata {
-  const path = `/venue/${id}`;
-  if (!venue) return notFoundMeta(path);
+  // Canonical on the slug when present; fall back to the id for not-yet-slugged rows.
+  const path = `/venue/${venue?.slug ?? id}`;
+  if (!venue) return notFoundMeta(`/venue/${id}`);
   const place = [venue.locality, venue.region].filter(Boolean).join(", ");
   const title = venue.name;
   const fallback = `${venue.name}${venue.category ? ` — ${venue.category}` : ""}${place ? ` in ${place}` : ""}. Photos, reviews, opening hours and updates on Roam.`;
@@ -235,7 +237,7 @@ export function venueJsonLd(venue: VenueSeo, id: string): Record<string, unknown
     "@type": venueSchemaType(venue.category),
     name: venue.name,
     description: venue.description ?? undefined,
-    url: absUrl(`/venue/${id}`),
+    url: absUrl(`/venue/${venue.slug ?? id}`),
     address,
     aggregateRating,
   });
