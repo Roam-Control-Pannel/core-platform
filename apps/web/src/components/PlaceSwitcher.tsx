@@ -29,6 +29,10 @@ function PinIcon() {
   );
 }
 
+/** How a place came to be the active one — drives the anonymous discovery meter (only `search`
+ *  counts; the user's own location + the suggested/saved/default centres are always free). */
+export type PlaceSource = "search" | "current" | "suggested" | "saved" | "default";
+
 export interface Place {
   id: string;
   name: string;
@@ -36,6 +40,8 @@ export interface Place {
   hint?: string;
   lat: number;
   lng: number;
+  /** Provenance of this place selection (set by the switcher; optional for back-compat). */
+  source?: PlaceSource;
 }
 
 /**
@@ -215,8 +221,8 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
     return () => clearTimeout(t);
   }, [query, trpc]);
 
-  function pick(place: Place) {
-    onChange(place);
+  function pick(place: Place, source: PlaceSource = "search") {
+    onChange({ ...place, source });
     setOpen(false);
     setQuery("");
     setResults(null);
@@ -232,13 +238,16 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
       (pos) => {
         if (!mountedRef.current) return;
         setLocating(false);
-        pick({
-          id: "my-location",
-          name: "Near me",
-          hint: "Your location",
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+        pick(
+          {
+            id: "my-location",
+            name: "Near me",
+            hint: "Your location",
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          },
+          "current",
+        );
       },
       () => {
         if (!mountedRef.current) return;
@@ -373,7 +382,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                       key={p.id}
                       place={p}
                       active={p.id === value.id}
-                      onSelect={() => pick(p)}
+                      onSelect={() => pick(p, "saved")}
                       trailing={
                         <button
                           type="button"
@@ -401,7 +410,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                       key={p.id}
                       place={p}
                       active={p.id === value.id}
-                      onSelect={() => pick(p)}
+                      onSelect={() => pick(p, "suggested")}
                       trailing={star(p)}
                     />
                   ))}
