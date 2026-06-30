@@ -112,11 +112,18 @@ function periodsToDrafts(periods: PeriodInput[] | null | undefined): DayDraft[] 
   return drafts;
 }
 
-/** Per-interval client validation (server is the real boundary; this is fast UX). */
+/** Per-interval client validation (server is the real boundary; this is fast UX).
+ *  A closing time earlier than the opening time is a legal overnight interval (e.g. a bar
+ *  open 18:00–02:00); only equal times (no duration) are rejected. */
 function intervalIssue(iv: IntervalDraft): string | null {
   if (!iv.open || !iv.close) return "Add both an opening and closing time.";
-  if (iv.open >= iv.close) return "Opening time must be before closing time.";
+  if (iv.open === iv.close) return "Opening and closing time can't be the same.";
   return null;
+}
+
+/** True when an interval closes after midnight (the next day) — close earlier than open. */
+function isOvernight(iv: IntervalDraft): boolean {
+  return Boolean(iv.open) && Boolean(iv.close) && iv.close < iv.open;
 }
 
 export function OwnerHoursEditor({
@@ -355,7 +362,11 @@ export function OwnerHoursEditor({
                           Remove
                         </Button>
                       </div>
-                      {issue ? <div style={{ fontSize: 12, color: "var(--crimson-700)" }}>{issue}</div> : null}
+                      {issue ? (
+                        <div style={{ fontSize: 12, color: "var(--crimson-700)" }}>{issue}</div>
+                      ) : isOvernight(iv) ? (
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>Closes after midnight (next day).</div>
+                      ) : null}
                     </div>
                   );
                 })}

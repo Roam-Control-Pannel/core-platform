@@ -14,10 +14,12 @@
  * the time helpers, and the evaluator the public OpeningHours reader calls for its
  * "Open now" pill.
  *
- * ── Deliberate scope (seam open, feature deferred) ────────────────────────────────────
- * Overnight intervals (close crossing midnight) are not accepted by the WRITE validator
- * yet (api/venue-hours.ts enforces open < close). The shape and isOpenNow here are written
- * so lifting that later is a validator-only change — no shape change, no reader rewrite.
+ * ── Overnight ─────────────────────────────────────────────────────────────────────────
+ * Overnight intervals (close crossing midnight, e.g. a bar open 18:00–02:00) ARE supported:
+ * an interval with close < open opens that day and closes the next. The WRITE validator
+ * (api/venue-hours.ts) accepts them; isOpenNow below evaluates both the evening part and the
+ * after-midnight tail. Only an interval where open === close is rejected (zero-length / the
+ * ambiguous 24h case — express round-the-clock as 00:00–23:59 for now).
  */
 
 /** Minutes in a day; the module works in minutes-since-midnight to keep time math exact
@@ -73,9 +75,8 @@ export interface OpeningTimesRead {
  * ──────────────────────────────────────────────────────────────────────────────────── */
 
 /** Parse "HH:MM" → minutes since midnight. Throws RangeError on malformed input. Accepts
- *  only zero-padded 24h "HH:MM", HH 00..23, MM 00..59. "24:00" is rejected (a day-end of
- *  midnight is expressed by the next day) so the overnight seam stays a single future
- *  change site. */
+ *  only zero-padded 24h "HH:MM", HH 00..23, MM 00..59. "24:00" is rejected — a midnight
+ *  day-end is expressed by an overnight interval (close < open), not a 24:00 close. */
 export function parseHhmm(value: string): number {
   if (typeof value !== "string") {
     throw new RangeError("Time must be a string in HH:MM form.");
@@ -179,9 +180,11 @@ export function localDayAndMinutes(nowUtc: Date, timezone: string): { day: numbe
  * pill there. Boundaries: open inclusive, close exclusive (a 17:00 close means 16:59
  * open, 17:00 closed).
  *
- * NOTE (overnight seam): scans only the current local day's intervals. When overnight is
- * lifted, the evaluator also checks the PREVIOUS day's intervals whose close < open.
- * Until then, validated data can't contain those, so today-only is exact.
+ * Overnight (close crossing midnight, i.e. close < open) is supported. An overnight
+ * interval is open in two stretches: the evening part [open, 24:00) of its OWN day, and
+ * the after-midnight part [00:00, close) of the NEXT day. So "open now" checks both
+ * today's intervals (same-day + the evening part of an overnight one) AND yesterday's
+ * overnight intervals whose after-midnight tail still covers this early morning.
  */
 export function isOpenNow(opening: OpeningTimesRead | null | undefined, nowUtc: Date): OpenState {
   if (
@@ -194,22 +197,40 @@ export function isOpenNow(opening: OpeningTimesRead | null | undefined, nowUtc: 
   }
 
   const { day, minutes } = localDayAndMinutes(nowUtc, opening.timezone);
-  const today = opening.periods.find((p) => p.day === day);
 
+  // (1) Today's intervals: a same-day interval, or the evening (pre-midnight) part of an
+  //     overnight one. An overnight interval closes the NEXT day, so report that day.
+  const today = opening.periods.find((p) => p.day === day);
   if (today && !today.closed) {
     for (const iv of today.intervals) {
       const openMin = parseHhmm(iv.open);
       const closeMin = parseHhmm(iv.close);
-      if (minutes >= openMin && minutes < closeMin) {
-        return {
-          status: "open",
-          nextChange: { at: iv.close, day, inMinutes: closeMin - minutes },
-        };
+      if (closeMin > openMin) {
+        if (minutes >= openMin && minutes < closeMin) {
+          return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
+        }
+      } else if (minutes >= openMin) {
+        // Overnight: open from openMin to midnight tonight, closing tomorrow at closeMin.
+        const nextDay = (day + 1) % 7;
+        const inMinutes = MINUTES_IN_DAY - minutes + closeMin;
+        return { status: "open", nextChange: { at: iv.close, day: nextDay, inMinutes } };
       }
     }
   }
 
-  // Closed now — find the next opening, scanning forward up to 7 days.
+  // (2) Yesterday's overnight tail still covering this early morning (closes today).
+  const yesterday = opening.periods.find((p) => p.day === (day + 6) % 7);
+  if (yesterday && !yesterday.closed) {
+    for (const iv of yesterday.intervals) {
+      const openMin = parseHhmm(iv.open);
+      const closeMin = parseHhmm(iv.close);
+      if (closeMin < openMin && minutes < closeMin) {
+        return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
+      }
+    }
+  }
+
+  // (3) Closed now — find the next opening, scanning forward up to 7 days.
   for (let ahead = 0; ahead < 7; ahead++) {
     const d = (day + ahead) % 7;
     const p = opening.periods.find((x) => x.day === d);

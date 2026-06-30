@@ -108,13 +108,32 @@ export function isOpenNow(opening: OpeningTimesRead | null | undefined, nowUtc: 
   // and take down the venue page render. Core has no try/catch here because core never
   // sees unvalidated data; we do, so we harden here and stay in lockstep on everything else.
   try {
+    // (1) Today's intervals: same-day, or the evening (pre-midnight) part of an overnight
+    //     one (close < open), which closes the NEXT day.
     const today = opening.periods.find((p) => p.day === day);
-
     if (today && !today.closed) {
       for (const iv of today.intervals) {
         const openMin = parseHhmm(iv.open);
         const closeMin = parseHhmm(iv.close);
-        if (minutes >= openMin && minutes < closeMin) {
+        if (closeMin > openMin) {
+          if (minutes >= openMin && minutes < closeMin) {
+            return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
+          }
+        } else if (minutes >= openMin) {
+          const nextDay = (day + 1) % 7;
+          const inMinutes = MINUTES_IN_DAY - minutes + closeMin;
+          return { status: "open", nextChange: { at: iv.close, day: nextDay, inMinutes } };
+        }
+      }
+    }
+
+    // (2) Yesterday's overnight tail still covering this early morning (closes today).
+    const yesterday = opening.periods.find((p) => p.day === (day + 6) % 7);
+    if (yesterday && !yesterday.closed) {
+      for (const iv of yesterday.intervals) {
+        const openMin = parseHhmm(iv.open);
+        const closeMin = parseHhmm(iv.close);
+        if (closeMin < openMin && minutes < closeMin) {
           return { status: "open", nextChange: { at: iv.close, day, inMinutes: closeMin - minutes } };
         }
       }
