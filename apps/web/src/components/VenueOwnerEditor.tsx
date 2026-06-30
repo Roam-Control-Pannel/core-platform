@@ -26,6 +26,7 @@ import { venuePath } from "../lib/routes";
 /** The venue fields we read to seed the editors (byId returns the full row). */
 interface OwnerVenue {
   id: string;
+  slug: string | null;
   name: string;
   status: string;
   owner_id: string | null;
@@ -100,7 +101,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                   {[venue.category, [venue.locality, venue.region].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
                 </div>
               </div>
-              <Link href={venuePath(venueId)} style={{ textDecoration: "none", flexShrink: 0 }}>
+              <Link href={venuePath(venue.slug ?? venueId)} style={{ textDecoration: "none", flexShrink: 0 }}>
                 <Button variant="neutral" size="sm">View public page →</Button>
               </Link>
             </div>

@@ -32,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const venues: MetadataRoute.Sitemap = lists.venues.map((v) => ({
-    url: `${base}/venue/${v.id}`,
+    url: `${base}/venue/${v.slug ?? v.id}`,
     changeFrequency: "weekly",
     priority: 0.8,
     ...mod(v.lastmod),

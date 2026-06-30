@@ -29,19 +29,19 @@ function fail(what: string, message: string): never {
 }
 
 export const seoRouter = router({
-  /** Public: venue ids (+ last update) for /venue/[id] sitemap entries, freshest first. */
+  /** Public: venue ids + slugs (+ last update) for /venue sitemap entries, freshest first. */
   venues: publicProcedure.input(limitInput).query(async ({ ctx, input }) => {
     const db = ctx.db as unknown as LooseDb;
     const { data, error } = (await db
       .from("venues")
-      .select("id, updated_at, created_at")
+      .select("id, slug, updated_at, created_at")
       .order("updated_at", { ascending: false })
       .limit(input.limit)) as {
-      data: { id: string; updated_at: string | null; created_at: string | null }[] | null;
+      data: { id: string; slug: string | null; updated_at: string | null; created_at: string | null }[] | null;
       error: { message: string } | null;
     };
     if (error) fail("venues", error.message);
-    return (data ?? []).map((v) => ({ id: v.id, lastmod: v.updated_at ?? v.created_at ?? null }));
+    return (data ?? []).map((v) => ({ id: v.id, slug: v.slug ?? null, lastmod: v.updated_at ?? v.created_at ?? null }));
   }),
 
   /** Public: profile ids (+ handle, for future slug URLs) for /u/[id] sitemap entries. */
