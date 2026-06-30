@@ -12,9 +12,9 @@
  * The owner twin of venue-details.ts. Single source of truth for the WRITE contract:
  * what a valid owner hours payload is, and exactly what we persist.
  *
- * Overnight (close crossing midnight) is deliberately deferred: every interval must
- * satisfy open < close. Lifting it later is a change to THIS validator only — the shape
- * and the core evaluator already accommodate it.
+ * Overnight (close crossing midnight, e.g. 18:00–02:00) is supported: an interval with
+ * close < open opens that day and closes the next. Only open === close is rejected (a
+ * zero-length / ambiguous 24h interval). Overlap detection is overnight-aware (see below).
  */
 
 import {
@@ -26,6 +26,9 @@ import {
   isValidTimezone,
   type DayPeriods,
 } from "@roam/core/hours";
+
+/** Minutes in a day — for projecting overnight intervals (close < open) past midnight. */
+const MINUTES_IN_DAY = 24 * 60;
 
 /** The structured payload an owner authors (pre-derivation). */
 export interface OwnerHoursInput {
@@ -50,9 +53,9 @@ export interface OwnerOpeningTimes {
  *  - timezone must be a valid IANA zone
  *  - exactly the 7 days 0..6 may appear; missing days default closed; duplicates throw
  *  - a closed day carries no intervals
- *  - each interval: valid HH:MM, open < close (NO overnight yet - deferred)
+ *  - each interval: valid HH:MM, open !== close (close < open means it crosses midnight)
  *  - at most maxIntervalsPerDay intervals on a day
- *  - intervals within a day must not overlap (returned sorted by open)
+ *  - intervals within a day must not overlap, overnight-aware (returned sorted by open)
  */
 export function normaliseVenueHours(input: OwnerHoursInput | null | undefined): OwnerHoursInput {
   if (input == null || typeof input !== "object") {
@@ -111,21 +114,37 @@ export function normaliseVenueHours(input: OwnerHoursInput | null | undefined): 
       }
       const openMin = parseHhmm((iv as { open: string }).open);
       const closeMin = parseHhmm((iv as { close: string }).close);
-      if (openMin >= closeMin) {
+      // close < open is a legal overnight interval (crosses midnight); only a zero-length
+      // open === close is rejected (no duration, and the ambiguous 24h case).
+      if (openMin === closeMin) {
         throw new RangeError(
-          `${WEEKDAY_NAMES[day]}: ${formatHhmm(openMin)}-${formatHhmm(closeMin)} must open before it closes.`,
+          `${WEEKDAY_NAMES[day]}: ${formatHhmm(openMin)}-${formatHhmm(closeMin)} has no duration.`,
         );
       }
       return { openMin, closeMin };
     });
 
     parsed.sort((a, b) => a.openMin - b.openMin);
-    for (let i = 1; i < parsed.length; i++) {
-      const cur = parsed[i];
-      const prev = parsed[i - 1];
-      if (cur && prev && cur.openMin < prev.closeMin) {
+    // Overnight-aware overlap: project each interval onto an absolute minute line where an
+    // overnight one (close < open) runs past midnight to close + 1440. Adjacent intervals
+    // (sorted by open) must not overlap, AND the last interval's wrap past midnight must not
+    // collide with the first interval the next day (last.end <= first.start + a full day).
+    // That last guard is what catches e.g. 01:00–05:00 alongside 22:00–02:00.
+    const ranges = parsed.map((p) => ({
+      start: p.openMin,
+      end: p.closeMin < p.openMin ? p.closeMin + MINUTES_IN_DAY : p.closeMin,
+    }));
+    for (let i = 1; i < ranges.length; i++) {
+      const cur = ranges[i];
+      const prev = ranges[i - 1];
+      if (cur && prev && cur.start < prev.end) {
         throw new RangeError(`${WEEKDAY_NAMES[day]} has overlapping intervals.`);
       }
+    }
+    const first = ranges[0];
+    const last = ranges[ranges.length - 1];
+    if (first && last && last.end > first.start + MINUTES_IN_DAY) {
+      throw new RangeError(`${WEEKDAY_NAMES[day]} has overlapping intervals.`);
     }
 
     byDay.set(day, {

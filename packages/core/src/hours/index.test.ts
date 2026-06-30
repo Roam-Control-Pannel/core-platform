@@ -132,6 +132,39 @@ describe("isOpenNow", () => {
     expect(s.status).toBe("closed");
     expect(s.nextChange?.at).toBe("14:00");
   });
+
+  describe("overnight intervals (close crosses midnight)", () => {
+    // Friday (day 4) 18:00–02:00, in GMT (winter) so local == UTC for clean assertions.
+    const overnight = ownerHours([day(4, "18:00", "02:00")]);
+
+    it("is open in the evening part and reports the next-day close", () => {
+      const s = isOpenNow(overnight, new Date("2026-01-09T23:00:00Z")); // Fri 23:00
+      expect(s.status).toBe("open");
+      expect(s.nextChange?.at).toBe("02:00");
+      expect(s.nextChange?.day).toBe(5); // closes Saturday
+      expect(s.nextChange?.inMinutes).toBe(3 * 60); // 23:00 → 02:00
+    });
+
+    it("is open in the after-midnight tail (yesterday's interval)", () => {
+      const s = isOpenNow(overnight, new Date("2026-01-10T01:00:00Z")); // Sat 01:00
+      expect(s.status).toBe("open");
+      expect(s.nextChange?.at).toBe("02:00");
+      expect(s.nextChange?.day).toBe(5); // still Saturday
+      expect(s.nextChange?.inMinutes).toBe(60);
+    });
+
+    it("is closed after the tail ends and before the evening open", () => {
+      const s = isOpenNow(overnight, new Date("2026-01-09T15:00:00Z")); // Fri 15:00
+      expect(s.status).toBe("closed");
+      expect(s.nextChange?.at).toBe("18:00");
+      expect(s.nextChange?.day).toBe(4);
+    });
+
+    it("is closed just after close (02:00 exclusive)", () => {
+      const s = isOpenNow(overnight, new Date("2026-01-10T02:00:00Z")); // Sat 02:00
+      expect(s.status).toBe("closed");
+    });
+  });
 });
 
 describe("WEEKDAY_NAMES sanity", () => {

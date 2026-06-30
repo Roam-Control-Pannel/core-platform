@@ -42,8 +42,23 @@ describe("normaliseVenueHours", () => {
     expect(out.periods[2]).toEqual(closed(2));
   });
 
-  it("rejects open >= close (overnight deferred)", () => {
-    expect(() => normaliseVenueHours({ periods: [day(0, "22:00", "02:00")], timezone: tz })).toThrow(RangeError);
+  it("accepts an overnight interval (close crosses midnight)", () => {
+    const out = normaliseVenueHours({ periods: [day(0, "18:00", "02:00")], timezone: tz });
+    expect(out.periods[0]).toEqual(day(0, "18:00", "02:00"));
+  });
+
+  it("accepts a daytime shift alongside an overnight evening shift", () => {
+    const out = normaliseVenueHours({
+      periods: [{ day: 0, closed: false, intervals: [{ open: "22:00", close: "02:00" }, { open: "09:00", close: "13:00" }] }],
+      timezone: tz,
+    });
+    expect(out.periods[0]?.intervals).toEqual([
+      { open: "09:00", close: "13:00" },
+      { open: "22:00", close: "02:00" },
+    ]);
+  });
+
+  it("rejects a zero-length interval (open === close)", () => {
     expect(() => normaliseVenueHours({ periods: [day(0, "12:00", "12:00")], timezone: tz })).toThrow(RangeError);
   });
 
@@ -52,6 +67,18 @@ describe("normaliseVenueHours", () => {
       normaliseVenueHours({
         periods: [
           { day: 0, closed: false, intervals: [{ open: "09:00", close: "13:00" }, { open: "12:00", close: "17:00" }] },
+        ],
+        timezone: tz,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it("rejects an overnight interval whose tail overlaps a morning interval", () => {
+    // 22:00–02:00 wraps to 02:00, colliding with a 01:00–05:00 morning interval.
+    expect(() =>
+      normaliseVenueHours({
+        periods: [
+          { day: 0, closed: false, intervals: [{ open: "01:00", close: "05:00" }, { open: "22:00", close: "02:00" }] },
         ],
         timezone: tz,
       }),
@@ -108,6 +135,11 @@ describe("deriveWeekdayDescriptions (Places-format parity)", () => {
     expect(desc[1]).toBe("Tuesday: 9:00 AM - 1:00 PM, 2:00 PM - 5:00 PM");
     expect(desc[6]).toBe("Sunday: Closed");
     expect(desc).toHaveLength(7);
+  });
+
+  it("formats an overnight interval with AM/PM (next-day close stays unambiguous)", () => {
+    const periods = normaliseVenueHours({ periods: [day(4, "18:00", "02:00")], timezone: "Europe/London" }).periods;
+    expect(deriveWeekdayDescriptions(periods)[4]).toBe("Friday: 6:00 PM - 2:00 AM");
   });
 });
 
