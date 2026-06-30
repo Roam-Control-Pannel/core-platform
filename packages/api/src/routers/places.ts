@@ -43,6 +43,15 @@ import { searchNearby as defaultSearchNearby, type FetchImpl } from "../places/c
 /** Default search radius in metres (urban high-street scale). Tunable per call. */
 const DEFAULT_RADIUS_M = 1500;
 
+/**
+ * The starter category set pulled when a user lands on a FRESH location (the demand-driven
+ * "discover this area" path, ingestArea). A curated few — not all nine — so a brand-new place
+ * populates meaningfully without 9× the Places cost; the remaining categories still ingest
+ * on-demand when their pill is tapped. Each still passes the per-category freshness + budget
+ * + rate-limit guards, so a covered area or an exhausted budget pays nothing here.
+ */
+const STARTER_CATEGORIES: readonly corePlaces.CategoryId[] = ["Food & Drink", "Entertainment & Recreation", "Shopping"];
+
 /** Places caps searchNearby at 20 results per call; we request a sensible page. */
 const MAX_RESULTS = 20;
 
@@ -295,5 +304,46 @@ export const placesRouter = router({
           message: e instanceof Error ? e.message : "Ingestion failed.",
         });
       }
+    }),
+
+  /**
+   * Internal: "discover this area" — the demand-driven pull when a user lands on a FRESH
+   * location (sparse/empty coverage). Ingests the STARTER_CATEGORIES for the point under the
+   * same freshness + budget + rate-limit guards (each category claims its own budget unit only
+   * on a freshness miss). One category failing does not abort the rest. Returns an aggregate
+   * tally the web uses to decide whether to re-read or surface "we're expanding".
+   */
+  ingestArea: internalProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusMetres: z.number().int().min(100).max(50_000).default(DEFAULT_RADIUS_M),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      let inserted = 0;
+      let budgetExhausted = false;
+      let rateLimited = false;
+      for (const category of STARTER_CATEGORIES) {
+        try {
+          const tally = await ingestCategoryCore(rpc, productionSearchNearby, ctx.env.places.apiKey, {
+            lat: input.lat,
+            lng: input.lng,
+            category,
+            radiusMetres: input.radiusMetres,
+            clientKey: ctx.clientKey,
+          });
+          inserted += tally.inserted ?? 0;
+          if (tally.reason === "budget-exhausted") budgetExhausted = true;
+          if (tally.reason === "rate-limited") rateLimited = true;
+        } catch {
+          // One category's transport/HTTP failure shouldn't sink the whole area pull.
+        }
+        // Stop early if we've hit a hard cap — no point paying for the rest of the set.
+        if (budgetExhausted || rateLimited) break;
+      }
+      return { inserted, budgetExhausted, rateLimited };
     }),
 });

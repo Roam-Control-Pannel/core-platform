@@ -32,7 +32,9 @@ import { Seg, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
+import { AuthPanel } from "./AuthPanel";
 import { useCurrentPlace } from "../lib/currentPlace";
+import { anonCanOpen, anonRecordOpen, ANON_SEARCH_LIMIT } from "../lib/anonDiscovery";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
@@ -43,6 +45,15 @@ type Mode = "browse" | "feed";
 
 /** Venues shown per page in the grid; "Load more" reveals the next page of this many. */
 const PAGE_SIZE = 15;
+
+// Demand-driven discovery threshold. venues.near has NO distance cap — it returns the nearest
+// seeded venues globally, so a place far from any existing coverage still comes back with
+// far-away rows. To decide whether THIS area needs supply, we count only rows that are
+// genuinely near the centre (< NEARBY_RADIUS_M); if fewer than MIN_NEARBY are, we trigger a
+// one-time area ingest (POST /api/ingest-area) and re-read. This is how Roam goes global
+// without pre-seeding the planet: coverage is pulled the first time someone looks at a place.
+const NEARBY_RADIUS_M = 30_000;
+const MIN_NEARBY = 3;
 
 /** Map an inCategoryNear / near row to the card shape, carrying leaf categories + cover/coords. */
 function toCardData(v: {
@@ -98,6 +109,13 @@ export function Explore() {
   // The selected leaf type within a category view, or null for "all sub-categories".
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True while the "All" load is pulling fresh supply for a never-before-seen area (the
+  // /api/ingest-area hop) — drives a "Discovering places…" state instead of a bare skeleton.
+  const [discovering, setDiscovering] = useState(false);
+  // True when an anonymous visitor has exhausted their free searched-location allowance and
+  // must create an account to open this place. Signed-in users are never gated; the user's own
+  // current location and suggested/saved/default centres are always free (see anonDiscovery).
+  const [gated, setGated] = useState(false);
   // Free-text filter over the loaded set (client-side, by name). Sign-in now lives in the
   // global TopBar, so Explore's header is just the place switcher + Browse/Feed segment.
   const [query, setQuery] = useState("");
@@ -118,16 +136,48 @@ export function Explore() {
     setActiveSub(null);
     setVenues(null);
     setError(null);
-    trpc.venues.near
-      .query({ lat: place.lat, lng: place.lng, limit: 50 })
-      .then((rows) => {
+    setDiscovering(false);
+
+    void (async () => {
+      try {
+        let rows = await trpc.venues.near.query({ lat: place.lat, lng: place.lng, limit: 50 });
         if (loadGen.current !== gen) return;
+
+        // Distance-aware sparseness: only rows genuinely near the centre count as coverage
+        // (venues.near returns nearest-globally, so far-away seeds must not mask an empty area).
+        const nearby = rows.filter(
+          (r) => typeof r.distanceM === "number" && r.distanceM < NEARBY_RADIUS_M,
+        );
+        if (nearby.length < MIN_NEARBY) {
+          // Demand-driven supply: pull the starter categories for this point, then re-read.
+          // Non-fatal — if discovery fails or is gated server-side, we render what already exists.
+          setDiscovering(true);
+          try {
+            await fetch("/api/ingest-area", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: place.lat, lng: place.lng }),
+            });
+          } catch (e) {
+            console.warn("[Explore] area discovery failed", e);
+          }
+          if (loadGen.current !== gen) return;
+          try {
+            rows = await trpc.venues.near.query({ lat: place.lat, lng: place.lng, limit: 50 });
+          } catch {
+            /* keep the first read's rows */
+          }
+          if (loadGen.current !== gen) return;
+        }
+
+        setDiscovering(false);
         setVenues(rows.map(toCardData));
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (loadGen.current !== gen) return;
+        setDiscovering(false);
         setError(e instanceof Error ? e.message : "Failed to load venues.");
-      });
+      }
+    })();
   }, [trpc, place]);
 
   // CATEGORY view load: supply (POST /api/ingest) → tiered read (inCategoryNear page 1).
@@ -183,11 +233,20 @@ export function Explore() {
     [trpc, place],
   );
 
-  // Mount + place change → the All load. (Pill taps call loadAll/loadCategory directly.)
+  // Mount + place change → the All load, behind the anonymous discovery meter. A signed-in
+  // user is never gated. An anonymous one may always open their current location and the
+  // suggested/saved/default centres; SEARCHED places are metered to ANON_SEARCH_LIMIT per
+  // session. When the allowance is spent, we gate (showing the sign-up surface) instead of
+  // loading; otherwise we record the open (idempotent) and load. Re-runs when session flips
+  // (e.g. signing up through the gate), which clears the gate and loads.
   useEffect(() => {
+    const allowed = !!session || anonCanOpen(place);
+    setGated(!allowed);
+    if (!allowed) return;
+    if (!session && place.source === "search") anonRecordOpen(place);
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [place]);
+  }, [place, session]);
 
   // Read the caller's follow set once (per session). Signed-out → empty set: cards
   // show "Follow" and gate to auth on tap. We load all follows and build a Set of
@@ -362,6 +421,8 @@ export function Explore() {
 
       {mode === "feed" ? (
         <FeedList placeName={place.name} lat={place.lat} lng={place.lng} />
+      ) : gated ? (
+        <SignupGate place={place} onAuthed={() => { setGated(false); loadAll(); }} />
       ) : (
         <div className={styles.browse}>
           {/* desktop categories rail (hidden on phones — there the pills sit inline) */}
@@ -469,7 +530,7 @@ export function Explore() {
             {error ? (
               <ErrorState message={error} />
             ) : venues === null ? (
-              <VenueGridSkeleton />
+              discovering ? <DiscoveringState placeName={place.name} /> : <VenueGridSkeleton />
             ) : shown.length === 0 ? (
               <EmptyState />
             ) : (
@@ -552,6 +613,59 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill"
         ◍ Open {place.name} in Maps
       </Pill>
     </a>
+  );
+}
+
+/**
+ * SignupGate — shown when an anonymous visitor has spent their free searched-location
+ * allowance for the session. Their current location and the suggested/saved/default centres
+ * stay free; this only blocks opening a NEW searched place. The AuthPanel signs them in or
+ * starts a sign-up; on a live session the place loads (the gate clears via onAuthed and the
+ * place effect re-runs).
+ */
+function SignupGate({ place, onAuthed }: { place: Place; onAuthed: () => void }) {
+  const redirectTo = typeof window !== "undefined" ? window.location.href : "";
+  return (
+    <div style={{ maxWidth: 480, margin: "0 auto", padding: "var(--space-8) var(--space-4)" }}>
+      <div style={{ textAlign: "center" }}>
+        <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
+          Create a free account to keep exploring
+        </div>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
+          You&apos;ve explored {ANON_SEARCH_LIMIT} searched locations this session — the free limit.
+          Your own location stays free; sign up to open <strong>{place.name}</strong> and anywhere
+          else, save places, and follow the venues you love.
+        </p>
+      </div>
+      <AuthPanel emailRedirectTo={redirectTo} onAuthed={onAuthed} />
+    </div>
+  );
+}
+
+/**
+ * DiscoveringState — the "we're pulling this area in for the first time" state. Shown while
+ * /api/ingest-area fills supply for a never-before-seen place, ahead of the re-read. A
+ * content-shaped skeleton sits below the line so the load reads as real, not a spinner.
+ */
+function DiscoveringState({ placeName }: { placeName: string }) {
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "var(--space-3) 0 var(--space-4)",
+          color: "var(--ink-2)",
+          fontFamily: "var(--ui)",
+          fontSize: 14,
+        }}
+      >
+        <span aria-hidden style={{ color: "var(--crimson-700)" }}>◍</span>
+        Discovering places in {placeName}…
+      </div>
+      <VenueGridSkeleton />
+    </div>
   );
 }
 
