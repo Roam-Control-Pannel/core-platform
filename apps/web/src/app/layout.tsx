@@ -27,12 +27,17 @@ const DESCRIPTION = "Discover the best local venues, read reviews, follow your t
  * `default` covers routes without their own generateMetadata. Per-page generateMetadata
  * (venue/profile/post/topic) overrides title, description, canonical and the share card.
  */
+const googleVerification = process.env.GOOGLE_SITE_VERIFICATION;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: "Roam — hyper-local discovery & social planning", template: "%s · Roam" },
   description: DESCRIPTION,
   applicationName: "Roam",
   icons: { icon: "/roam-mark.png" },
+  // Emitted only when GOOGLE_SITE_VERIFICATION is set (the HTML-tag verification route; a DNS
+  // "Domain" property in Search Console needs nothing here).
+  ...(googleVerification ? { verification: { google: googleVerification } } : {}),
   openGraph: {
     type: "website",
     siteName: "Roam",
