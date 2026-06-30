@@ -324,6 +324,8 @@ function YourTown({ place }: { place: Place }) {
 
 interface ForumTopic {
   id: string;
+  slug: string | null;
+  locality: string;
   title: string;
   upvoteCount: number;
   replyCount: number;
@@ -377,7 +379,7 @@ function TownForum({ place }: { place: Place }) {
           {topics.map((t) => (
             <Link
               key={t.id}
-              href={`/town-hall/${t.id}`}
+              href={t.slug ? `/town-hall/${t.locality}/${t.slug}` : `/town-hall/${t.id}`}
               className={`${styles.newsCard} ${styles.lift}`}
               style={{ flexDirection: "row", alignItems: "center", gap: "var(--space-3)" }}
             >

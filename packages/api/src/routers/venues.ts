@@ -487,6 +487,41 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Public: top venues in a town (matched on the locality display name, case-insensitively),
+   * highest-rated first — the "featured venues" strip on the Town Hall town hub. Loose-typed read
+   * so `slug` (migration 0044) is selectable before db:types reruns.
+   */
+  byLocality: publicProcedure
+    .input(z.object({ locality: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(24).default(8) }))
+    .query(async ({ ctx, input }) => {
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("venues")
+        .select("id, slug, name, category, locality, region, rating, rating_count, status")
+        .ilike("locality", input.locality)
+        .order("rating", { ascending: false, nullsFirst: false })
+        .limit(input.limit)) as {
+        data:
+          | { id: string; slug: string | null; name: string; category: string | null; locality: string | null; region: string | null; rating: number | null; rating_count: number | null; status: string }[]
+          | null;
+        error: { message: string } | null;
+      };
+      if (error) throw new Error(`Failed to load venues: ${error.message}`);
+      return (data ?? []).map((v) => ({
+        id: v.id,
+        slug: v.slug ?? null,
+        name: v.name,
+        category: v.category,
+        locality: v.locality,
+        region: v.region,
+        rating: v.rating,
+        ratingCount: v.rating_count ?? 0,
+        status: v.status,
+      }));
+    }),
+
+  /**
    * Public: load a venue by its slug — the canonical, human-readable lookup behind /venue/{slug}.
    * Same full-row shape as byId; an unknown slug resolves to null. venues_read RLS is public.
    */

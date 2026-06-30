@@ -86,6 +86,7 @@ interface TopicAuthor {
 export interface TopicSeo {
   topic: {
     id: string;
+    slug: string | null;
     locality: string;
     localityLabel: string;
     title: string;
@@ -97,6 +98,11 @@ export interface TopicSeo {
     author: TopicAuthor;
   };
   replies: { id: string; body: string; createdAt: string | null; author: TopicAuthor }[];
+}
+
+/** The canonical path for a topic — nested when it has a slug, legacy id otherwise. */
+function topicPath(topic: { id: string; slug: string | null; locality: string }, fallbackId: string): string {
+  return topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${fallbackId}`;
 }
 
 /* ── Metadata builders ───────────────────────────────────────────────────────────────────── */
@@ -183,19 +189,45 @@ export function postMetadata(post: PostSeo | null, id: string): Metadata {
 }
 
 export function topicMetadata(data: TopicSeo | null, id: string): Metadata {
-  const path = `/town-hall/${id}`;
-  if (!data) return notFoundMeta(path);
+  if (!data) return notFoundMeta(`/town-hall/${id}`);
   const { topic } = data;
   const title = topic.title;
   const fallback = `${topic.title} — Town Hall discussion${topic.localityLabel ? ` in ${topic.localityLabel}` : ""} on Roam.`;
   const description = clamp((topic.body && topic.body.trim()) || fallback);
-  const url = absUrl(path);
+  const url = absUrl(topicPath(topic, id));
   return {
     title,
     description,
     alternates: { canonical: url },
     ...social({ title, description, url, type: "article" }),
   };
+}
+
+/** Metadata for a town hub. Empty towns are noindex (no thin/duplicate pages get indexed). */
+export function hubMetadata(localityLabel: string, locality: string, hasTopics: boolean): Metadata {
+  const title = `${localityLabel} — local community & what's on`;
+  const description = clamp(
+    `${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus places to go in ${localityLabel}.`,
+  );
+  const url = absUrl(`/town-hall/${locality}`);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(hasTopics ? {} : { robots: { index: false, follow: true } }),
+    ...social({ title, description, url }),
+  };
+}
+
+export function hubJsonLd(localityLabel: string, locality: string): Record<string, unknown> {
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${localityLabel} — Town Hall`,
+    description: `Local discussion, news and places in ${localityLabel}.`,
+    url: absUrl(`/town-hall/${locality}`),
+    about: { "@type": "Place", name: localityLabel },
+  });
 }
 
 /* ── JSON-LD builders (schema.org) ───────────────────────────────────────────────────────── */
@@ -276,7 +308,7 @@ export function topicJsonLd(data: TopicSeo, id: string): Record<string, unknown>
     "@type": "DiscussionForumPosting",
     headline: topic.title,
     text: topic.body,
-    url: absUrl(`/town-hall/${id}`),
+    url: absUrl(topicPath(topic, id)),
     datePublished: topic.createdAt ?? undefined,
     dateModified: topic.lastActivityAt ?? undefined,
     author: personRef(topic.author),

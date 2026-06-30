@@ -1,0 +1,136 @@
+/**
+ * TownHallHub — the per-town hub at /town-hall/{town} (server component, no "use client").
+ *
+ * The canonical, indexable surface for a locality: a real H1 + intro, the town's discussion
+ * topics, featured venues, and recent local news — all server-rendered into the initial HTML with
+ * dense internal links (topics → /town-hall/{town}/{slug}, venues → /venue/{slug}, news →
+ * /feed/{id}). This is the "landing page" built on genuine UGC rather than a thin doorway page.
+ *
+ * Posting/upvoting stays on the interactive board (/town-hall); the hub's CTA links there. An
+ * empty town still renders (a "be the first" prompt) but the page sets noindex (see hubMetadata).
+ */
+import Link from "next/link";
+import { Card } from "@roam/design";
+import { townHallTopicPath } from "../lib/routes";
+import { timeAgo } from "../lib/townHall";
+import type { HubData, HubVenue, HubNews } from "../lib/serverApi";
+
+const heroIntro = (label: string) =>
+  `What locals in ${label} are talking about — discussion, news and recommendations, plus places worth your time.`;
+
+export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVenue[]; news: HubNews[] }) {
+  const label = hub.localityLabel;
+  return (
+    <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+      <Link
+        href="/town-hall"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
+      >
+        <span aria-hidden>←</span> Town Hall
+      </Link>
+
+      <header style={{ marginBottom: "var(--space-6)" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
+          Town Hall
+        </div>
+        <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
+          {label}
+        </h1>
+        <p style={{ margin: "var(--space-2) 0 var(--space-4)", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.55 }}>
+          {heroIntro(label)}
+        </p>
+        <Link href="/town-hall" style={{ textDecoration: "none" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontWeight: 600, fontSize: 14 }}>
+            ＋ Start a topic in {label}
+          </span>
+        </Link>
+      </header>
+
+      {/* Discussion */}
+      <Section title="Discussion" count={hub.topics.length}>
+        {hub.topics.length === 0 ? (
+          <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
+            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>No topics in {label} yet</div>
+            <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
+              Be the first — ask a question, share a recommendation, or suggest something to do.
+            </p>
+          </Card>
+        ) : (
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            {hub.topics.map((t) => {
+              const href = t.slug ? townHallTopicPath(t.locality, t.slug) : `/town-hall/${t.id}`;
+              return (
+                <Card key={t.id} style={{ padding: "var(--space-4)" }}>
+                  <Link href={href} style={{ textDecoration: "none", color: "inherit" }}>
+                    <h3 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, lineHeight: 1.3, margin: 0 }}>{t.title}</h3>
+                  </Link>
+                  <p style={{ margin: "4px 0 0", color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {t.body}
+                  </p>
+                  <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
+                    <span>♥ {t.upvoteCount}</span>
+                    <span aria-hidden>·</span>
+                    <span>{t.replyCount === 1 ? "1 reply" : `${t.replyCount} replies`}</span>
+                    {t.createdAt ? (<><span aria-hidden>·</span><span>{timeAgo(t.createdAt)}</span></>) : null}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      {/* Featured venues */}
+      {venues.length > 0 ? (
+        <Section title={`Places in ${label}`} count={venues.length}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+            {venues.map((v) => (
+              <Link
+                key={v.id}
+                href={`/venue/${v.slug ?? v.id}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)" }}
+              >
+                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{v.name}</span>
+                {v.rating != null ? <span style={{ fontSize: 12, color: "var(--muted)" }}>★ {v.rating.toFixed(1)}</span> : null}
+              </Link>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {/* Local news */}
+      {news.length > 0 ? (
+        <Section title={`Local news in ${label}`} count={news.length}>
+          <div style={{ display: "grid", gap: "var(--space-2)" }}>
+            {news.map((n) => (
+              <Link key={n.id} href={`/feed/${n.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <Card style={{ padding: "var(--space-3) var(--space-4)" }}>
+                  <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15 }}>
+                    {n.title ?? (n.venueName ? `${n.venueName} — update` : "Local update")}
+                  </div>
+                  {n.body ? (
+                    <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.body}</p>
+                  ) : null}
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted)" }}>
+                    {n.venueName ?? ""}{n.publishedAt ? ` · ${timeAgo(n.publishedAt)}` : ""}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+    </main>
+  );
+}
+
+function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+  return (
+    <section style={{ marginBottom: "var(--space-6)" }}>
+      <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, margin: "0 0 var(--space-3)" }}>
+        {title}{count != null && count > 0 ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {count}</span> : null}
+      </h2>
+      {children}
+    </section>
+  );
+}

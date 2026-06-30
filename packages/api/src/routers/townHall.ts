@@ -52,11 +52,12 @@ interface AuthorEmbed {
 const TOPIC_AUTHOR = "author:profiles!town_hall_topics_author_id_fkey(id, handle, display_name, avatar_url)";
 const REPLY_AUTHOR = "author:profiles!town_hall_replies_author_id_fkey(id, handle, display_name, avatar_url)";
 
-const TOPIC_COLS = `id, locality, locality_label, title, body, upvote_count, reply_count, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
+const TOPIC_COLS = `id, slug, locality, locality_label, title, body, upvote_count, reply_count, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
 const REPLY_COLS = `id, topic_id, body, created_at, ${REPLY_AUTHOR}`;
 
 interface RawTopic {
   id: string;
+  slug: string | null;
   locality: string;
   locality_label: string;
   title: string;
@@ -95,6 +96,7 @@ function shapeAuthor(a: AuthorEmbed | AuthorEmbed[] | null) {
 function shapeTopic(t: RawTopic, viewerUpvoted: boolean) {
   return {
     id: t.id,
+    slug: t.slug ?? null,
     locality: t.locality,
     localityLabel: t.locality_label,
     title: t.title,
@@ -106,6 +108,15 @@ function shapeTopic(t: RawTopic, viewerUpvoted: boolean) {
     author: shapeAuthor(t.author),
     viewerUpvoted,
   };
+}
+
+/** Best-effort display label from a locality slug when no stored locality_label exists yet
+ *  (e.g. an empty town hub): "stockton-on-tees" → "Stockton-on-Tees". */
+function titleCaseSlug(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join("-");
 }
 
 /** Resolve the caller (writes only). RLS is the real gate; this gives a friendly 401 + the id. */
@@ -224,6 +235,111 @@ export const townHallRouter = router({
         })),
       };
     }),
+
+  /**
+   * Public: a town's hub — its topics (most-active first) keyed by the locality SLUG (as it
+   * appears in /town-hall/{town}). The label comes from the stored locality_label; an empty town
+   * still resolves (hasTopics:false) so the page can offer a "start a topic" state (and noindex
+   * itself so thin pages aren't indexed). localitySlug() is idempotent on an already-slug input.
+   */
+  hub: publicProcedure
+    .input(z.object({ locality: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      let slug: string;
+      try {
+        slug = localitySlug(input.locality);
+      } catch {
+        return { locality: "", localityLabel: input.locality, hasTopics: false, topics: [] };
+      }
+      const { data, error } = (await db
+        .from("town_hall_topics")
+        .select(TOPIC_COLS)
+        .eq("locality", slug)
+        .order("last_activity_at", { ascending: false })
+        .limit(input.limit)) as PgResult<RawTopic[] | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load the Town Hall: ${error.message}` });
+      }
+      const rows = data ?? [];
+      const upvoted = await viewerUpvotes(db, rows.map((r) => r.id));
+      const label = rows[0]?.locality_label ?? titleCaseSlug(slug);
+      return {
+        locality: slug,
+        localityLabel: label,
+        hasTopics: rows.length > 0,
+        topics: rows.map((t) => shapeTopic(t, upvoted.has(t.id))),
+      };
+    }),
+
+  /**
+   * Public: one topic by its (locality, slug) — the canonical lookup behind
+   * /town-hall/{town}/{slug}. Mirrors getTopic's shape (topic + oldest-first replies).
+   */
+  getTopicBySlug: publicProcedure
+    .input(z.object({ locality: z.string().trim().min(1).max(120), slug: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      let slug: string;
+      try {
+        slug = localitySlug(input.locality);
+      } catch {
+        return null;
+      }
+      const { data: topic, error } = (await db
+        .from("town_hall_topics")
+        .select(TOPIC_COLS)
+        .eq("locality", slug)
+        .eq("slug", input.slug.toLowerCase())
+        .maybeSingle()) as PgResult<RawTopic | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this topic: ${error.message}` });
+      }
+      if (!topic) return null;
+
+      const { data: replyRows, error: rErr } = (await db
+        .from("town_hall_replies")
+        .select(REPLY_COLS)
+        .eq("topic_id", topic.id)
+        .order("created_at", { ascending: true })) as PgResult<RawReply[] | null>;
+      if (rErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load replies: ${rErr.message}` });
+      }
+      const upvoted = await viewerUpvotes(db, [topic.id]);
+      return {
+        topic: shapeTopic(topic, upvoted.has(topic.id)),
+        replies: (replyRows ?? []).map((r) => ({
+          id: r.id,
+          body: r.body,
+          createdAt: r.created_at,
+          author: shapeAuthor(r.author),
+        })),
+      };
+    }),
+
+  /**
+   * Public: the towns that have a Town Hall board, with their display label and topic count —
+   * powers the /town-hall index (directory of town hubs). Deduped + tallied in JS (PostgREST
+   * has no GROUP BY here), most-recently-active first.
+   */
+  localities: publicProcedure.query(async ({ ctx }) => {
+    const db = ctx.db as unknown as LooseDb;
+    const { data, error } = (await db
+      .from("town_hall_topics")
+      .select("locality, locality_label, last_activity_at")
+      .order("last_activity_at", { ascending: false })
+      .limit(20000)) as PgResult<{ locality: string; locality_label: string; last_activity_at: string }[] | null>;
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load town halls: ${error.message}` });
+    }
+    const map = new Map<string, { locality: string; label: string; topicCount: number; lastActivityAt: string }>();
+    for (const row of data ?? []) {
+      const ex = map.get(row.locality);
+      if (ex) ex.topicCount += 1;
+      else map.set(row.locality, { locality: row.locality, label: row.locality_label, topicCount: 1, lastActivityAt: row.last_activity_at });
+    }
+    return { localities: Array.from(map.values()) };
+  }),
 
   /** Protected: start a topic on the locality the caller is browsing. */
   createTopic: protectedProcedure

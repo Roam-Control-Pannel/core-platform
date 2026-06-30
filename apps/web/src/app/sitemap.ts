@@ -9,7 +9,7 @@
  */
 import type { MetadataRoute } from "next";
 import { siteUrl } from "../lib/seo";
-import { getSeoLists } from "../lib/serverApi";
+import { getSeoLists, getTownLocalities } from "../lib/serverApi";
 
 export const revalidate = 3600;
 
@@ -22,7 +22,7 @@ function mod(lastmod: string | null): { lastModified?: Date } {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
-  const lists = await getSeoLists();
+  const [lists, townHalls] = await Promise.all([getSeoLists(), getTownLocalities()]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "daily", priority: 1 },
@@ -50,11 +50,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...mod(p.lastmod),
   }));
   const topics: MetadataRoute.Sitemap = lists.topics.map((t) => ({
-    url: `${base}/town-hall/${t.id}`,
+    url: t.locality && t.slug ? `${base}/town-hall/${t.locality}/${t.slug}` : `${base}/town-hall/${t.id}`,
     changeFrequency: "weekly",
     priority: 0.6,
     ...mod(t.lastmod),
   }));
+  const hubs: MetadataRoute.Sitemap = townHalls.map((h) => ({
+    url: `${base}/town-hall/${h.locality}`,
+    changeFrequency: "daily",
+    priority: 0.7,
+    ...mod(h.lastActivityAt),
+  }));
 
-  return [...staticRoutes, ...venues, ...profiles, ...posts, ...topics];
+  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics];
 }

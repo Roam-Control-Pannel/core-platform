@@ -73,6 +73,107 @@ export const getTopic = cache(async (topicId: string): Promise<TopicSeo | null> 
   }
 });
 
+export const getTopicBySlug = cache(async (locality: string, slug: string): Promise<TopicSeo | null> => {
+  try {
+    const c = anon() as unknown as {
+      townHall: { getTopicBySlug: { query: (i: { locality: string; slug: string }) => Promise<TopicSeo | null> } };
+    };
+    return (await c.townHall.getTopicBySlug.query({ locality, slug })) ?? null;
+  } catch {
+    return null;
+  }
+});
+
+/* ── Town Hall hub ───────────────────────────────────────────────────────────────────────── */
+
+export interface HubTopic {
+  id: string;
+  slug: string | null;
+  locality: string;
+  localityLabel: string;
+  title: string;
+  body: string;
+  upvoteCount: number;
+  replyCount: number;
+  createdAt: string | null;
+  lastActivityAt: string | null;
+  author: { id: string | null; handle: string | null; displayName: string | null; avatarUrl: string | null };
+}
+export interface HubData {
+  locality: string;
+  localityLabel: string;
+  hasTopics: boolean;
+  topics: HubTopic[];
+}
+export interface HubVenue {
+  id: string;
+  slug: string | null;
+  name: string;
+  category: string | null;
+  locality: string | null;
+  region: string | null;
+  rating: number | null;
+  ratingCount: number;
+  status: string;
+}
+export interface HubNews {
+  id: string;
+  kind: string;
+  title: string | null;
+  body: string | null;
+  media: { type: "image"; url: string }[];
+  publishedAt: string | null;
+  venueId: string;
+  venueName: string | null;
+  venueLocality: string | null;
+}
+export interface TownLocality {
+  locality: string;
+  label: string;
+  topicCount: number;
+  lastActivityAt: string;
+}
+
+/** The town's board (topics) by locality slug. Returns null only on a hard failure. */
+export const getHub = cache(async (locality: string): Promise<HubData | null> => {
+  try {
+    const c = anon() as unknown as { townHall: { hub: { query: (i: { locality: string }) => Promise<HubData> } } };
+    return await c.townHall.hub.query({ locality });
+  } catch {
+    return null;
+  }
+});
+
+/** Top venues in the town (matched on the display label, not the slug). */
+export const getHubVenues = cache(async (localityLabel: string): Promise<HubVenue[]> => {
+  try {
+    const c = anon() as unknown as { venues: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubVenue[]> } } };
+    return await c.venues.byLocality.query({ locality: localityLabel, limit: 6 });
+  } catch {
+    return [];
+  }
+});
+
+/** Recent local news (feed posts) in the town. */
+export const getHubNews = cache(async (localityLabel: string): Promise<HubNews[]> => {
+  try {
+    const c = anon() as unknown as { posts: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubNews[]> } } };
+    return await c.posts.byLocality.query({ locality: localityLabel, limit: 6 });
+  } catch {
+    return [];
+  }
+});
+
+/** All towns with a Town Hall board, for the /town-hall index + sitemap hub URLs. */
+export const getTownLocalities = cache(async (): Promise<TownLocality[]> => {
+  try {
+    const c = anon() as unknown as { townHall: { localities: { query: () => Promise<{ localities: TownLocality[] }> } } };
+    return (await c.townHall.localities.query()).localities ?? [];
+  } catch {
+    return [];
+  }
+});
+
 /* ── Sitemap source lists ────────────────────────────────────────────────────────────────── */
 
 export interface SeoIdRow {
@@ -87,6 +188,7 @@ export interface SeoProfileRow extends SeoIdRow {
 }
 export interface SeoTopicRow extends SeoIdRow {
   locality: string | null;
+  slug: string | null;
 }
 export interface SeoLists {
   venues: SeoVenueRow[];
