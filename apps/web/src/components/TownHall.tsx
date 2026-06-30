@@ -25,9 +25,12 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { TopicUpvote } from "./TopicUpvote";
 import { AuthorLink } from "./AuthorLink";
 import { timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { townHubPath, townSlug } from "../lib/routes";
 
 interface TopicListItem {
   id: string;
+  slug: string | null;
+  locality: string;
   title: string;
   body: string;
   upvoteCount: number;
@@ -118,6 +121,12 @@ export function TownHall() {
             onChange={(v) => setSort(v)}
           />
         </div>
+        <Link
+          href={townHubPath(townSlug(place.name))}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: "var(--space-3)", fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none" }}
+        >
+          View the {place.name} hub <span aria-hidden>→</span>
+        </Link>
       </header>
 
       {/* Start a topic — auth-gated, prompted just-in-time. */}
@@ -180,7 +189,7 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
           canVote={canVote}
         />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Link href={`/town-hall/${topic.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <Link href={topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`} style={{ textDecoration: "none", color: "inherit" }}>
             <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, lineHeight: 1.3 }}>
               {topic.title}
             </div>

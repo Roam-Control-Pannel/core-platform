@@ -75,21 +75,22 @@ export const seoRouter = router({
     return (data ?? []).map((p) => ({ id: p.id, lastmod: p.published_at ?? null }));
   }),
 
-  /** Public: town-hall topic ids (+ locality, last activity) for /town-hall/[topicId] entries. */
+  /** Public: town-hall topic ids (+ locality, slug, last activity) for nested sitemap entries. */
   topics: publicProcedure.input(limitInput).query(async ({ ctx, input }) => {
     const db = ctx.db as unknown as LooseDb;
     const { data, error } = (await db
       .from("town_hall_topics")
-      .select("id, locality, last_activity_at, created_at")
+      .select("id, locality, slug, last_activity_at, created_at")
       .order("last_activity_at", { ascending: false })
       .limit(input.limit)) as {
-      data: { id: string; locality: string | null; last_activity_at: string | null; created_at: string | null }[] | null;
+      data: { id: string; locality: string | null; slug: string | null; last_activity_at: string | null; created_at: string | null }[] | null;
       error: { message: string } | null;
     };
     if (error) fail("topics", error.message);
     return (data ?? []).map((t) => ({
       id: t.id,
       locality: t.locality ?? null,
+      slug: t.slug ?? null,
       lastmod: t.last_activity_at ?? t.created_at ?? null,
     }));
   }),

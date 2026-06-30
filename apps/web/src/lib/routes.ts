@@ -27,3 +27,28 @@ export function venuePath(venueId: string): string {
 export function profilePath(handleOrId: string): string {
   return `/u/${handleOrId}`;
 }
+
+/**
+ * Slugify a place name into its locality key — the browser twin of the API's localitySlug
+ * (packages/api/src/town-hall.ts). For realistic place names this produces the same key the API
+ * stores, so a hub link built here resolves to the right board. "Stockton-on-Tees" →
+ * "stockton-on-tees".
+ */
+export function townSlug(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** A town's Town Hall hub page, e.g. /town-hall/durham. */
+export function townHubPath(locality: string): string {
+  return `/town-hall/${locality}`;
+}
+
+/** A Town Hall topic's canonical URL, e.g. /town-hall/durham/best-sunday-roast. */
+export function townHallTopicPath(locality: string, slug: string): string {
+  return `/town-hall/${locality}/${slug}`;
+}

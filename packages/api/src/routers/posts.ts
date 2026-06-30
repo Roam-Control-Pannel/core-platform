@@ -213,6 +213,48 @@ export const postsRouter = router({
     }),
 
   /**
+   * Public: a town's local news — published, feed-destination posts whose venue is in the given
+   * locality (matched on venues.locality, case-insensitively). Powers the Town Hall town hub.
+   * Loose-typed read so the embedded-resource filter (venues.locality) isn't type-checked against
+   * the posts columns; runtime is a normal PostgREST inner-join filter.
+   */
+  byLocality: publicProcedure
+    .input(z.object({ locality: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(24).default(8) }))
+    .query(async ({ ctx, input }) => {
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("posts")
+        .select("id, kind, title, body, media, published_at, venue_id, venues!inner(name, locality)")
+        .contains("destinations", ["feed"])
+        .not("published_at", "is", null)
+        .ilike("venues.locality", input.locality)
+        .order("published_at", { ascending: false })
+        .limit(input.limit)) as { data: unknown[] | null; error: { message: string } | null };
+      if (error) throw new Error(`Failed to load local news: ${error.message}`);
+      type EmbeddedVenue = { name: string; locality: string | null };
+      return (data ?? []).map((row) => {
+        const p = row as {
+          id: string; kind: string; title: string | null; body: string | null;
+          published_at: string | null; venue_id: string; media?: unknown; venues?: unknown;
+        };
+        const raw = p.venues;
+        const v: EmbeddedVenue | null = Array.isArray(raw) ? ((raw[0] as EmbeddedVenue | undefined) ?? null) : ((raw as EmbeddedVenue | null) ?? null);
+        return {
+          id: p.id,
+          kind: p.kind,
+          title: p.title,
+          body: p.body,
+          media: asMedia(p.media),
+          publishedAt: p.published_at,
+          venueId: p.venue_id,
+          venueName: v?.name ?? null,
+          venueLocality: v?.locality ?? null,
+        };
+      });
+    }),
+
+  /**
    * Public: a single venue's published posts (its "Posts" tab), newest first. Same RLS as the
    * feed (published + approved only); unlike the feed this is NOT limited to the feed
    * destination — it's the venue's own wall of updates. Inline-typed.
