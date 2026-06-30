@@ -38,6 +38,7 @@ import {
 } from "../venue-details.js";
 import { buildOwnerOpeningTimes } from "../venue-hours.js";
 import { type DayPeriods } from "@roam/core/hours";
+import { upsertBrevoContact } from "../brevo/client.js";
 
 
 /**
@@ -300,6 +301,35 @@ type LooseRpc = (
   fn: string,
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+
+/**
+ * The slice of the service client this file needs beyond the typed surface: a loose `from`
+ * (same idiom as LooseRpc — the typed client's table union rejects ad-hoc reads) and the auth
+ * admin lookup. Cast `ctx.service` to this at the call site.
+ */
+type ServiceClientLoose = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose read, same idiom as LooseRpc
+  from: (t: string) => any;
+  auth: {
+    admin: {
+      getUserById: (id: string) => Promise<{ data: { user: { email?: string | null } | null } | null }>;
+    };
+  };
+};
+
+/**
+ * Resolve the owner's email for a just-approved venue (for the Brevo businesses-list sync).
+ * The venue's owner_id IS the auth user id, so we read owner_id then look the email up via the
+ * auth admin API. Returns null if either step comes back empty; the caller treats any failure
+ * as non-fatal.
+ */
+async function approvedOwnerEmail(service: ServiceClientLoose, venueId: string): Promise<string | null> {
+  const { data: v } = await service.from("venues").select("owner_id").eq("id", venueId).single();
+  const ownerId = (v as { owner_id?: string | null } | null)?.owner_id;
+  if (!ownerId) return null;
+  const { data } = await service.auth.admin.getUserById(ownerId);
+  return data?.user?.email ?? null;
+}
 
 export const venuesRouter = router({
   /**
@@ -771,6 +801,18 @@ export const venuesRouter = router({
         });
       }
       const r = data as VenueClaimApprovalRow;
+
+      // Marketing sync (best-effort): the freshly-approved owner joins the Brevo businesses
+      // list. Never blocks approval — a Brevo/lookup failure only logs.
+      try {
+        const ownerEmail = await approvedOwnerEmail(ctx.service as unknown as ServiceClientLoose, r.venue_id);
+        if (ownerEmail) {
+          await upsertBrevoContact(ctx.env.brevo.apiKey, ownerEmail, ctx.env.brevo.businessListId);
+        }
+      } catch (e) {
+        console.error("[venues.approveClaim] brevo business sync failed:", e);
+      }
+
       return {
         claimId: r.claim_id,
         venueId: r.venue_id,

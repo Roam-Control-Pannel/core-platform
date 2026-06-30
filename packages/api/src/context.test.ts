@@ -16,6 +16,7 @@ const env: ApiEnv = {
     privateKey: "test-private-key",
   },
   places: { apiKey: "test-places-key" },
+  brevo: { apiKey: null, newUserListId: 93, businessListId: 3 },
 };
 
 const createContext = makeContextFactory(env);

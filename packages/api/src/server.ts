@@ -52,6 +52,13 @@ function loadEnv(): ApiEnv {
     places: {
       apiKey: requireEnv("GOOGLE_PLACES_API_KEY_CORE"),
     },
+    brevo: {
+      // Optional: when unset the contact sync is a no-op (the API still boots). List ids
+      // default to the launch lists but can be overridden per environment.
+      apiKey: process.env.BREVO_API_KEY ?? null,
+      newUserListId: Number(process.env.BREVO_LIST_NEW_USERS ?? "93"),
+      businessListId: Number(process.env.BREVO_LIST_BUSINESSES ?? "3"),
+    },
   };
 }
 

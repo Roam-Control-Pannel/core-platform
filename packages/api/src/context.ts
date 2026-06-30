@@ -51,6 +51,16 @@ export interface ApiEnv {
   places: {
     apiKey: string;
   };
+  /**
+   * Brevo marketing-list sync. `apiKey` null disables the sync (every call is a no-op), so the
+   * API runs before the key is provisioned. The list ids are the destinations for the two sync
+   * moments: a new user joins `newUserListId`, an approved business owner joins `businessListId`.
+   */
+  brevo: {
+    apiKey: string | null;
+    newUserListId: number;
+    businessListId: number;
+  };
 }
 
 export interface Context {
