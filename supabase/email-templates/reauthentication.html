@@ -1,0 +1,35 @@
+<!--
+  Roam — Reauthentication (verification code)
+  Supabase Auth › Authentication › Email Templates › "Reauthentication"
+  Variables: {{ .Token }} {{ .Email }}
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EF;margin:0;padding:0;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border:1px solid #E4DED6;border-radius:16px;overflow:hidden;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">
+        <tr>
+          <td style="padding:28px 32px 8px;">
+            <img src="https://www.roam-local.com/roam-logo.png" alt="Roam" height="34" style="display:block;border:0;height:34px;width:auto;">
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 32px 0;">
+            <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;color:#1A1714;">Verify it's you</h1>
+            <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#4D463F;">Enter this code in Roam to confirm this action:</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 8px;">
+            <p style="margin:0 0 16px;font-size:30px;letter-spacing:8px;font-weight:700;color:#211D1A;font-family:'Courier New',monospace;">{{ .Token }}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 28px;border-top:1px solid #E4DED6;">
+            <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#AAA093;">If you didn't request this, you can safely ignore this email — no action will be taken.</p>
+          </td>
+        </tr>
+      </table>
+      <p style="max-width:480px;margin:16px auto 0;font-size:11px;color:#AAA093;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;">Roam · discover your locality · <a href="https://www.roam-local.com" style="color:#857C72;">roam-local.com</a></p>
+    </td>
+  </tr>
+</table>
