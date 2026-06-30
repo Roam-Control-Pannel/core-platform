@@ -22,6 +22,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { VenueCard, type VenueCardData } from "./VenueCard";
+import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
 import styles from "./Home.module.css";
@@ -65,6 +66,7 @@ export function Home() {
 
         <UpcomingPlans hasSession={!!session} />
         <FollowedVenues hasSession={!!session} />
+        <SavedDeals hasSession={!!session} />
 
         <div className={styles.spanAll}>
           <YourTown place={place} />
@@ -128,13 +130,6 @@ function Section({
 
 const mutedNote: React.CSSProperties = { color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, margin: 0 };
 const rowSkeleton: React.CSSProperties = { height: 44, borderRadius: "var(--r-md)", background: "var(--paper-2)" };
-
-/** A short "12 Jun" date for an offer's end — tolerant of an unparseable value. */
-function shortDate(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return "";
-  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
 
 /** Initial letter for an avatar fallback. */
 function initial(name: string | null | undefined): string {
@@ -406,6 +401,42 @@ function TownForum({ place }: { place: Place }) {
   );
 }
 
+/* ── Saved deals (live, auth-gated) ─────────────────────────────────────────────────────── */
+
+function SavedDeals({ hasSession }: { hasSession: boolean }) {
+  const trpc = useTrpc();
+  const [offers, setOffers] = useState<ConsumerOffer[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (!hasSession) return;
+    let cancelled = false;
+    const saved = trpc.offers.saved as unknown as { query: () => Promise<ConsumerOffer[]> };
+    saved.query().then((o) => { if (!cancelled) setOffers(Array.isArray(o) ? o : []); }).catch(() => { if (!cancelled) setOffers([]); });
+    return () => { cancelled = true; };
+  }, [trpc, hasSession]);
+
+  // Only meaningful signed in; the Followed-venues card already carries the signed-out nudge.
+  if (!hasSession) return null;
+
+  return (
+    <Section title="Saved deals" icon="🎟">
+      {offers === undefined ? (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          <div style={rowSkeleton} />
+        </div>
+      ) : offers.length === 0 ? (
+        <p style={mutedNote}>Deals you save will appear here, ready to redeem in-venue.</p>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          {offers.map((o) => (
+            <OfferCard key={o.id} offer={o} showVenue />
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 /* ── Followed venues + their exclusive loyalty deals (live, auth-gated) ─────────────────── */
 
 interface FollowVenue {
@@ -420,6 +451,8 @@ interface Deal {
   details: string | null;
   code: string | null;
   endsAt: string | null;
+  saved: boolean;
+  redeemed: boolean;
 }
 
 function FollowedVenues({ hasSession }: { hasSession: boolean }) {
@@ -505,7 +538,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
             {deals && deals.length > 0 ? (
               <div style={{ display: "grid", gap: "var(--space-2)" }}>
                 {deals.map((d) => (
-                  <DealCard key={d.id} deal={d} />
+                  <OfferCard key={d.id} offer={d} showVenue />
                 ))}
               </div>
             ) : (
@@ -517,61 +550,6 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
         </div>
       )}
     </Section>
-  );
-}
-
-function DealCard({ deal }: { deal: Deal }) {
-  return (
-    <Link href={`/venue/${deal.venueId}`} className={styles.lift} style={{ textDecoration: "none", color: "inherit", display: "block", borderRadius: "var(--r-lg)" }}>
-      <div
-        style={{
-          padding: "var(--space-3) var(--space-4)",
-          borderRadius: "var(--r-lg)",
-          background: "var(--crimson-tint)",
-          border: "1px solid var(--crimson-tint-2)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 2 }}>
-          <span
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 9.5,
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              color: "var(--crimson-700)",
-              border: "1px solid var(--crimson-tint-2)",
-              borderRadius: 999,
-              padding: "1px 7px",
-              background: "#fff",
-            }}
-          >
-            Deal
-          </span>
-          {deal.venueName ? <span style={{ fontSize: 12.5, color: "var(--ink-2)", fontWeight: 600 }}>{deal.venueName}</span> : null}
-        </div>
-        <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{deal.title}</div>
-        {deal.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{deal.details}</p> : null}
-        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          {deal.code ? (
-            <span
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--crimson-700)",
-                background: "#fff",
-                border: "1px dashed var(--crimson-tint-2)",
-                borderRadius: "var(--r-sm)",
-                padding: "2px 8px",
-              }}
-            >
-              {deal.code}
-            </span>
-          ) : null}
-          {deal.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Ends {shortDate(deal.endsAt)}</span> : null}
-        </div>
-      </div>
-    </Link>
   );
 }
 

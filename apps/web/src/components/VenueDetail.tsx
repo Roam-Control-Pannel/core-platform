@@ -34,6 +34,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
+import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
 import { Card, Pill, Rate, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -652,17 +653,13 @@ function VenuePostsPanel({ venueId }: { venueId: string }) {
   );
 }
 
-/** A venue's live offers (Offers tab). */
+/** A venue's live offers (Offers tab) — each savable + redeemable in-venue. */
 function VenueOffersPanel({ venueId }: { venueId: string }) {
   const trpc = useTrpc();
-  const [offers, setOffers] = useState<
-    { id: string; title: string; details: string | null; code: string | null; endsAt: string | null }[] | undefined
-  >(undefined);
+  const [offers, setOffers] = useState<ConsumerOffer[] | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
-    const forVenue = trpc.offers.forVenue as unknown as {
-      query: (i: { venueId: string }) => Promise<{ id: string; title: string; details: string | null; code: string | null; endsAt: string | null }[]>;
-    };
+    const forVenue = trpc.offers.forVenue as unknown as { query: (i: { venueId: string }) => Promise<ConsumerOffer[]> };
     forVenue
       .query({ venueId })
       .then((rows) => {
@@ -681,18 +678,7 @@ function VenueOffersPanel({ venueId }: { venueId: string }) {
   return (
     <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
       {offers.map((o) => (
-        <div key={o.id} style={{ padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-lg)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)" }}>
-          <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{o.title}</div>
-          {o.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{o.details}</p> : null}
-          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            {o.code ? (
-              <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--crimson-700)", background: "#fff", border: "1px dashed var(--crimson-tint-2)", borderRadius: "var(--r-sm)", padding: "2px 8px" }}>
-                {o.code}
-              </span>
-            ) : null}
-            {o.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Ends {shortDate(o.endsAt)}</span> : null}
-          </div>
-        </div>
+        <OfferCard key={o.id} offer={o} />
       ))}
     </div>
   );

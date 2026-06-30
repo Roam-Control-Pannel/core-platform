@@ -1,0 +1,175 @@
+/**
+ * VenueOffers — the business dashboard's Offers manager. Publish an exclusive deal (title, the
+ * detail, an optional redemption code, an end date and an optional total-redemptions cap), and
+ * manage your live ones with each offer's running redemption count. Offers surface on the venue's
+ * public "Offers" tab and to followers; users save them and redeem in-venue.
+ *
+ * offers.create / offers.mine / offers.remove. Owner-gated by RLS; this is presentation only.
+ */
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Card, Button } from "@roam/design";
+import { useTrpc } from "./TrpcProvider";
+
+interface OwnerOffer {
+  id: string;
+  title: string;
+  details: string | null;
+  code: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  maxRedemptions: number | null;
+  redemptions: number;
+}
+
+const field: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  marginBottom: "var(--space-3)",
+  background: "var(--paper-2)",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--r-md)",
+  fontFamily: "var(--ui)",
+  fontSize: 16,
+  color: "var(--ink)",
+  outline: "none",
+};
+
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
+export function VenueOffers({ venueId }: { venueId: string }) {
+  const trpc = useTrpc();
+  const [offers, setOffers] = useState<OwnerOffer[] | undefined>(undefined);
+  const [composing, setComposing] = useState(false);
+
+  const load = useCallback(async () => {
+    const mine = trpc.offers.mine as unknown as { query: (i: { venueId: string }) => Promise<OwnerOffer[]> };
+    return mine.query({ venueId });
+  }, [trpc, venueId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    load().then((o) => { if (!cancelled) setOffers(Array.isArray(o) ? o : []); }).catch(() => { if (!cancelled) setOffers([]); });
+    return () => { cancelled = true; };
+  }, [load]);
+
+  const reload = useCallback(() => {
+    void load().then((o) => setOffers(Array.isArray(o) ? o : [])).catch(() => {});
+  }, [load]);
+
+  const remove = useCallback(async (offerId: string) => {
+    const mut = trpc.offers.remove as unknown as { mutate: (i: { offerId: string }) => Promise<unknown> };
+    setOffers((prev) => (prev ? prev.filter((o) => o.id !== offerId) : prev));
+    try { await mut.mutate({ offerId }); } catch { reload(); }
+  }, [trpc, reload]);
+
+  return (
+    <div>
+      {composing ? (
+        <OfferComposer venueId={venueId} onPosted={() => { setComposing(false); reload(); }} onCancel={() => setComposing(false)} />
+      ) : (
+        <div style={{ marginBottom: "var(--space-4)" }}>
+          <Button variant="pri" onClick={() => setComposing(true)}>＋ New offer</Button>
+        </div>
+      )}
+
+      {offers === undefined ? (
+        <div style={{ height: 64, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+      ) : offers.length === 0 ? (
+        <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>
+          No offers yet. Publish an exclusive deal — your followers get notified, and anyone can save and redeem it in-venue.
+        </p>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          {offers.map((o) => (
+            <Card key={o.id} style={{ padding: "var(--space-3) var(--space-4)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15 }}>{o.title}</div>
+                  {o.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{o.details}</p> : null}
+                  <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>
+                    {o.code ? <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--crimson-700)" }}>{o.code}</span> : null}
+                    {o.endsAt ? <span>Ends {shortDate(o.endsAt)}</span> : null}
+                    <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>
+                      ♻ {o.redemptions}{o.maxRedemptions != null ? ` / ${o.maxRedemptions}` : ""} redeemed
+                    </span>
+                  </div>
+                </div>
+                <button type="button" onClick={() => void remove(o.id)} title="Delete offer" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline", flexShrink: 0 }}>
+                  Delete
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPosted: () => void; onCancel: () => void }) {
+  const trpc = useTrpc();
+  const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
+  const [code, setCode] = useState("");
+  const [endsOn, setEndsOn] = useState("");
+  const [maxRedemptions, setMaxRedemptions] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const create = trpc.offers.create as unknown as {
+      mutate: (i: { venueId: string; title: string; details: string | null; code: string | null; endsAt: string | null; maxRedemptions: number | null }) => Promise<{ id: string }>;
+    };
+    try {
+      const max = maxRedemptions.trim() ? Math.max(1, Math.floor(Number(maxRedemptions))) : null;
+      // End of the chosen day, in the user's locale, as ISO.
+      const endsAt = endsOn ? new Date(`${endsOn}T23:59:59`).toISOString() : null;
+      await create.mutate({
+        venueId,
+        title: title.trim(),
+        details: details.trim() || null,
+        code: code.trim() || null,
+        endsAt,
+        maxRedemptions: max != null && Number.isFinite(max) ? max : null,
+      });
+      onPosted();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't publish the offer.");
+      setBusy(false);
+    }
+  }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, onPosted]);
+
+  const canPost = title.trim().length > 0 && !busy;
+
+  return (
+    <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>New offer</div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Offer — e.g. 20% off your first coffee" aria-label="Offer title" maxLength={120} style={field} />
+      <textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="The detail — terms, what's included…" aria-label="Offer details" rows={3} maxLength={1000} style={{ ...field, resize: "vertical", minHeight: 72 }} />
+      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Redemption code (optional) — e.g. ROAM20" aria-label="Redemption code" maxLength={40} autoCapitalize="characters" style={field} />
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <label style={{ flex: 1, minWidth: 150 }}>
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Ends (optional)</span>
+          <input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} aria-label="Offer end date" style={field} />
+        </label>
+        <label style={{ flex: 1, minWidth: 150 }}>
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Max redemptions (optional)</span>
+          <input type="number" min={1} value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder="Unlimited" aria-label="Max redemptions" style={field} />
+        </label>
+      </div>
+      {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
+      <div style={{ display: "flex", gap: "var(--space-2)" }}>
+        <Button variant="pri" onClick={() => void submit()} disabled={!canPost}>{busy ? "Publishing…" : "Publish offer"}</Button>
+        <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </div>
+    </Card>
+  );
+}
