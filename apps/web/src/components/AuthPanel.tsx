@@ -21,11 +21,11 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button, Card } from "@roam/design";
 import { getSupabaseBrowser } from "../lib/supabase";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "reset";
 
 export interface AuthPanelProps {
   /**
@@ -49,6 +49,8 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
   const [error, setError] = useState<string | null>(null);
   // Set after a sign-up that needs email confirmation — drives the "check inbox" view.
   const [confirmSent, setConfirmSent] = useState(false);
+  // Set after a password-reset request — drives the "check inbox for a reset link" view.
+  const [resetSent, setResetSent] = useState(false);
 
   async function submit() {
     setError(null);
@@ -104,6 +106,97 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Send a password-reset email. Supabase emails a recovery link that lands on
+   *  /reset-password, where the user sets a new password. For privacy we show the same
+   *  "check your inbox" state whether or not the address has an account (no enumeration). */
+  async function sendReset() {
+    setError(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Enter your email and we'll send a reset link.");
+      return;
+    }
+    setBusy(true);
+    const supabase = getSupabaseBrowser();
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error: e } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
+      if (e) {
+        setError(friendlyAuthError(e.message));
+        return;
+      }
+      setResetSent(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Return to the sign-in view from the reset sub-flow, clearing its transient state. */
+  function backToSignIn() {
+    setMode("signin");
+    setResetSent(false);
+    setError(null);
+  }
+
+  if (resetSent) {
+    return (
+      <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
+        <div
+          className="t-h3"
+          style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
+        >
+          Check your email
+        </div>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
+          If an account exists for <strong>{email.trim()}</strong>, we&apos;ve sent a link to reset
+          your password. Open it to choose a new one.
+        </p>
+        <div style={{ marginTop: "var(--space-4)" }}>
+          <LinkButton onClick={backToSignIn}>Back to sign in</LinkButton>
+        </div>
+      </Card>
+    );
+  }
+
+  if (mode === "reset") {
+    return (
+      <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
+        <div
+          className="t-h3"
+          style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
+        >
+          Reset your password
+        </div>
+        <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
+          Enter your account email and we&apos;ll send you a link to set a new password.
+        </p>
+        <div style={{ display: "grid", gap: "var(--space-3)" }}>
+          <Field
+            label="Email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+            placeholder="you@business.com"
+          />
+          {error ? (
+            <div style={{ color: "var(--crimson-700)", fontSize: 13 }} role="alert">
+              {error}
+            </div>
+          ) : null}
+          <Button variant="pri" onClick={sendReset} disabled={busy} block>
+            {busy ? "Please wait…" : "Send reset link"}
+          </Button>
+          <div style={{ textAlign: "center" }}>
+            <LinkButton onClick={backToSignIn}>Back to sign in</LinkButton>
+          </div>
+        </div>
+      </Card>
+    );
   }
 
   if (confirmSent) {
@@ -168,8 +261,41 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
               ? "Sign in"
               : "Create account"}
         </Button>
+
+        {mode === "signin" ? (
+          <div style={{ textAlign: "center" }}>
+            <LinkButton
+              onClick={() => {
+                setMode("reset");
+                setError(null);
+              }}
+            >
+              Forgot your password?
+            </LinkButton>
+          </div>
+        ) : null}
       </div>
     </Card>
+  );
+}
+
+/** A plain text link styled as a subtle inline action (forgot-password / back to sign in). */
+function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        all: "unset",
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 600,
+        fontFamily: "var(--ui)",
+        color: "var(--muted)",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
