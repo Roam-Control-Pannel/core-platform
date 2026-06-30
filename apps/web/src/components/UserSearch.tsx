@@ -137,7 +137,7 @@ export function UserSearch({
                   p={p}
                   selected={selected.has(p.id)}
                   {...(onRowClick ? { onClick: () => onRowClick(p) } : {})}
-                  {...(linkToProfile ? { href: `/u/${p.id}` } : {})}
+                  {...(linkToProfile ? { href: `/u/${p.handle ?? p.id}` } : {})}
                   {...(trailing ? { trailing: trailing(p) } : {})}
                 />
               ))}

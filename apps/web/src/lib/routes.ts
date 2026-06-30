@@ -18,3 +18,12 @@
 export function venuePath(venueId: string): string {
   return `/venue/${venueId}`;
 }
+
+/**
+ * The web path for a user's profile. Prefer the @handle (the canonical, username URL); pass the
+ * user id only as a fallback — the /u/[id] route resolves a UUID and 301-redirects it to the
+ * handle, so links built from an id still land on the right place.
+ */
+export function profilePath(handleOrId: string): string {
+  return `/u/${handleOrId}`;
+}

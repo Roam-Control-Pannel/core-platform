@@ -38,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...mod(v.lastmod),
   }));
   const profiles: MetadataRoute.Sitemap = lists.profiles.map((p) => ({
-    url: `${base}/u/${p.id}`,
+    url: `${base}/u/${p.handle ?? p.id}`,
     changeFrequency: "weekly",
     priority: 0.5,
     ...mod(p.lastmod),

@@ -73,7 +73,7 @@ export function BusinessStats({ venueId, rating, ratingCount }: { venueId: strin
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
             {followers.map((f) => (
-              <Link key={f.id} href={`/u/${f.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 12px 4px 5px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)" }}>
+              <Link key={f.id} href={`/u/${f.handle ?? f.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 12px 4px 5px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)" }}>
                 <FollowerAvatar f={f} size={24} />
                 <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{followerName(f)}</span>
               </Link>

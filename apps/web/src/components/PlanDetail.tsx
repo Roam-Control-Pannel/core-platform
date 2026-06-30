@@ -473,7 +473,7 @@ function PlanMembers({ planId }: { planId: string }) {
         {members.map((m) => (
           <div key={m.profileId} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 6px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)" }}>
             <MemberAvatar p={m} size={24} />
-            <Link href={`/u/${m.profileId}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textDecoration: "none" }}>
+            <Link href={`/u/${m.handle ?? m.profileId}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textDecoration: "none" }}>
               {personName(m)}
             </Link>
             {m.role === "owner" ? (

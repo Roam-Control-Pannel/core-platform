@@ -147,8 +147,9 @@ export function venueMetadata(venue: VenueSeo | null, id: string): Metadata {
 }
 
 export function profileMetadata(profile: ProfileSeo | null, id: string): Metadata {
-  const path = `/u/${id}`;
-  if (!profile) return notFoundMeta(path);
+  // Canonical on the @handle when we have it; fall back to the id slug for handle-less rows.
+  const path = `/u/${profile?.handle ?? id}`;
+  if (!profile) return notFoundMeta(`/u/${id}`);
   const name = (profile.displayName && profile.displayName.trim()) || (profile.handle ? `@${profile.handle}` : "Roam member");
   const title = name;
   const fallback = `${name} on Roam — local posts, plans and community in your town.`;
@@ -249,7 +250,7 @@ export function profileJsonLd(profile: ProfileSeo, id: string): Record<string, u
     alternateName: profile.handle ? `@${profile.handle}` : undefined,
     description: profile.bio ?? undefined,
     image: profile.avatarUrl ?? undefined,
-    url: absUrl(`/u/${id}`),
+    url: absUrl(`/u/${profile.handle ?? id}`),
   });
 }
 

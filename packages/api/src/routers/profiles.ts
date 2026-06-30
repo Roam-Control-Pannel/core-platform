@@ -129,6 +129,87 @@ export const profilesRouter = router({
       return { people };
     }),
 
+  /**
+   * Public: read a profile by its @handle — the canonical, username-based lookup behind
+   * /u/{handle}. Input is cleaned leniently (strip a leading @, lower-case); a malformed or
+   * unknown handle simply resolves to null (not an error), the same posture as byId.
+   */
+  byHandle: publicProcedure
+    .input(z.object({ handle: z.string().trim().min(1).max(60) }))
+    .query(async ({ ctx, input }) => {
+      const handle = input.handle.replace(/^@/, "").trim().toLowerCase();
+      if (!/^[a-z0-9_]{3,30}$/.test(handle)) return null;
+      type LooseProfileRead = {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: ProfileRow | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseProfileRead;
+      const { data, error } = await db
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url, header_url, bio, social_links")
+        .eq("handle", handle)
+        .maybeSingle();
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load profile: ${error.message}` });
+      }
+      if (!data) return null;
+      return {
+        id: data.id,
+        handle: data.handle ?? null,
+        displayName: data.display_name ?? null,
+        avatarUrl: data.avatar_url ?? null,
+        headerUrl: data.header_url ?? null,
+        bio: data.bio ?? null,
+      };
+    }),
+
+  /**
+   * Public: is a handle valid and free? Powers the live availability check in the profile editor.
+   * Returns the normalised handle plus availability; an invalid format comes back available:false
+   * with a reason. The signed-in caller's OWN current handle counts as available (so editing your
+   * other fields doesn't report your own handle as taken).
+   */
+  checkHandle: publicProcedure
+    .input(z.object({ handle: z.string().max(60) }))
+    .query(async ({ ctx, input }) => {
+      let normalized: string | null;
+      try {
+        normalized = normaliseHandle(input.handle);
+      } catch (e) {
+        return { available: false as const, normalized: null, reason: e instanceof Error ? e.message : "Invalid handle." };
+      }
+      if (!normalized) {
+        return { available: false as const, normalized: null, reason: "Choose a handle." };
+      }
+      // Resolve the caller (if any) so their own handle reads as available.
+      let me: string | null = null;
+      try {
+        const { data } = await ctx.db.auth.getUser();
+        me = data.user?.id ?? null;
+      } catch {
+        me = null;
+      }
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("profiles")
+        .select("id")
+        .eq("handle", normalized)
+        .maybeSingle()) as { data: { id: string } | null; error: { message: string } | null };
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't check that handle: ${error.message}` });
+      }
+      const taken = !!data && data.id !== me;
+      return taken
+        ? { available: false as const, normalized, reason: "That handle is already taken." }
+        : { available: true as const, normalized };
+    }),
+
   /** Protected: read the caller's own profile. */
   me: protectedProcedure.query(async ({ ctx }) => {
     const uid = await currentUserId(ctx);
@@ -181,7 +262,12 @@ export const profilesRouter = router({
       const patch: Record<string, unknown> = {};
       try {
         if ("displayName" in input) patch["display_name"] = normaliseDisplayName(input.displayName);
-        if ("handle" in input) patch["handle"] = normaliseHandle(input.handle);
+        if ("handle" in input) {
+          const h = normaliseHandle(input.handle);
+          // A handle is required (it's the user's canonical URL) — refuse to clear it to null.
+          if (!h) throw new RangeError("Choose a handle — it's your profile's web address.");
+          patch["handle"] = h;
+        }
         if ("bio" in input) patch["bio"] = normaliseBio(input.bio);
         if ("avatarUrl" in input) patch["avatar_url"] = normaliseImageUrl(input.avatarUrl);
         if ("headerUrl" in input) patch["header_url"] = normaliseImageUrl(input.headerUrl);

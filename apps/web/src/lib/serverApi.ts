@@ -37,6 +37,15 @@ export const getProfile = cache(async (userId: string): Promise<ProfileSeo | nul
   }
 });
 
+export const getProfileByHandle = cache(async (handle: string): Promise<ProfileSeo | null> => {
+  try {
+    const c = anon() as unknown as { profiles: { byHandle: { query: (i: { handle: string }) => Promise<ProfileSeo | null> } } };
+    return (await c.profiles.byHandle.query({ handle })) ?? null;
+  } catch {
+    return null;
+  }
+});
+
 export const getPost = cache(async (postId: string): Promise<PostSeo | null> => {
   try {
     const c = anon() as unknown as { posts: { byId: { query: (i: { postId: string }) => Promise<PostSeo | null> } } };
