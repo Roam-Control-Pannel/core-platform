@@ -61,10 +61,32 @@ Once the logs reveal the answer, set it explicitly to skip the probe:
   (default `Authorization`) → `Authorization: <KEY>`.
 
 Optional:
-- `TRANSLINK_API_BASE` overrides the EFA base URL (default
-  `http://opendata.translinkniplanner.co.uk/Ext_API/`).
+- `TRANSLINK_API_BASE` overrides the EFA base URL. **Use `https://`** — the `http://` endpoint
+  (port 80) is dropped; only 443 connects.
 - `TRANSLINK_DEBUG=1` logs the raw (truncated) EFA JSON + the resolved board — **set it for the
   first live verification**, read one Belfast load's logs, then unset it.
+
+### Authorization is by SERVER IP, via a static-IP proxy (`TRANSLINK_PROXY_URL`)
+
+The Translink Opendata API is **keyless** — access is granted by **authorizing your server's IP**
+as a subscriber (a 401 `"Please authorize"` with no `www-authenticate` header = your IP isn't on
+their list). Railway's egress IP **rotates within a `/23` pool** (observed `152.55.176.x` /
+`152.55.177.x` across deploys), so a single Railway IP can't be registered.
+
+The fix: route the Translink calls through a **static-IP forward proxy** and register the *proxy's*
+fixed IP with Translink.
+
+1. Provision a static-IP HTTP proxy — **QuotaGuard Static** (free tier) or **Fixie**. You get a URL
+   like `http://user:pass@static.quotaguard.com:9293` and one or two fixed IPs.
+2. Set it on the API service (Railway):
+   ```
+   TRANSLINK_PROXY_URL=http://user:pass@static.quotaguard.com:9293
+   ```
+   When set, every EFA call **and** the egress-IP probe route through it. With `TRANSLINK_DEBUG=1`,
+   the log then prints the **proxy's** IP (`… via proxy — this is the FIXED IP to register …`).
+3. Email Translink to authorize that fixed IP on your subscription.
+4. Once authorized, the 401 becomes 200 and the card goes live. Then pin `TRANSLINK_AUTH_MODE` is
+   unnecessary (keyless), and you can drop `TRANSLINK_DEBUG`.
 
 Until `TRANSLINK_API_KEY` is set, the feature is dormant (`nearbyDepartures` returns
 `status: "unconfigured"`) and the API still boots.

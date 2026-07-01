@@ -101,6 +101,10 @@ function loadTransitConfig(): EfaConfig | null {
     auth: primary,
     authFallback: fallback,
     debug: process.env.TRANSLINK_DEBUG === "1" || process.env.TRANSLINK_DEBUG === "true",
+    // Optional static-IP forward proxy (QuotaGuard Static / Fixie). Railway egress rotates within
+    // a /23 pool, so registering a single Railway IP with Translink won't hold; routing through a
+    // proxy gives one fixed IP to register. Unset = calls go out directly from Railway.
+    proxyUrl: process.env.TRANSLINK_PROXY_URL ?? null,
   };
 }
 

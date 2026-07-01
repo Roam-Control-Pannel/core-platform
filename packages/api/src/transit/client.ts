@@ -23,6 +23,8 @@
  * never read from process.env here, so the module stays drivable with an injected fetch.
  */
 
+import { ProxyAgent } from "undici";
+
 /** Injectable fetch, so tests (and the guard) can drive this without a network or a key. */
 export type FetchImpl = typeof fetch;
 
@@ -47,6 +49,12 @@ export interface EfaConfig {
   authFallback?: EfaAuth | null;
   /** When true, log the raw (truncated) EFA JSON so a deploy can confirm the real response shape. */
   debug?: boolean;
+  /**
+   * Optional outbound HTTP proxy (e.g. QuotaGuard Static / Fixie) with a STATIC egress IP. When
+   * set, every EFA call — and the egress-IP probe — routes through it, so Translink sees a single
+   * fixed IP we can register. Solves Railway's dynamic egress (its IP rotates within a /23 pool).
+   */
+  proxyUrl?: string | null;
 }
 
 const COORD_ENDPOINT = "XML_COORD_REQUEST";
@@ -76,24 +84,40 @@ let pinnedMode: "query" | "header" | null = null;
 /** Guard so the egress-IP probe logs at most once per process (it's a diagnostic, not per-call). */
 let egressLogged = false;
 
+/** Cache one ProxyAgent per proxy URL — building it per request would leak connections. */
+// Typed `unknown`, not RequestInit["dispatcher"]: consumer apps (web/console) compile this file
+// under the DOM lib, whose RequestInit has no `dispatcher`. We thread it as an opaque value and
+// only attach it to the fetch-options object (cast to RequestInit at the call site).
+let cachedDispatcher: unknown = null;
+let cachedProxyUrl: string | null = null;
+function proxyDispatcher(proxyUrl: string): unknown {
+  if (cachedDispatcher && cachedProxyUrl === proxyUrl) return cachedDispatcher;
+  cachedDispatcher = new ProxyAgent(proxyUrl);
+  cachedProxyUrl = proxyUrl;
+  return cachedDispatcher;
+}
+
 /**
- * Best-effort: log THIS service's public egress IP, so we know exactly what to register on
- * Translink's allowlist. Uses a neutral IP-echo (not allowlisted, so it actually answers, unlike
- * Translink). Debug-gated, once per process, swallows all errors — purely diagnostic.
+ * Best-effort: log the public egress IP AS TRANSLINK SEES US — i.e. through the proxy dispatcher
+ * when one is set, so the logged IP is the fixed one to register. Uses a neutral IP-echo (not
+ * gated, so it answers). Once per process, swallows all errors — purely diagnostic.
  */
-async function logEgressIp(): Promise<void> {
+async function logEgressIp(dispatcher?: unknown): Promise<void> {
   if (egressLogged) return;
   egressLogged = true;
   try {
-    const res = await fetch("https://api.ipify.org?format=json", {
+    const opts = {
       signal: AbortSignal.timeout(5_000),
-    });
+      ...(dispatcher ? { dispatcher } : {}),
+    } as RequestInit;
+    const res = await fetch("https://api.ipify.org?format=json", opts);
     if (!res.ok) return;
     const data = (await res.json()) as { ip?: string };
     if (data.ip) {
+      const via = dispatcher ? " (via proxy — this is the FIXED IP to register)" : " (Railway dynamic egress — rotates)";
       console.log(
-        `[transit] this service's public egress IP is ${data.ip} — Translink must AUTHORIZE ` +
-          `this IP as a subscriber (the 401 "Please authorize" means our source isn't recognised).`,
+        `[transit] outbound egress IP as Translink sees us is ${data.ip}${via} — Translink must ` +
+          `AUTHORIZE this IP as a subscriber (the 401 "Please authorize" means our source isn't recognised).`,
       );
     }
   } catch {
@@ -129,6 +153,8 @@ async function efaRequest(
 ): Promise<unknown> {
   const attempts = orderedAuths(config);
   let lastError: Error | null = null;
+  // Route through the static-IP proxy when configured, so Translink sees one fixed IP.
+  const dispatcher: unknown = config.proxyUrl ? proxyDispatcher(config.proxyUrl) : undefined;
 
   for (const auth of attempts) {
     const params = new URLSearchParams(baseParams);
@@ -138,22 +164,24 @@ async function efaRequest(
 
     const url = `${endpointUrl(config.baseUrl, endpoint)}?${params.toString()}`;
 
+    const opts = {
+      method: "GET",
+      headers,
+      // Fail fast on a dropped/blocked connection rather than hanging on the default.
+      signal: AbortSignal.timeout(EFA_TIMEOUT_MS),
+      ...(dispatcher ? { dispatcher } : {}),
+    } as RequestInit;
+
     let res: Response;
     try {
-      res = await fetchImpl(url, {
-        method: "GET",
-        headers,
-        // Fail fast on a dropped/blocked connection rather than hanging on the default.
-        signal: AbortSignal.timeout(EFA_TIMEOUT_MS),
-      });
+      res = await fetchImpl(url, opts);
     } catch (e) {
-      // Transport failure (DNS/timeout/egress). Not an auth issue — don't burn the other mode on
-      // it. A connect timeout here most often means Translink is dropping our egress IP (their
-      // fair-use registration is IP-allowlisted), not a bug in the request.
+      // Transport failure (DNS/timeout/egress/proxy). Not an auth issue — don't burn the other
+      // mode on it.
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[transit] EFA ${endpoint} transport error (auth='${auth.mode}'): ${msg}`);
-      // On a transport failure in debug mode, surface our egress IP so it can be allowlisted.
-      if (config.debug) void logEgressIp();
+      // In debug mode, surface the egress IP (through the proxy if set) to register with Translink.
+      if (config.debug) void logEgressIp(dispatcher);
       throw e instanceof Error ? e : new Error(msg);
     }
 
@@ -184,8 +212,8 @@ async function efaRequest(
         `[transit] ${endpoint} ${res.status} ${res.statusText} · headers[${diag.join(" | ")}] · body: ${body.slice(0, 220)}`,
       );
       // A 401/403 with no www-authenticate is a subscriber/IP gate, not a credential challenge —
-      // log our egress IP so it can be registered with Translink.
-      if (res.status === 401 || res.status === 403) void logEgressIp();
+      // log our egress IP (through the proxy if set) so it can be registered with Translink.
+      if (res.status === 401 || res.status === 403) void logEgressIp(dispatcher);
     }
     if (AUTH_REJECT_STATUSES.has(res.status) && attempts.length > 1) {
       console.warn(
