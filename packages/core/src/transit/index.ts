@@ -222,11 +222,28 @@ function readDestination(transportation: Record<string, unknown>): string {
   );
 }
 
+/**
+ * Parse an EFA timestamp to epoch ms. EFA emits UTC ISO 8601 — but if a value ever arrives
+ * WITHOUT a timezone designator, we must treat it as UTC (append `Z`) rather than let Date.parse
+ * read it as the server's local time. Otherwise every absolute "due in N min" would be off by the
+ * viewer's UTC offset (e.g. one hour during BST). Returns NaN for an unparseable value.
+ */
+export function parseEfaTime(iso: string): number {
+  const hasTz = /[zZ]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
+  return Date.parse(hasTz ? iso : `${iso}Z`);
+}
+
+/** Effective departure epoch ms (realtime estimate if present); NaN times sink to the end. */
+function effectiveMs(d: Departure): number {
+  const ms = parseEfaTime(d.expectedTime ?? d.plannedTime);
+  return Number.isNaN(ms) ? Infinity : ms;
+}
+
 /** Whole-minute difference between two ISO timestamps, or null if either is unusable. */
 function minutesBetween(planned: string, estimated: string | null): number | null {
   if (!estimated) return null;
-  const p = Date.parse(planned);
-  const e = Date.parse(estimated);
+  const p = parseEfaTime(planned);
+  const e = parseEfaTime(estimated);
   if (Number.isNaN(p) || Number.isNaN(e)) return null;
   return Math.round((e - p) / 60_000);
 }
@@ -267,7 +284,9 @@ export function parseDepartures(json: unknown): Departure[] {
       delayMin: minutesBetween(plannedTime, expectedTime),
       realtime: expectedTime !== null,
     });
-    if (out.length >= MAX_DEPARTURES) break;
   }
-  return out;
+  // EFA returns these soonest-first, but sort defensively so a mis-ordered response can't render
+  // out of sequence — then cap. (We already request only MAX_DEPARTURES via the DM `limit`.)
+  out.sort((a, b) => effectiveMs(a) - effectiveMs(b));
+  return out.slice(0, MAX_DEPARTURES);
 }
