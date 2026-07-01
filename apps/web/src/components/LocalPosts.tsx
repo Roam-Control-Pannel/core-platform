@@ -26,6 +26,7 @@ interface ManagedPost {
   title: string | null;
   body: string | null;
   media: PostMedia[];
+  destinations: string[];
   isDraft: boolean;
   publishAt: string | null;
   publishedAt: string | null;
@@ -50,6 +51,27 @@ function postState(p: ManagedPost): { label: string; live: boolean } {
   if (p.publishedAt) return { label: "Live", live: true };
   if (p.publishAt) return { label: "Scheduled", live: false };
   return { label: "Draft", live: false };
+}
+
+/** A small "where it went" chip on a post row (local feed / pushed to followers). */
+function DestBadge({ children, push }: { children: React.ReactNode; push?: boolean }) {
+  return (
+    <span
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: 9,
+        letterSpacing: ".05em",
+        textTransform: "uppercase",
+        color: push ? "var(--crimson-700)" : "var(--muted)",
+        background: push ? "var(--crimson-tint)" : "var(--paper-2)",
+        border: `1px solid ${push ? "var(--crimson-tint-2)" : "var(--line)"}`,
+        borderRadius: 999,
+        padding: "1px 7px",
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 const inputStyle: React.CSSProperties = {
@@ -265,6 +287,8 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
           {state.label}
         </span>
         <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--muted)" }}>{post.kind}</span>
+        {(post.destinations ?? []).includes("feed") ? <DestBadge>In feed</DestBadge> : null}
+        {(post.destinations ?? []).includes("follower_push") ? <DestBadge push>Pushed</DestBadge> : null}
         <span style={{ flex: 1 }} />
         {!editing ? (
           confirming ? (
