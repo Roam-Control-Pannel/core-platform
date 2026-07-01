@@ -27,6 +27,19 @@ import { getSupabaseBrowser } from "../lib/supabase";
 
 type Mode = "signin" | "signup" | "reset";
 
+/** A social sign-in provider we offer, when enabled. */
+type SsoProvider = { id: "google" | "apple"; label: string };
+
+/**
+ * SSO providers to show — gated per-provider by a build-time env flag so a button only appears
+ * once its provider is actually configured in Supabase (no dead buttons). Google is free to
+ * enable; Apple needs the Apple Developer Program, so it lights up independently.
+ */
+const SSO_PROVIDERS: SsoProvider[] = [
+  process.env.NEXT_PUBLIC_ENABLE_GOOGLE_SSO === "1" ? { id: "google" as const, label: "Google" } : null,
+  process.env.NEXT_PUBLIC_ENABLE_APPLE_SSO === "1" ? { id: "apple" as const, label: "Apple" } : null,
+].filter((p): p is SsoProvider => p !== null);
+
 export interface AuthPanelProps {
   /**
    * Where the email-confirmation link should return the user. The caller passes the
@@ -135,6 +148,32 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
     }
   }
 
+  /**
+   * Start an OAuth (SSO) sign-in. signInWithOAuth redirects the whole browser to the provider;
+   * on success this page unloads, so no code after it runs. We send the provider back to
+   * /auth/callback with a `next` of wherever the caller wanted the user to land (emailRedirectTo,
+   * falling back to the current URL) — the callback waits for the session, then forwards there.
+   * An immediate error (e.g. provider misconfigured) is surfaced without leaving the page.
+   */
+  async function signInWithProvider(provider: SsoProvider["id"]) {
+    setError(null);
+    setBusy(true);
+    try {
+      const supabase = getSupabaseBrowser();
+      const next = emailRedirectTo || window.location.href;
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error: e } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+      if (e) {
+        setError(friendlyAuthError(e.message));
+        setBusy(false);
+      }
+      // Success → browser navigates to the provider; nothing else here runs.
+    } catch {
+      setError("Couldn't start sign-in. Please try again.");
+      setBusy(false);
+    }
+  }
+
   /** Return to the sign-in view from the reset sub-flow, clearing its transient state. */
   function backToSignIn() {
     setMode("signin");
@@ -224,6 +263,19 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
         </p>
       ) : null}
 
+      {/* SSO — one tap for sign-in OR sign-up (OAuth creates the account if new). Only the
+          providers configured in Supabase render (env-gated), so there are never dead buttons. */}
+      {SSO_PROVIDERS.length > 0 ? (
+        <>
+          <div style={{ display: "grid", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
+            {SSO_PROVIDERS.map((p) => (
+              <SsoButton key={p.id} provider={p} disabled={busy} onClick={() => void signInWithProvider(p.id)} />
+            ))}
+          </div>
+          <OrDivider />
+        </>
+      ) : null}
+
       {/* mode toggle */}
       <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
         <ModeTab label="Sign in" active={mode === "signin"} onClick={() => setMode("signin")} />
@@ -276,6 +328,80 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
         ) : null}
       </div>
     </Card>
+  );
+}
+
+/** A social sign-in button (outlined, provider logo + "Continue with X"). */
+function SsoButton({
+  provider,
+  disabled,
+  onClick,
+}: {
+  provider: SsoProvider;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        all: "unset",
+        boxSizing: "border-box",
+        cursor: disabled ? "default" : "pointer",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        minHeight: 44,
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid var(--line-2)",
+        background: "#fff",
+        opacity: disabled ? 0.6 : 1,
+        fontFamily: "var(--ui)",
+        fontSize: 14,
+        fontWeight: 600,
+        color: "var(--ink)",
+      }}
+    >
+      {provider.id === "google" ? <GoogleMark /> : <AppleMark />}
+      <span>Continue with {provider.label}</span>
+    </button>
+  );
+}
+
+/** A horizontal "or" divider between the SSO buttons and the email form. */
+function OrDivider() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+      <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+      <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--muted)" }}>or</span>
+      <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+    </div>
+  );
+}
+
+/** Google's multi-colour "G" mark. */
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden focusable="false">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.34A9 9 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.94H.96a9 9 0 0 0 0 8.12l3.02-2.34z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.02 2.34C4.68 5.16 6.66 3.58 9 3.58z" />
+    </svg>
+  );
+}
+
+/** Apple's monochrome logo. */
+function AppleMark() {
+  return (
+    <svg width="16" height="18" viewBox="0 0 16 18" fill="var(--ink)" aria-hidden focusable="false">
+      <path d="M13.5 13.9c-.24.56-.53 1.08-.86 1.55-.46.66-.83 1.11-1.12 1.36-.44.41-.92.62-1.43.63-.37 0-.81-.1-1.32-.31-.51-.21-.98-.31-1.41-.31-.45 0-.93.1-1.45.31-.52.21-.94.32-1.26.33-.49.02-.98-.2-1.47-.64-.31-.27-.7-.73-1.17-1.38-.5-.7-.92-1.5-1.24-2.42-.34-.99-.52-1.95-.52-2.89 0-1.08.23-2.01.7-2.79.36-.62.85-1.11 1.46-1.47a3.9 3.9 0 0 1 1.98-.56c.39 0 .9.12 1.53.35.63.23 1.03.35 1.21.35.13 0 .58-.14 1.34-.41.72-.25 1.32-.36 1.82-.32 1.34.11 2.35.64 3.02 1.59-1.2.73-1.79 1.74-1.78 3.05.01 1.02.38 1.86 1.11 2.53.33.31.7.55 1.11.72-.09.26-.18.5-.28.73zM10.6.36c0 .81-.3 1.56-.88 2.26-.71.82-1.57 1.3-2.5 1.22a2.5 2.5 0 0 1-.02-.3c0-.77.34-1.6.94-2.28.3-.35.68-.64 1.15-.87.46-.23.9-.36 1.31-.38.01.12.02.23.02.35z" />
+    </svg>
   );
 }
 
