@@ -15,7 +15,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import {
   normaliseDisplayName,
   normaliseHandle,
@@ -370,4 +370,29 @@ export const profilesRouter = router({
       }
       return { ok: !!data && data.length > 0 };
     }),
+
+  /**
+   * Protected: permanently delete the caller's OWN account (GDPR "right to erasure").
+   *
+   * The user id comes from the VERIFIED session — a caller can only ever delete themselves, never
+   * another account (no id is taken from input). We escalate to the service client (the sanctioned
+   * in-process pattern, same as posts.create) purely to reach the auth admin API: deleting the
+   * auth.users row cascades through `on delete cascade` FKs — profiles → the user's posts, plans,
+   * follows, friendships, chat memberships, votes, saved offers, notifications, push tokens, venue
+   * claims and town-hall contributions. (Comments they left keep their text with author set null,
+   * so threads don't gap.) Storage objects (avatar/header) aren't FK-cascaded and are left for a
+   * later sweep. Irreversible — the client gates this behind a typed confirmation.
+   */
+  deleteMe: protectedProcedure.mutation(async ({ ctx }) => {
+    const uid = await currentUserId(ctx);
+    const service = escalateToService(ctx.env);
+    const admin = service.auth.admin as unknown as {
+      deleteUser: (id: string) => Promise<{ error: { message: string } | null }>;
+    };
+    const { error } = await admin.deleteUser(uid);
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to delete your account: ${error.message}` });
+    }
+    return { ok: true as const };
+  }),
 });

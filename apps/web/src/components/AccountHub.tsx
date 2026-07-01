@@ -87,6 +87,9 @@ export function AccountHub() {
       <Link href="/dashboard" style={{ textDecoration: "none" }}>
         <Pill variant="neutral">Business dashboard</Pill>
       </Link>
+      <Link href="/settings" style={{ textDecoration: "none" }}>
+        <Pill variant="neutral">Settings</Pill>
+      </Link>
     </div>
   );
 
