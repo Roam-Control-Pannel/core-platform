@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@roam/design";
 import { useSession, useTrpc } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { BirthdaySettings } from "./BirthdaySettings";
 import { getSupabaseBrowser } from "../lib/supabase";
 
 const APP_VERSION = "1.0.0";
@@ -120,6 +121,8 @@ export function SettingsHub() {
             <LinkRow href="/following" label="Followed venues & push" value="Manage" />
             <LinkRow href="/notifications" label="Your notifications" />
           </Group>
+
+          <BirthdaySettings />
         </>
       ) : null}
 
