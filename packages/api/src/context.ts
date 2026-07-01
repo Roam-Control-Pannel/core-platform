@@ -23,6 +23,7 @@ import {
   type PublicSupabaseConfig,
   type RoamClient,
 } from "@roam/db";
+import type { EfaConfig } from "./transit/client.js";
 
 /** A minimal, transport-agnostic view of the incoming request's headers. */
 export interface HeaderBag {
@@ -60,6 +61,14 @@ export interface ApiEnv {
     apiKey: string | null;
     newUserListId: number;
     businessListId: number;
+  };
+  /**
+   * Translink Opendata (NI transit) config. `config` null disables the feature (nearbyDepartures
+   * returns status "unconfigured"), so the API runs before the key is provisioned. When set it
+   * carries the EFA base URL and the resolved auth injection (query-param or header).
+   */
+  transit: {
+    config: EfaConfig | null;
   };
 }
 

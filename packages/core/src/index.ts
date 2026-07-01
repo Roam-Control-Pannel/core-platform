@@ -18,3 +18,4 @@ export * as moderation from "./moderation/index.js";
 export * as places from "./places/index.js";
 export * as hours from "./hours/index.js";
 export * as photos from "./photos/index.js";
+export * as transit from "./transit/index.js";
