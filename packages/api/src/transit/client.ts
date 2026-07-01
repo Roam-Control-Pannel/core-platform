@@ -73,6 +73,34 @@ const EFA_TIMEOUT_MS = 7_000;
  */
 let pinnedMode: "query" | "header" | null = null;
 
+/** Guard so the egress-IP probe logs at most once per process (it's a diagnostic, not per-call). */
+let egressLogged = false;
+
+/**
+ * Best-effort: log THIS service's public egress IP, so we know exactly what to register on
+ * Translink's allowlist. Uses a neutral IP-echo (not allowlisted, so it actually answers, unlike
+ * Translink). Debug-gated, once per process, swallows all errors — purely diagnostic.
+ */
+async function logEgressIp(): Promise<void> {
+  if (egressLogged) return;
+  egressLogged = true;
+  try {
+    const res = await fetch("https://api.ipify.org?format=json", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { ip?: string };
+    if (data.ip) {
+      console.log(
+        `[transit] this service's public egress IP is ${data.ip} — register THIS IP on ` +
+          `Translink's Opendata allowlist (the connect timeout means they're dropping it).`,
+      );
+    }
+  } catch {
+    /* diagnostic only — never let it affect the request */
+  }
+}
+
 /** Join the base (with or without a trailing slash) to an endpoint name. */
 function endpointUrl(baseUrl: string, endpoint: string): string {
   return baseUrl.endsWith("/") ? `${baseUrl}${endpoint}` : `${baseUrl}/${endpoint}`;
@@ -124,6 +152,8 @@ async function efaRequest(
       // fair-use registration is IP-allowlisted), not a bug in the request.
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[transit] EFA ${endpoint} transport error (auth='${auth.mode}'): ${msg}`);
+      // On a transport failure in debug mode, surface our egress IP so it can be allowlisted.
+      if (config.debug) void logEgressIp();
       throw e instanceof Error ? e : new Error(msg);
     }
 
