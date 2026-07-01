@@ -23,6 +23,7 @@ import { BusinessStats } from "./BusinessStats";
 import { VenueNotify } from "./VenueNotify";
 import { VenueOffers } from "./VenueOffers";
 import { OfferInsights } from "./OfferInsights";
+import { VenueActivity } from "./VenueActivity";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -116,6 +117,14 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
 
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
             <DashSection
+              icon="🔔"
+              title="Activity"
+              subtitle="What locals are doing with your business — new follows, offer saves and redemptions."
+            >
+              <VenueActivity venueId={venueId} />
+            </DashSection>
+
+            <DashSection
               icon="📣"
               title="Local posts"
               subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed."
@@ -140,7 +149,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             </DashSection>
 
             <DashSection
-              icon="🔔"
+              icon="📨"
               title="Send a notification"
               subtitle="Message your followers' notifications inbox — everyone at once, or one person individually."
             >
