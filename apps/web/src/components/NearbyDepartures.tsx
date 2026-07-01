@@ -60,12 +60,21 @@ function modeGlyph(mode: Mode): string {
 }
 
 /**
+ * Parse an EFA timestamp to epoch ms. EFA emits UTC ISO 8601; if a value lacks a timezone
+ * designator we treat it as UTC (append `Z`) so "due in N min" isn't skewed by the viewer's
+ * local offset (e.g. one hour during BST). Mirrors @roam/core/transit's parseEfaTime.
+ */
+function parseEfaTime(iso: string): number {
+  const hasTz = /[zZ]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
+  return Date.parse(hasTz ? iso : `${iso}Z`);
+}
+
+/**
  * Format a departure time relative to now: "Due" within a minute, "N min" under an hour, else a
  * local HH:MM. Uses the realtime estimate when present, otherwise the scheduled time.
  */
 function formatWhen(dep: BoardDeparture): string {
-  const iso = dep.expectedTime ?? dep.plannedTime;
-  const t = Date.parse(iso);
+  const t = parseEfaTime(dep.expectedTime ?? dep.plannedTime);
   if (Number.isNaN(t)) return "";
   const mins = Math.round((t - Date.now()) / 60_000);
   if (mins <= 0) return "Due";

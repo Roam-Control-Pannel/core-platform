@@ -15,6 +15,7 @@ import {
   parseCoordStops,
   parseDepartures,
   nearestStop,
+  parseEfaTime,
   MAX_DEPARTURES,
 } from "./index.js";
 
@@ -209,5 +210,32 @@ describe("parseDepartures", () => {
   it("tolerates a non-object payload", () => {
     expect(parseDepartures(null)).toEqual([]);
     expect(parseDepartures({})).toEqual([]);
+  });
+
+  it("sorts departures soonest-first even if EFA returns them out of order", () => {
+    const json = {
+      stopEvents: [
+        { departureTimePlanned: "2026-07-01T09:10:00Z", transportation: { number: "B", product: { class: 5 } } },
+        { departureTimePlanned: "2026-07-01T09:00:00Z", transportation: { number: "A", product: { class: 5 } } },
+        {
+          departureTimePlanned: "2026-07-01T09:20:00Z",
+          departureTimeEstimated: "2026-07-01T09:02:00Z", // realtime pulls it earliest
+          transportation: { number: "C", product: { class: 5 } },
+        },
+      ],
+    };
+    expect(parseDepartures(json).map((d) => d.line)).toEqual(["A", "C", "B"]);
+  });
+});
+
+describe("parseEfaTime (UTC handling)", () => {
+  it("parses a Z-terminated timestamp as UTC", () => {
+    expect(parseEfaTime("2026-07-01T09:00:00Z")).toBe(Date.UTC(2026, 6, 1, 9, 0, 0));
+  });
+  it("treats a timezone-less timestamp as UTC (not local)", () => {
+    expect(parseEfaTime("2026-07-01T09:00:00")).toBe(Date.UTC(2026, 6, 1, 9, 0, 0));
+  });
+  it("honours an explicit offset", () => {
+    expect(parseEfaTime("2026-07-01T10:00:00+01:00")).toBe(Date.UTC(2026, 6, 1, 9, 0, 0));
   });
 });
