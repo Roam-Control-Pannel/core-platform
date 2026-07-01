@@ -141,6 +141,16 @@
   background: var(--paper-2);
 }
 
+/* Comfortable ≥44px tap height on touch devices — on phones the top bar is brand + Sign in, so
+   this is the primary auth CTA there. Desktop keeps the compact chrome button. */
+@media (pointer: coarse) {
+  .signin {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 .avatar {
   width: 32px;
   height: 32px;
@@ -160,9 +170,12 @@
   }
 }
 
-/* Phones (< 768px): the primary nav + Create move into the bottom TabBar, so hide them here
-   and keep the bar to brand + sign-in/avatar. Tablets (≥ 768px) keep the top nav. */
-@media (max-width: 767px) {
+/* Phones AND tablet-portrait (< 980px): the primary nav + Create + For-businesses move into the
+   bottom TabBar, so hide them here and keep the bar to brand + sign-in/avatar. The full top nav
+   (brand + 6 pills + For businesses + Create + Sign in) needs ~935px to lay out without spilling,
+   so we only reveal it at ≥ 980px; below that the touch-friendly bottom TabBar carries navigation.
+   MUST stay in lockstep with the same breakpoint in TabBar.module.css and CreateFab.module.css. */
+@media (max-width: 979px) {
   .nav,
   .create,
   .forbiz {

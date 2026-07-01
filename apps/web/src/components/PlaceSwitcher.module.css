@@ -25,6 +25,13 @@
     border-color var(--motion-transition) var(--ease);
 }
 
+/* Comfortable ≥44px tap height on touch devices only — desktop keeps the compact 38px chip. */
+@media (pointer: coarse) {
+  .trigger {
+    min-height: 44px;
+  }
+}
+
 @media (hover: hover) {
   .trigger:hover {
     background: var(--crimson-tint-2);

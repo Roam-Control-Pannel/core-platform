@@ -11,7 +11,7 @@
  *   - TabBar — the mobile bottom tab bar (phones only; hidden on desktop).
  */
 import type { ReactNode } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TrpcProvider } from "../components/TrpcProvider";
 import { TopBar } from "../components/TopBar";
@@ -28,6 +28,20 @@ const DESCRIPTION = "Discover the best local venues, read reviews, follow your t
  * (venue/profile/post/topic) overrides title, description, canonical and the share card.
  */
 const googleVerification = process.env.GOOGLE_SITE_VERIFICATION;
+
+/**
+ * Viewport config. Next injects a default `width=device-width, initial-scale=1`, but WITHOUT
+ * `viewport-fit=cover` — and the chrome (TabBar, CreateFab) pads itself with
+ * `env(safe-area-inset-bottom)`, which only resolves to a non-zero value under `cover`. Without
+ * this the bottom tab bar collides with the home indicator on notched iPhones. `themeColor`
+ * matches --paper so the mobile browser UI blends with the page.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#F6F3EF",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
