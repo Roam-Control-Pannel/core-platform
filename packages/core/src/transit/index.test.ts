@@ -120,6 +120,28 @@ describe("parseCoordStops", () => {
     expect(parseCoordStops({}, origin)).toEqual([]);
   });
 
+  it("prefers properties.stopID when isGlobalId is true (else falls back to id)", () => {
+    const json = {
+      locations: [
+        {
+          id: "internal-1",
+          isGlobalId: true,
+          name: "Great Victoria St",
+          coord: [54.594, -5.933],
+          properties: { stopID: "10000013", distance: 120 },
+        },
+        {
+          id: "10000099",
+          name: "No global id",
+          coord: [54.595, -5.934],
+          properties: { distance: 200 },
+        },
+      ],
+    };
+    const stops = parseCoordStops(json, origin);
+    expect(stops.map((s) => s.id)).toEqual(["10000013", "10000099"]);
+  });
+
   it("nearestStop returns the closest or null", () => {
     expect(nearestStop([])).toBeNull();
     const stops = parseCoordStops(

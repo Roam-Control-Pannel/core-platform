@@ -82,31 +82,27 @@ export function cacheKeyForPoint(lat: number, lng: number): string {
 export type TransitMode = "rail" | "bus" | "tram" | "ferry" | "other";
 
 /**
- * Map an EFA product-class code to a Roam mode. EFA's classes are a fixed enumeration; the
- * ones Translink uses in practice are rail (NI Railways / Enterprise), bus (Metro, Ulsterbus,
- * Goldline) and the Glider BRT (tram-like). Unknown codes fall back to "other" so a new class
- * never breaks rendering.
+ * Map an EFA product-class code to a Roam mode, per the spec's means-of-transport table
+ * (Trip-Request §3.3): 0 Train, 1 Commuter railway, 2 Underground, 3 City rail, 4 Tram,
+ * 5 City bus, 6 Regional bus, 7 Coach, 8 Cable car, 9 Boat, 10 Transit on demand, 11 Other,
+ * 12 Airplane. Unknown/other codes fall back to "other" so a new class never breaks rendering.
  */
 export function modeFromProductClass(cls: number | null | undefined): TransitMode {
   switch (cls) {
-    case 0: // long-distance / intercity rail (Enterprise)
-    case 1: // suburban rail (NI Railways)
-    case 13:
-    case 14:
-    case 15:
-    case 16:
+    case 0: // Train (Enterprise / intercity)
+    case 1: // Commuter railway (NI Railways)
+    case 2: // Underground
+    case 3: // City rail
       return "rail";
-    case 4: // tram / light rail / BRT (Glider)
+    case 4: // Tram / light rail (Glider BRT)
       return "tram";
-    case 5: // city bus (Metro)
-    case 6: // regional bus (Ulsterbus / Goldline)
-    case 7:
-    case 11:
+    case 5: // City bus (Metro)
+    case 6: // Regional bus (Ulsterbus / Goldline)
+    case 7: // Coach
       return "bus";
-    case 9: // ferry
-    case 10:
+    case 9: // Boat
       return "ferry";
-    default:
+    default: // 8 Cable car, 10 on-demand, 11 Other, 12 Airplane, unknown
       return "other";
   }
 }
@@ -182,14 +178,17 @@ export function parseCoordStops(
   const stops: TransitStop[] = [];
   for (const raw of locations) {
     if (!isRecord(raw)) continue;
-    const id = asString(raw.id);
-    if (!id) continue;
     const coord = readCoord(raw);
     if (!coord) continue;
+    // Per the spec, address a stop by its `id` — but when isGlobalId=true the id to feed back
+    // into the Departure-Monitor is `properties.stopID`. Prefer that when present.
+    const props = isRecord(raw.properties) ? raw.properties : {};
+    const id =
+      raw.isGlobalId === true && asString(props.stopID) ? asString(props.stopID) : asString(raw.id);
+    if (!id) continue;
     const name =
       asString(raw.disassembledName) ?? asString(raw.name) ?? "Stop";
     // EFA puts distance under `properties.distance` (metres); fall back to haversine.
-    const props = isRecord(raw.properties) ? raw.properties : {};
     const efaDistance = asNumber(props.distance);
     const distanceM =
       efaDistance !== null ? efaDistance : Math.round(distanceMetres(origin, coord));

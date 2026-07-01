@@ -52,8 +52,8 @@ export interface EfaConfig {
 const COORD_ENDPOINT = "XML_COORD_REQUEST";
 const DM_ENDPOINT = "XML_DM_REQUEST";
 
-/** EFA's WGS84 decimal-degrees format token, used for both input coords and output. */
-const WGS84 = "WGS84[DD.ddddd]";
+/** EFA's WGS84 decimal-degrees format token, used for both input coords and output (spec: uppercase). */
+const WGS84 = "WGS84[DD.DDDDD]";
 
 /** Auth statuses that should trigger the fallback mode (vs a genuine upstream error). */
 const AUTH_REJECT_STATUSES = new Set([401, 403, 407]);
@@ -173,6 +173,17 @@ async function efaRequest(
     }
 
     const body = await res.text().catch(() => "");
+    if (config.debug) {
+      // Dump the diagnostic headers so a 401 tells us WHICH kind: a `www-authenticate: Basic`
+      // means the API wants HTTP Basic credentials; its absence points to a subscriber/IP gate.
+      const diag: string[] = [];
+      res.headers.forEach((v, k) => {
+        if (/authenticate|content-type|^server$|x-/i.test(k)) diag.push(`${k}: ${v}`);
+      });
+      console.log(
+        `[transit] ${endpoint} ${res.status} ${res.statusText} · headers[${diag.join(" | ")}] · body: ${body.slice(0, 220)}`,
+      );
+    }
     if (AUTH_REJECT_STATUSES.has(res.status) && attempts.length > 1) {
       console.warn(
         `[transit] EFA auth rejected mode='${auth.mode}' (${res.status} ${res.statusText}); ` +
@@ -193,7 +204,11 @@ async function efaRequest(
 
 /**
  * CoordInfo: find stops near a coordinate. Returns the raw rapidJSON for @roam/core's
- * parseCoordStops to interpret. Note EFA's `coord` is LNG:LAT order (not lat,lng).
+ * parseCoordStops to interpret.
+ *
+ * Params follow the spec's radial-search example verbatim (slide 175): the MANDATORY macro
+ * `ext_macro=coord` (which itself sets outputFormat=rapidJSON + coordOutputFormat), then the
+ * radial-search params. Note EFA's `coord` is LNG:LAT order (x=lng, y=lat).
  */
 export async function fetchNearestStops(
   params: { lat: number; lng: number; radiusMetres: number; maxResults: number },
@@ -203,13 +218,13 @@ export async function fetchNearestStops(
   return efaRequest(
     COORD_ENDPOINT,
     {
+      ext_macro: "coord",
       outputFormat: "rapidJSON",
-      coordOutputFormat: WGS84,
-      // EFA expects longitude first in the coord triple.
+      // EFA expects longitude first in the coord triple: <x>:<y>:<format>.
       coord: `${params.lng}:${params.lat}:${WGS84}`,
+      inclFilter: "1",
       type_1: "STOP",
       radius_1: String(params.radiusMetres),
-      inclFilter: "1",
       max: String(params.maxResults),
     },
     config,
@@ -219,7 +234,11 @@ export async function fetchNearestStops(
 
 /**
  * Departure-Monitor: the live board for one stop id. Returns raw rapidJSON for @roam/core's
- * parseDepartures. `useRealtime=1` asks EFA for realtime-adjusted times where available.
+ * parseDepartures.
+ *
+ * Params follow the spec's DM example (slide 117): the MANDATORY macro `ext_macro=dm` (which
+ * itself sets outputFormat=rapidJSON, mode=direct, useRealtime=1, useAllStops=1, etc.), then the
+ * stop locality input. Per the spec a stop ID is addressed with `type_dm=any` (not "stop").
  */
 export async function fetchDepartures(
   params: { stopId: string; limit: number },
@@ -229,12 +248,10 @@ export async function fetchDepartures(
   return efaRequest(
     DM_ENDPOINT,
     {
+      ext_macro: "dm",
       outputFormat: "rapidJSON",
-      coordOutputFormat: WGS84,
-      mode: "direct",
-      type_dm: "stop",
+      type_dm: "any",
       name_dm: params.stopId,
-      useRealtime: "1",
       limit: String(params.limit),
     },
     config,
