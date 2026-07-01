@@ -395,4 +395,76 @@ export const profilesRouter = router({
     }
     return { ok: true as const };
   }),
+
+  /**
+   * Protected: read the caller's PRIVATE data (birth date + birthday-offer opt-in). Lives in
+   * user_private (owner-only RLS), never on the world-readable profiles row. Returns nulls/false
+   * when the user hasn't set anything.
+   */
+  personal: protectedProcedure.query(async ({ ctx }) => {
+    const uid = await currentUserId(ctx);
+    type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const db = ctx.db as unknown as Loose;
+    const { data, error } = (await db
+      .from("user_private")
+      .select("birth_date, birthday_offers_enabled")
+      .eq("user_id", uid)
+      .maybeSingle()) as { data: { birth_date: string | null; birthday_offers_enabled: boolean } | null; error: { message: string } | null };
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your details: ${error.message}` });
+    }
+    return {
+      birthDate: data?.birth_date ?? null,
+      birthdayOffersEnabled: data?.birthday_offers_enabled ?? false,
+    };
+  }),
+
+  /**
+   * Protected: upsert the caller's private data. birthDate is validated to a plausible past date
+   * (age 13–120); pass null to clear it. Owner-only via RLS on user_private.
+   */
+  setPersonal: protectedProcedure
+    .input(
+      z.object({
+        birthDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date.")
+          .nullable()
+          .optional(),
+        birthdayOffersEnabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const uid = await currentUserId(ctx);
+      const patch: Record<string, unknown> = { user_id: uid };
+      if ("birthDate" in input) {
+        if (input.birthDate === null || input.birthDate === undefined) {
+          patch["birth_date"] = null;
+        } else {
+          const age = ageInYears(input.birthDate);
+          if (age === null || age < 13 || age > 120) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid date of birth." });
+          }
+          patch["birth_date"] = input.birthDate;
+        }
+      }
+      if (input.birthdayOffersEnabled !== undefined) patch["birthday_offers_enabled"] = input.birthdayOffersEnabled;
+
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { error } = await db.from("user_private").upsert(patch, { onConflict: "user_id" }).select("user_id");
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to save your details: ${(error as { message: string }).message}` });
+      }
+      return { ok: true as const };
+    }),
 });
+
+/** Whole years between a YYYY-MM-DD date and today (UTC); null if unparseable or in the future. */
+function ageInYears(iso: string): number | null {
+  const then = Date.parse(`${iso}T00:00:00Z`);
+  if (Number.isNaN(then)) return null;
+  const now = Date.now();
+  if (then > now) return null;
+  return Math.floor((now - then) / (365.2425 * 24 * 60 * 60 * 1000));
+}
