@@ -75,6 +75,13 @@
   line-height: 1;
 }
 
+/* Comfortable ≥44px tap height on touch devices only — desktop keeps the compact pill. */
+@media (pointer: coarse) {
+  .qpill {
+    min-height: 44px;
+  }
+}
+
 @media (hover: hover) {
   .qpill:hover {
     background: var(--crimson-tint);

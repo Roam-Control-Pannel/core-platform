@@ -141,6 +141,16 @@
   background: var(--paper-2);
 }
 
+/* Comfortable ≥44px tap height on touch devices — on phones the top bar is brand + Sign in, so
+   this is the primary auth CTA there. Desktop keeps the compact chrome button. */
+@media (pointer: coarse) {
+  .signin {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 .avatar {
   width: 32px;
   height: 32px;

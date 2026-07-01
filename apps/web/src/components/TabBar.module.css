@@ -40,7 +40,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 3px;
+  /* ≥44px tap height for the primary mobile nav (icon + label alone measured ~35px). The bar
+     bottom-aligns its tabs, so the extra height grows the tappable area upward, above the label. */
+  min-height: 44px;
   font-family: var(--mono);
   font-size: 9px;
   letter-spacing: 0.04em;
