@@ -45,15 +45,26 @@ Only the key is required. Set it on the **`core-platform`** service:
 TRANSLINK_API_KEY=<your key>
 ```
 
-**How the key rides on each request** is Translink-specific — check your licence/API-access email:
+**How the key rides on each request** is Translink-specific — but the client **auto-detects it**,
+so you don't have to know up front. It tries the primary mode, falls back to the other on an auth
+rejection (401/403/407), then **pins + logs** whichever Translink accepts:
 
-- **Query parameter** (default): `TRANSLINK_AUTH_MODE=query`, param name from `TRANSLINK_AUTH_PARAM`
+```
+[transit] EFA auth accepted — mode='query' name='key'. Set TRANSLINK_AUTH_MODE='query' to pin it and skip probing.
+```
+
+Once the logs reveal the answer, set it explicitly to skip the probe:
+
+- **Query parameter**: `TRANSLINK_AUTH_MODE=query`, param name from `TRANSLINK_AUTH_PARAM`
   (default `key`) → `…XML_DM_REQUEST?…&key=<KEY>`.
 - **HTTP header**: `TRANSLINK_AUTH_MODE=header`, header name from `TRANSLINK_AUTH_HEADER`
   (default `Authorization`) → `Authorization: <KEY>`.
 
-Optional: `TRANSLINK_API_BASE` overrides the EFA base URL (default
-`http://opendata.translinkniplanner.co.uk/Ext_API/`).
+Optional:
+- `TRANSLINK_API_BASE` overrides the EFA base URL (default
+  `http://opendata.translinkniplanner.co.uk/Ext_API/`).
+- `TRANSLINK_DEBUG=1` logs the raw (truncated) EFA JSON + the resolved board — **set it for the
+  first live verification**, read one Belfast load's logs, then unset it.
 
 Until `TRANSLINK_API_KEY` is set, the feature is dormant (`nearbyDepartures` returns
 `status: "unconfigured"`) and the API still boots.
@@ -65,12 +76,13 @@ Opendata API"* — and the web card renders it in its footer. Do not remove it.
 
 ## Verify
 
-1. Set `TRANSLINK_API_KEY` on Railway and redeploy.
+1. Set `TRANSLINK_API_KEY` (+ `TRANSLINK_DEBUG=1` for the first run) on Railway and redeploy.
 2. Open Roam, switch to a Belfast (or any NI) place → the **Nearby departures** card should
    appear with the nearest stop and upcoming services. A green dot = a realtime estimate.
-3. Switch to a non-NI place (e.g. London) → the card disappears entirely.
-4. If nothing shows in NI, check the API logs for `[transit]` lines and confirm the auth mode
-   matches how your key was issued (query vs header).
+3. Check the Railway logs for the `[transit]` lines: `EFA auth accepted mode='…'` (the auth
+   answer), the raw CoordInfo/DM JSON (confirms the response shape), and the resolved board line.
+4. Switch to a non-NI place (e.g. London) → the card disappears entirely.
+5. Once verified, pin the winning `TRANSLINK_AUTH_MODE` and remove `TRANSLINK_DEBUG`.
 
 ## Roadmap (later slices)
 

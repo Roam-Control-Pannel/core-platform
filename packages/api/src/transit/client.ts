@@ -12,21 +12,24 @@
  *   2. Departure-Monitor (XML_DM_REQUEST) — the live board for one stop id.
  * Both return rapidJSON and both carry the key.
  *
- * THE KEY is injected through a single `EfaAuth` value (query-param OR header). Translink's
- * licence email states which form your key takes; that is the ONLY thing that changes between
- * the two, so it is isolated here — flip `mode` and nothing else moves. The key itself is read
- * from env at the call boundary (server-only) and passed in, never read from process.env here,
- * so this module stays a pure function of its arguments and is drivable with an injected fetch.
+ * THE KEY — auth is SELF-TUNING. Translink's licence dictates whether the key rides as a query
+ * param or an HTTP header, and that wasn't unambiguous in the spec, so rather than force a guess
+ * we try the configured mode first and, if Translink rejects it with an auth status (401/403/407),
+ * automatically retry in the OTHER mode. The mode that works is PINNED for the rest of the
+ * process, so it's a one-time cost. Which mode won is logged once, so the deploy logs tell us the
+ * answer definitively — then we can set TRANSLINK_AUTH_MODE explicitly to skip the probing.
+ *
+ * The key itself is read from env at the call boundary (server-only) and passed in via EfaConfig,
+ * never read from process.env here, so the module stays drivable with an injected fetch.
  */
 
 /** Injectable fetch, so tests (and the guard) can drive this without a network or a key. */
 export type FetchImpl = typeof fetch;
 
 /**
- * How the API key rides on each request. `mode` is the swappable piece:
- *   - "query"  → appended to the URL as `?<name>=<value>` (the common EFA/Opendata form).
- *   - "header" → sent as the request header `<name>: <value>`.
- * `name` defaults (in loadEnv) to "key" for query and "Authorization" for header, both overridable.
+ * How the API key rides on one request. `mode` selects query-param vs header; `name` is the
+ * param/header name; `value` is the key. Two of these live on a config (primary + fallback) so
+ * the client can auto-detect which Translink accepts.
  */
 export interface EfaAuth {
   mode: "query" | "header";
@@ -38,7 +41,12 @@ export interface EfaAuth {
 export interface EfaConfig {
   /** Base URL including the trailing path segment, e.g. http://opendata.translinkniplanner.co.uk/Ext_API/ */
   baseUrl: string;
+  /** Primary auth injection (the configured mode). Tried first. */
   auth: EfaAuth;
+  /** Alternate auth injection (the opposite mode), tried if the primary is auth-rejected. */
+  authFallback?: EfaAuth | null;
+  /** When true, log the raw (truncated) EFA JSON so a deploy can confirm the real response shape. */
+  debug?: boolean;
 }
 
 const COORD_ENDPOINT = "XML_COORD_REQUEST";
@@ -47,41 +55,93 @@ const DM_ENDPOINT = "XML_DM_REQUEST";
 /** EFA's WGS84 decimal-degrees format token, used for both input coords and output. */
 const WGS84 = "WGS84[DD.ddddd]";
 
+/** Auth statuses that should trigger the fallback mode (vs a genuine upstream error). */
+const AUTH_REJECT_STATUSES = new Set([401, 403, 407]);
+
+/**
+ * Which auth mode Translink has accepted this process. Once set, it's tried first on every
+ * subsequent call, so the fallback probe is a one-time cost. Module-level because there is one
+ * Translink config per process.
+ */
+let pinnedMode: "query" | "header" | null = null;
+
 /** Join the base (with or without a trailing slash) to an endpoint name. */
 function endpointUrl(baseUrl: string, endpoint: string): string {
   return baseUrl.endsWith("/") ? `${baseUrl}${endpoint}` : `${baseUrl}/${endpoint}`;
 }
 
-/** Apply the auth to a params/headers pair according to its mode. Returns the header bag. */
-function applyAuth(auth: EfaAuth, params: URLSearchParams): Record<string, string> {
-  const headers: Record<string, string> = { accept: "application/json" };
-  if (auth.mode === "query") {
-    params.set(auth.name, auth.value);
-  } else {
-    headers[auth.name] = auth.value;
+/** The auth attempts to try, in order — pinned mode first (if any), then primary, then fallback. */
+function orderedAuths(config: EfaConfig): EfaAuth[] {
+  const list: EfaAuth[] = [config.auth];
+  if (config.authFallback) list.push(config.authFallback);
+  if (pinnedMode) {
+    list.sort((a, b) => (a.mode === pinnedMode ? -1 : 0) - (b.mode === pinnedMode ? -1 : 0));
   }
-  return headers;
+  return list;
 }
 
-/** Run a GET against an EFA endpoint and return parsed JSON. Throws on transport/HTTP failure. */
-async function efaGet(
-  url: string,
-  headers: Record<string, string>,
+/**
+ * Execute an EFA GET with self-tuning auth. Tries each auth mode until one is accepted; an
+ * auth-status rejection (401/403/407) falls through to the next mode, any other non-2xx throws
+ * immediately (it's a real upstream error, not a wrong key placement). Returns parsed JSON.
+ */
+async function efaRequest(
+  endpoint: string,
+  baseParams: Record<string, string>,
+  config: EfaConfig,
   fetchImpl: FetchImpl,
 ): Promise<unknown> {
-  const res = await fetchImpl(url, { method: "GET", headers });
-  if (!res.ok) {
-    let detail = "";
+  const attempts = orderedAuths(config);
+  let lastError: Error | null = null;
+
+  for (const auth of attempts) {
+    const params = new URLSearchParams(baseParams);
+    const headers: Record<string, string> = { accept: "application/json" };
+    if (auth.mode === "query") params.set(auth.name, auth.value);
+    else headers[auth.name] = auth.value;
+
+    const url = `${endpointUrl(config.baseUrl, endpoint)}?${params.toString()}`;
+
+    let res: Response;
     try {
-      detail = await res.text();
-    } catch {
-      detail = "(no response body)";
+      res = await fetchImpl(url, { method: "GET", headers });
+    } catch (e) {
+      // Transport failure (DNS/timeout/egress). Not an auth issue — don't burn the other mode on it.
+      throw e instanceof Error ? e : new Error(String(e));
     }
+
+    if (res.ok) {
+      if (pinnedMode !== auth.mode) {
+        pinnedMode = auth.mode;
+        console.log(
+          `[transit] EFA auth accepted — mode='${auth.mode}' name='${auth.name}'. ` +
+            `Set TRANSLINK_AUTH_MODE='${auth.mode}' to pin it and skip probing.`,
+        );
+      }
+      const json: unknown = await res.json();
+      if (config.debug) {
+        console.log(`[transit] raw ${endpoint} (${auth.mode}):`, JSON.stringify(json).slice(0, 900));
+      }
+      return json;
+    }
+
+    const body = await res.text().catch(() => "");
+    if (AUTH_REJECT_STATUSES.has(res.status) && attempts.length > 1) {
+      console.warn(
+        `[transit] EFA auth rejected mode='${auth.mode}' (${res.status} ${res.statusText}); ` +
+          `trying next mode. ${body.slice(0, 160)}`,
+      );
+      lastError = new Error(`${res.status} ${res.statusText}`);
+      continue; // try the next auth mode
+    }
+
+    // A non-auth failure (or no fallback left): this is a real upstream error.
     throw new Error(
-      `Translink EFA request failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
+      `Translink EFA ${endpoint} failed: ${res.status} ${res.statusText} — ${body.slice(0, 300)}`,
     );
   }
-  return res.json();
+
+  throw lastError ?? new Error(`Translink EFA ${endpoint} failed: all auth modes exhausted`);
 }
 
 /**
@@ -93,18 +153,21 @@ export async function fetchNearestStops(
   config: EfaConfig,
   fetchImpl: FetchImpl = fetch,
 ): Promise<unknown> {
-  const q = new URLSearchParams({
-    outputFormat: "rapidJSON",
-    coordOutputFormat: WGS84,
-    // EFA expects longitude first in the coord triple.
-    coord: `${params.lng}:${params.lat}:${WGS84}`,
-    type_1: "STOP",
-    radius_1: String(params.radiusMetres),
-    inclFilter: "1",
-    max: String(params.maxResults),
-  });
-  const headers = applyAuth(config.auth, q);
-  return efaGet(`${endpointUrl(config.baseUrl, COORD_ENDPOINT)}?${q.toString()}`, headers, fetchImpl);
+  return efaRequest(
+    COORD_ENDPOINT,
+    {
+      outputFormat: "rapidJSON",
+      coordOutputFormat: WGS84,
+      // EFA expects longitude first in the coord triple.
+      coord: `${params.lng}:${params.lat}:${WGS84}`,
+      type_1: "STOP",
+      radius_1: String(params.radiusMetres),
+      inclFilter: "1",
+      max: String(params.maxResults),
+    },
+    config,
+    fetchImpl,
+  );
 }
 
 /**
@@ -116,15 +179,18 @@ export async function fetchDepartures(
   config: EfaConfig,
   fetchImpl: FetchImpl = fetch,
 ): Promise<unknown> {
-  const q = new URLSearchParams({
-    outputFormat: "rapidJSON",
-    coordOutputFormat: WGS84,
-    mode: "direct",
-    type_dm: "stop",
-    name_dm: params.stopId,
-    useRealtime: "1",
-    limit: String(params.limit),
-  });
-  const headers = applyAuth(config.auth, q);
-  return efaGet(`${endpointUrl(config.baseUrl, DM_ENDPOINT)}?${q.toString()}`, headers, fetchImpl);
+  return efaRequest(
+    DM_ENDPOINT,
+    {
+      outputFormat: "rapidJSON",
+      coordOutputFormat: WGS84,
+      mode: "direct",
+      type_dm: "stop",
+      name_dm: params.stopId,
+      useRealtime: "1",
+      limit: String(params.limit),
+    },
+    config,
+    fetchImpl,
+  );
 }

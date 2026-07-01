@@ -72,23 +72,36 @@ function loadEnv(): ApiEnv {
 const TRANSLINK_DEFAULT_BASE = "http://opendata.translinkniplanner.co.uk/Ext_API/";
 
 /**
- * Resolve the Translink EFA config from env, or null when no key is set. The auth INJECTION is
- * the one swappable piece Translink's licence dictates: how your key rides on each request.
- *   - TRANSLINK_AUTH_MODE = query (default) | header
- *   - query:  param name   from TRANSLINK_AUTH_PARAM  (default "key")
- *   - header: header name  from TRANSLINK_AUTH_HEADER (default "Authorization")
- * Flip the mode and nothing else in the client changes.
+ * Resolve the Translink EFA config from env, or null when no key is set.
+ *
+ * The auth injection is SELF-TUNING: Translink's licence decides whether the key is a query
+ * param or a header, and the spec was ambiguous, so we build BOTH forms and let the client try
+ * the primary then fall back to the alternate on an auth rejection (it pins + logs whichever
+ * works). Set TRANSLINK_AUTH_MODE once the logs reveal the answer to skip the probe.
+ *   - TRANSLINK_AUTH_MODE = query (default) | header   → the primary (tried first)
+ *   - query param name  from TRANSLINK_AUTH_PARAM  (default "key")
+ *   - header name       from TRANSLINK_AUTH_HEADER (default "Authorization")
+ *   - TRANSLINK_DEBUG=1 logs the raw (truncated) EFA JSON so a deploy can confirm the shape.
  */
 function loadTransitConfig(): EfaConfig | null {
   const value = process.env.TRANSLINK_API_KEY;
   if (!value) return null;
   const baseUrl = process.env.TRANSLINK_API_BASE ?? TRANSLINK_DEFAULT_BASE;
   const mode = process.env.TRANSLINK_AUTH_MODE === "header" ? "header" : "query";
-  const name =
-    mode === "header"
-      ? (process.env.TRANSLINK_AUTH_HEADER ?? "Authorization")
-      : (process.env.TRANSLINK_AUTH_PARAM ?? "key");
-  return { baseUrl, auth: { mode, name, value } };
+  const paramName = process.env.TRANSLINK_AUTH_PARAM ?? "key";
+  const headerName = process.env.TRANSLINK_AUTH_HEADER ?? "Authorization";
+
+  const queryAuth = { mode: "query" as const, name: paramName, value };
+  const headerAuth = { mode: "header" as const, name: headerName, value };
+  const primary = mode === "header" ? headerAuth : queryAuth;
+  const fallback = mode === "header" ? queryAuth : headerAuth;
+
+  return {
+    baseUrl,
+    auth: primary,
+    authFallback: fallback,
+    debug: process.env.TRANSLINK_DEBUG === "1" || process.env.TRANSLINK_DEBUG === "true",
+  };
 }
 
 const createContext = makeContextFactory(loadEnv());

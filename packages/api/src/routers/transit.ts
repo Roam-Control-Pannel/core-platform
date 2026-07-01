@@ -162,6 +162,13 @@ export const transitRouter = router({
       }),
     )
     .query(async ({ ctx, input }): Promise<Board> => {
-      return buildBoard(ctx.env.transit.config, ctx.clientKey, input);
+      const board = await buildBoard(ctx.env.transit.config, ctx.clientKey, input);
+      if (ctx.env.transit.config?.debug) {
+        console.log(
+          `[transit] nearbyDepartures ${input.lat},${input.lng} → status=${board.status} ` +
+            `stop=${board.stop ? `"${board.stop.name}"` : "null"} departures=${board.departures.length} cached=${board.cached}`,
+        );
+      }
+      return board;
     }),
 });
