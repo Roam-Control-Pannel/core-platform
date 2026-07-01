@@ -127,5 +127,12 @@ export function useHomeLayout(registryIds: readonly string[]) {
   const toggle = useCallback((id: string) => setLayout((l) => toggleHidden(l, id)), []);
   const reset = useCallback(() => setLayout(defaultLayout(registryIds)), [registryIds]);
 
-  return { layout, loaded, move, toggle, reset };
+  // Replace the whole layout (reconciled) — used to apply a server-synced layout for a signed-in
+  // user. Bypasses the "user edit" path so it doesn't count as a dirty change to push straight back.
+  const replace = useCallback(
+    (next: Partial<HomeLayout>) => setLayout(reconcile(next, registryIds)),
+    [registryIds],
+  );
+
+  return { layout, loaded, move, toggle, reset, replace };
 }

@@ -15,7 +15,7 @@
  */
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -27,7 +27,7 @@ import { NearbyDepartures } from "./NearbyDepartures";
 import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
-import { useHomeLayout } from "../lib/homeLayout";
+import { useHomeLayout, reconcile, type HomeLayout } from "../lib/homeLayout";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
 import styles from "./Home.module.css";
 
@@ -79,9 +79,83 @@ function greeting(): string {
 
 export function Home() {
   const session = useSession();
+  const trpc = useTrpc();
   const { place, setPlace } = useCurrentPlace();
-  const { layout, move, toggle, reset } = useHomeLayout(HOME_WIDGET_IDS);
+  const { layout, loaded, move, toggle, reset, replace } = useHomeLayout(HOME_WIDGET_IDS);
   const [customizing, setCustomizing] = useState(false);
+  const signedIn = !!session;
+
+  // ── Cross-device sync (signed-in only) ──────────────────────────────────────────────────────
+  // localStorage is the instant, offline, guest-friendly store (handled by the hook). For a
+  // signed-in user we ALSO sync to profiles.home_layout so their layout follows them across
+  // devices. Server wins on load; edits debounce-save up; a guest layout migrates up on sign-in.
+  const serverLoadedFor = useRef<string | null>(null); // uid we've loaded server layout for
+  const [serverLoadDone, setServerLoadDone] = useState(false);
+  const lastSyncedRef = useRef<string | null>(null); // serialized layout known to match the server
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load the server layout once per signed-in session; server wins over the local cache.
+  useEffect(() => {
+    const uid = session?.user?.id ?? null;
+    if (!uid) {
+      // Signed out → reset sync state so a later sign-in re-loads for that account.
+      serverLoadedFor.current = null;
+      lastSyncedRef.current = null;
+      setServerLoadDone(false);
+      return;
+    }
+    if (!loaded || serverLoadedFor.current === uid) return;
+    serverLoadedFor.current = uid;
+    let cancelled = false;
+    const api = trpc.profiles.homeLayout as unknown as {
+      query: () => Promise<{ layout: HomeLayout | null }>;
+    };
+    api
+      .query()
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.layout) {
+          replace(res.layout);
+          // Mark this as already-synced so it isn't echoed straight back to the server.
+          lastSyncedRef.current = JSON.stringify(reconcile(res.layout, HOME_WIDGET_IDS));
+        }
+        // If the server has nothing, leave lastSyncedRef null so the local layout migrates up.
+      })
+      .catch(() => {
+        /* offline / not provisioned — localStorage keeps working */
+      })
+      .finally(() => {
+        if (!cancelled) setServerLoadDone(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, loaded, trpc, replace]);
+
+  // Persist edits to the server (debounced) once the initial server load has settled — so we never
+  // clobber the server layout with the local one before we've seen it.
+  useEffect(() => {
+    if (!signedIn || !loaded || !serverLoadDone) return;
+    const serialized = JSON.stringify(layout);
+    if (serialized === lastSyncedRef.current) return; // nothing new to save
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const api = trpc.profiles.setHomeLayout as unknown as {
+        mutate: (i: { order: string[]; hidden: string[] }) => Promise<{ ok: boolean }>;
+      };
+      api
+        .mutate({ order: layout.order, hidden: layout.hidden })
+        .then(() => {
+          lastSyncedRef.current = serialized;
+        })
+        .catch(() => {
+          /* transient — will retry on the next edit */
+        });
+    }, 800);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [layout, signedIn, loaded, serverLoadDone, trpc]);
 
   const byId = useMemo(() => new Map(HOME_WIDGETS.map((w) => [w.id, w])), []);
 
