@@ -20,3 +20,4 @@ export * as hours from "./hours/index.js";
 export * as photos from "./photos/index.js";
 export * as transit from "./transit/index.js";
 export * as offers from "./offers/index.js";
+export * as suggestions from "./suggestions/index.js";

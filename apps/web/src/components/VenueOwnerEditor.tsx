@@ -25,6 +25,7 @@ import { VenueOffers } from "./VenueOffers";
 import { OfferInsights } from "./OfferInsights";
 import { VenueActivity } from "./VenueActivity";
 import { MarketingSuggestions } from "./MarketingSuggestions";
+import { SuggestedForYou } from "./SuggestedForYou";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -132,6 +133,9 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             >
               <MarketingSuggestions venueId={venueId} />
             </DashSection>
+
+            {/* Renders itself (Card + header) only when the business has opted into suggestions. */}
+            <SuggestedForYou venueId={venueId} />
 
             <DashSection
               icon="📣"
