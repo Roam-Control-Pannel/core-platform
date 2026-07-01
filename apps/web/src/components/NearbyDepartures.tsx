@@ -14,7 +14,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { isWithinNI, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
+import { isWithinNI, isWithinIreland, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
 
 type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
 
@@ -91,14 +91,18 @@ export function NearbyDepartures({
   lng: number;
   placeName: string;
 }) {
-  const inRegion = isWithinNI(lat, lng);
+  // Live departures exist only in NI; the "coming soon" placeholder reaches across the whole
+  // island of Ireland (Translink is Ireland-only, so nothing shows outside it).
+  const inNI = isWithinNI(lat, lng);
+  const inIreland = isWithinIreland(lat, lng);
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(false);
   // Generation guard: a rapid place change cancels the stale in-flight fetch (latest wins).
   const gen = useRef(0);
 
   useEffect(() => {
-    if (!inRegion) {
+    if (!inNI) {
+      // Outside NI there's no live board to fetch — the placeholder handles the rest of Ireland.
       setBoard(null);
       return;
     }
@@ -122,13 +126,13 @@ export function NearbyDepartures({
         if (gen.current === mine) setLoading(false);
       }
     })();
-  }, [inRegion, lat, lng]);
+  }, [inNI, lat, lng]);
 
-  // Not in NI → render nothing at all.
-  if (!inRegion) return null;
+  // Outside the island of Ireland → nothing at all (Translink is Ireland-only).
+  if (!inIreland) return null;
 
-  // Loading: a compact one-line skeleton (we already know the card is relevant here).
-  if (loading) {
+  // In NI, while we check for a live board, show a compact loading line.
+  if (inNI && loading) {
     return (
       <div style={cardStyle}>
         <div style={{ ...rowStyle, color: "var(--ink-2)" }}>
@@ -139,14 +143,11 @@ export function NearbyDepartures({
     );
   }
 
-  // Only render a card when there's a real answer to show. Every other status (no stop nearby,
-  // not configured, throttled, budget spent, error) hides silently — it's an enhancement.
-  if (!board || board.status !== "ok" || !board.stop) return null;
-
-  const { stop, departures } = board;
-
-  return (
-    <div style={cardStyle}>
+  // A real live board (in NI, with a nearby stop) → render departures.
+  if (inNI && board && board.status === "ok" && board.stop) {
+    const { stop, departures } = board;
+    return (
+      <div style={cardStyle}>
       <div
         style={{
           display: "flex",
@@ -262,6 +263,68 @@ export function NearbyDepartures({
         }}
       >
         {board.attribution || TRANSLINK_ATTRIBUTION}
+      </div>
+    </div>
+    );
+  }
+
+  // Anywhere on the island of Ireland without a live board → the "coming soon" placeholder.
+  return <TransitComingSoon placeName={placeName} />;
+}
+
+/**
+ * TransitComingSoon — the geographical teaser shown across the island of Ireland while live
+ * departures aren't available (pending Translink go-live, or outside NI where there's no live
+ * board). Deliberately Ireland-only: Translink is an Ireland operator, so this never appears
+ * elsewhere. Once NI departures are live, NI places show the real board and this remains the
+ * placeholder for the rest of the island.
+ */
+function TransitComingSoon({ placeName }: { placeName: string }) {
+  return (
+    <div
+      style={{
+        ...cardStyle,
+        borderStyle: "dashed",
+        background: "var(--paper-2)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        <span aria-hidden style={{ fontSize: 18 }}>🚆</span>
+        <div
+          className="t-h4"
+          style={{ fontFamily: "var(--display)", color: "var(--ink)", lineHeight: 1.2, flex: 1 }}
+        >
+          Local transit
+        </div>
+        <span
+          style={{
+            fontFamily: "var(--mono)",
+            fontSize: 9.5,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+            border: "1px solid var(--line-2)",
+            borderRadius: 999,
+            padding: "2px 8px",
+          }}
+        >
+          Coming soon
+        </span>
+      </div>
+      <p style={{ color: "var(--ink-2)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+        Live bus &amp; train departures for {placeName} are on the way — powered by Translink,
+        across Ireland.
+      </p>
+      <div
+        style={{
+          marginTop: "var(--space-3)",
+          paddingTop: "var(--space-2)",
+          borderTop: "1px solid var(--line)",
+          fontSize: 10.5,
+          color: "var(--faint)",
+        }}
+      >
+        {TRANSLINK_ATTRIBUTION}
       </div>
     </div>
   );
