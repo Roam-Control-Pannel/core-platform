@@ -70,6 +70,24 @@ export function isWithinNI(lat: number, lng: number): boolean {
 }
 
 /**
+ * Coarse bounding box for the WHOLE ISLAND OF IRELAND (NI + the Republic). Broader than
+ * NI_BOUNDS — it's the geographical reach for the "transit coming soon" placeholder, since
+ * Translink is an Ireland-only operator and the teaser shouldn't appear anywhere else in the
+ * world. East edge stops short of Wales/Isle of Man; it still contains NI (a subset).
+ */
+const IE_BOUNDS = { minLat: 51.35, maxLat: 55.45, minLng: -10.6, maxLng: -5.35 } as const;
+
+/** Is a point anywhere on the island of Ireland (coarse box)? Superset of isWithinNI. */
+export function isWithinIreland(lat: number, lng: number): boolean {
+  return (
+    lat >= IE_BOUNDS.minLat &&
+    lat <= IE_BOUNDS.maxLat &&
+    lng >= IE_BOUNDS.minLng &&
+    lng <= IE_BOUNDS.maxLng
+  );
+}
+
+/**
  * A stable cache key for a query point: snap to the grid so two viewers a few dozen metres
  * apart hit the same cached board instead of each paying for a lookup. Fixed precision keeps
  * the key canonical (no floating-point drift in the string).

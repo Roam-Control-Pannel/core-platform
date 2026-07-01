@@ -24,7 +24,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import { NearbyDepartures } from "./NearbyDepartures";
-import { isWithinNI } from "../lib/transitRegion";
+import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
 import styles from "./Home.module.css";
@@ -98,14 +98,13 @@ function QuickAction({ href, glyph, label }: { href: string; glyph: string; labe
 }
 
 /**
- * NearbyTransit — the NI live-departures card on the Home dashboard. Gated CLIENT-SIDE on the
- * same geofence as Explore (lib/transitRegion mirrors core), so it renders NOTHING — no grid cell,
- * no gap — outside Northern Ireland. Inside NI it spans the full dashboard width. The card itself
- * (NearbyDepartures) still self-hides on any non-ok board, so a stopless/unconfigured place shows
- * nothing either; this wrapper just keeps a non-NI place from reserving an empty slot.
+ * NearbyTransit — the transit card on the Home dashboard. Gated CLIENT-SIDE to the island of
+ * Ireland (lib/transitRegion mirrors core), so it renders NOTHING — no grid cell, no gap —
+ * anywhere else. Inside Ireland it spans the full dashboard width: NearbyDepartures shows live
+ * departures in NI, or the "coming soon" placeholder across the rest of the island.
  */
 function NearbyTransit({ place }: { place: Place }) {
-  if (!isWithinNI(place.lat, place.lng)) return null;
+  if (!isWithinIreland(place.lat, place.lng)) return null;
   return (
     <div className={styles.spanAll}>
       <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />

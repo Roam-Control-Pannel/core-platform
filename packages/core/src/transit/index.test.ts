@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isWithinNI,
+  isWithinIreland,
   cacheKeyForPoint,
   modeFromProductClass,
   parseCoordStops,
@@ -34,6 +35,24 @@ describe("isWithinNI", () => {
   });
   it("excludes Glasgow (over the water)", () => {
     expect(isWithinNI(55.86, -4.25)).toBe(false);
+  });
+});
+
+describe("isWithinIreland", () => {
+  it("includes Belfast (NI) and Dublin, Cork, Galway (Republic)", () => {
+    expect(isWithinIreland(54.597, -5.93)).toBe(true); // Belfast
+    expect(isWithinIreland(53.349, -6.26)).toBe(true); // Dublin
+    expect(isWithinIreland(51.897, -8.47)).toBe(true); // Cork
+    expect(isWithinIreland(53.27, -9.06)).toBe(true); // Galway
+  });
+  it("is a superset of NI", () => {
+    expect(isWithinIreland(54.997, -7.309)).toBe(true); // Derry
+  });
+  it("excludes Great Britain and the Isle of Man", () => {
+    expect(isWithinIreland(55.86, -4.25)).toBe(false); // Glasgow
+    expect(isWithinIreland(51.48, -3.18)).toBe(false); // Cardiff
+    expect(isWithinIreland(54.15, -4.48)).toBe(false); // Isle of Man
+    expect(isWithinIreland(51.507, -0.127)).toBe(false); // London
   });
 });
 
