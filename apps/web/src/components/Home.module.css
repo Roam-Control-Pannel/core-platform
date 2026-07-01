@@ -42,6 +42,45 @@
   }
 }
 
+/* "Customise" button — sits beside the place switcher; opens the widget editor sheet. A quiet
+   outline pill so it reads as a utility, not a primary action. */
+.customize {
+  all: unset;
+  box-sizing: border-box;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease),
+    color var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .customize:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+}
+
+/* Comfortable ≥44px tap height on touch devices only. */
+@media (pointer: coarse) {
+  .customize {
+    min-height: 44px;
+  }
+}
+
 /* Hero quick-action pills — one-tap into the core create actions. */
 .quickActions {
   display: flex;
