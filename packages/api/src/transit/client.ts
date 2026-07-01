@@ -59,11 +59,47 @@ const WGS84 = "WGS84[DD.ddddd]";
 const AUTH_REJECT_STATUSES = new Set([401, 403, 407]);
 
 /**
+ * Fail-fast timeout for an EFA call. Translink's endpoint answers in well under a second when
+ * reachable; a longer wait means the connection is being dropped (e.g. our egress IP isn't on
+ * Translink's allowlist), which surfaces as UND_ERR_CONNECT_TIMEOUT. Capping it here means the
+ * card gives up quickly and self-hides instead of hanging on undici's ~10s default.
+ */
+const EFA_TIMEOUT_MS = 7_000;
+
+/**
  * Which auth mode Translink has accepted this process. Once set, it's tried first on every
  * subsequent call, so the fallback probe is a one-time cost. Module-level because there is one
  * Translink config per process.
  */
 let pinnedMode: "query" | "header" | null = null;
+
+/** Guard so the egress-IP probe logs at most once per process (it's a diagnostic, not per-call). */
+let egressLogged = false;
+
+/**
+ * Best-effort: log THIS service's public egress IP, so we know exactly what to register on
+ * Translink's allowlist. Uses a neutral IP-echo (not allowlisted, so it actually answers, unlike
+ * Translink). Debug-gated, once per process, swallows all errors — purely diagnostic.
+ */
+async function logEgressIp(): Promise<void> {
+  if (egressLogged) return;
+  egressLogged = true;
+  try {
+    const res = await fetch("https://api.ipify.org?format=json", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { ip?: string };
+    if (data.ip) {
+      console.log(
+        `[transit] this service's public egress IP is ${data.ip} — register THIS IP on ` +
+          `Translink's Opendata allowlist (the connect timeout means they're dropping it).`,
+      );
+    }
+  } catch {
+    /* diagnostic only — never let it affect the request */
+  }
+}
 
 /** Join the base (with or without a trailing slash) to an endpoint name. */
 function endpointUrl(baseUrl: string, endpoint: string): string {
@@ -104,10 +140,21 @@ async function efaRequest(
 
     let res: Response;
     try {
-      res = await fetchImpl(url, { method: "GET", headers });
+      res = await fetchImpl(url, {
+        method: "GET",
+        headers,
+        // Fail fast on a dropped/blocked connection rather than hanging on the default.
+        signal: AbortSignal.timeout(EFA_TIMEOUT_MS),
+      });
     } catch (e) {
-      // Transport failure (DNS/timeout/egress). Not an auth issue — don't burn the other mode on it.
-      throw e instanceof Error ? e : new Error(String(e));
+      // Transport failure (DNS/timeout/egress). Not an auth issue — don't burn the other mode on
+      // it. A connect timeout here most often means Translink is dropping our egress IP (their
+      // fair-use registration is IP-allowlisted), not a bug in the request.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[transit] EFA ${endpoint} transport error (auth='${auth.mode}'): ${msg}`);
+      // On a transport failure in debug mode, surface our egress IP so it can be allowlisted.
+      if (config.debug) void logEgressIp();
+      throw e instanceof Error ? e : new Error(msg);
     }
 
     if (res.ok) {

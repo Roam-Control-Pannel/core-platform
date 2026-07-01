@@ -23,6 +23,8 @@ import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
+import { NearbyDepartures } from "./NearbyDepartures";
+import { isWithinNI } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
 import styles from "./Home.module.css";
@@ -64,6 +66,9 @@ export function Home() {
           <RecentChats hasSession={!!session} />
         </div>
 
+        {/* NI live transit — renders nothing (no grid cell) outside Northern Ireland */}
+        <NearbyTransit place={place} />
+
         <UpcomingPlans hasSession={!!session} />
         <FollowedVenues hasSession={!!session} />
         <SavedDeals hasSession={!!session} />
@@ -89,6 +94,22 @@ function QuickAction({ href, glyph, label }: { href: string; glyph: string; labe
       <span className={styles.qglyph} aria-hidden>{glyph}</span>
       {label}
     </Link>
+  );
+}
+
+/**
+ * NearbyTransit — the NI live-departures card on the Home dashboard. Gated CLIENT-SIDE on the
+ * same geofence as Explore (lib/transitRegion mirrors core), so it renders NOTHING — no grid cell,
+ * no gap — outside Northern Ireland. Inside NI it spans the full dashboard width. The card itself
+ * (NearbyDepartures) still self-hides on any non-ok board, so a stopless/unconfigured place shows
+ * nothing either; this wrapper just keeps a non-NI place from reserving an empty slot.
+ */
+function NearbyTransit({ place }: { place: Place }) {
+  if (!isWithinNI(place.lat, place.lng)) return null;
+  return (
+    <div className={styles.spanAll}>
+      <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />
+    </div>
   );
 }
 
