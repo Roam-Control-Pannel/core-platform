@@ -92,8 +92,8 @@ async function logEgressIp(): Promise<void> {
     const data = (await res.json()) as { ip?: string };
     if (data.ip) {
       console.log(
-        `[transit] this service's public egress IP is ${data.ip} — register THIS IP on ` +
-          `Translink's Opendata allowlist (the connect timeout means they're dropping it).`,
+        `[transit] this service's public egress IP is ${data.ip} — Translink must AUTHORIZE ` +
+          `this IP as a subscriber (the 401 "Please authorize" means our source isn't recognised).`,
       );
     }
   } catch {
@@ -183,6 +183,9 @@ async function efaRequest(
       console.log(
         `[transit] ${endpoint} ${res.status} ${res.statusText} · headers[${diag.join(" | ")}] · body: ${body.slice(0, 220)}`,
       );
+      // A 401/403 with no www-authenticate is a subscriber/IP gate, not a credential challenge —
+      // log our egress IP so it can be registered with Translink.
+      if (res.status === 401 || res.status === 403) void logEgressIp();
     }
     if (AUTH_REJECT_STATUSES.has(res.status) && attempts.length > 1) {
       console.warn(
