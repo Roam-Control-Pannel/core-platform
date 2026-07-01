@@ -27,10 +27,12 @@ import { VenueActivity } from "./VenueActivity";
 import { MarketingSuggestions } from "./MarketingSuggestions";
 import { SuggestedForYou } from "./SuggestedForYou";
 import { PushHistory } from "./PushHistory";
+import { VenueAudience } from "./VenueAudience";
 import { venuePath } from "../lib/routes";
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "audience", label: "Audience" },
   { key: "posts", label: "Posts" },
   { key: "offers", label: "Offers" },
   { key: "notifications", label: "Notifications" },
@@ -152,6 +154,16 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                 {/* Renders itself (Card + header) only when the business has opted into suggestions. */}
                 <SuggestedForYou venueId={venueId} />
               </>
+            ) : null}
+
+            {tab === "audience" ? (
+              <DashSection
+                icon="👥"
+                title="Audience"
+                subtitle="Who follows you, in aggregate — growth, engagement, reach and (privately) age & birthdays. Never individual people."
+              >
+                <VenueAudience venueId={venueId} />
+              </DashSection>
             ) : null}
 
             {tab === "posts" ? (
