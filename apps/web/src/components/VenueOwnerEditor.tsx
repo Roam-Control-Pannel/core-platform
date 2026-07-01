@@ -22,6 +22,7 @@ import { LocalPosts } from "./LocalPosts";
 import { BusinessStats } from "./BusinessStats";
 import { VenueNotify } from "./VenueNotify";
 import { VenueOffers } from "./VenueOffers";
+import { OfferInsights } from "./OfferInsights";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -128,6 +129,14 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
               subtitle="Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue. You see the redemption count."
             >
               <VenueOffers venueId={venueId} />
+            </DashSection>
+
+            <DashSection
+              icon="📊"
+              title="Offer insights"
+              subtitle="Which kinds of deal land best with locals — saves and redemptions by offer type."
+            >
+              <OfferInsights venueId={venueId} />
             </DashSection>
 
             <DashSection
