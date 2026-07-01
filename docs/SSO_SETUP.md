@@ -47,9 +47,40 @@ In the **Apple Developer** portal:
   - **Domain:** `auth.roam-local.com`
 - A **Sign in with Apple key** (.p8) — note the Key ID and your Team ID.
 
-Supabase needs the Services ID + a **client secret** (a JWT Supabase can generate from your Team ID, Key ID, and the .p8). In **Supabase → Authentication → Providers → Apple**: enable it, paste the Services ID and secret. Save.
+Supabase needs the Services ID + a **client secret** — this is **not a static string**: it's an
+ES256 JWT signed with the `.p8`, and **Apple caps its lifetime at 6 months**. Generate it locally
+with the repo's dependency-free helper (the `.p8` private key never leaves your machine):
 
-Then on **Vercel** set `NEXT_PUBLIC_ENABLE_APPLE_SSO=1` and redeploy → the Apple button appears.
+```bash
+node scripts/apple-client-secret.mjs \
+  --team-id <TEAM_ID> \
+  --client-id <SERVICES_ID> \
+  --key-id <KEY_ID> \
+  --p8 /path/to/AuthKey_<KEY_ID>.p8
+```
+
+Then in **Supabase → Authentication → Providers → Apple**: enable it, set **Client IDs** = the
+Services ID, paste the JWT into **Secret Key (for OAuth)**. Save.
+
+Finally, on **Vercel** set `NEXT_PUBLIC_ENABLE_APPLE_SSO=1` (not "Sensitive" — it's a public flag)
+and redeploy without build cache → the Apple button appears.
+
+### ⚠️ The Apple client secret EXPIRES — regenerate before it dies
+
+The current secret was generated on **2026-07-01** and **expires 2026-12-28** (Apple's 6-month
+cap). When it lapses, **web Apple sign-in stops working** until a new secret is generated and
+re-pasted in Supabase. To renew, re-run the script above with the *same* `.p8` (no portal steps
+needed), then paste the new JWT into the Apple provider's Secret Key field.
+
+Identifiers needed to regenerate (these are **not secrets** — the `.p8` and the JWT are):
+
+| Field | Value |
+|---|---|
+| Team ID | `C89J4TDK6E` |
+| Services ID (`client_id`) | `com.roamlocal.signin` |
+| Key ID | `BGSQ28DCZ8` |
+| `.p8` file | `AuthKey_BGSQ28DCZ8.p8` — kept off-repo on the owner's Mac (backed up; only copy) |
+| Return URL / Callback | `https://auth.roam-local.com/auth/v1/callback` |
 
 > Apple requirement: because you offer Google sign-in, App Store review will require Sign in with Apple in the **native** app. On web it's optional but nice to have parity.
 
