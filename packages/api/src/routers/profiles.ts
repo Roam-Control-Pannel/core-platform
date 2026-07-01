@@ -313,4 +313,61 @@ export const profilesRouter = router({
       if (!data || data.length === 0) return { ok: false as const };
       return { ok: true as const };
     }),
+
+  /**
+   * Protected: read the caller's saved Home dashboard layout (cross-device personalisation).
+   * Returns { layout: { order, hidden } } or { layout: null } when they've never customised it.
+   * Validated leniently — a malformed stored value reads as null so the client uses its default.
+   */
+  homeLayout: protectedProcedure.query(async ({ ctx }) => {
+    const uid = await currentUserId(ctx);
+    type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const db = ctx.db as unknown as Loose;
+    const { data, error } = (await db
+      .from("profiles")
+      .select("home_layout")
+      .eq("id", uid)
+      .maybeSingle()) as { data: { home_layout: unknown } | null; error: { message: string } | null };
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your layout: ${error.message}` });
+    }
+    const raw = data?.home_layout as { order?: unknown; hidden?: unknown } | null | undefined;
+    const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
+    const layout: { order: string[]; hidden: string[] } | null =
+      raw && typeof raw === "object" && isStrArr(raw.order) && isStrArr(raw.hidden)
+        ? { order: raw.order.slice(0, 64), hidden: raw.hidden.slice(0, 64) }
+        : null;
+    return { layout };
+  }),
+
+  /**
+   * Protected: save the caller's Home dashboard layout. Bounded arrays of opaque widget ids; the
+   * server stores them verbatim (RLS profiles_update gates the write to the caller's own row).
+   */
+  setHomeLayout: protectedProcedure
+    .input(
+      z.object({
+        order: z.array(z.string().max(64)).max(64),
+        hidden: z.array(z.string().max(64)).max(64),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const uid = await currentUserId(ctx);
+      const payload = { order: input.order, hidden: input.hidden };
+      type LooseUpdate = {
+        from: (t: string) => {
+          update: (p: Record<string, unknown>) => {
+            eq: (col: string, val: string) => {
+              select: (c: string) => Promise<{ data: { id: string }[] | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseUpdate;
+      const { data, error } = await db.from("profiles").update({ home_layout: payload }).eq("id", uid).select("id");
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to save your layout: ${error.message}` });
+      }
+      return { ok: !!data && data.length > 0 };
+    }),
 });
