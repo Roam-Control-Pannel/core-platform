@@ -26,7 +26,17 @@ import { OfferInsights } from "./OfferInsights";
 import { VenueActivity } from "./VenueActivity";
 import { MarketingSuggestions } from "./MarketingSuggestions";
 import { SuggestedForYou } from "./SuggestedForYou";
+import { PushHistory } from "./PushHistory";
 import { venuePath } from "../lib/routes";
+
+const TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "posts", label: "Posts" },
+  { key: "offers", label: "Offers" },
+  { key: "notifications", label: "Notifications" },
+  { key: "venue", label: "Venue" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
 interface OwnerVenue {
@@ -52,6 +62,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
   const session = useSession();
   const [venue, setVenue] = useState<OwnerVenue | null | "missing">(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabKey>("overview");
   const userId = session?.user?.id ?? null;
 
   const load = useCallback(async () => {
@@ -117,82 +128,156 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
 
           <BusinessStats venueId={venueId} rating={venue.rating} ratingCount={venue.rating_count} />
 
+          <DashTabs tab={tab} onTab={setTab} />
+
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
-            <DashSection
-              icon="🔔"
-              title="Activity"
-              subtitle="What locals are doing with your business — new follows, offer saves and redemptions."
-            >
-              <VenueActivity venueId={venueId} />
-            </DashSection>
+            {tab === "overview" ? (
+              <>
+                <DashSection
+                  icon="🔔"
+                  title="Activity"
+                  subtitle="What locals are doing with your business — new follows, offer saves and redemptions."
+                >
+                  <VenueActivity venueId={venueId} />
+                </DashSection>
 
-            <DashSection
-              icon="✨"
-              title="Marketing & suggestions"
-              subtitle="Turn on tailored offer and post ideas — you set the rules, we do the inspiration."
-            >
-              <MarketingSuggestions venueId={venueId} />
-            </DashSection>
+                <DashSection
+                  icon="✨"
+                  title="Marketing & suggestions"
+                  subtitle="Turn on tailored offer and post ideas — you set the rules, we do the inspiration."
+                >
+                  <MarketingSuggestions venueId={venueId} />
+                </DashSection>
 
-            {/* Renders itself (Card + header) only when the business has opted into suggestions. */}
-            <SuggestedForYou venueId={venueId} />
+                {/* Renders itself (Card + header) only when the business has opted into suggestions. */}
+                <SuggestedForYou venueId={venueId} />
+              </>
+            ) : null}
 
-            <DashSection
-              icon="📣"
-              title="Local posts"
-              subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed."
-            >
-              <LocalPosts venueId={venueId} />
-            </DashSection>
+            {tab === "posts" ? (
+              <DashSection
+                icon="📣"
+                title="Local posts"
+                subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed — this is also your posting history."
+              >
+                <LocalPosts venueId={venueId} />
+              </DashSection>
+            ) : null}
 
-            <DashSection
-              icon="🎟"
-              title="Offers"
-              subtitle="Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue. You see the redemption count."
-            >
-              <VenueOffers venueId={venueId} />
-            </DashSection>
+            {tab === "offers" ? (
+              <>
+                <DashSection
+                  icon="🎟"
+                  title="Offers"
+                  subtitle="Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue. You see the redemption count."
+                >
+                  <VenueOffers venueId={venueId} />
+                </DashSection>
 
-            <DashSection
-              icon="📊"
-              title="Offer insights"
-              subtitle="Which kinds of deal land best with locals — saves and redemptions by offer type."
-            >
-              <OfferInsights venueId={venueId} />
-            </DashSection>
+                <DashSection
+                  icon="📊"
+                  title="Offer insights"
+                  subtitle="Which kinds of deal land best with locals — saves and redemptions by offer type."
+                >
+                  <OfferInsights venueId={venueId} />
+                </DashSection>
+              </>
+            ) : null}
 
-            <DashSection
-              icon="📨"
-              title="Send a notification"
-              subtitle="Message your followers' notifications inbox — everyone at once, or one person individually."
-            >
-              <VenueNotify venueId={venueId} />
-            </DashSection>
+            {tab === "notifications" ? (
+              <>
+                <DashSection
+                  icon="📨"
+                  title="Send a notification"
+                  subtitle="Message your followers' notifications inbox — everyone at once, or one person individually."
+                >
+                  <VenueNotify venueId={venueId} />
+                </DashSection>
 
-            <DashSection icon="✦" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
-              <OwnerMediaManager venueId={venueId} />
-            </DashSection>
+                <DashSection
+                  icon="📤"
+                  title="Push history"
+                  subtitle="Every update you've pushed to your followers, most recent first."
+                >
+                  <PushHistory venueId={venueId} />
+                </DashSection>
+              </>
+            ) : null}
 
-            <DashSection icon="✎" title="Details" subtitle="A description and the links people need — menu, booking, website.">
-              <OwnerDetailsEditor
-                venueId={venueId}
-                initialDescription={venue.description}
-                initialLinks={venue.links}
-                onSaved={load}
-              />
-            </DashSection>
+            {tab === "venue" ? (
+              <>
+                <DashSection icon="✦" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
+                  <OwnerMediaManager venueId={venueId} />
+                </DashSection>
 
-            <DashSection icon="◷" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
-              <OwnerHoursEditor
-                venueId={venueId}
-                initialPeriods={(venue.opening_times?.periods ?? null) as never}
-                onSaved={load}
-              />
-            </DashSection>
+                <DashSection icon="✎" title="Details" subtitle="A description and the links people need — menu, booking, website.">
+                  <OwnerDetailsEditor
+                    venueId={venueId}
+                    initialDescription={venue.description}
+                    initialLinks={venue.links}
+                    onSaved={load}
+                  />
+                </DashSection>
+
+                <DashSection icon="◷" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
+                  <OwnerHoursEditor
+                    venueId={venueId}
+                    initialPeriods={(venue.opening_times?.periods ?? null) as never}
+                    onSaved={load}
+                  />
+                </DashSection>
+              </>
+            ) : null}
           </div>
         </>
       )}
     </main>
+  );
+}
+
+/** The dashboard's primary navigation — an underline tab strip (horizontally scrollable on a
+ *  phone). Groups the once-long single scroll into focused areas. */
+function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 2,
+        overflowX: "auto",
+        marginBottom: "var(--space-4)",
+        borderBottom: "1px solid var(--line)",
+        scrollbarWidth: "none",
+      }}
+    >
+      {TABS.map((t) => {
+        const active = t.key === tab;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onTab(t.key)}
+            aria-current={active ? "page" : undefined}
+            style={{
+              all: "unset",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              padding: "10px 14px",
+              minHeight: 44,
+              boxSizing: "border-box",
+              display: "inline-flex",
+              alignItems: "center",
+              fontFamily: "var(--ui)",
+              fontSize: 14,
+              fontWeight: 600,
+              color: active ? "var(--ink)" : "var(--muted)",
+              borderBottom: `2px solid ${active ? "var(--crimson)" : "transparent"}`,
+            }}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
