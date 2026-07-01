@@ -28,6 +28,7 @@ import { MarketingSuggestions } from "./MarketingSuggestions";
 import { SuggestedForYou } from "./SuggestedForYou";
 import { PushHistory } from "./PushHistory";
 import { VenueAudience } from "./VenueAudience";
+import { BirthdayOffer } from "./BirthdayOffer";
 import { venuePath } from "../lib/routes";
 
 const TABS = [
@@ -157,13 +158,23 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             ) : null}
 
             {tab === "audience" ? (
-              <DashSection
-                icon="👥"
-                title="Audience"
-                subtitle="Who follows you, in aggregate — growth, engagement, reach and (privately) age & birthdays. Never individual people."
-              >
-                <VenueAudience venueId={venueId} />
-              </DashSection>
+              <>
+                <DashSection
+                  icon="👥"
+                  title="Audience"
+                  subtitle="Who follows you, in aggregate — growth, engagement, reach and (privately) age & birthdays. Never individual people."
+                >
+                  <VenueAudience venueId={venueId} />
+                </DashSection>
+
+                <DashSection
+                  icon="🎂"
+                  title="Birthday offer"
+                  subtitle="A standing treat we deliver automatically to opted-in followers on their birthday. You see counts, never who."
+                >
+                  <BirthdayOffer venueId={venueId} />
+                </DashSection>
+              </>
             ) : null}
 
             {tab === "posts" ? (
