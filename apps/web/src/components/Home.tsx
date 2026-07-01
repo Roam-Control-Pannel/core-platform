@@ -15,7 +15,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -27,7 +27,47 @@ import { NearbyDepartures } from "./NearbyDepartures";
 import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
+import { useHomeLayout } from "../lib/homeLayout";
+import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
 import styles from "./Home.module.css";
+
+/**
+ * The Home widget registry. Each dashboard section is a descriptor — id (stable, used to persist
+ * the user's order), a friendly label for the Customise sheet, a grid span (full width or a
+ * pairable half), an optional `condition` (the transit widget only exists inside Ireland), and a
+ * `render` given the live context. The user's saved layout reorders / hides these; anything not
+ * in their saved order is appended in this order (see reconcile), so new widgets always surface.
+ */
+interface WidgetCtx {
+  hasSession: boolean;
+  place: Place;
+}
+interface HomeWidget {
+  id: string;
+  label: string;
+  span: "full" | "half";
+  condition?: (place: Place) => boolean;
+  render: (ctx: WidgetCtx) => React.ReactNode;
+}
+
+const HOME_WIDGETS: HomeWidget[] = [
+  { id: "recent-chats", label: "Recent chats", span: "full", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
+  {
+    id: "transit",
+    label: "Nearby transit",
+    span: "full",
+    condition: (p) => isWithinIreland(p.lat, p.lng),
+    render: ({ place }) => <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />,
+  },
+  { id: "upcoming-plans", label: "Your plans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
+  { id: "followed-venues", label: "Followed venues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
+  { id: "saved-deals", label: "Saved deals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
+  { id: "your-town", label: "Your town", span: "full", render: ({ place }) => <YourTown place={place} /> },
+  { id: "local-news", label: "Local news", span: "half", render: ({ place }) => <LocalNews place={place} /> },
+  { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
+  { id: "market", label: "Marketplace", span: "full", render: ({ place }) => <MarketSeam place={place} /> },
+];
+const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
 
 /** Time-aware greeting — a warmer header than a flat "Home". */
 function greeting(): string {
@@ -40,6 +80,29 @@ function greeting(): string {
 export function Home() {
   const session = useSession();
   const { place, setPlace } = useCurrentPlace();
+  const { layout, move, toggle, reset } = useHomeLayout(HOME_WIDGET_IDS);
+  const [customizing, setCustomizing] = useState(false);
+
+  const byId = useMemo(() => new Map(HOME_WIDGETS.map((w) => [w.id, w])), []);
+
+  // Widgets applicable to the current context (transit only inside Ireland), in the user's order.
+  const applicable = useMemo(() => {
+    const list: HomeWidget[] = [];
+    for (const id of layout.order) {
+      const w = byId.get(id);
+      if (w && (!w.condition || w.condition(place))) list.push(w);
+    }
+    return list;
+  }, [layout.order, byId, place]);
+  const applicableIds = useMemo(() => applicable.map((w) => w.id), [applicable]);
+
+  const ctx: WidgetCtx = { hasSession: !!session, place };
+  const visible = applicable.filter((w) => !layout.hidden.includes(w.id));
+  const customizeItems: CustomizeItem[] = applicable.map((w) => ({
+    id: w.id,
+    label: w.label,
+    hidden: layout.hidden.includes(w.id),
+  }));
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -52,6 +115,14 @@ export function Home() {
         </p>
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)" }}>
           <PlaceSwitcher value={place} onChange={setPlace} />
+          <button
+            type="button"
+            onClick={() => setCustomizing(true)}
+            className={styles.customize}
+            aria-haspopup="dialog"
+          >
+            <span aria-hidden>⚙</span> Customise
+          </button>
         </div>
         <div className={styles.quickActions}>
           <QuickAction href="/plans" glyph="＋" label="New plan" />
@@ -61,30 +132,48 @@ export function Home() {
         </div>
       </header>
 
-      <div className={styles.grid}>
-        <div className={styles.spanAll}>
-          <RecentChats hasSession={!!session} />
+      {visible.length === 0 ? (
+        <EmptyDashboard onCustomise={() => setCustomizing(true)} />
+      ) : (
+        <div className={styles.grid}>
+          {visible.map((w) =>
+            // Full-span widgets get a spanAll wrapper; half widgets render DIRECTLY (their Card is
+            // the grid item) so a widget that renders null (e.g. Saved deals with nothing to show)
+            // leaves no empty cell — matching the pre-registry layout.
+            w.span === "full" ? (
+              <div key={w.id} className={styles.spanAll}>
+                {w.render(ctx)}
+              </div>
+            ) : (
+              <Fragment key={w.id}>{w.render(ctx)}</Fragment>
+            ),
+          )}
         </div>
+      )}
 
-        {/* NI live transit — renders nothing (no grid cell) outside Northern Ireland */}
-        <NearbyTransit place={place} />
-
-        <UpcomingPlans hasSession={!!session} />
-        <FollowedVenues hasSession={!!session} />
-        <SavedDeals hasSession={!!session} />
-
-        <div className={styles.spanAll}>
-          <YourTown place={place} />
-        </div>
-
-        <LocalNews place={place} />
-        <TownForum place={place} />
-
-        <div className={styles.spanAll}>
-          <MarketSeam place={place} />
-        </div>
-      </div>
+      <HomeCustomize
+        open={customizing}
+        onClose={() => setCustomizing(false)}
+        items={customizeItems}
+        onMove={(id, dir) => move(id, dir, applicableIds)}
+        onToggle={toggle}
+        onReset={reset}
+      />
     </main>
+  );
+}
+
+/** Shown when the user has hidden every section — a gentle way back to the Customise sheet. */
+function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
+  return (
+    <Card style={{ padding: "var(--space-6)", textAlign: "center" }}>
+      <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.5 }}>
+        You&apos;ve hidden every section.
+      </p>
+      <div style={{ marginTop: "var(--space-3)" }}>
+        <Button onClick={onCustomise}>Customise home</Button>
+      </div>
+    </Card>
   );
 }
 
@@ -94,21 +183,6 @@ function QuickAction({ href, glyph, label }: { href: string; glyph: string; labe
       <span className={styles.qglyph} aria-hidden>{glyph}</span>
       {label}
     </Link>
-  );
-}
-
-/**
- * NearbyTransit — the transit card on the Home dashboard. Gated CLIENT-SIDE to the island of
- * Ireland (lib/transitRegion mirrors core), so it renders NOTHING — no grid cell, no gap —
- * anywhere else. Inside Ireland it spans the full dashboard width: NearbyDepartures shows live
- * departures in NI, or the "coming soon" placeholder across the rest of the island.
- */
-function NearbyTransit({ place }: { place: Place }) {
-  if (!isWithinIreland(place.lat, place.lng)) return null;
-  return (
-    <div className={styles.spanAll}>
-      <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />
-    </div>
   );
 }
 
