@@ -12,6 +12,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { OFFER_TYPES } from "@roam/core/offers";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
 /** Resolve the signed-in caller (writes/private reads). RLS is the real gate; this 401s nicely. */
@@ -40,6 +41,9 @@ const offerInput = z.object({
   startsAt: z.string().datetime().nullable().optional(),
   endsAt: z.string().datetime().nullable().optional(),
   maxRedemptions: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  // Theme (from the canonical @roam/core set) + the headline % for a percent_off deal.
+  offerType: z.enum([...OFFER_TYPES] as [string, ...string[]]).nullable().optional(),
+  discountPct: z.number().min(0).max(100).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -210,26 +214,27 @@ export const offersRouter = router({
     const db = ctx.db as unknown as LooseDb;
     const { data, error } = (await db
       .from("offers")
-      .select("id, title, details, code, starts_at, ends_at, max_redemptions, created_at, offer_redemptions(count)")
+      .select("id, title, details, code, starts_at, ends_at, max_redemptions, created_at, offer_type, discount_pct, offer_redemptions(count), offer_saves(count)")
       .eq("venue_id", input.venueId)
       .order("created_at", { ascending: false })) as { data: any[] | null; error: { message: string } | null }; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your offers: ${error.message}` });
     }
-    return (data ?? []).map((o) => {
-      const rc = o.offer_redemptions;
-      const redemptions = Array.isArray(rc) ? (rc[0]?.count ?? 0) : (rc?.count ?? 0);
-      return {
-        id: o.id as string,
-        title: o.title as string,
-        details: (o.details ?? null) as string | null,
-        code: (o.code ?? null) as string | null,
-        startsAt: (o.starts_at ?? null) as string | null,
-        endsAt: (o.ends_at ?? null) as string | null,
-        maxRedemptions: (o.max_redemptions ?? null) as number | null,
-        redemptions: redemptions as number,
-      };
-    });
+    // PostgREST returns an embedded count either as [{ count }] or { count } depending on shape.
+    const countOf = (v: unknown): number => (Array.isArray(v) ? (v[0]?.count ?? 0) : ((v as { count?: number } | null)?.count ?? 0));
+    return (data ?? []).map((o) => ({
+      id: o.id as string,
+      title: o.title as string,
+      details: (o.details ?? null) as string | null,
+      code: (o.code ?? null) as string | null,
+      startsAt: (o.starts_at ?? null) as string | null,
+      endsAt: (o.ends_at ?? null) as string | null,
+      maxRedemptions: (o.max_redemptions ?? null) as number | null,
+      offerType: (o.offer_type ?? null) as string | null,
+      discountPct: (o.discount_pct ?? null) as number | null,
+      saves: countOf(o.offer_saves),
+      redemptions: countOf(o.offer_redemptions),
+    }));
   }),
 
   /** Owner: publish a new offer on a venue you own (RLS offers_owner_all gates the write). */
@@ -237,7 +242,10 @@ export const offersRouter = router({
     .input(offerInput.extend({ venueId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await callerId(ctx);
-      const { data, error } = await ctx.db
+      // Loose db: offer_type/discount_pct (0048) aren't in the generated types until they're
+      // regenerated post-migration; RLS offers_owner_all still gates the write.
+      const db = ctx.db as unknown as LooseDb;
+      const { data, error } = await db
         .from("offers")
         .insert({
           venue_id: input.venueId,
@@ -247,6 +255,8 @@ export const offersRouter = router({
           starts_at: input.startsAt ?? null,
           ends_at: input.endsAt ?? null,
           max_redemptions: input.maxRedemptions ?? null,
+          offer_type: input.offerType ?? null,
+          discount_pct: input.discountPct ?? null,
         })
         .select("id")
         .single();
@@ -262,15 +272,18 @@ export const offersRouter = router({
     .input(offerInput.partial().extend({ offerId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await callerId(ctx);
-      const patch: { title?: string; details?: string | null; code?: string | null; starts_at?: string | null; ends_at?: string | null; max_redemptions?: number | null } = {};
+      const patch: { title?: string; details?: string | null; code?: string | null; starts_at?: string | null; ends_at?: string | null; max_redemptions?: number | null; offer_type?: string | null; discount_pct?: number | null } = {};
       if (input.title !== undefined) patch.title = input.title;
       if ("details" in input) patch.details = input.details ?? null;
       if ("code" in input) patch.code = input.code ?? null;
       if ("startsAt" in input) patch.starts_at = input.startsAt ?? null;
       if ("endsAt" in input) patch.ends_at = input.endsAt ?? null;
       if ("maxRedemptions" in input) patch.max_redemptions = input.maxRedemptions ?? null;
+      if ("offerType" in input) patch.offer_type = input.offerType ?? null;
+      if ("discountPct" in input) patch.discount_pct = input.discountPct ?? null;
       if (Object.keys(patch).length === 0) return { ok: true as const };
-      const { error } = await ctx.db.from("offers").update(patch).eq("id", input.offerId);
+      const db = ctx.db as unknown as LooseDb;
+      const { error } = await db.from("offers").update(patch).eq("id", input.offerId);
       if (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't update the offer: ${error.message}` });
       }
@@ -285,6 +298,36 @@ export const offersRouter = router({
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't delete the offer: ${error.message}` });
     }
     return { ok: true as const };
+  }),
+
+  /**
+   * Owner: per-theme engagement for a venue you own — how many offers, saves and redemptions each
+   * offer THEME has drawn. Powers the dashboard "what's working" panel and, later, ranks
+   * suggestions. The venue_offer_engagement RPC (0048) does the owner check + aggregation; a
+   * non-owner comes back 42501 → FORBIDDEN.
+   */
+  engagement: protectedProcedure.input(z.object({ venueId: z.string().uuid() })).query(async ({ ctx, input }) => {
+    await callerId(ctx);
+    const db = ctx.db as unknown as LooseDb;
+    const { data, error } = await db.rpc("venue_offer_engagement", { p_venue: input.venueId });
+    if (error) {
+      if (error.code === "42501") throw new TRPCError({ code: "FORBIDDEN", message: "Only the venue owner can view offer insights." });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load offer insights: ${error.message}` });
+    }
+    const rows = (data ?? []) as { offer_type: string; offers: number | string; saves: number | string; redemptions: number | string }[];
+    const themes = rows
+      .map((r) => ({
+        offerType: r.offer_type,
+        offers: Number(r.offers),
+        saves: Number(r.saves),
+        redemptions: Number(r.redemptions),
+      }))
+      .sort((a, b) => b.saves - a.saves || b.redemptions - a.redemptions);
+    const totals = themes.reduce(
+      (acc, t) => ({ offers: acc.offers + t.offers, saves: acc.saves + t.saves, redemptions: acc.redemptions + t.redemptions }),
+      { offers: 0, saves: 0, redemptions: 0 },
+    );
+    return { themes, totals };
   }),
 });
 

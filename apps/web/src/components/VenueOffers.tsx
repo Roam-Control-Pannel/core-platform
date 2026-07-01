@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
+import { OFFER_TYPES, OFFER_TYPE_LABELS, offerTypeLabel, offerTypeUsesPercent } from "../lib/offerTypes";
 
 interface OwnerOffer {
   id: string;
@@ -20,6 +21,9 @@ interface OwnerOffer {
   startsAt: string | null;
   endsAt: string | null;
   maxRedemptions: number | null;
+  offerType: string | null;
+  discountPct: number | null;
+  saves: number;
   redemptions: number;
 }
 
@@ -90,11 +94,32 @@ export function VenueOffers({ venueId }: { venueId: string }) {
             <Card key={o.id} style={{ padding: "var(--space-3) var(--space-4)" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15 }}>{o.title}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15 }}>{o.title}</div>
+                    {o.offerType ? (
+                      <span
+                        style={{
+                          fontFamily: "var(--mono)",
+                          fontSize: 9.5,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          color: "var(--crimson-700)",
+                          background: "var(--crimson-tint)",
+                          border: "1px solid var(--crimson-tint-2)",
+                          borderRadius: 999,
+                          padding: "1px 8px",
+                        }}
+                      >
+                        {offerTypeLabel(o.offerType)}
+                        {offerTypeUsesPercent(o.offerType) && o.discountPct != null ? ` · ${o.discountPct}%` : ""}
+                      </span>
+                    ) : null}
+                  </div>
                   {o.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{o.details}</p> : null}
                   <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>
                     {o.code ? <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--crimson-700)" }}>{o.code}</span> : null}
                     {o.endsAt ? <span>Ends {shortDate(o.endsAt)}</span> : null}
+                    <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>♡ {o.saves} saved</span>
                     <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>
                       ♻ {o.redemptions}{o.maxRedemptions != null ? ` / ${o.maxRedemptions}` : ""} redeemed
                     </span>
@@ -119,6 +144,8 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
   const [code, setCode] = useState("");
   const [endsOn, setEndsOn] = useState("");
   const [maxRedemptions, setMaxRedemptions] = useState("");
+  const [offerType, setOfferType] = useState<string>("percent_off");
+  const [discountPct, setDiscountPct] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -126,12 +153,15 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
     setBusy(true);
     setErr(null);
     const create = trpc.offers.create as unknown as {
-      mutate: (i: { venueId: string; title: string; details: string | null; code: string | null; endsAt: string | null; maxRedemptions: number | null }) => Promise<{ id: string }>;
+      mutate: (i: { venueId: string; title: string; details: string | null; code: string | null; endsAt: string | null; maxRedemptions: number | null; offerType: string | null; discountPct: number | null }) => Promise<{ id: string }>;
     };
     try {
       const max = maxRedemptions.trim() ? Math.max(1, Math.floor(Number(maxRedemptions))) : null;
       // End of the chosen day, in the user's locale, as ISO.
       const endsAt = endsOn ? new Date(`${endsOn}T23:59:59`).toISOString() : null;
+      const pct = offerTypeUsesPercent(offerType) && discountPct.trim()
+        ? Math.min(100, Math.max(0, Number(discountPct)))
+        : null;
       await create.mutate({
         venueId,
         title: title.trim(),
@@ -139,13 +169,15 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
         code: code.trim() || null,
         endsAt,
         maxRedemptions: max != null && Number.isFinite(max) ? max : null,
+        offerType,
+        discountPct: pct != null && Number.isFinite(pct) ? pct : null,
       });
       onPosted();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't publish the offer.");
       setBusy(false);
     }
-  }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, onPosted]);
+  }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, offerType, discountPct, onPosted]);
 
   const canPost = title.trim().length > 0 && !busy;
 
@@ -153,6 +185,22 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
     <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
       <div style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>New offer</div>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Offer — e.g. 20% off your first coffee" aria-label="Offer title" maxLength={120} style={field} />
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <label style={{ flex: 1, minWidth: 150 }}>
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Type of deal</span>
+          <select value={offerType} onChange={(e) => setOfferType(e.target.value)} aria-label="Offer type" style={field}>
+            {OFFER_TYPES.map((t) => (
+              <option key={t} value={t}>{OFFER_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+        </label>
+        {offerTypeUsesPercent(offerType) ? (
+          <label style={{ flex: 1, minWidth: 150 }}>
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Discount %</span>
+            <input type="number" min={0} max={100} value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} placeholder="e.g. 20" aria-label="Discount percent" style={field} />
+          </label>
+        ) : null}
+      </div>
       <textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="The detail — terms, what's included…" aria-label="Offer details" rows={3} maxLength={1000} style={{ ...field, resize: "vertical", minHeight: 72 }} />
       <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Redemption code (optional) — e.g. ROAM20" aria-label="Redemption code" maxLength={40} autoCapitalize="characters" style={field} />
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
