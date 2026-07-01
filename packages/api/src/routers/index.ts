@@ -24,6 +24,7 @@ import { seoRouter } from "./seo.js";
 import { marketingRouter } from "./marketing.js";
 import { transitRouter } from "./transit.js";
 import { venueActivityRouter } from "./venueActivity.js";
+import { venueMarketingRouter } from "./venueMarketing.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   marketing: marketingRouter,
   transit: transitRouter,
   venueActivity: venueActivityRouter,
+  venueMarketing: venueMarketingRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */
