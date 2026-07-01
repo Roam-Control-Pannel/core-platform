@@ -1,0 +1,49 @@
+/* Readable long-form prose for legal/policy documents. Scoped so the page files can drop in plain
+   <p>/<h2>/<ul> without styling each element. Uses Foundations tokens only. */
+.prose {
+  color: var(--ink-2);
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.prose h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 28px 0 8px;
+  color: var(--ink);
+}
+
+.prose h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15.5px;
+  margin: 20px 0 6px;
+  color: var(--ink);
+}
+
+.prose p {
+  margin: 0 0 12px;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.prose li {
+  margin: 4px 0;
+}
+
+.prose a {
+  color: var(--crimson-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose strong {
+  color: var(--ink);
+  font-weight: 700;
+}
