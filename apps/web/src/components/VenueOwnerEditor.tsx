@@ -24,6 +24,7 @@ import { VenueNotify } from "./VenueNotify";
 import { VenueOffers } from "./VenueOffers";
 import { OfferInsights } from "./OfferInsights";
 import { VenueActivity } from "./VenueActivity";
+import { MarketingSuggestions } from "./MarketingSuggestions";
 import { venuePath } from "../lib/routes";
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -122,6 +123,14 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
               subtitle="What locals are doing with your business — new follows, offer saves and redemptions."
             >
               <VenueActivity venueId={venueId} />
+            </DashSection>
+
+            <DashSection
+              icon="✨"
+              title="Marketing & suggestions"
+              subtitle="Turn on tailored offer and post ideas — you set the rules, we do the inspiration."
+            >
+              <MarketingSuggestions venueId={venueId} />
             </DashSection>
 
             <DashSection
