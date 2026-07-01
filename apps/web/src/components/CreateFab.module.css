@@ -1,13 +1,14 @@
 /*
  * Create FAB — a floating ＋ action button for phones, anchored bottom-right ABOVE the bottom
- * tab bar. Mobile-only: on desktop the TopBar's ＋Create covers this, so it's hidden ≥768px
- * (it would also overlap nothing useful there). Opens a small create sheet. Tokens only.
+ * tab bar. Mobile + tablet-portrait only: from ≥980px the TopBar's ＋Create covers this, so it's
+ * hidden there. Opens a small create sheet. Tokens only. MUST stay in lockstep with the crossover
+ * breakpoint in TopBar.module.css and TabBar.module.css.
  */
 .wrap {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 979px) {
   .wrap {
     display: block;
     position: fixed;

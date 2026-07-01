@@ -6,6 +6,11 @@
  */
 .grid {
   display: grid;
+  /* minmax(0, 1fr), NOT the implicit `auto`: a grid column defaults to min-content sizing, so a
+     horizontally-scrolling child (the plan/venue carousels) would force the column — and the whole
+     page — as wide as ALL its cards, overflowing on tablet. minmax(0, …) lets the column shrink
+     below its content and the carousel's own overflow-x:auto scrolls instead. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -207,7 +212,7 @@
 
 @media (min-width: 900px) {
   .grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
   }
 
