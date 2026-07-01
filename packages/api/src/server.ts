@@ -21,6 +21,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
+import type { EfaConfig } from "./transit/client.js";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -59,7 +60,35 @@ function loadEnv(): ApiEnv {
       newUserListId: Number(process.env.BREVO_LIST_NEW_USERS ?? "93"),
       businessListId: Number(process.env.BREVO_LIST_BUSINESSES ?? "3"),
     },
+    transit: {
+      // Optional: unset TRANSLINK_API_KEY leaves config null and the NI transit feature dormant
+      // (nearbyDepartures returns "unconfigured"), so the API boots fine before provisioning.
+      config: loadTransitConfig(),
+    },
   };
+}
+
+/** The documented Translink Opendata EFA base (overridable, e.g. to swap to an https endpoint). */
+const TRANSLINK_DEFAULT_BASE = "http://opendata.translinkniplanner.co.uk/Ext_API/";
+
+/**
+ * Resolve the Translink EFA config from env, or null when no key is set. The auth INJECTION is
+ * the one swappable piece Translink's licence dictates: how your key rides on each request.
+ *   - TRANSLINK_AUTH_MODE = query (default) | header
+ *   - query:  param name   from TRANSLINK_AUTH_PARAM  (default "key")
+ *   - header: header name  from TRANSLINK_AUTH_HEADER (default "Authorization")
+ * Flip the mode and nothing else in the client changes.
+ */
+function loadTransitConfig(): EfaConfig | null {
+  const value = process.env.TRANSLINK_API_KEY;
+  if (!value) return null;
+  const baseUrl = process.env.TRANSLINK_API_BASE ?? TRANSLINK_DEFAULT_BASE;
+  const mode = process.env.TRANSLINK_AUTH_MODE === "header" ? "header" : "query";
+  const name =
+    mode === "header"
+      ? (process.env.TRANSLINK_AUTH_HEADER ?? "Authorization")
+      : (process.env.TRANSLINK_AUTH_PARAM ?? "key");
+  return { baseUrl, auth: { mode, name, value } };
 }
 
 const createContext = makeContextFactory(loadEnv());

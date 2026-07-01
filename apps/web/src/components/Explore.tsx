@@ -39,6 +39,7 @@ import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
 import { VenueMap, type MapVenue } from "./VenueMap";
+import { NearbyDepartures } from "./NearbyDepartures";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
@@ -458,6 +459,9 @@ export function Explore() {
 
             {/* category pills — phones only; on web the rail above carries them */}
             <div className={styles.mobilePills}>{renderCategories(false)}</div>
+
+            {/* NI live transit — self-hiding outside Northern Ireland / when unconfigured */}
+            <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />
 
             {/* phones only: the map is collapsed behind a toggle so venue cards lead; the
                 desktop map column carries the same map always-on on web. */}
