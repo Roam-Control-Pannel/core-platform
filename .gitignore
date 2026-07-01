@@ -16,6 +16,11 @@ build/
 .env
 .env.*
 !.env.example
+# Signing / private keys (e.g. Apple Sign-In AuthKey_*.p8)
+*.p8
+*.pem
+*.key
+AuthKey_*.p8
 
 # Supabase local
 supabase/.branches/
