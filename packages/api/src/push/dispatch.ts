@@ -85,9 +85,7 @@ export async function dispatchFollowerPush(
   vapid: VapidConfig,
   payload: PushDispatchPayload,
 ): Promise<DispatchResult> {
-  webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
-
-  // (1) Followers of this venue.
+  // Followers of this venue who haven't muted its push, then fan out to their devices.
   const { data: followRows, error: followErr } = await service
     .from("follows")
     .select("follower_id")
@@ -97,15 +95,29 @@ export async function dispatchFollowerPush(
     throw new Error(`Dispatch failed to load followers: ${followErr.message}`);
   }
   const followerIds = (followRows ?? []).map((r) => r.follower_id);
-  if (followerIds.length === 0) {
+  return pushToProfileIds(service, vapid, followerIds, payload);
+}
+
+/**
+ * Fan a payload out to the web devices of a SPECIFIC set of profiles (not a whole venue's
+ * followers). Shared by dispatchFollowerPush and the birthday delivery job — same signing, same
+ * per-subscription send, same dead-endpoint prune, same tally. Never throws for one bad send.
+ */
+export async function pushToProfileIds(
+  service: RoamClient,
+  vapid: VapidConfig,
+  profileIds: readonly string[],
+  payload: PushDispatchPayload,
+): Promise<DispatchResult> {
+  if (profileIds.length === 0) {
     return { candidates: 0, sent: 0, failed: 0, pruned: 0, skipped: 0 };
   }
+  webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
 
-  // (2) Web subscriptions for those followers (native is out of scope this slice).
   const { data: subRows, error: subErr } = await service
     .from("push_subscriptions")
     .select("id, token")
-    .in("profile_id", followerIds)
+    .in("profile_id", profileIds as string[])
     .eq("platform", "web")
     .eq("consent", true);
   if (subErr) {
