@@ -6,23 +6,29 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import type { MessageKind } from "../lib/chatKinds";
+import { uploadChatImage } from "../lib/uploadChatImage";
 
 type ShareTarget = "venue" | "plan" | "person";
 
 export function ChatShareMenu({
+  threadId,
   onShare,
   disabled,
 }: {
+  threadId: string;
   onShare: (kind: MessageKind, payload: Record<string, unknown>) => void;
   disabled?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [picker, setPicker] = useState<ShareTarget | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const choose = useCallback(
     (kind: MessageKind, payload: Record<string, unknown>) => {
@@ -32,14 +38,40 @@ export function ChatShareMenu({
     [onShare],
   );
 
+  const onFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // allow re-picking the same file later
+      if (!file) return;
+      setUploading(true);
+      setUploadError(null);
+      try {
+        const up = await uploadChatImage(threadId, file);
+        onShare("image", { path: up.path, width: up.width, height: up.height, mime: up.mime });
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Couldn't upload that photo.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [threadId, onShare],
+  );
+
   return (
     <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        onChange={(e) => void onFile(e)}
+        style={{ display: "none" }}
+      />
       <button
         type="button"
         onClick={() => setMenuOpen((o) => !o)}
-        disabled={disabled}
+        disabled={disabled || uploading}
         aria-label="Share something"
-        title="Share a place, plan or person"
+        title="Share a place, plan, person or photo"
         style={{
           all: "unset",
           cursor: disabled ? "default" : "pointer",
@@ -54,10 +86,10 @@ export function ChatShareMenu({
           color: "var(--ink)",
           fontSize: 22,
           lineHeight: 1,
-          opacity: disabled ? 0.5 : 1,
+          opacity: disabled || uploading ? 0.5 : 1,
         }}
       >
-        +
+        {uploading ? "…" : "+"}
       </button>
 
       {menuOpen ? (
@@ -69,9 +101,16 @@ export function ChatShareMenu({
               <MenuItem icon="📍" label="Share a place" onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
               <MenuItem icon="🗓" label="Share a plan" onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
               <MenuItem icon="👤" label="Share a person" onClick={() => { setPicker("person"); setMenuOpen(false); }} />
+              <MenuItem icon="📷" label="Photo" onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
             </Card>
           </div>
         </>
+      ) : null}
+
+      {uploadError ? (
+        <div role="alert" style={{ position: "absolute", bottom: 48, left: 0, background: "var(--crimson-tint)", color: "var(--crimson-700)", border: "1px solid var(--crimson-tint-2)", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, whiteSpace: "nowrap", zIndex: 41 }}>
+          {uploadError}
+        </div>
       ) : null}
 
       {picker ? (

@@ -569,7 +569,7 @@ function MessagePanel({ threadId }: { threadId: string }) {
 
       {/* composer */}
       <div style={{ position: "relative", display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)", alignItems: "flex-end" }}>
-        <ChatShareMenu onShare={(kind, payload) => void sendRich(kind, payload)} disabled={sending} />
+        <ChatShareMenu threadId={threadId} onShare={(kind, payload) => void sendRich(kind, payload)} disabled={sending} />
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

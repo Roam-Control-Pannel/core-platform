@@ -7,8 +7,10 @@
  */
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { MessageKind } from "../lib/chatKinds";
+import { chatMediaSignedUrl } from "../lib/uploadChatImage";
 
 export function MessageCard({ kind, payload }: { kind: MessageKind; payload: Record<string, unknown> | null }) {
   if (payload) {
@@ -22,8 +24,56 @@ export function MessageCard({ kind, payload }: { kind: MessageKind; payload: Rec
       const handle = typeof payload.handle === "string" && payload.handle ? `@${payload.handle}` : "View profile";
       return <RefCard href={`/u/${payload.profileId}`} icon="👤" title={str(payload.name, "Someone")} sub={handle} />;
     }
+    if (kind === "image" && typeof payload.path === "string") {
+      return <ImageBubble payload={payload} />;
+    }
   }
   return <Fallback />;
+}
+
+/**
+ * ImageBubble — renders a chat photo. The bucket is private, so we mint a short-lived signed URL
+ * (chatMediaSignedUrl) on mount; the stored dims reserve the box so the layout doesn't jump.
+ */
+function ImageBubble({ payload }: { payload: Record<string, unknown> }) {
+  const path = typeof payload.path === "string" ? payload.path : null;
+  const width = typeof payload.width === "number" ? payload.width : null;
+  const height = typeof payload.height === "number" ? payload.height : null;
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!path) return;
+    let cancelled = false;
+    chatMediaSignedUrl(path)
+      .then((u) => { if (!cancelled) { if (u) setUrl(u); else setFailed(true); } })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [path]);
+
+  const maxW = 240;
+  const boxH = width && height ? Math.round((maxW / width) * height) : 180;
+
+  if (failed) {
+    return (
+      <div style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--paper-2)", maxWidth: maxW }}>
+        <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>Photo unavailable</span>
+      </div>
+    );
+  }
+  if (!url) {
+    return <div style={{ width: maxW, height: Math.min(boxH, 320), borderRadius: 12, background: "var(--paper-2)", border: "1px solid var(--line)" }} />;
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block", maxWidth: maxW }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private bucket; next/image can't optimize a short-lived signed URL */}
+      <img
+        src={url}
+        alt="Shared photo"
+        style={{ width: "100%", maxWidth: maxW, maxHeight: 320, height: "auto", objectFit: "cover", borderRadius: 12, border: "1px solid var(--line)", display: "block" }}
+      />
+    </a>
+  );
 }
 
 function str(v: unknown, fallback: string): string {
