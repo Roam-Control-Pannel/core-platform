@@ -12,7 +12,7 @@ import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 interface OfferConfig { enabled: boolean; title: string | null; details: string | null }
-interface Stats { sentThisMonth: number; sentTotal: number }
+interface Stats { sentThisMonth: number; sentTotal: number; redeemedThisMonth: number; redeemedTotal: number }
 
 const field: React.CSSProperties = {
   width: "100%",
@@ -79,10 +79,19 @@ export function BirthdayOffer({ venueId }: { venueId: string }) {
       </p>
 
       {stats ? (
-        <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-          <StatTile label="Sent this month" value={stats.sentThisMonth} />
-          <StatTile label="Sent all time" value={stats.sentTotal} />
-        </div>
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--space-2)", marginBottom: 8 }}>
+            <StatTile label="Sent this month" value={stats.sentThisMonth} />
+            <StatTile label="Redeemed this month" value={stats.redeemedThisMonth} accent />
+            <StatTile label="Sent all time" value={stats.sentTotal} />
+            <StatTile label="Redeemed all time" value={stats.redeemedTotal} accent />
+          </div>
+          {stats.sentTotal > 0 ? (
+            <p style={{ margin: "0 0 var(--space-4)", fontSize: 12.5, color: "var(--muted)" }}>
+              {Math.round((stats.redeemedTotal / stats.sentTotal) * 100)}% of birthday treats have been redeemed.
+            </p>
+          ) : <div style={{ marginBottom: "var(--space-4)" }} />}
+        </>
       ) : null}
 
       <label style={{ display: "block", marginBottom: "var(--space-3)" }}>
@@ -111,10 +120,10 @@ export function BirthdayOffer({ venueId }: { venueId: string }) {
   );
 }
 
-function StatTile({ label, value }: { label: string; value: number }) {
+function StatTile({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div style={{ flex: 1, padding: "12px 14px", borderRadius: "var(--r-md)", border: "1px solid var(--line)", background: "var(--card)" }}>
-      <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 22, color: "var(--ink)", lineHeight: 1 }}>{value}</div>
+    <div style={{ padding: "12px 14px", borderRadius: "var(--r-md)", border: "1px solid var(--line)", background: "var(--card)" }}>
+      <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 22, color: accent ? "var(--crimson-700)" : "var(--ink)", lineHeight: 1 }}>{value}</div>
       <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted)" }}>{label}</div>
     </div>
   );

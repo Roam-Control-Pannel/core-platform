@@ -28,6 +28,7 @@ import { venueMarketingRouter } from "./venueMarketing.js";
 import { suggestionsRouter } from "./suggestions.js";
 import { venueAudienceRouter } from "./venueAudience.js";
 import { venueBirthdayRouter } from "./venueBirthday.js";
+import { birthdayRouter } from "./birthday.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -53,6 +54,7 @@ export const appRouter = router({
   suggestions: suggestionsRouter,
   venueAudience: venueAudienceRouter,
   venueBirthday: venueBirthdayRouter,
+  birthday: birthdayRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */

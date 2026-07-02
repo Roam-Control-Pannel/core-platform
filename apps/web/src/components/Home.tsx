@@ -29,6 +29,7 @@ import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
 import { useHomeLayout, reconcile, type HomeLayout } from "../lib/homeLayout";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
+import { BirthdayTreats } from "./BirthdayTreats";
 import styles from "./Home.module.css";
 
 /**
@@ -205,6 +206,10 @@ export function Home() {
           <QuickAction href="/friends" glyph="✉" label="Message a friend" />
         </div>
       </header>
+
+      {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
+          customisable/hideable grid (a birthday treat shouldn't be dismissable). */}
+      <BirthdayTreats />
 
       {visible.length === 0 ? (
         <EmptyDashboard onCustomise={() => setCustomizing(true)} />
