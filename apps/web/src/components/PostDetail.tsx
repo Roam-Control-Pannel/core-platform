@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Pill, Button } from "@roam/design";
+import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
 
@@ -100,9 +100,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
             placeItems: "center",
           }}
         >
-          <span style={{ fontSize: 30, color: "var(--crimson-700)", opacity: 0.5 }}>
-            {isOffer ? "✦" : post.kind === "event" ? "◷" : "›"}
-          </span>
+          <Icon name={isOffer ? "sparkle" : post.kind === "event" ? "event" : "megaphone"} size={34} style={{ color: "var(--crimson-700)", opacity: 0.5 }} />
         </div>
       )}
 

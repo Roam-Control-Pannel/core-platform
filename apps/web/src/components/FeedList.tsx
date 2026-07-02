@@ -19,7 +19,7 @@
 
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
-import { Card, Pill } from "@roam/design";
+import { Card, Pill, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { type FeedPost, KindTag, formatWhen, PostDetail } from "./PostDetail";
 import styles from "./FeedList.module.css";
@@ -224,11 +224,10 @@ function FeedEmpty({ placeName }: { placeName: string }) {
           background: "var(--crimson-tint)",
           display: "grid",
           placeItems: "center",
-          fontSize: 24,
           color: "var(--crimson-700)",
         }}
       >
-        ◍
+        <Icon name="inbox" size={24} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
         The feed for {placeName} is just getting started

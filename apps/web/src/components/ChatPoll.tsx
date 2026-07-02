@@ -106,7 +106,7 @@ export function PollMessage({ messageId, payload, mine }: { messageId: string; p
               <div aria-hidden style={{ position: "absolute", inset: 0, width: `${pct}%`, background: picked ? "var(--crimson-tint)" : "var(--line)", opacity: 0.6, transition: "width .2s ease" }} />
               <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span aria-hidden style={{ fontSize: 13, color: picked ? "var(--crimson-700)" : "var(--muted)" }}>{picked ? "◉" : "○"}</span>
+                  <Icon name={picked ? "radioOn" : "radioOff"} size={15} style={{ color: picked ? "var(--crimson-700)" : "var(--muted)" }} />
                   <span style={{ fontFamily: "var(--ui)", fontSize: 13.5, fontWeight: picked ? 700 : 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.text}</span>
                 </span>
                 <span style={{ fontFamily: "var(--ui)", fontSize: 12.5, fontWeight: 700, color: "var(--ink-2)" }}>{count}</span>

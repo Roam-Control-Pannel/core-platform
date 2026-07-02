@@ -54,6 +54,13 @@ import {
   Clock,
   TicketCheck,
   LocateFixed,
+  TrainFront,
+  Bus,
+  TramFront,
+  Ship,
+  EyeOff,
+  Circle,
+  CircleDot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -103,6 +110,13 @@ const ICONS = {
   clock: Clock,
   redeem: TicketCheck,
   locate: LocateFixed,
+  train: TrainFront,
+  bus: Bus,
+  tram: TramFront,
+  ferry: Ship,
+  eyeOff: EyeOff,
+  radioOn: CircleDot,
+  radioOff: Circle,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

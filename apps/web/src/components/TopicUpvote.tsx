@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 export function TopicUpvote({
@@ -79,7 +80,7 @@ export function TopicUpvote({
         color: upvoted ? "var(--crimson-700)" : "var(--ink-2)",
       }}
     >
-      <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>▲</span>
+      <Icon name="upvote" size={16} />
       <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{count}</span>
     </button>
   );

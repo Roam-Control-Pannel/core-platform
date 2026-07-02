@@ -303,7 +303,7 @@ function ChatInfoView({
           href={`/plans/${thread.planId}`}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none", marginBottom: "var(--space-4)" }}
         >
-          🗓 View the plan <span aria-hidden>→</span>
+          <Icon name="plan" size={15} /> View the plan <span aria-hidden>→</span>
         </Link>
       ) : null}
 
