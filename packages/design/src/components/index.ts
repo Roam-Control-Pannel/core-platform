@@ -21,3 +21,4 @@ export {
   type AvatarStackProps,
 } from "./Chips";
 export { PollCard, type PollCardProps, type PollOption } from "./PollCard";
+export { Icon, type IconProps, type IconName } from "./Icon";

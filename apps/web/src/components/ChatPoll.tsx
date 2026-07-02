@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import type { PollPayload } from "../lib/chatKinds";
 
@@ -80,7 +81,7 @@ export function PollMessage({ messageId, payload, mine }: { messageId: string; p
   return (
     <div style={{ maxWidth: 300, width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line)", background: "#fff", boxShadow: "var(--sh-1)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span aria-hidden style={{ fontSize: 16 }}>📊</span>
+        <Icon name="poll" size={16} style={{ color: "var(--crimson-700)", flexShrink: 0 }} />
         <span style={{ fontFamily: "var(--ui)", fontWeight: 700, fontSize: 14.5, color: "var(--ink-hi)", lineHeight: 1.3 }}>{payload.question}</span>
       </div>
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, fontFamily: "var(--ui)" }}>

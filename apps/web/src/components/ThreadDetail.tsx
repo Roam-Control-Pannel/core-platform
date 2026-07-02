@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, Pill, Button, AvatarStack } from "@roam/design";
+import { Card, Pill, Button, AvatarStack, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
 import { MessageCard } from "./ChatCards";
@@ -177,7 +177,7 @@ function ConversationView({
             {threadSubtitle(thread, myId)}
           </span>
         </span>
-        <span aria-hidden style={{ color: "var(--faint)", fontSize: 20, paddingLeft: 4 }}>›</span>
+        <Icon name="chevronRight" size={20} style={{ color: "var(--faint)", flexShrink: 0 }} />
       </button>
 
       <div style={{ marginTop: "var(--space-4)" }}>
@@ -218,9 +218,9 @@ function MeetupBar({ threadId, onOpen }: { threadId: string; onOpen: () => void 
   const label = meetup.state === "voting" ? "Meet-up · voting open" : "Meet-up · winner decided";
   return (
     <button type="button" className={styles.meetupBar} onClick={onOpen}>
-      <span aria-hidden>📍</span>
+      <Icon name="place" size={15} style={{ flexShrink: 0 }} />
       <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
-      <span aria-hidden style={{ opacity: 0.8 }}>Open ›</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 2, opacity: 0.85 }}>Open <Icon name="chevronRight" size={13} /></span>
     </button>
   );
 }
