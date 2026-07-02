@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 export interface ConsumerOffer {
@@ -90,7 +91,7 @@ export function OfferCard({ offer, showVenue = false }: { offer: ConsumerOffer; 
       {/* Redeemed → reveal the code + state. Otherwise the action row. */}
       {redeemed ? (
         <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--success)" }}>Redeemed ✓</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "var(--success)" }}>Redeemed <Icon name="check" size={14} /></span>
           {code ? (
             <span style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, color: "var(--crimson-700)", background: "#fff", border: "1px dashed var(--crimson-tint-2)", borderRadius: "var(--r-sm)", padding: "3px 10px" }}>
               {code}
@@ -115,7 +116,10 @@ export function OfferCard({ offer, showVenue = false }: { offer: ConsumerOffer; 
             aria-pressed={saved}
             style={{ all: "unset", cursor: "pointer", padding: "7px 14px", borderRadius: 999, background: "#fff", border: "1px solid var(--crimson-tint-2)", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13.5 }}
           >
-            {saved ? "♥ Saved" : "♡ Save"}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icon name="heart" size={14} style={saved ? { fill: "currentColor" } : {}} />
+              {saved ? "Saved" : "Save"}
+            </span>
           </button>
         </div>
       )}

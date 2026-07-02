@@ -36,7 +36,7 @@ import { useCallback, useEffect, useState } from "react";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
-import { Card, Pill, Rate, Button } from "@roam/design";
+import { Card, Pill, Rate, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
@@ -427,7 +427,7 @@ function Hero({ claimed }: { claimed: boolean }) {
       }}
     >
       {claimed ? null : (
-        <span style={{ fontSize: 40, color: "var(--crimson-700)", opacity: 0.5 }}>◍</span>
+        <Icon name="place" size={40} style={{ color: "var(--crimson-700)", opacity: 0.5 }} />
       )}
     </div>
   );
@@ -531,7 +531,7 @@ function ClaimedDetail({
             <TabButton label="Offers" value="offers" active={tab} onSelect={setTab} />
             <TabButton label="Gallery" value="gallery" active={tab} onSelect={setTab} />
             <TabButton label="Details" value="details" active={tab} onSelect={setTab} />
-            <DormantTab label="Shop ◇" />
+            <DormantTab label="Shop" />
           </div>
 
           {tab === "details" ? (

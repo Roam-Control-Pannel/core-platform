@@ -17,7 +17,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Card, Button, Pill } from "@roam/design";
+import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
@@ -196,14 +196,14 @@ export function Home() {
             className={styles.customize}
             aria-haspopup="dialog"
           >
-            <span aria-hidden>⚙</span> Customise
+            <Icon name="settings" size={14} /> Customise
           </button>
         </div>
         <div className={styles.quickActions}>
-          <QuickAction href="/plans" glyph="＋" label="New plan" />
-          <QuickAction href="/town-hall" glyph="✲" label="Start a topic" />
-          <QuickAction href="/explore" glyph="✦" label="Find venues" />
-          <QuickAction href="/friends" glyph="✉" label="Message a friend" />
+          <QuickAction href="/plans" glyph="plus" label="New plan" />
+          <QuickAction href="/town-hall" glyph="forum" label="Start a topic" />
+          <QuickAction href="/explore" glyph="sparkle" label="Find venues" />
+          <QuickAction href="/friends" glyph="chat" label="Message a friend" />
         </div>
       </header>
 
@@ -256,10 +256,10 @@ function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
   );
 }
 
-function QuickAction({ href, glyph, label }: { href: string; glyph: string; label: string }) {
+function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; label: string }) {
   return (
     <Link href={href} className={styles.qpill}>
-      <span className={styles.qglyph} aria-hidden>{glyph}</span>
+      <span className={styles.qglyph} aria-hidden><Icon name={glyph} size={16} /></span>
       {label}
     </Link>
   );
@@ -275,7 +275,7 @@ function Section({
   children,
 }: {
   title: string;
-  icon: string;
+  icon: IconName;
   count?: number;
   action?: { label: string; href: string };
   children: React.ReactNode;
@@ -284,7 +284,7 @@ function Section({
     <Card style={{ padding: "var(--space-4)" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
-          <span className={styles.iconChip} aria-hidden>{icon}</span>
+          <span className={styles.iconChip} aria-hidden><Icon name={icon} size={15} /></span>
           <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>
             {title}
           </h2>
@@ -324,10 +324,10 @@ interface ChatRow {
   participantCount: number;
 }
 
-const CHAT_KIND: Record<ChatKind, { glyph: string; label: string; crim: boolean }> = {
-  plan: { glyph: "🗓", label: "Plan chat", crim: true },
-  group: { glyph: "◍", label: "Group", crim: false },
-  direct: { glyph: "✉", label: "Direct", crim: false },
+const CHAT_KIND: Record<ChatKind, { glyph: IconName; label: string; crim: boolean }> = {
+  plan: { glyph: "plan", label: "Plan chat", crim: true },
+  group: { glyph: "users", label: "Group", crim: false },
+  direct: { glyph: "chat", label: "Direct", crim: false },
 };
 
 function RecentChats({ hasSession }: { hasSession: boolean }) {
@@ -353,7 +353,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Recent chats" icon="✦" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
+    <Section title="Recent chats" icon="sparkle" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
       {!hasSession ? (
         <SignInNudge note="Sign in to see your conversations and plans with people nearby." />
       ) : error ? (
@@ -387,7 +387,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
                       border: "1px solid var(--line)",
                     }}
                   >
-                    {meta.glyph}
+                    <Icon name={meta.glyph} size={15} />
                   </span>
                   <span style={{ minWidth: 0 }}>
                     <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -466,7 +466,7 @@ function YourTown({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title={`${place.name} online`} icon="✦" action={{ label: "Explore", href: "/explore" }}>
+    <Section title={`${place.name} online`} icon="sparkle" action={{ label: "Explore", href: "/explore" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load venues near you just now.</p>
       ) : venues === undefined ? (
@@ -527,7 +527,7 @@ function TownForum({ place }: { place: Place }) {
   }, [trpc, place.name]);
 
   return (
-    <Section title="Town forum" icon="✲" action={{ label: "Town Hall", href: "/town-hall" }}>
+    <Section title="Town forum" icon="forum" action={{ label: "Town Hall", href: "/town-hall" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load the forum just now.</p>
       ) : topics === undefined ? (
@@ -555,7 +555,7 @@ function TownForum({ place }: { place: Place }) {
                 aria-hidden
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 38, height: 38, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}
               >
-                <span style={{ fontSize: 10, lineHeight: 1 }}>▲</span>
+                <Icon name="upvote" size={12} />
                 <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{t.upvoteCount}</span>
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
@@ -592,7 +592,7 @@ function SavedDeals({ hasSession }: { hasSession: boolean }) {
   if (!hasSession) return null;
 
   return (
-    <Section title="Saved deals" icon="🎟">
+    <Section title="Saved deals" icon="ticket">
       {offers === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
@@ -656,7 +656,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Followed venues" icon="♥" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
+    <Section title="Followed venues" icon="heart" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
       {!hasSession ? (
         <SignInNudge note="Follow a business to unlock its exclusive loyalty deals — they'll appear here, just for followers." />
       ) : error ? (
@@ -740,10 +740,10 @@ interface NewsPost {
   venueLocality: string | null;
 }
 
-const NEWS_KIND: Record<NewsPost["kind"], { label: string; glyph: string }> = {
-  news: { label: "News", glyph: "›" },
-  offer: { label: "Offer", glyph: "✦" },
-  event: { label: "Event", glyph: "◷" },
+const NEWS_KIND: Record<NewsPost["kind"], { label: string; glyph: IconName }> = {
+  news: { label: "News", glyph: "chevronRight" },
+  offer: { label: "Offer", glyph: "sparkle" },
+  event: { label: "Event", glyph: "event" },
 };
 
 function LocalNews({ place }: { place: Place }) {
@@ -771,7 +771,7 @@ function LocalNews({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title={`${place.name} news`} icon="✦">
+    <Section title={`${place.name} news`} icon="sparkle">
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load local updates just now.</p>
       ) : posts === undefined ? (
@@ -848,7 +848,7 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Your plans" icon="🗓" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
+    <Section title="Your plans" icon="plan" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
       {!hasSession ? (
         <SignInNudge note="Make plans — a night out, a weekend, a list to try — and save venues to them." />
       ) : error ? (
@@ -915,7 +915,7 @@ function MarketSeam({ place }: { place: Place }) {
   return (
     <SeamCard
       title={`${place.name} market`}
-      glyph="◇"
+      glyph="shop"
       blurb="Buy, sell and swap with people in your town — a local marketplace, right where you already browse."
     />
   );
@@ -937,11 +937,11 @@ function SignInNudge({ note }: { note: string }) {
   );
 }
 
-function SeamCard({ title, glyph, blurb }: { title: string; glyph: string; blurb: string }) {
+function SeamCard({ title, glyph, blurb }: { title: string; glyph: IconName; blurb: string }) {
   return (
     <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)", borderStyle: "dashed" }}>
       <header style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-        <span aria-hidden style={{ fontSize: 18, color: "var(--crimson-700)", opacity: 0.6 }}>{glyph}</span>
+        <Icon name={glyph} size={18} style={{ color: "var(--crimson-700)", opacity: 0.6 }} />
         <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, margin: 0, color: "var(--ink-2)" }}>
           {title}
         </h2>

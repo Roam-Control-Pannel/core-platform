@@ -28,7 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Seg, Pill } from "@roam/design";
+import { Seg, Pill, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
@@ -391,7 +391,7 @@ export function Explore() {
           variant="neutral"
           style={{ borderStyle: "dashed", color: "var(--faint)", ...(vertical ? vStyle : {}) }}
         >
-          Market ◇
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>Market <Icon name="shop" size={13} /></span>
         </Pill>
       </span>
     </>
@@ -486,7 +486,7 @@ export function Explore() {
                   color: "var(--ink-2)",
                 }}
               >
-                <span aria-hidden style={{ color: "var(--crimson-700)" }}>◍</span>
+                <Icon name="place" size={16} style={{ color: "var(--crimson-700)" }} />
                 {showMobileMap ? "Hide map" : "Show map"}
               </button>
               {showMobileMap ? (
@@ -606,7 +606,7 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill"
   if (variant === "tile") {
     return (
       <a href={href} {...anchorProps} className={styles.mapTile}>
-        <span className={styles.mapGlyph}>◍</span>
+        <span className={styles.mapGlyph}><Icon name="place" size={26} /></span>
         <span className={styles.mapLabel}>Open {place.name} in Maps ↗</span>
       </a>
     );
@@ -614,7 +614,7 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill"
   return (
     <a href={href} {...anchorProps} style={{ textDecoration: "none" }}>
       <Pill variant="ghost-crim" size="sm">
-        ◍ Open {place.name} in Maps
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="place" size={14} /> Open {place.name} in Maps</span>
       </Pill>
     </a>
   );
@@ -665,7 +665,7 @@ function DiscoveringState({ placeName }: { placeName: string }) {
           fontSize: 14,
         }}
       >
-        <span aria-hidden style={{ color: "var(--crimson-700)" }}>◍</span>
+        <Icon name="place" size={16} style={{ color: "var(--crimson-700)" }} />
         Discovering places in {placeName}…
       </div>
       <VenueGridSkeleton />
