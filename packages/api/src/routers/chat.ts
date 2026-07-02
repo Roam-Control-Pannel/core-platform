@@ -501,8 +501,12 @@ export const chatRouter = router({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.db
         .from("chat_messages")
+        // Disambiguate the profiles embed to the SENDER fk: migration 0060 (chat_poll_votes,
+        // chat_polls) added other chat_messages↔profiles relationship paths, which made a bare
+        // `profiles(...)` embed ambiguous ("more than one relationship found"). Pin it to the
+        // sender_id foreign key so PostgREST resolves the one we mean.
         .select(
-          "id, sender_id, body, kind, payload, moderation, created_at, profiles(display_name, handle, avatar_url)",
+          "id, sender_id, body, kind, payload, moderation, created_at, profiles!chat_messages_sender_id_fkey(display_name, handle, avatar_url)",
         )
         .eq("thread_id", input.threadId)
         .order("created_at", { ascending: true });
