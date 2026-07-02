@@ -21,6 +21,8 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
+import { escalateToService } from "./trpc.js";
+import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import type { EfaConfig } from "./transit/client.js";
 
 function requireEnv(name: string): string {
@@ -108,7 +110,8 @@ function loadTransitConfig(): EfaConfig | null {
   };
 }
 
-const createContext = makeContextFactory(loadEnv());
+const env = loadEnv();
+const createContext = makeContextFactory(env);
 
 /**
  * Allowed browser origins for CORS. Comma-separated CORS_ALLOWED_ORIGINS in prod;
@@ -140,6 +143,14 @@ function toHeaderBag(headers: Headers): HeaderBag {
   return { get: (name: string) => headers.get(name) };
 }
 
+/** A JSON Response carrying the CORS headers (used by the raw internal cron route). */
+function jsonResponse(body: unknown, status: number, cors: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+}
+
 /**
  * The fetch handler. Point any fetch-native runtime at this.
  *   export default { fetch: handler }   // edge / Bun / Deno
@@ -152,6 +163,35 @@ export async function handler(request: Request): Promise<Response> {
   // Preflight: answer OPTIONS immediately with the CORS headers, no body.
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: cors });
+  }
+
+  // Internal cron route (NOT tRPC). The daily birthday delivery is triggered by Supabase
+  // pg_cron via pg_net, which posts plain JSON and cannot speak tRPC's batch envelope — so it
+  // gets its own raw path. Auth is the SAME internal-call secret gate every server-to-server
+  // caller uses (Edge Functions / cron / webhooks): we build the context purely to reuse its
+  // isInternalCall check, then escalate to a service client and run the shared job code.
+  // Idempotent — deliver_birthday_offers() is `on conflict do nothing` per (venue,user,day),
+  // so a double-fire delivers once. Never JWT-gated: there is no user; the secret is the gate.
+  const pathname = new URL(request.url).pathname;
+  if (pathname === "/jobs/deliver-birthdays") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (!ctx.isInternalCall) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runBirthdayDelivery(service, ctx.env.vapid);
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse(
+        { ok: false, error: e instanceof Error ? e.message : String(e) },
+        500,
+        cors,
+      );
+    }
   }
 
   const response = await fetchRequestHandler({
