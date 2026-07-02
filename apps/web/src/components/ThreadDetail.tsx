@@ -182,7 +182,7 @@ function ConversationView({
 
       <div style={{ marginTop: "var(--space-4)" }}>
         {thread.isGroup ? <MeetupBar threadId={thread.id} onOpen={onOpenInfo} /> : null}
-        <MessagePanel threadId={thread.id} />
+        <MessagePanel threadId={thread.id} isGroup={thread.isGroup} />
       </div>
     </>
   );
@@ -467,6 +467,7 @@ interface ThreadMessage {
   createdAt: string;
   senderName: string | null;
   senderHandle: string | null;
+  senderAvatar: string | null;
 }
 
 /**
@@ -476,7 +477,7 @@ interface ThreadMessage {
  * composer sits directly beneath it, always visible. After a send we refetch server-truth.
  * Only kind='text' renders; a non-text kind shows a neutral placeholder (the rich-kind seam).
  */
-function MessagePanel({ threadId }: { threadId: string }) {
+function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolean }) {
   const trpc = useTrpc();
   const session = useSession();
   const [messages, setMessages] = useState<ThreadMessage[] | undefined>(undefined);
@@ -563,15 +564,28 @@ function MessagePanel({ threadId }: { threadId: string }) {
   return (
     <div>
       <div ref={listRef} className={styles.scroll}>
-        {messages.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
-            No messages yet — say something to get this chat going.
-          </p>
-        ) : (
-          messages.map((m) => (
-            <MessageRow key={m.id} message={m} mine={m.senderId !== null && m.senderId === myId} onChanged={load} />
-          ))
-        )}
+        <div className={styles.scrollInner}>
+          {messages.length === 0 ? (
+            <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
+              No messages yet — say something to get this chat going.
+            </p>
+          ) : (
+            buildRenderItems(messages, myId).map((it) =>
+              it.type === "date" ? (
+                <div key={it.key} className={styles.dateChip}>{it.label}</div>
+              ) : (
+                <MessageRow
+                  key={it.key}
+                  message={it.message}
+                  mine={it.mine}
+                  isGroup={isGroup}
+                  showHeader={it.showHeader}
+                  onChanged={load}
+                />
+              ),
+            )
+          )}
+        </div>
       </div>
 
       {/* composer */}
@@ -616,15 +630,46 @@ function MessagePanel({ threadId }: { threadId: string }) {
   );
 }
 
-function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine: boolean; onChanged: () => void }) {
+/** A rendered row: either a day separator or a message (with its grouping flag). */
+type RenderItem =
+  | { type: "date"; key: string; label: string }
+  | { type: "msg"; key: string; message: ThreadMessage; mine: boolean; showHeader: boolean };
+
+/**
+ * Turn a flat message list into rendered rows: insert a day separator when the calendar day
+ * changes, and mark a message as a group START (showHeader) when it's the first of the day, from a
+ * different sender than the previous, or more than 5 minutes after it. Grouped continuations hide
+ * the name/time and tuck under the same avatar gutter — the WhatsApp read.
+ */
+function buildRenderItems(messages: ThreadMessage[], myId: string | null): RenderItem[] {
+  const items: RenderItem[] = [];
+  let lastDay = "";
+  let prev: ThreadMessage | null = null;
+  for (const m of messages) {
+    const d = new Date(m.createdAt);
+    const dayKey = Number.isNaN(d.getTime()) ? "" : d.toDateString();
+    if (dayKey !== lastDay) {
+      items.push({ type: "date", key: `date-${m.id}`, label: dayLabel(m.createdAt) });
+      lastDay = dayKey;
+      prev = null;
+    }
+    const mine = m.senderId !== null && m.senderId === myId;
+    const grouped = prev !== null && prev.senderId === m.senderId && withinMinutes(prev.createdAt, m.createdAt, 5);
+    items.push({ type: "msg", key: m.id, message: m, mine, showHeader: !grouped });
+    prev = m;
+  }
+  return items;
+}
+
+function MessageRow({ message, mine, isGroup, showHeader, onChanged }: { message: ThreadMessage; mine: boolean; isGroup: boolean; showHeader: boolean; onChanged: () => void }) {
   const trpc = useTrpc();
   const name =
     message.senderName?.trim() ||
     (message.senderHandle ? `@${message.senderHandle}` : null) ||
     (mine ? "You" : "Roam member");
 
-  // Rich-kind seam: only text renders this slice; other kinds get a neutral note.
   const isText = message.kind === "text";
+  const showAvatarGutter = isGroup && !mine; // avatars only for OTHERS in a group
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body ?? "");
@@ -656,74 +701,120 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
   }, [trpc, message.id, onChanged]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 2 }}>
-      <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--faint)" }}>
-        {mine ? "You" : name} · {formatWhen(message.createdAt)}
-      </span>
-      {editing ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, maxWidth: "85%", width: "100%" }}>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={2}
-            maxLength={4000}
-            aria-label="Edit message"
-            style={{
-              width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "var(--ui)", fontSize: 14,
-              lineHeight: 1.45, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line-2)",
-              background: "#fff", color: "var(--ink)", outline: "none",
-            }}
-          />
-          <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <Button variant="pri" size="sm" onClick={() => void saveEdit()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
-            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(message.body ?? ""); }} disabled={busy}>Cancel</Button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {isText ? (
+    <div className={styles.msgWrap} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 2, marginTop: showHeader ? "var(--space-3)" : 2 }}>
+      {showHeader ? (
+        <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--faint)", paddingLeft: showAvatarGutter ? 38 : 2, paddingRight: mine ? 2 : 0 }}>
+          {mine ? formatClock(message.createdAt) : `${name} · ${formatClock(message.createdAt)}`}
+        </span>
+      ) : null}
+
+      <div style={{ display: "flex", flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, maxWidth: "85%" }}>
+        {showAvatarGutter ? (
+          showHeader ? <MsgAvatar name={name} url={message.senderAvatar} /> : <div style={{ width: 30, flex: "0 0 auto" }} />
+        ) : null}
+
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 4 }}>
+          {editing ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, width: "100%", minWidth: 220 }}>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={2}
+                maxLength={4000}
+                aria-label="Edit message"
+                style={{ width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "var(--ui)", fontSize: 14, lineHeight: 1.45, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line-2)", background: "#fff", color: "var(--ink)", outline: "none" }}
+              />
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <Button variant="pri" size="sm" onClick={() => void saveEdit()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
+                <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(message.body ?? ""); }} disabled={busy}>Cancel</Button>
+              </div>
+            </div>
+          ) : isText ? (
             <div
               style={{
-                maxWidth: "78%",
                 padding: "8px 12px",
-                borderRadius: 12,
+                borderRadius: 14,
                 fontSize: 14,
                 lineHeight: 1.45,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
+                background: mine ? "var(--crimson-tint)" : "#fff",
                 color: "var(--ink-hi)",
                 border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
+                boxShadow: "var(--sh-1)",
               }}
             >
               {message.body ?? ""}
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 4, maxWidth: "78%" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 4 }}>
               <MessageCard kind={message.kind as MessageKind} payload={message.payload} />
               {message.body ? (
                 <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.4, maxWidth: 260 }}>{message.body}</div>
               ) : null}
             </div>
           )}
-          {mine ? (
+
+          {mine && !editing ? (
             confirming ? (
-              <div className={actions.row} style={{ marginTop: 2 }}>
+              <div className={`${actions.row} ${styles.msgActions}`}>
                 <span className={actions.confirm}>Delete?</span>
                 <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : "Yes"}</button>
                 <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>No</button>
               </div>
             ) : (
-              <div className={actions.row} style={{ marginTop: 2 }}>
+              <div className={`${actions.row} ${styles.msgActions}`}>
                 {isText ? <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button> : null}
                 <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
               </div>
             )
           ) : null}
-        </>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Small round avatar for a message sender in a group chat (image, or a monogram fallback). */
+function MsgAvatar({ name, url }: { name: string; url: string | null }) {
+  const initial = (name.replace(/^@/, "").charAt(0) || "?").toUpperCase();
+  return (
+    <div style={{ width: 30, height: 30, flex: "0 0 auto", borderRadius: "50%", overflow: "hidden", background: "var(--crimson-tint)", display: "grid", placeItems: "center", color: "var(--crimson-700)", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 12 }}>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element -- public avatar URL; next/image adds no value on a 30px chat avatar
+        <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      ) : (
+        initial
       )}
     </div>
   );
+}
+
+/** True if two ISO timestamps are within `mins` minutes of each other (for message grouping). */
+function withinMinutes(a: string, b: string, mins: number): boolean {
+  const ta = new Date(a).getTime();
+  const tb = new Date(b).getTime();
+  if (Number.isNaN(ta) || Number.isNaN(tb)) return false;
+  return Math.abs(tb - ta) <= mins * 60_000;
+}
+
+/** Day separator label: Today / Yesterday / a full date. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const today = new Date();
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOf(today) - startOf(d)) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** Clock time for a message header, e.g. "14:32". */
+function formatClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
 function MessagesSkeleton() {
