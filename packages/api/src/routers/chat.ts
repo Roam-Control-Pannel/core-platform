@@ -536,6 +536,7 @@ export const chatRouter = router({
           createdAt: m.created_at,
           senderName: prof?.display_name ?? null,
           senderHandle: prof?.handle ?? null,
+          senderAvatar: prof?.avatar_url ?? null,
         };
       });
     }),

@@ -23,6 +23,42 @@
   }
 }
 
+/* Bottom-anchor: messages hug the composer even in a near-empty chat, and grow upward as the
+   conversation fills (margin-top:auto collapses to 0 once content overflows, so scrolling works). */
+.scrollInner {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hover-reveal message actions on desktop; always visible on touch (no hover there). */
+.msgActions {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.msgWrap:hover .msgActions {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .msgActions {
+    opacity: 1;
+  }
+}
+
+/* Centered day separator between message groups. */
+.dateChip {
+  align-self: center;
+  margin: var(--space-3) 0 var(--space-2);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 /* Tappable chat header (opens Chat info) — the WhatsApp "tap the title" gesture. */
 .headerBtn {
   all: unset;
