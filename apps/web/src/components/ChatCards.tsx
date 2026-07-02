@@ -9,10 +9,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { MessageKind } from "../lib/chatKinds";
+import type { MessageKind, PollPayload } from "../lib/chatKinds";
 import { chatMediaSignedUrl } from "../lib/uploadChatImage";
+import { PollMessage } from "./ChatPoll";
 
-export function MessageCard({ kind, payload }: { kind: MessageKind; payload: Record<string, unknown> | null }) {
+export function MessageCard({
+  kind,
+  payload,
+  messageId,
+  mine,
+}: {
+  kind: MessageKind;
+  payload: Record<string, unknown> | null;
+  messageId?: string;
+  mine?: boolean;
+}) {
   if (payload) {
     if (kind === "venue_card" && typeof payload.venueId === "string") {
       return <RefCard href={`/venue/${payload.venueId}`} icon="📍" title={str(payload.name, "A place")} sub="View venue" />;
@@ -26,6 +37,9 @@ export function MessageCard({ kind, payload }: { kind: MessageKind; payload: Rec
     }
     if (kind === "image" && typeof payload.path === "string") {
       return <ImageBubble payload={payload} />;
+    }
+    if (kind === "poll" && messageId && Array.isArray(payload.options)) {
+      return <PollMessage messageId={messageId} payload={payload as unknown as PollPayload} mine={!!mine} />;
     }
   }
   return <Fallback />;

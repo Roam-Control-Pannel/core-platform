@@ -21,6 +21,7 @@ export const MESSAGE_KINDS = [
   "plan_card",
   "profile_card",
   "image",
+  "poll",
 ] as const;
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 
@@ -44,11 +45,23 @@ export interface ImagePayload {
   mime: string | null;
 }
 
+export interface PollOption {
+  id: string;
+  text: string;
+}
+export interface PollPayload {
+  question: string;
+  options: PollOption[];
+  /** true = each person may pick multiple options; false = one choice (switchable). */
+  multi: boolean;
+}
+
 export type MessagePayload =
   | VenueCardPayload
   | PlanCardPayload
   | ProfileCardPayload
   | ImagePayload
+  | PollPayload
   | null;
 
 /** A validated, normalized message ready to persist. */
@@ -152,6 +165,30 @@ export function validateMessage(input: {
     return {
       ok: true,
       message: { kind, body, payload: { path: path.trim(), width, height, mime: mime && mime.trim() ? mime.trim() : null } },
+    };
+  }
+
+  if (kind === "poll") {
+    const question = asString(obj.question);
+    if (!question || !question.trim()) return { ok: false, error: "Give your poll a question." };
+    if (!Array.isArray(obj.options)) return { ok: false, error: "A poll needs options." };
+    const options: PollOption[] = [];
+    const seenIds = new Set<string>();
+    for (const raw of obj.options as unknown[]) {
+      if (typeof raw !== "object" || raw === null) continue;
+      const o = raw as Record<string, unknown>;
+      const id = asString(o.id);
+      const text = asString(o.text);
+      if (!id || !id.trim() || !text || !text.trim()) continue; // skip malformed/blank options
+      if (seenIds.has(id)) continue; // ids must be unique
+      seenIds.add(id);
+      options.push({ id: id.trim().slice(0, 64), text: text.trim().slice(0, NAME_MAX) });
+      if (options.length >= 10) break; // cap at 10 options
+    }
+    if (options.length < 2) return { ok: false, error: "A poll needs at least two options." };
+    return {
+      ok: true,
+      message: { kind, body, payload: { question: question.trim().slice(0, 300), options, multi: obj.multi === true } },
     };
   }
 

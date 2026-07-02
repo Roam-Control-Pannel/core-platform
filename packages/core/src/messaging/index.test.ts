@@ -64,9 +64,36 @@ describe("validateMessage", () => {
     expect(validateMessage({ kind: "plan_card", payload: "x" }).ok).toBe(false);
   });
 
+  it("validates a poll and normalizes options + multi", () => {
+    const r = validateMessage({
+      kind: "poll",
+      payload: { question: "  Where to?  ", multi: 1, options: [{ id: "a", text: " Pub " }, { id: "b", text: "Cafe" }] },
+    });
+    expect(r).toEqual({
+      ok: true,
+      message: { kind: "poll", body: null, payload: { question: "Where to?", options: [{ id: "a", text: "Pub" }, { id: "b", text: "Cafe" }], multi: false } },
+    });
+  });
+
+  it("rejects a poll with fewer than two valid options", () => {
+    expect(validateMessage({ kind: "poll", payload: { question: "?", options: [{ id: "a", text: "Only one" }] } }).ok).toBe(false);
+    expect(validateMessage({ kind: "poll", payload: { question: "", options: [{ id: "a", text: "x" }, { id: "b", text: "y" }] } }).ok).toBe(false);
+    expect(validateMessage({ kind: "poll", payload: { question: "q", options: [{ id: "a", text: "x" }, { id: "a", text: "dup" }] } }).ok).toBe(false);
+  });
+
+  it("carries multi=true through and drops blank options", () => {
+    const r = validateMessage({ kind: "poll", payload: { question: "q", multi: true, options: [{ id: "a", text: "x" }, { id: "b", text: "" }, { id: "c", text: "z" }] } });
+    expect(r.ok && (r.message.payload as { multi: boolean; options: unknown[] })).toEqual({
+      question: "q",
+      multi: true,
+      options: [{ id: "a", text: "x" }, { id: "c", text: "z" }],
+    });
+  });
+
   it("exposes every kind", () => {
     expect(MESSAGE_KINDS).toContain("text");
     expect(MESSAGE_KINDS).toContain("venue_card");
     expect(MESSAGE_KINDS).toContain("image");
+    expect(MESSAGE_KINDS).toContain("poll");
   });
 });

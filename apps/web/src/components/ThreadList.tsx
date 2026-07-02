@@ -268,6 +268,8 @@ function previewText(last: LastMessage | null, myId: string | null): string {
       return prefix + "👤 Shared a contact";
     case "image":
       return prefix + "📷 Photo";
+    case "poll":
+      return prefix + "📊 Poll";
     default:
       return prefix + "Message";
   }
