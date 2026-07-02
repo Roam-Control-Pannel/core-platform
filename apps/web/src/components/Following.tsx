@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Card, Seg } from "@roam/design";
+import { Card, Seg, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { EnableNotifications } from "./EnableNotifications";
@@ -336,11 +336,10 @@ function EmptyState() {
           background: "var(--crimson-tint)",
           display: "grid",
           placeItems: "center",
-          fontSize: 24,
           color: "var(--crimson-700)",
         }}
       >
-        ◍
+        <Icon name="heart" size={24} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
         Not following anything yet

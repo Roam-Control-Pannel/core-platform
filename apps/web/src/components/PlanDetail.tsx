@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { venuePath } from "../lib/routes";
@@ -154,7 +154,7 @@ export function PlanDetail({ planId }: { planId: string }) {
 
           <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
-              {openingChat ? "Opening…" : "💬 Group chat"}
+              {openingChat ? "Opening…" : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="chat" size={14} /> Group chat</span>}
             </Button>
             <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
           </div>

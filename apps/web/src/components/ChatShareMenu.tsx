@@ -329,7 +329,7 @@ function PollCreator({ onCreate }: { onCreate: (payload: Record<string, unknown>
           <div key={o.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input value={o.text} onChange={(e) => setText(o.id, e.target.value)} placeholder={`Option ${i + 1}`} maxLength={200} aria-label={`Option ${i + 1}`} style={inputStyle} />
             {options.length > 2 ? (
-              <button type="button" aria-label="Remove option" onClick={() => removeOption(o.id)} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 16, padding: "0 4px" }}>✕</button>
+              <button type="button" aria-label="Remove option" onClick={() => removeOption(o.id)} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: "0 4px", display: "inline-flex" }}><Icon name="close" size={16} /></button>
             ) : null}
           </div>
         ))}

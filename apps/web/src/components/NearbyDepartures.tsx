@@ -14,6 +14,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon, type IconName } from "@roam/design";
 import { isWithinNI, isWithinIreland, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
 
 type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
@@ -43,19 +44,19 @@ interface Board {
   cached: boolean;
 }
 
-/** A small glyph per mode. Text-only so it needs no icon set. */
-function modeGlyph(mode: Mode): string {
+/** The icon name for a transit mode. */
+function modeIcon(mode: Mode): IconName {
   switch (mode) {
     case "rail":
-      return "🚆";
+      return "train";
     case "bus":
-      return "🚌";
+      return "bus";
     case "tram":
-      return "🚊";
+      return "tram";
     case "ferry":
-      return "⛴";
+      return "ferry";
     default:
-      return "•";
+      return "place";
   }
 }
 
@@ -136,7 +137,7 @@ export function NearbyDepartures({
     return (
       <div style={cardStyle}>
         <div style={{ ...rowStyle, color: "var(--ink-2)" }}>
-          <span aria-hidden>🚌</span>
+          <Icon name="bus" size={16} />
           <span style={{ fontSize: 13 }}>Loading nearby departures…</span>
         </div>
       </div>
@@ -190,8 +191,8 @@ export function NearbyDepartures({
             const early = typeof d.delayMin === "number" && d.delayMin < 0;
             return (
               <li key={`${d.line}-${d.plannedTime}-${i}`} style={rowStyle}>
-                <span aria-hidden style={{ width: 20, textAlign: "center" }}>
-                  {modeGlyph(d.mode)}
+                <span aria-hidden style={{ width: 20, display: "inline-flex", justifyContent: "center" }}>
+                  <Icon name={modeIcon(d.mode)} size={16} />
                 </span>
                 <span
                   style={{
@@ -289,7 +290,7 @@ function TransitComingSoon({ placeName }: { placeName: string }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-        <span aria-hidden style={{ fontSize: 18 }}>🚆</span>
+        <Icon name="train" size={18} />
         <div
           className="t-h4"
           style={{ fontFamily: "var(--display)", color: "var(--ink)", lineHeight: 1.2, flex: 1 }}

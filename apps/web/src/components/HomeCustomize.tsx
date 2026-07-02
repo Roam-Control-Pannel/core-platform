@@ -10,6 +10,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Icon } from "@roam/design";
 
 export interface CustomizeItem {
   id: string;
@@ -178,7 +179,7 @@ export function HomeCustomize({
                 onClick={() => onToggle(it.id)}
                 active={!it.hidden}
               >
-                {it.hidden ? "🚫" : "👁"}
+                <Icon name={it.hidden ? "eyeOff" : "eye"} size={18} />
               </IconBtn>
             </li>
           ))}
