@@ -10,6 +10,7 @@
  */
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Icon } from "@roam/design";
 import styles from "./LegalDoc.module.css";
 
 export function LegalDoc({
@@ -55,7 +56,7 @@ export function LegalDoc({
             color: "var(--ink-2)",
           }}
         >
-          <span aria-hidden>✎</span>
+          <Icon name="edit" size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>
             This is placeholder copy — the final {title} will replace it before launch.
           </span>

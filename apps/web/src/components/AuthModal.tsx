@@ -15,6 +15,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Icon } from "@roam/design";
 import { AuthPanel } from "./AuthPanel";
 
 export function AuthModal({
@@ -95,11 +96,10 @@ export function AuthModal({
             placeItems: "center",
             borderRadius: 10,
             color: "var(--muted)",
-            fontSize: 18,
             lineHeight: 1,
           }}
         >
-          ✕
+          <Icon name="close" size={18} />
         </button>
         <AuthPanel
           emailRedirectTo={emailRedirectTo}
