@@ -65,7 +65,12 @@ export const venueBirthdayRouter = router({
       if (error.code === "42501") throw new TRPCError({ code: "FORBIDDEN", message: "Only the venue owner can view this." });
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load birthday stats: ${error.message}` });
     }
-    const d = (data ?? {}) as { sentThisMonth?: number; sentTotal?: number };
-    return { sentThisMonth: Number(d.sentThisMonth ?? 0), sentTotal: Number(d.sentTotal ?? 0) };
+    const d = (data ?? {}) as { sentThisMonth?: number; sentTotal?: number; redeemedThisMonth?: number; redeemedTotal?: number };
+    return {
+      sentThisMonth: Number(d.sentThisMonth ?? 0),
+      sentTotal: Number(d.sentTotal ?? 0),
+      redeemedThisMonth: Number(d.redeemedThisMonth ?? 0),
+      redeemedTotal: Number(d.redeemedTotal ?? 0),
+    };
   }),
 });
