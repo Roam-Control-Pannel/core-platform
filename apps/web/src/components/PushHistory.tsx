@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { timeAgo } from "../lib/townHall";
 
@@ -52,7 +53,7 @@ export function PushHistory({ venueId }: { venueId: string }) {
     <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
       {pushes.map((p) => (
         <li key={p.id} style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", padding: "10px 12px", borderRadius: "var(--r-md)", border: "1px solid var(--line)", background: "var(--card)" }}>
-          <span aria-hidden style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 999, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 14, flexShrink: 0 }}>🔔</span>
+          <span aria-hidden style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 999, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}><Icon name="bell" size={14} /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontFamily: "var(--ui)", fontWeight: 600, fontSize: 13.5, color: "var(--ink)" }}>
               {p.title?.trim() || "Update"}

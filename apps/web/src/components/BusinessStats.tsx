@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card } from "@roam/design";
+import { Card , Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 interface Follower {
@@ -49,16 +49,16 @@ export function BusinessStats({ venueId, rating, ratingCount }: { venueId: strin
   return (
     <div style={{ display: "grid", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "var(--space-3)" }}>
-        <StatCard glyph="♥" label="Followers" value={num(followerCount)} />
-        <StatCard glyph="📣" label="Posts" value={num(posts)} />
-        <StatCard glyph="✦" label="Push credits" value={num(credits)} href={`/dashboard/${venueId}`} />
-        <StatCard glyph="★" label="Rating" value={rating != null ? rating.toFixed(1) : "–"} sub={ratingCount ? `${ratingCount.toLocaleString()} reviews` : "No reviews yet"} />
+        <StatCard glyph="heart" label="Followers" value={num(followerCount)} />
+        <StatCard glyph="megaphone" label="Posts" value={num(posts)} />
+        <StatCard glyph="sparkle" label="Push credits" value={num(credits)} href={`/dashboard/${venueId}`} />
+        <StatCard glyph="star" label="Rating" value={rating != null ? rating.toFixed(1) : "–"} sub={ratingCount ? `${ratingCount.toLocaleString()} reviews` : "No reviews yet"} />
       </div>
 
       <Card style={{ padding: "var(--space-4)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <span aria-hidden style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 9, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 15 }}>♥</span>
+            <span aria-hidden style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 9, background: "var(--crimson-tint)", color: "var(--crimson-700)" }}><Icon name="heart" size={15} /></span>
             <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, margin: 0 }}>
               Followers{followerCount != null ? ` · ${followerCount.toLocaleString()}` : ""}
             </h2>
@@ -90,11 +90,11 @@ export function BusinessStats({ venueId, rating, ratingCount }: { venueId: strin
   );
 }
 
-function StatCard({ glyph, label, value, sub, href }: { glyph: string; label: string; value: string; sub?: string; href?: string }) {
+function StatCard({ glyph, label, value, sub, href }: { glyph: IconName; label: string; value: string; sub?: string; href?: string }) {
   const inner = (
     <Card style={{ padding: "var(--space-4)", height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span aria-hidden style={{ fontSize: 15, color: "var(--crimson-700)" }}>{glyph}</span>
+        <Icon name={glyph} size={15} style={{ color: "var(--crimson-700)" }} />
         <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{label}</span>
       </div>
       <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 28, letterSpacing: "-.02em", color: "var(--ink-hi)", lineHeight: 1 }}>{value}</div>

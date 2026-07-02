@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { offerTypeLabel } from "../lib/offerTypes";
 
@@ -79,7 +80,7 @@ export function OfferInsights({ venueId }: { venueId: string }) {
                   {offerTypeLabel(t.offerType)}
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                  {t.offers} offer{t.offers === 1 ? "" : "s"} · ♡ {t.saves} · ♻ {t.redemptions}
+                  {t.offers} offer{t.offers === 1 ? "" : "s"} · <Icon name="heart" size={12} /> {t.saves} · <Icon name="redeem" size={12} /> {t.redemptions}
                 </span>
               </div>
               <div style={{ height: 8, borderRadius: 999, background: "var(--paper-2)", overflow: "hidden" }}>

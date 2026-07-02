@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon} from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { OFFER_TYPES, OFFER_TYPE_LABELS, offerTypeLabel, offerTypeUsesPercent } from "../lib/offerTypes";
 
@@ -78,7 +78,7 @@ export function VenueOffers({ venueId }: { venueId: string }) {
         <OfferComposer venueId={venueId} onPosted={() => { setComposing(false); reload(); }} onCancel={() => setComposing(false)} />
       ) : (
         <div style={{ marginBottom: "var(--space-4)" }}>
-          <Button variant="pri" onClick={() => setComposing(true)}>＋ New offer</Button>
+          <Button variant="pri" onClick={() => setComposing(true)}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> New offer</span></Button>
         </div>
       )}
 
@@ -119,9 +119,9 @@ export function VenueOffers({ venueId }: { venueId: string }) {
                   <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>
                     {o.code ? <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--crimson-700)" }}>{o.code}</span> : null}
                     {o.endsAt ? <span>Ends {shortDate(o.endsAt)}</span> : null}
-                    <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>♡ {o.saves} saved</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ink-2)", fontWeight: 600 }}><Icon name="heart" size={12} /> {o.saves} saved</span>
                     <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>
-                      ♻ {o.redemptions}{o.maxRedemptions != null ? ` / ${o.maxRedemptions}` : ""} redeemed
+                      <Icon name="redeem" size={12} /> {o.redemptions}{o.maxRedemptions != null ? ` / ${o.maxRedemptions}` : ""} redeemed
                     </span>
                   </div>
                 </div>

@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card } from "@roam/design";
+import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { Button } from "@roam/design";
 import { OwnerMediaManager } from "./OwnerMediaManager";
@@ -137,7 +137,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             {tab === "overview" ? (
               <>
                 <DashSection
-                  icon="🔔"
+                  icon="bell"
                   title="Activity"
                   subtitle="What locals are doing with your business — new follows, offer saves and redemptions."
                 >
@@ -145,7 +145,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                 </DashSection>
 
                 <DashSection
-                  icon="✨"
+                  icon="sparkle"
                   title="Marketing & suggestions"
                   subtitle="Turn on tailored offer and post ideas — you set the rules, we do the inspiration."
                 >
@@ -160,7 +160,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             {tab === "audience" ? (
               <>
                 <DashSection
-                  icon="👥"
+                  icon="users"
                   title="Audience"
                   subtitle="Who follows you, in aggregate — growth, engagement, reach and (privately) age & birthdays. Never individual people."
                 >
@@ -168,7 +168,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                 </DashSection>
 
                 <DashSection
-                  icon="🎂"
+                  icon="cake"
                   title="Birthday offer"
                   subtitle="A standing treat we deliver automatically to opted-in followers on their birthday. You see counts, never who."
                 >
@@ -179,7 +179,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
 
             {tab === "posts" ? (
               <DashSection
-                icon="📣"
+                icon="megaphone"
                 title="Local posts"
                 subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed — this is also your posting history."
               >
@@ -190,7 +190,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             {tab === "offers" ? (
               <>
                 <DashSection
-                  icon="🎟"
+                  icon="ticket"
                   title="Offers"
                   subtitle="Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue. You see the redemption count."
                 >
@@ -198,7 +198,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                 </DashSection>
 
                 <DashSection
-                  icon="📊"
+                  icon="poll"
                   title="Offer insights"
                   subtitle="Which kinds of deal land best with locals — saves and redemptions by offer type."
                 >
@@ -210,7 +210,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
             {tab === "notifications" ? (
               <>
                 <DashSection
-                  icon="📨"
+                  icon="inbox"
                   title="Send a notification"
                   subtitle="Message your followers' notifications inbox — everyone at once, or one person individually."
                 >
@@ -218,7 +218,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                 </DashSection>
 
                 <DashSection
-                  icon="📤"
+                  icon="send"
                   title="Push history"
                   subtitle="Every update you've pushed to your followers, most recent first."
                 >
@@ -229,11 +229,11 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
 
             {tab === "venue" ? (
               <>
-                <DashSection icon="✦" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
+                <DashSection icon="photo" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
                   <OwnerMediaManager venueId={venueId} />
                 </DashSection>
 
-                <DashSection icon="✎" title="Details" subtitle="A description and the links people need — menu, booking, website.">
+                <DashSection icon="edit" title="Details" subtitle="A description and the links people need — menu, booking, website.">
                   <OwnerDetailsEditor
                     venueId={venueId}
                     initialDescription={venue.description}
@@ -242,7 +242,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
                   />
                 </DashSection>
 
-                <DashSection icon="◷" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
+                <DashSection icon="clock" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
                   <OwnerHoursEditor
                     venueId={venueId}
                     initialPeriods={(venue.opening_times?.periods ?? null) as never}
@@ -306,12 +306,12 @@ function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
 
 /** A dashboard section shell — icon chip + title + subtitle, then the editor. Matches the
  *  consumer Home dashboard's section rhythm. */
-function DashSection({ icon, title, subtitle, children }: { icon: string; title: string; subtitle: string; children: React.ReactNode }) {
+function DashSection({ icon, title, subtitle, children }: { icon: IconName; title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <Card style={{ padding: "var(--space-4)" }}>
       <header style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 16, flexShrink: 0 }}>
-          {icon}
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}>
+          <Icon name={icon} size={16} />
         </span>
         <div style={{ minWidth: 0 }}>
           <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{title}</h2>

@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { timeAgo } from "../lib/townHall";
 
@@ -25,16 +26,16 @@ function actorName(a: ActivityItem["actor"]): string {
   return a.displayName?.trim() || (a.handle ? `@${a.handle}` : "Someone");
 }
 
-function glyph(type: string): string {
+function glyph(type: string): IconName {
   switch (type) {
     case "follow":
-      return "＋";
+      return "plus";
     case "offer_save":
-      return "♡";
+      return "heart";
     case "offer_redeem":
-      return "♻";
+      return "redeem";
     default:
-      return "•";
+      return "sparkle";
   }
 }
 
@@ -132,7 +133,7 @@ export function VenueActivity({ venueId }: { venueId: string }) {
                 aria-hidden
                 style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 999, background: "var(--paper-2)", color: "var(--crimson-700)", fontSize: 14, flexShrink: 0 }}
               >
-                {glyph(it.type)}
+                <Icon name={glyph(it.type)} size={14} />
               </span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: "var(--ink)", lineHeight: 1.4 }}>{phrase(it)}</span>
               <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgo(it.createdAt)}</span>

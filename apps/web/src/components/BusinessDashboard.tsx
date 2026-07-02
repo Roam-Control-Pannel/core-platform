@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card } from "@roam/design";
+import { Card, Icon} from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 
@@ -138,9 +138,9 @@ function EmptyState() {
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", maxWidth: 440, margin: "0 auto" }}>
       <div
         aria-hidden
-        style={{ width: 56, height: 56, margin: "0 auto var(--space-4)", borderRadius: "50%", background: "var(--crimson-tint)", display: "grid", placeItems: "center", fontSize: 24, color: "var(--crimson-700)" }}
+        style={{ width: 56, height: 56, margin: "0 auto var(--space-4)", borderRadius: "50%", background: "var(--crimson-tint)", display: "grid", placeItems: "center", color: "var(--crimson-700)" }}
       >
-        ◍
+        <Icon name="place" size={26} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
         No claimed venues yet

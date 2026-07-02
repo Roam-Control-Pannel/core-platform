@@ -9,6 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 interface AudienceStats {
@@ -64,7 +65,7 @@ export function VenueAudience({ venueId }: { venueId: string }) {
 
       {stats.birthdaysThisMonth != null ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: "var(--r-md)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", marginBottom: "var(--space-4)" }}>
-          <span aria-hidden style={{ fontSize: 18 }}>🎂</span>
+          <Icon name="cake" size={18} />
           <span style={{ fontSize: 13.5, color: "var(--ink)" }}>
             <strong>{stats.birthdaysThisMonth}</strong> follower{stats.birthdaysThisMonth === 1 ? "" : "s"} opted in
             {" "}have a birthday this month.

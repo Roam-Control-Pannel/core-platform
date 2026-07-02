@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon} from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { offerTypeLabel } from "../lib/offerTypes";
 
@@ -44,7 +44,7 @@ export function SuggestedForYou({ venueId }: { venueId: string }) {
   return (
     <Card style={{ padding: "var(--space-4)" }}>
       <header style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 16, flexShrink: 0 }}>💡</span>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}><Icon name="idea" size={16} /></span>
         <div style={{ minWidth: 0 }}>
           <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Suggested for you</h2>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>

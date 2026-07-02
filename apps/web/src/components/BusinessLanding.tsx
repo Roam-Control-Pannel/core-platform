@@ -14,7 +14,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Card } from "@roam/design";
+import { Button, Card, Icon} from "@roam/design";
 import { useSession } from "./TrpcProvider";
 
 const STEPS: { n: string; title: string; body: string }[] = [
@@ -134,7 +134,7 @@ export function BusinessLanding() {
           <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: "var(--space-2)" }}>
             {PERKS.map((p) => (
               <li key={p} style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start", color: "var(--ink-2)", lineHeight: 1.5 }}>
-                <span aria-hidden style={{ color: "var(--crimson-700)", fontWeight: 700 }}>✓</span>
+                <Icon name="check" size={15} style={{ color: "var(--crimson-700)" }} />
                 {p}
               </li>
             ))}

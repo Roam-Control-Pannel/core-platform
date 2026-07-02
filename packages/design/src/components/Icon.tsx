@@ -50,6 +50,9 @@ import {
   Eye,
   Lightbulb,
   Star,
+  Megaphone,
+  Clock,
+  TicketCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -95,6 +98,9 @@ const ICONS = {
   eye: Eye,
   idea: Lightbulb,
   star: Star,
+  megaphone: Megaphone,
+  clock: Clock,
+  redeem: TicketCheck,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
