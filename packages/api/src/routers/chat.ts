@@ -36,6 +36,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
+import { messaging } from "@roam/core";
 import { router, protectedProcedure } from "../trpc.js";
 
 /**
@@ -440,7 +441,7 @@ export const chatRouter = router({
       const { data, error } = await ctx.db
         .from("chat_messages")
         .select(
-          "id, sender_id, body, kind, moderation, created_at, profiles(display_name, handle, avatar_url)",
+          "id, sender_id, body, kind, payload, moderation, created_at, profiles(display_name, handle, avatar_url)",
         )
         .eq("thread_id", input.threadId)
         .order("created_at", { ascending: true });
@@ -470,6 +471,7 @@ export const chatRouter = router({
           senderId: m.sender_id,
           body: m.body,
           kind: m.kind,
+          payload: ((m as { payload?: unknown }).payload ?? null) as Record<string, unknown> | null,
           createdAt: m.created_at,
           senderName: prof?.display_name ?? null,
           senderHandle: prof?.handle ?? null,
@@ -492,29 +494,52 @@ export const chatRouter = router({
     .input(
       z.object({
         threadId: z.string().uuid(),
-        body: z.string().trim().min(1).max(4000),
+        // kind + payload open the rich-kind seam: text (default), venue_card, plan_card,
+        // profile_card, image. The shape is validated by @roam/core (single source of truth,
+        // shared with native) — body is required for text, optional as a caption for a card.
+        kind: z.enum([...messaging.MESSAGE_KINDS] as [string, ...string[]]).optional(),
+        body: z.string().max(4000).optional(),
+        payload: z.unknown().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const sender_id = await callerId(ctx.db);
 
-      const { data, error } = await ctx.db
+      // Validate + normalize against the kind's contract before any write (core, not zod:
+      // one definition rendered by every surface). A malformed card never reaches the table.
+      const v = messaging.validateMessage({ kind: input.kind ?? "text", body: input.body, payload: input.payload });
+      if (!v.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: v.error });
+      }
+      const { kind, body, payload } = v.message;
+
+      // payload is not in the generated DB types until db:types is re-pointed at prod, so this
+      // one insert+select goes through a loose surface (same idiom as plans.ts / venues.ts).
+      const looseDb = ctx.db as unknown as {
+        from: (t: string) => {
+          insert: (v: Record<string, unknown>) => {
+            select: (c: string) => {
+              single: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const { data, error } = await looseDb
         .from("chat_messages")
         .insert({
           thread_id: input.threadId,
           sender_id,
-          body: input.body,
-          kind: "text",
-          // Text auto-approves on send: the moderation Edge scanner runs POST-insert
-          // (flagging/rejecting async into moderation_queue), so a message must be
-          // visible to the thread immediately — a 'pending' default with no scanner
-          // to clear it would make every message invisible to non-senders. This is
-          // the optimistic-publish + async-moderation model the queue seam was built
-          // for; it keeps the hard gate (async scan + manual queue) without leaving
-          // the surface write-only. When the scanner lands it can still demote a row.
+          body,
+          kind,
+          payload,
+          // Auto-approves on send: the moderation Edge scanner runs POST-insert (flagging/
+          // rejecting async into moderation_queue), so a message must be visible to the thread
+          // immediately — a 'pending' default with no scanner to clear it would make every
+          // message invisible to non-senders. Optimistic-publish + async-moderation; the scanner
+          // can still demote a row later. Rich cards are entity references, low-risk to surface.
           moderation: "auto_approved",
         })
-        .select("id, sender_id, body, kind, created_at")
+        .select("id, sender_id, body, kind, payload, created_at")
         .single();
       if (error || !data) {
         throw new TRPCError({
@@ -527,6 +552,7 @@ export const chatRouter = router({
         senderId: data.sender_id,
         body: data.body,
         kind: data.kind,
+        payload: ((data as { payload?: unknown }).payload ?? null) as Record<string, unknown> | null,
         createdAt: data.created_at,
       };
     }),

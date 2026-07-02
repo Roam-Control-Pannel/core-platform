@@ -20,6 +20,9 @@ import { useRouter } from "next/navigation";
 import { Card, Pill, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
+import { MessageCard } from "./ChatCards";
+import { ChatShareMenu } from "./ChatShareMenu";
+import type { MessageKind } from "../lib/chatKinds";
 import actions from "./inlineActions.module.css";
 import styles from "./Chat.module.css";
 
@@ -453,6 +456,7 @@ interface ThreadMessage {
   senderId: string | null;
   body: string | null;
   kind: string;
+  payload: Record<string, unknown> | null;
   createdAt: string;
   senderName: string | null;
   senderHandle: string | null;
@@ -523,6 +527,23 @@ function MessagePanel({ threadId }: { threadId: string }) {
     }
   }, [trpc, threadId, draft, load]);
 
+  // Share a rich card (venue/plan/person) — same send path, a kind + validated payload snapshot.
+  const sendRich = useCallback(
+    async (kind: MessageKind, payload: Record<string, unknown>) => {
+      setSendError(null);
+      const mut = trpc.chat.sendMessage as unknown as {
+        mutate: (i: { threadId: string; kind: MessageKind; payload: Record<string, unknown> }) => Promise<unknown>;
+      };
+      try {
+        await mut.mutate({ threadId, kind, payload });
+        load();
+      } catch (e: unknown) {
+        setSendError(e instanceof Error ? e.message : "Couldn't share that.");
+      }
+    },
+    [trpc, threadId, load],
+  );
+
   if (error) {
     return (
       <Card flat style={{ padding: "var(--space-4)" }}>
@@ -547,7 +568,8 @@ function MessagePanel({ threadId }: { threadId: string }) {
       </div>
 
       {/* composer */}
-      <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)", alignItems: "flex-end" }}>
+      <div style={{ position: "relative", display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)", alignItems: "flex-end" }}>
+        <ChatShareMenu threadId={threadId} onShare={(kind, payload) => void sendRich(kind, payload)} disabled={sending} />
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -652,27 +674,32 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
         </div>
       ) : (
         <>
-          <div
-            style={{
-              maxWidth: "78%",
-              padding: "8px 12px",
-              borderRadius: 12,
-              fontSize: 14,
-              lineHeight: 1.45,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
-              color: "var(--ink-hi)",
-              border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
-            }}
-          >
-            {isText ? (
-              message.body ?? ""
-            ) : (
-              <span style={{ color: "var(--muted)", fontStyle: "italic" }}>Unsupported message type</span>
-            )}
-          </div>
-          {mine && isText ? (
+          {isText ? (
+            <div
+              style={{
+                maxWidth: "78%",
+                padding: "8px 12px",
+                borderRadius: 12,
+                fontSize: 14,
+                lineHeight: 1.45,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                background: mine ? "var(--crimson-tint)" : "var(--paper-2)",
+                color: "var(--ink-hi)",
+                border: mine ? "1px solid var(--crimson-tint-2)" : "1px solid var(--line)",
+              }}
+            >
+              {message.body ?? ""}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 4, maxWidth: "78%" }}>
+              <MessageCard kind={message.kind as MessageKind} payload={message.payload} />
+              {message.body ? (
+                <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.4, maxWidth: 260 }}>{message.body}</div>
+              ) : null}
+            </div>
+          )}
+          {mine ? (
             confirming ? (
               <div className={actions.row} style={{ marginTop: 2 }}>
                 <span className={actions.confirm}>Delete?</span>
@@ -681,7 +708,7 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
               </div>
             ) : (
               <div className={actions.row} style={{ marginTop: 2 }}>
-                <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button>
+                {isText ? <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button> : null}
                 <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
               </div>
             )

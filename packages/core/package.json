@@ -15,7 +15,8 @@
     "./moderation": "./src/moderation/index.ts",
     "./hours": "./src/hours/index.ts",
     "./offers": "./src/offers/index.ts",
-    "./suggestions": "./src/suggestions/index.ts"
+    "./suggestions": "./src/suggestions/index.ts",
+    "./messaging": "./src/messaging/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
