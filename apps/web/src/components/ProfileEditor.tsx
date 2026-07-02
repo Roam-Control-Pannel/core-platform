@@ -13,7 +13,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { Button } from "@roam/design";
+import { Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 
@@ -353,8 +353,8 @@ function ImageSlot({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       ) : (
-        <span style={{ fontSize: kind === "avatar" ? 26 : 13, color: "var(--faint)" }}>
-          {kind === "avatar" ? "☺" : "Add a header image"}
+        <span style={{ fontSize: 13, color: "var(--faint)", display: "inline-flex", alignItems: "center" }}>
+          {kind === "avatar" ? <Icon name="person" size={26} /> : "Add a header image"}
         </span>
       )}
       <span

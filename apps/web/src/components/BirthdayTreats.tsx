@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 interface Treat {
@@ -46,7 +46,7 @@ export function BirthdayTreats() {
   return (
     <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)", borderColor: "var(--crimson-tint-2)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "var(--space-3)" }}>
-        <span aria-hidden style={{ fontSize: 20 }}>🎂</span>
+        <Icon name="cake" size={20} style={{ color: "var(--crimson)" }} />
         <div className="t-h4" style={{ fontFamily: "var(--display)", fontWeight: 600, color: "var(--ink)" }}>
           Happy birthday! Treats for you
         </div>

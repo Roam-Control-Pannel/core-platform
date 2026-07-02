@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Icon } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import styles from "./CreateFab.module.css";
 
@@ -28,7 +29,7 @@ export function CreateFab() {
               ＋ New plan
             </Link>
             <Link href={`/u/${userId}`} role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
-              ✎ Post to your wall
+              <Icon name="edit" size={15} /> Post to your wall
             </Link>
           </div>
         ) : null}

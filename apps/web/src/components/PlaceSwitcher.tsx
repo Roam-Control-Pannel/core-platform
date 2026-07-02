@@ -14,6 +14,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { useSavedPlaces } from "../lib/savedPlaces";
 import styles from "./PlaceSwitcher.module.css";
@@ -394,7 +395,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                           }}
                           style={{ ...iconBtn, color: "var(--faint)" }}
                         >
-                          ✕
+                          <Icon name="close" size={15} aria-label={`Remove ${p.name}`} />
                         </button>
                       }
                     />
@@ -439,7 +440,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                       color: "var(--ink-hi)",
                     }}
                   >
-                    <span aria-hidden style={{ color: "var(--crimson)" }}>◎</span>
+                    <Icon name="locate" size={15} style={{ color: "var(--crimson)" }} />
                     {locating ? "Locating…" : "Use my location"}
                   </button>
                   {geoError ? (

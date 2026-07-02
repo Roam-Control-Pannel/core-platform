@@ -53,6 +53,7 @@ import {
   Megaphone,
   Clock,
   TicketCheck,
+  LocateFixed,
   type LucideIcon,
 } from "lucide-react";
 
@@ -101,6 +102,7 @@ const ICONS = {
   megaphone: Megaphone,
   clock: Clock,
   redeem: TicketCheck,
+  locate: LocateFixed,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

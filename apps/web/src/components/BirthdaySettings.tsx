@@ -9,7 +9,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
 export function BirthdaySettings() {
@@ -75,10 +75,13 @@ export function BirthdaySettings() {
           </span>
         </label>
 
-        <p style={{ margin: "0 0 var(--space-3)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-          🔒 Your birthday is private. Businesses never see it — it&apos;s only used to send you the
-          birthday offers you&apos;ve opted into, from places you already follow. You can clear it or
-          turn this off anytime.
+        <p style={{ margin: "0 0 var(--space-3)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, display: "flex", gap: 6 }}>
+          <Icon name="lock" size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            Your birthday is private. Businesses never see it — it&apos;s only used to send you the
+            birthday offers you&apos;ve opted into, from places you already follow. You can clear it or
+            turn this off anytime.
+          </span>
         </p>
 
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>

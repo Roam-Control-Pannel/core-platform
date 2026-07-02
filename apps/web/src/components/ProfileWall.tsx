@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
@@ -425,10 +425,10 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
                 style={{
                   all: "unset", cursor: "pointer", position: "absolute", top: -6, right: -6,
                   width: 20, height: 20, borderRadius: "50%", background: "var(--ink)", color: "#fff",
-                  display: "grid", placeItems: "center", fontSize: 12,
+                  display: "grid", placeItems: "center",
                 }}
               >
-                ✕
+                <Icon name="close" size={12} aria-label="Remove image" />
               </button>
             </div>
           ))}
@@ -566,7 +566,7 @@ function PostCard({
               onClick={() => setShowComments((s) => !s)}
               style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}
             >
-              <span aria-hidden>💬</span>
+              <Icon name="chat" size={15} />
               {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
             </button>
           </div>

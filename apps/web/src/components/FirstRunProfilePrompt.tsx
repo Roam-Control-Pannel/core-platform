@@ -19,7 +19,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 /** How long "Skip for now" hides the prompt on this device before it may re-ask. */
@@ -164,7 +164,7 @@ export function FirstRunProfilePrompt() {
       >
         <Card style={{ padding: "var(--space-5)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "var(--space-2)" }}>
-            <span aria-hidden style={{ fontSize: 22 }}>🎉</span>
+            <Icon name="party" size={22} style={{ color: "var(--crimson)" }} />
             <h2
               id="firstrun-title"
               className="t-h4"
@@ -222,9 +222,12 @@ export function FirstRunProfilePrompt() {
             </span>
           </label>
 
-          <p style={{ margin: "0 0 var(--space-4)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-            🔒 Your birthday is private — businesses never see the date. It&apos;s only used to send the
-            treats you&apos;ve opted into. You can change any of this later in Settings.
+          <p style={{ margin: "0 0 var(--space-4)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, display: "flex", gap: 6 }}>
+            <Icon name="lock" size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>
+              Your birthday is private — businesses never see the date. It&apos;s only used to send the
+              treats you&apos;ve opted into. You can change any of this later in Settings.
+            </span>
           </p>
 
           {error ? (
