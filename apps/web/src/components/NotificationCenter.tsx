@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card } from "@roam/design";
+import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { timeAgo } from "../lib/townHall";
@@ -25,13 +25,13 @@ interface Notification {
   createdAt: string;
 }
 
-const GLYPH: Record<string, string> = {
-  wall_comment: "💬",
-  townhall_reply: "🏛",
-  venue_follow: "✦",
-  friend_request: "👋",
-  friend_accept: "🤝",
-  venue_message: "🔔",
+const GLYPH: Record<string, IconName> = {
+  wall_comment: "chat",
+  townhall_reply: "landmark",
+  venue_follow: "heart",
+  friend_request: "wave",
+  friend_accept: "handshake",
+  venue_message: "bell",
 };
 
 export function NotificationCenter() {
@@ -124,7 +124,7 @@ function NotificationRow({ n }: { n: Notification }) {
         ...(unread ? { background: "var(--crimson-tint)" } : {}),
       }}
     >
-      <span aria-hidden style={{ fontSize: 18, flexShrink: 0 }}>{GLYPH[n.type] ?? "•"}</span>
+      <Icon name={GLYPH[n.type] ?? "bell"} size={18} style={{ flexShrink: 0, color: "var(--crimson-700)" }} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.4 }}>{n.text}</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{timeAgo(n.createdAt)}</div>
@@ -171,7 +171,7 @@ export function NotificationBell() {
       aria-label={count > 0 ? `Notifications (${count} unread)` : "Notifications"}
       style={{ position: "relative", display: "inline-grid", placeItems: "center", width: 36, height: 36, borderRadius: 11, background: "var(--paper-2)", color: "var(--ink-2)", textDecoration: "none", fontSize: 16 }}
     >
-      <span aria-hidden>🔔</span>
+      <Icon name="bell" size={18} />
       {count > 0 ? (
         <span
           aria-hidden
