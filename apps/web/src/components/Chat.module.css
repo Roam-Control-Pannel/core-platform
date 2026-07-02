@@ -1,0 +1,61 @@
+/*
+ * Chat layout — the conversation surface (ThreadDetail). The message list fills most of the
+ * viewport so the chat reads as the PRIMARY surface (WhatsApp-style), with the composer directly
+ * beneath it and always visible; members/meet-up/settings move behind the Chat-info view. Height
+ * is viewport-relative with a min floor so it never collapses on short screens and the page can
+ * still scroll as a last resort. The mobile rule leaves room for the fixed bottom TabBar.
+ */
+.scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: calc(100dvh - 320px);
+  min-height: 240px;
+  max-height: 720px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+@media (max-width: 979px) {
+  .scroll {
+    height: calc(100dvh - 360px);
+    max-height: none;
+  }
+}
+
+/* Tappable chat header (opens Chat info) — the WhatsApp "tap the title" gesture. */
+.headerBtn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+  margin-left: -8px;
+}
+.headerBtn:hover {
+  background: var(--paper-2);
+}
+
+/* Slim meet-up banner pinned above the messages when a meet-up is live. */
+.meetupBar {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--crimson-tint-2);
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}

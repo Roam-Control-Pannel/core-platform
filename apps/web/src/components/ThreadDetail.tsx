@@ -1,20 +1,16 @@
 /**
- * ThreadDetail — /threads/[id]. The thread surface: its messages (primary), its
- * participants, and the meet-up poll. Messages are the main content (Stage 2c-iii);
- * participants + MeetupPanel sit alongside.
+ * ThreadDetail — /threads/[id]. A two-view chat surface modelled on WhatsApp:
  *
- * Reads chat.getThread (RLS-scoped: NOT_FOUND if the caller isn't a participant).
- * Adding a participant calls chat.addThreadParticipant, which is GROUP-ONLY at the
- * router (a 1:1 → group promotion is a separate deliberate action) — so the add
- * control only shows on a group thread, and a PRECONDITION_FAILED is surfaced if
- * the server still rejects.
+ *   - CONVERSATION (default): the chat IS the screen. A tappable header (name + subtitle),
+ *     an optional slim meet-up banner when one's live, the message list filling the viewport,
+ *     and the composer pinned beneath it. Nothing else competes for space.
+ *   - CHAT INFO: opened by tapping the header. The "settings section" — members, add someone,
+ *     the full meet-up controls, rename (groups), and leave. Back returns to the conversation.
  *
- * Add-by-profile-UUID is the minimum viable invite for this slice: no friends list
- * exists yet, so we take the profile id directly (exactly what a future friend
- * picker will resolve to). Ships all states: skeleton, error, not-found, loaded.
- *
- * Private surface → gates on useSession() like ThreadList. Timestamps are ISO
- * strings, formatted in the UI.
+ * One getThread load (RLS-scoped: NOT_FOUND if the caller isn't a participant) feeds both views;
+ * a local `view` flag flips between them (no route change, instant transition). Adding a
+ * participant is GROUP-ONLY at the router, so the add control only shows on a group. Private
+ * surface → gates on useSession(). Timestamps are ISO strings, formatted in the UI.
  */
 "use client";
 
@@ -25,6 +21,7 @@ import { Card, Pill, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
 import actions from "./inlineActions.module.css";
+import styles from "./Chat.module.css";
 
 interface Participant {
   profileId: string;
@@ -68,17 +65,24 @@ function threadHeading(thread: ThreadData, myId: string | null): string {
   return "Untitled group";
 }
 
+/** One-line context under the heading: who/how many, or the chat kind. */
+function threadSubtitle(thread: ThreadData, myId: string | null): string {
+  if (!thread.isGroup) {
+    const other = thread.participants.find((p) => p.profileId !== myId) ?? thread.participants[0];
+    return other?.handle ? `@${other.handle}` : "Direct chat";
+  }
+  if (thread.planId) return "Plan chat";
+  const n = thread.participants.length;
+  return `${n} ${n === 1 ? "person" : "people"} · tap for info`;
+}
+
 export function ThreadDetail({ threadId }: { threadId: string }) {
   const trpc = useTrpc();
   const session = useSession();
   const myId = session?.user?.id ?? null;
   const [thread, setThread] = useState<ThreadData | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-
-  const [adding, setAdding] = useState<string | null>(null);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [view, setView] = useState<"chat" | "info">("chat");
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -109,6 +113,128 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
     return load();
   }, [session, load]);
 
+  return (
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-3) var(--space-4) var(--space-6)" }}>
+      {!session ? (
+        <SignedOut />
+      ) : error ? (
+        <ErrorState message={error} />
+      ) : thread === undefined ? (
+        <DetailSkeleton />
+      ) : thread === null ? (
+        <NotFoundState />
+      ) : view === "chat" ? (
+        <ConversationView thread={thread} myId={myId} onOpenInfo={() => setView("info")} />
+      ) : (
+        <ChatInfoView thread={thread} myId={myId} onBack={() => setView("chat")} onChanged={load} />
+      )}
+    </main>
+  );
+}
+
+/* ------------------------------------------------------------------ conversation view */
+
+function ConversationView({
+  thread,
+  myId,
+  onOpenInfo,
+}: {
+  thread: ThreadData;
+  myId: string | null;
+  onOpenInfo: () => void;
+}) {
+  return (
+    <>
+      <Link
+        href="/threads"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-2)" }}
+      >
+        <span aria-hidden>←</span> Chats
+      </Link>
+
+      <button type="button" className={styles.headerBtn} onClick={onOpenInfo} aria-label="Open chat info">
+        <ChatAvatar label={threadHeading(thread, myId)} />
+        <span style={{ display: "grid", gap: 1, minWidth: 0, flex: 1 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {threadHeading(thread, myId)}
+            </span>
+            <Pill variant={thread.planId ? "ghost-crim" : "neutral"} size="sm">
+              {thread.planId ? "Plan" : thread.isGroup ? "Group" : "Direct"}
+            </Pill>
+          </span>
+          <span style={{ fontSize: 12.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {threadSubtitle(thread, myId)}
+          </span>
+        </span>
+        <span aria-hidden style={{ color: "var(--faint)", fontSize: 20, paddingLeft: 4 }}>›</span>
+      </button>
+
+      <div style={{ marginTop: "var(--space-4)" }}>
+        {thread.isGroup ? <MeetupBar threadId={thread.id} onOpen={onOpenInfo} /> : null}
+        <MessagePanel threadId={thread.id} />
+      </div>
+    </>
+  );
+}
+
+/**
+ * MeetupBar — a slim, tappable banner shown above the messages when a live meet-up exists
+ * (voting or resolved; hidden when there's none or it's ended). Its own light forThread read so
+ * the conversation stays lean; tapping opens Chat info where the full poll controls live.
+ */
+function MeetupBar({ threadId, onOpen }: { threadId: string; onOpen: () => void }) {
+  const trpc = useTrpc();
+  const session = useSession();
+  const [meetup, setMeetup] = useState<{ state: string } | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    trpc.meetup.forThread
+      .query({ threadId })
+      .then((m) => {
+        if (!cancelled) setMeetup((m as { state: string } | null) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setMeetup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, threadId, session]);
+
+  if (!meetup || meetup.state === "ended") return null;
+  const label = meetup.state === "voting" ? "Meet-up · voting open" : "Meet-up · winner decided";
+  return (
+    <button type="button" className={styles.meetupBar} onClick={onOpen}>
+      <span aria-hidden>📍</span>
+      <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
+      <span aria-hidden style={{ opacity: 0.8 }}>Open ›</span>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ chat info view */
+
+function ChatInfoView({
+  thread,
+  myId,
+  onBack,
+  onChanged,
+}: {
+  thread: ThreadData;
+  myId: string | null;
+  onBack: () => void;
+  onChanged: () => void;
+}) {
+  const trpc = useTrpc();
+
+  const [adding, setAdding] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+
   const openAdd = useCallback(async () => {
     setShowAdd(true);
     setAddError(null);
@@ -126,143 +252,124 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
       setAdding(profileId);
       setAddError(null);
       try {
-        await trpc.chat.addThreadParticipant.mutate({ threadId, profileId });
-        load(); // refresh participants from server-truth
+        await trpc.chat.addThreadParticipant.mutate({ threadId: thread.id, profileId });
+        onChanged(); // refresh participants from server-truth
       } catch (e: unknown) {
         setAddError(e instanceof Error ? e.message : "Couldn't add that person.");
       } finally {
         setAdding(null);
       }
     },
-    [trpc, threadId, load],
+    [trpc, thread.id, onChanged],
   );
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <Link
-        href="/threads"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 13,
-          color: "var(--muted)",
-          textDecoration: "none",
-          marginBottom: "var(--space-4)",
-        }}
+    <>
+      <button
+        type="button"
+        onClick={onBack}
+        style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Chats
-      </Link>
+        <span aria-hidden>←</span> Back to chat
+      </button>
 
-      {!session ? (
-        <SignedOut />
-      ) : error ? (
-        <ErrorState message={error} />
-      ) : thread === undefined ? (
-        <DetailSkeleton />
-      ) : thread === null ? (
-        <NotFoundState />
-      ) : (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
-            <h1
-              className="t-h1"
-              style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, margin: 0 }}
-            >
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+        <ChatAvatar label={threadHeading(thread, myId)} size={44} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+            <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, margin: 0 }}>
               {threadHeading(thread, myId)}
             </h1>
             <Pill variant={thread.planId ? "ghost-crim" : "neutral"} size="sm">
               {thread.planId ? "Plan chat" : thread.isGroup ? "Group" : "Direct"}
             </Pill>
           </div>
-          {thread.planId ? (
-            <Link
-              href={`/plans/${thread.planId}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none", marginBottom: "var(--space-6)" }}
-            >
-              🗓 View the plan <span aria-hidden>→</span>
-            </Link>
-          ) : (
-            <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: "var(--space-6)" }}>
-              Created {formatWhen(thread.createdAt)}
-            </div>
-          )}
+          <div style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 2 }}>Created {formatWhen(thread.createdAt)}</div>
+        </div>
+      </div>
 
-          <MessagePanel threadId={thread.id} />
+      {thread.planId ? (
+        <Link
+          href={`/plans/${thread.planId}`}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none", marginBottom: "var(--space-4)" }}
+        >
+          🗓 View the plan <span aria-hidden>→</span>
+        </Link>
+      ) : null}
 
-          <SectionLabel>
-            {thread.participants.length} {thread.participants.length === 1 ? "person" : "people"}
-          </SectionLabel>
-          <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
-            <div style={{ display: "grid", gap: "var(--space-3)" }}>
-              {thread.participants.map((p) => (
-                <ParticipantRow key={p.profileId} participant={p} />
-              ))}
-            </div>
-          </Card>
+      <div style={{ marginTop: "var(--space-5)" }}>
+        <SectionLabel>
+          {thread.participants.length} {thread.participants.length === 1 ? "person" : "people"}
+        </SectionLabel>
+        <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            {thread.participants.map((p) => (
+              <ParticipantRow key={p.profileId} participant={p} />
+            ))}
+          </div>
+        </Card>
+      </div>
 
-          {thread.isGroup ? <MeetupPanel threadId={thread.id} /> : null}
-
-          {thread.isGroup ? (
-            <div style={{ marginTop: "var(--space-6)" }}>
-              {showAdd ? (
-                <Card flat style={{ padding: "var(--space-4)" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
-                    <SectionLabel>Add a friend</SectionLabel>
-                    <button type="button" onClick={() => { setShowAdd(false); setAddError(null); }} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>
-                      Done
-                    </button>
-                  </div>
-                  {(() => {
-                    const here = new Set(thread.participants.map((p) => p.profileId));
-                    const addable = friends.filter((f) => !here.has(f.id));
-                    if (addable.length === 0) {
-                      return (
-                        <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-                          {friends.length === 0
-                            ? "No friends to add yet. Add friends from their profile walls, then bring them in here."
-                            : "All your friends are already in this chat."}
-                        </p>
-                      );
-                    }
-                    return (
-                      <div style={{ display: "grid", gap: "var(--space-2)" }}>
-                        {addable.map((f) => (
-                          <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friendName(f)}</span>
-                            <Button variant="neutral" size="sm" onClick={() => void addParticipant(f.id)} disabled={adding === f.id}>
-                              {adding === f.id ? "…" : "Add"}
-                            </Button>
-                          </div>
-                        ))}
+      {thread.isGroup ? (
+        <div style={{ marginTop: "var(--space-4)" }}>
+          {showAdd ? (
+            <Card flat style={{ padding: "var(--space-4)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
+                <SectionLabel>Add a friend</SectionLabel>
+                <button type="button" onClick={() => { setShowAdd(false); setAddError(null); }} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>
+                  Done
+                </button>
+              </div>
+              {(() => {
+                const here = new Set(thread.participants.map((p) => p.profileId));
+                const addable = friends.filter((f) => !here.has(f.id));
+                if (addable.length === 0) {
+                  return (
+                    <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                      {friends.length === 0
+                        ? "No friends to add yet. Add friends from their profile walls, then bring them in here."
+                        : "All your friends are already in this chat."}
+                    </p>
+                  );
+                }
+                return (
+                  <div style={{ display: "grid", gap: "var(--space-2)" }}>
+                    {addable.map((f) => (
+                      <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friendName(f)}</span>
+                        <Button variant="neutral" size="sm" onClick={() => void addParticipant(f.id)} disabled={adding === f.id}>
+                          {adding === f.id ? "…" : "Add"}
+                        </Button>
                       </div>
-                    );
-                  })()}
-                  {addError ? (
-                    <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
-                      {addError}
-                    </div>
-                  ) : null}
-                </Card>
-              ) : (
-                <Button variant="neutral" onClick={() => void openAdd()}>
-                  Add someone
-                </Button>
-              )}
-            </div>
-          ) : null}
+                    ))}
+                  </div>
+                );
+              })()}
+              {addError ? (
+                <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
+                  {addError}
+                </div>
+              ) : null}
+            </Card>
+          ) : (
+            <Button variant="neutral" onClick={() => void openAdd()}>
+              Add someone
+            </Button>
+          )}
+        </div>
+      ) : null}
 
-          <ThreadActions thread={thread} onRenamed={load} />
-        </>
-      )}
-    </main>
+      {thread.isGroup ? <MeetupPanel threadId={thread.id} /> : null}
+
+      <ThreadActions thread={thread} onRenamed={onChanged} />
+    </>
   );
 }
 
 /**
- * ThreadActions — manage-this-chat controls at the foot of the thread. A free-standing group
- * can be renamed; a group or direct chat can be left (a plan chat is managed via its plan, so
- * neither applies). Leaving routes back to the inbox.
+ * ThreadActions — manage-this-chat controls in Chat info. A free-standing group can be renamed;
+ * a group or direct chat can be left (a plan chat is managed via its plan). Leaving routes back
+ * to the inbox.
  */
 function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: () => void }) {
   const trpc = useTrpc();
@@ -339,6 +446,8 @@ function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: (
   );
 }
 
+/* ------------------------------------------------------------------ messages */
+
 interface ThreadMessage {
   id: string;
   senderId: string | null;
@@ -350,15 +459,11 @@ interface ThreadMessage {
 }
 
 /**
- * MessagePanel — the thread's chat surface. Reads chat.listMessages (oldest-first,
- * RLS-scoped) and posts via chat.sendMessage. Ships the full state ladder:
- * error -> undefined(skeleton) -> empty("new, not dead") -> content. After a send
- * we refetch from server-truth (the sender always sees their own message back, even
- * while it's moderation-pending). Dates arrive as ISO strings; formatted here.
- *
- * Only kind='text' is rendered this slice; a non-text kind (the open rich-kind seam)
- * shows a neutral placeholder rather than nothing, so a future venue_card/poll
- * message isn't silently dropped before its renderer exists.
+ * MessagePanel — the conversation body. Reads chat.listMessages (oldest-first, RLS-scoped) and
+ * posts via chat.sendMessage. State ladder: error -> undefined(skeleton) -> empty -> content.
+ * The list fills the viewport (Chat.module.css .scroll) and pins to the newest message; the
+ * composer sits directly beneath it, always visible. After a send we refetch server-truth.
+ * Only kind='text' renders; a non-text kind shows a neutral placeholder (the rich-kind seam).
  */
 function MessagePanel({ threadId }: { threadId: string }) {
   const trpc = useTrpc();
@@ -418,84 +523,67 @@ function MessagePanel({ threadId }: { threadId: string }) {
     }
   }, [trpc, threadId, draft, load]);
 
+  if (error) {
+    return (
+      <Card flat style={{ padding: "var(--space-4)" }}>
+        <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>{error}</p>
+      </Card>
+    );
+  }
+  if (messages === undefined) return <MessagesSkeleton />;
+
   return (
-    <section style={{ marginBottom: "var(--space-8)" }}>
-      <SectionLabel>Messages</SectionLabel>
+    <div>
+      <div ref={listRef} className={styles.scroll}>
+        {messages.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
+            No messages yet — say something to get this chat going.
+          </p>
+        ) : (
+          messages.map((m) => (
+            <MessageRow key={m.id} message={m} mine={m.senderId !== null && m.senderId === myId} onChanged={load} />
+          ))
+        )}
+      </div>
 
-      {error ? (
-        <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
-          <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>{error}</p>
-        </Card>
-      ) : messages === undefined ? (
-        <MessagesSkeleton />
-      ) : (
-        <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
-          <div
-            ref={listRef}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "var(--space-3)",
-              maxHeight: 420,
-              overflowY: "auto",
-            }}
-          >
-            {messages.length === 0 ? (
-              <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
-                No messages yet — say something to get this chat going.
-              </p>
-            ) : (
-              messages.map((m) => (
-                <MessageRow
-                  key={m.id}
-                  message={m}
-                  mine={m.senderId !== null && m.senderId === myId}
-                  onChanged={load}
-                />
-              ))
-            )}
-          </div>
-
-          {/* composer */}
-          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", alignItems: "flex-end" }}>
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
-              }}
-              placeholder="Write a message…"
-              rows={2}
-              maxLength={4000}
-              style={{
-                flex: 1,
-                resize: "vertical",
-                fontFamily: "var(--ui)",
-                fontSize: 14,
-                lineHeight: 1.45,
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--line-2)",
-                background: "#fff",
-                color: "var(--ink)",
-                outline: "none",
-              }}
-            />
-            <Button variant="pri" onClick={() => void send()} disabled={sending}>
-              {sending ? "Sending…" : "Send"}
-            </Button>
-          </div>
-          {sendError ? (
-            <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
-              {sendError}
-            </div>
-          ) : null}
-        </Card>
-      )}
-    </section>
+      {/* composer */}
+      <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)", alignItems: "flex-end" }}>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          placeholder="Write a message…"
+          rows={2}
+          maxLength={4000}
+          style={{
+            flex: 1,
+            resize: "none",
+            fontFamily: "var(--ui)",
+            fontSize: 14,
+            lineHeight: 1.45,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid var(--line-2)",
+            background: "#fff",
+            color: "var(--ink)",
+            outline: "none",
+          }}
+        />
+        <Button variant="pri" onClick={() => void send()} disabled={sending}>
+          {sending ? "Sending…" : "Send"}
+        </Button>
+      </div>
+      {sendError ? (
+        <div style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }} role="alert">
+          {sendError}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -539,14 +627,7 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
   }, [trpc, message.id, onChanged]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: mine ? "flex-end" : "flex-start",
-        gap: 2,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 2 }}>
       <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--faint)" }}>
         {mine ? "You" : name} · {formatWhen(message.createdAt)}
       </span>
@@ -588,9 +669,7 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
             {isText ? (
               message.body ?? ""
             ) : (
-              <span style={{ color: "var(--muted)", fontStyle: "italic" }}>
-                Unsupported message type
-              </span>
+              <span style={{ color: "var(--muted)", fontStyle: "italic" }}>Unsupported message type</span>
             )}
           </div>
           {mine && isText ? (
@@ -615,19 +694,38 @@ function MessageRow({ message, mine, onChanged }: { message: ThreadMessage; mine
 
 function MessagesSkeleton() {
   return (
-    <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+      {[
+        { w: "55%", me: false },
+        { w: "40%", me: true },
+        { w: "65%", me: false },
+      ].map((r, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: r.me ? "flex-end" : "flex-start" }}>
+          <div style={{ height: 32, width: r.w, background: "var(--paper-2)", borderRadius: 12 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ shared bits */
+
+/** Round monogram avatar for a chat (group or DM), from the heading's first letter. */
+function ChatAvatar({ label, size = 38 }: { label: string; size?: number }) {
+  const initial = (label.replace(/^@/, "").charAt(0) || "?").toUpperCase();
+  return (
+    <div style={{ flex: "0 0 auto" }}>
+      <AvatarStack size={size}>
         {[
-          { w: "55%", me: false },
-          { w: "40%", me: true },
-          { w: "65%", me: false },
-        ].map((r, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: r.me ? "flex-end" : "flex-start" }}>
-            <div style={{ height: 32, width: r.w, background: "var(--paper-2)", borderRadius: 12 }} />
-          </div>
-        ))}
-      </div>
-    </Card>
+          <div
+            key="a"
+            style={{ width: "100%", height: "100%", background: "var(--crimson-tint)", display: "grid", placeItems: "center", color: "var(--crimson-700)", fontFamily: "var(--ui)", fontWeight: 600, fontSize: size <= 40 ? 15 : 18 }}
+          >
+            {initial}
+          </div>,
+        ]}
+      </AvatarStack>
+    </div>
   );
 }
 
@@ -640,26 +738,14 @@ function ParticipantRow({ participant }: { participant: Participant }) {
         {[
           <div
             key="a"
-            style={{
-              width: "100%",
-              height: "100%",
-              background: "var(--crimson-tint)",
-              display: "grid",
-              placeItems: "center",
-              color: "var(--crimson-700)",
-              fontFamily: "var(--ui)",
-              fontWeight: 600,
-              fontSize: 12,
-            }}
+            style={{ width: "100%", height: "100%", background: "var(--crimson-tint)", display: "grid", placeItems: "center", color: "var(--crimson-700)", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 12 }}
           >
             {initial}
           </div>,
         ]}
       </AvatarStack>
       <div style={{ display: "grid", gap: 1 }}>
-        <span style={{ fontFamily: "var(--ui)", fontSize: 14, fontWeight: 600, color: "var(--ink-hi)" }}>
-          {name}
-        </span>
+        <span style={{ fontFamily: "var(--ui)", fontSize: 14, fontWeight: 600, color: "var(--ink-hi)" }}>{name}</span>
         {participant.handle ? (
           <span style={{ fontFamily: "var(--ui)", fontSize: 12, color: "var(--muted)" }}>@{participant.handle}</span>
         ) : null}
@@ -670,15 +756,7 @@ function ParticipantRow({ participant }: { participant: Participant }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: 10,
-        letterSpacing: ".06em",
-        textTransform: "uppercase",
-        color: "var(--muted)",
-      }}
-    >
+    <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
       {children}
     </div>
   );
@@ -699,12 +777,8 @@ function formatWhen(iso: string): string {
 function SignedOut() {
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Sign in to view this chat
-      </div>
-      <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
-        Chats are private to their members.
-      </p>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Sign in to view this chat</div>
+      <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>Chats are private to their members.</p>
       <Link href="/threads" style={{ textDecoration: "none" }}>
         <Pill variant="ghost-crim">← Back to Chats</Pill>
       </Link>
@@ -725,9 +799,7 @@ function DetailSkeleton() {
 function NotFoundState() {
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Chat not found
-      </div>
+      <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Chat not found</div>
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
         This chat may have been removed, or you don&apos;t have access to it.
       </p>
@@ -741,9 +813,7 @@ function NotFoundState() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load this chat
-      </div>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Couldn&apos;t load this chat</div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>
   );
