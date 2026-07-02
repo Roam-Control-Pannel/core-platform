@@ -748,7 +748,7 @@ function MessageRow({ message, mine, isGroup, showHeader, onChanged }: { message
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 4 }}>
-              <MessageCard kind={message.kind as MessageKind} payload={message.payload} />
+              <MessageCard kind={message.kind as MessageKind} payload={message.payload} messageId={message.id} mine={mine} />
               {message.body ? (
                 <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.4, maxWidth: 260 }}>{message.body}</div>
               ) : null}

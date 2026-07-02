@@ -26,6 +26,7 @@ export function ChatShareMenu({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [picker, setPicker] = useState<ShareTarget | null>(null);
+  const [pollOpen, setPollOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export function ChatShareMenu({
               <MenuItem icon="📍" label="Share a place" onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
               <MenuItem icon="🗓" label="Share a plan" onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
               <MenuItem icon="👤" label="Share a person" onClick={() => { setPicker("person"); setMenuOpen(false); }} />
+              <MenuItem icon="📊" label="Poll" onClick={() => { setPollOpen(true); setMenuOpen(false); }} />
               <MenuItem icon="📷" label="Photo" onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
             </Card>
           </div>
@@ -118,6 +120,12 @@ export function ChatShareMenu({
           {picker === "venue" ? <VenuePicker onPick={(v) => choose("venue_card", { venueId: v.id, name: v.name })} /> : null}
           {picker === "plan" ? <PlanPicker onPick={(p) => choose("plan_card", { planId: p.id, title: p.title })} /> : null}
           {picker === "person" ? <PersonPicker onPick={(f) => choose("profile_card", { profileId: f.id, name: f.name, handle: f.handle })} /> : null}
+        </PickerModal>
+      ) : null}
+
+      {pollOpen ? (
+        <PickerModal title="Create a poll" onClose={() => setPollOpen(false)}>
+          <PollCreator onCreate={(payload) => { onShare("poll", payload); setPollOpen(false); }} />
         </PickerModal>
       ) : null}
     </>
@@ -288,6 +296,58 @@ function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
       ))}
     </div>
   );
+}
+
+/** Build a poll: a question, 2–10 options, and single-vs-multi. Emits the validated payload. */
+function PollCreator({ onCreate }: { onCreate: (payload: Record<string, unknown>) => void }) {
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState<{ id: string; text: string }[]>(() => [
+    { id: rid(), text: "" },
+    { id: rid(), text: "" },
+  ]);
+  const [multi, setMulti] = useState(false);
+
+  const setText = (id: string, text: string) => setOptions((os) => os.map((o) => (o.id === id ? { ...o, text } : o)));
+  const addOption = () => setOptions((os) => (os.length >= 10 ? os : [...os, { id: rid(), text: "" }]));
+  const removeOption = (id: string) => setOptions((os) => (os.length <= 2 ? os : os.filter((o) => o.id !== id)));
+
+  const filled = options.filter((o) => o.text.trim());
+  const canCreate = question.trim().length > 0 && filled.length >= 2;
+
+  const create = () => {
+    if (!canCreate) return;
+    onCreate({ question: question.trim(), options: filled.map((o) => ({ id: o.id, text: o.text.trim() })), multi });
+  };
+
+  const inputStyle: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 14, color: "var(--ink)", outline: "none" };
+
+  return (
+    <div style={{ display: "grid", gap: "var(--space-3)" }}>
+      <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question…" maxLength={300} aria-label="Poll question" autoFocus style={inputStyle} />
+      <div style={{ display: "grid", gap: 8 }}>
+        {options.map((o, i) => (
+          <div key={o.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input value={o.text} onChange={(e) => setText(o.id, e.target.value)} placeholder={`Option ${i + 1}`} maxLength={200} aria-label={`Option ${i + 1}`} style={inputStyle} />
+            {options.length > 2 ? (
+              <button type="button" aria-label="Remove option" onClick={() => removeOption(o.id)} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 16, padding: "0 4px" }}>✕</button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      {options.length < 10 ? (
+        <button type="button" onClick={addOption} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13 }}>+ Add option</button>
+      ) : null}
+      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+        <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--crimson)" }} />
+        <span style={{ fontSize: 13.5, color: "var(--ink)" }}>Allow multiple answers</span>
+      </label>
+      <Button variant="pri" onClick={create} disabled={!canCreate}>Create poll</Button>
+    </div>
+  );
+}
+
+function rid(): string {
+  return crypto.randomUUID();
 }
 
 function Muted({ children }: { children: React.ReactNode }) {

@@ -8,7 +8,7 @@
  * the vocabulary. Keep in sync with packages/core/src/messaging/index.ts.
  */
 
-export const MESSAGE_KINDS = ["text", "venue_card", "plan_card", "profile_card", "image"] as const;
+export const MESSAGE_KINDS = ["text", "venue_card", "plan_card", "profile_card", "image", "poll"] as const;
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 
 export interface VenueCardPayload {
@@ -29,4 +29,13 @@ export interface ImagePayload {
   width: number | null;
   height: number | null;
   mime: string | null;
+}
+export interface PollOption {
+  id: string;
+  text: string;
+}
+export interface PollPayload {
+  question: string;
+  options: PollOption[];
+  multi: boolean;
 }
