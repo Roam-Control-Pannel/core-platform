@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Icon, type IconName } from "@roam/design";
 import type { MessageKind, PollPayload } from "../lib/chatKinds";
 import { chatMediaSignedUrl } from "../lib/uploadChatImage";
 import { PollMessage } from "./ChatPoll";
@@ -26,14 +27,14 @@ export function MessageCard({
 }) {
   if (payload) {
     if (kind === "venue_card" && typeof payload.venueId === "string") {
-      return <RefCard href={`/venue/${payload.venueId}`} icon="📍" title={str(payload.name, "A place")} sub="View venue" />;
+      return <RefCard href={`/venue/${payload.venueId}`} icon="place" title={str(payload.name, "A place")} sub="View venue" />;
     }
     if (kind === "plan_card" && typeof payload.planId === "string") {
-      return <RefCard href={`/plans/${payload.planId}`} icon="🗓" title={str(payload.title, "A plan")} sub="View plan" />;
+      return <RefCard href={`/plans/${payload.planId}`} icon="plan" title={str(payload.title, "A plan")} sub="View plan" />;
     }
     if (kind === "profile_card" && typeof payload.profileId === "string") {
       const handle = typeof payload.handle === "string" && payload.handle ? `@${payload.handle}` : "View profile";
-      return <RefCard href={`/u/${payload.profileId}`} icon="👤" title={str(payload.name, "Someone")} sub={handle} />;
+      return <RefCard href={`/u/${payload.profileId}`} icon="person" title={str(payload.name, "Someone")} sub={handle} />;
     }
     if (kind === "image" && typeof payload.path === "string") {
       return <ImageBubble payload={payload} />;
@@ -95,7 +96,7 @@ function str(v: unknown, fallback: string): string {
 }
 
 /** A compact, tappable reference card (the shared-entity chrome shared by all card kinds). */
-function RefCard({ href, icon, title, sub }: { href: string; icon: string; title: string; sub: string }) {
+function RefCard({ href, icon, title, sub }: { href: string; icon: IconName; title: string; sub: string }) {
   return (
     <Link
       href={href}
@@ -112,12 +113,14 @@ function RefCard({ href, icon, title, sub }: { href: string; icon: string; title
         boxShadow: "var(--sh-1)",
       }}
     >
-      <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>{icon}</span>
+      <Icon name={icon} size={20} style={{ color: "var(--crimson-700)", flexShrink: 0 }} />
       <span style={{ display: "grid", gap: 1, minWidth: 0 }}>
         <span style={{ fontFamily: "var(--ui)", fontSize: 14, fontWeight: 600, color: "var(--ink-hi)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {title}
         </span>
-        <span style={{ fontFamily: "var(--ui)", fontSize: 12, color: "var(--crimson-700)", fontWeight: 600 }}>{sub} ›</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontFamily: "var(--ui)", fontSize: 12, color: "var(--crimson-700)", fontWeight: 600 }}>
+          {sub} <Icon name="chevronRight" size={12} />
+        </span>
       </span>
     </Link>
   );

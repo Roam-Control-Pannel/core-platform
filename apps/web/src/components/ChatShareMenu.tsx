@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card } from "@roam/design";
+import { Button, Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
 import type { MessageKind } from "../lib/chatKinds";
@@ -90,7 +90,7 @@ export function ChatShareMenu({
           opacity: disabled || uploading ? 0.5 : 1,
         }}
       >
-        {uploading ? "…" : "+"}
+        {uploading ? "…" : <Icon name="plus" size={22} />}
       </button>
 
       {menuOpen ? (
@@ -99,11 +99,11 @@ export function ChatShareMenu({
           <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div style={{ position: "absolute", bottom: 56, left: 0, zIndex: 41 }}>
             <Card style={{ padding: 6, minWidth: 180, boxShadow: "var(--sh-2)" }}>
-              <MenuItem icon="📍" label="Share a place" onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
-              <MenuItem icon="🗓" label="Share a plan" onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
-              <MenuItem icon="👤" label="Share a person" onClick={() => { setPicker("person"); setMenuOpen(false); }} />
-              <MenuItem icon="📊" label="Poll" onClick={() => { setPollOpen(true); setMenuOpen(false); }} />
-              <MenuItem icon="📷" label="Photo" onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
+              <MenuItem icon="place" label="Share a place" onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
+              <MenuItem icon="plan" label="Share a plan" onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
+              <MenuItem icon="person" label="Share a person" onClick={() => { setPicker("person"); setMenuOpen(false); }} />
+              <MenuItem icon="poll" label="Poll" onClick={() => { setPollOpen(true); setMenuOpen(false); }} />
+              <MenuItem icon="photo" label="Photo" onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
             </Card>
           </div>
         </>
@@ -136,7 +136,7 @@ function pickerTitle(t: ShareTarget): string {
   return t === "venue" ? "Share a place" : t === "plan" ? "Share a plan" : "Share a person";
 }
 
-function MenuItem({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+function MenuItem({ icon, label, onClick }: { icon: IconName; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -145,7 +145,7 @@ function MenuItem({ icon, label, onClick }: { icon: string; label: string; onCli
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--paper-2)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
-      <span aria-hidden style={{ fontSize: 18 }}>{icon}</span>
+      <Icon name={icon} size={18} style={{ color: "var(--crimson-700)" }} />
       {label}
     </button>
   );
@@ -174,7 +174,7 @@ function PickerModal({ title, onClose, children }: { title: string; onClose: () 
         <Card style={{ padding: "var(--space-4)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
             <h2 style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, margin: 0, color: "var(--ink)" }}>{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 18, padding: 4 }}>✕</button>
+            <button type="button" onClick={onClose} aria-label="Close" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: 4, display: "inline-flex" }}><Icon name="close" size={18} /></button>
           </div>
           {children}
         </Card>
@@ -221,7 +221,7 @@ function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
         <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
           {venues.map((v) => (
             <Button key={v.id} variant="neutral" onClick={() => onPick(v)} style={{ justifyContent: "flex-start" }}>
-              📍 {v.name}
+              <Icon name="place" size={15} /> {v.name}
             </Button>
           ))}
         </div>
@@ -252,7 +252,7 @@ function PlanPicker({ onPick }: { onPick: (p: PlanRow) => void }) {
     <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
       {plans.map((p) => (
         <Button key={p.id} variant="neutral" onClick={() => onPick(p)} style={{ justifyContent: "flex-start" }}>
-          🗓 {p.title}
+          <Icon name="plan" size={15} /> {p.title}
         </Button>
       ))}
     </div>
@@ -291,7 +291,7 @@ function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
     <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
       {people.map((f) => (
         <Button key={f.id} variant="neutral" onClick={() => onPick(f)} style={{ justifyContent: "flex-start" }}>
-          👤 {f.name}
+          <Icon name="person" size={15} /> {f.name}
         </Button>
       ))}
     </div>

@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, Pill, Button } from "@roam/design";
+import { Card, Pill, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { UserSearch, PersonAvatar, personName, type SearchedPerson } from "./UserSearch";
@@ -247,11 +247,23 @@ export function ThreadList() {
   );
 }
 
-const KIND_META: Record<ThreadKind, { label: string; glyph: string; fallback: string }> = {
-  plan: { label: "Plan chat", glyph: "🗓", fallback: "Plan chat" },
-  group: { label: "Group", glyph: "◍", fallback: "Untitled group" },
-  direct: { label: "Direct", glyph: "✉", fallback: "Direct chat" },
+const KIND_META: Record<ThreadKind, { label: string; icon: IconName; fallback: string }> = {
+  plan: { label: "Plan chat", icon: "plan", fallback: "Plan chat" },
+  group: { label: "Group", icon: "users", fallback: "Untitled group" },
+  direct: { label: "Direct", icon: "chat", fallback: "Direct chat" },
 };
+
+/** Icon for a last-message preview by kind (null = a plain text message, no icon). */
+function previewIcon(kind: string): IconName | null {
+  switch (kind) {
+    case "venue_card": return "place";
+    case "plan_card": return "plan";
+    case "profile_card": return "person";
+    case "image": return "photo";
+    case "poll": return "poll";
+    default: return null;
+  }
+}
 
 /** The inbox preview line for a thread's last message ("You: …", or a label for a shared card). */
 function previewText(last: LastMessage | null, myId: string | null): string {
@@ -261,15 +273,15 @@ function previewText(last: LastMessage | null, myId: string | null): string {
     case "text":
       return prefix + (last.body?.trim() || "Message");
     case "venue_card":
-      return prefix + "📍 Shared a place";
+      return prefix + "Shared a place";
     case "plan_card":
-      return prefix + "🗓 Shared a plan";
+      return prefix + "Shared a plan";
     case "profile_card":
-      return prefix + "👤 Shared a contact";
+      return prefix + "Shared a contact";
     case "image":
-      return prefix + "📷 Photo";
+      return prefix + "Photo";
     case "poll":
-      return prefix + "📊 Poll";
+      return prefix + "Poll";
     default:
       return prefix + "Message";
   }
@@ -285,7 +297,7 @@ function ThreadRowCard({ thread, myId }: { thread: ThreadRow; myId: string | nul
       <Card style={{ padding: "var(--space-4)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
-            <span aria-hidden style={{ fontSize: 16, flexShrink: 0 }}>{meta.glyph}</span>
+            <Icon name={meta.icon} size={16} style={{ flexShrink: 0, color: "var(--muted)" }} />
             <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {name}
             </div>
@@ -302,19 +314,23 @@ function ThreadRowCard({ thread, myId }: { thread: ThreadRow; myId: string | nul
             )}
           </div>
         </div>
-        <div
-          style={{
-            marginTop: "var(--space-2)",
-            fontSize: 13,
-            color: unread ? "var(--ink)" : "var(--muted)",
-            fontWeight: unread ? 600 : 400,
-            fontFamily: "var(--ui)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {previewText(thread.lastMessage, myId)}
+        <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+          {thread.lastMessage && previewIcon(thread.lastMessage.kind) ? (
+            <Icon name={previewIcon(thread.lastMessage.kind) as IconName} size={13} style={{ flexShrink: 0, color: unread ? "var(--ink)" : "var(--muted)" }} />
+          ) : null}
+          <span
+            style={{
+              fontSize: 13,
+              color: unread ? "var(--ink)" : "var(--muted)",
+              fontWeight: unread ? 600 : 400,
+              fontFamily: "var(--ui)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {previewText(thread.lastMessage, myId)}
+          </span>
         </div>
         <div style={{ marginTop: 3, fontSize: 12, color: "var(--faint)", fontFamily: "var(--ui)" }}>
           {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"} · {when}
@@ -395,11 +411,10 @@ function EmptyState() {
           background: "var(--crimson-tint)",
           display: "grid",
           placeItems: "center",
-          fontSize: 24,
           color: "var(--crimson-700)",
         }}
       >
-        ◍
+        <Icon name="chat" size={26} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
         No chats yet
