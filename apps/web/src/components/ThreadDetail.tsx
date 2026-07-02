@@ -116,6 +116,13 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
     return load();
   }, [session, load]);
 
+  // Opening a thread marks it read (clears its unread badge in the inbox on next load).
+  useEffect(() => {
+    if (!session) return;
+    const mut = trpc.chat.markRead as unknown as { mutate: (i: { threadId: string }) => Promise<unknown> };
+    mut.mutate({ threadId }).catch(() => {});
+  }, [session, threadId, trpc]);
+
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-3) var(--space-4) var(--space-6)" }}>
       {!session ? (

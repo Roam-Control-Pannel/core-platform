@@ -309,10 +309,32 @@ export const chatRouter = router({
       });
     }
 
+    // Per-thread last-message preview + unread count (thread_inbox RPC). Not in the generated DB
+    // types yet, so widen just this call. A failure here degrades to "no preview / 0 unread"
+    // rather than failing the whole inbox — the list is more important than the badges.
+    const looseRpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+      fn: string,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    type InboxMetaRow = {
+      thread_id: string;
+      last_kind: string | null;
+      last_body: string | null;
+      last_sender_id: string | null;
+      last_created_at: string | null;
+      unread_count: number | null;
+    };
+    const metaById = new Map<string, InboxMetaRow>();
+    try {
+      const { data: meta } = await looseRpc("thread_inbox");
+      for (const r of (meta as InboxMetaRow[] | null) ?? []) metaById.set(r.thread_id, r);
+    } catch {
+      /* leave metaById empty */
+    }
+
     type EmbeddedProfile = { display_name: string | null; handle: string | null; avatar_url: string | null };
     type PartRow = { profile_id: string; profiles?: unknown };
 
-    return (data ?? []).map((t) => {
+    const rows = (data ?? []).map((t) => {
       const raw = (t as { chat_participants?: unknown }).chat_participants;
       const parts: PartRow[] = Array.isArray(raw) ? (raw as PartRow[]) : raw ? [raw as PartRow] : [];
 
@@ -329,6 +351,16 @@ export const chatRouter = router({
         name = prof?.display_name?.trim() || (prof?.handle ? `@${prof.handle}` : null);
       }
 
+      const meta = metaById.get(t.id) ?? null;
+      const lastMessage = meta && meta.last_created_at
+        ? {
+            kind: meta.last_kind ?? "text",
+            body: meta.last_body ?? null,
+            senderId: meta.last_sender_id ?? null,
+            createdAt: meta.last_created_at,
+          }
+        : null;
+
       return {
         id: t.id,
         isGroup: t.is_group,
@@ -338,9 +370,38 @@ export const chatRouter = router({
         name,
         updatedAt: t.updated_at,
         participantCount: parts.length,
+        lastMessage,
+        unreadCount: Number(meta?.unread_count ?? 0),
       };
     });
+
+    // Order the inbox by REAL activity (newest message first), falling back to the thread's
+    // updated_at when it has no messages yet — so a thread jumps to the top when someone posts.
+    return rows.sort((a, b) => {
+      const at = new Date(a.lastMessage?.createdAt ?? a.updatedAt).getTime();
+      const bt = new Date(b.lastMessage?.createdAt ?? b.updatedAt).getTime();
+      return bt - at;
+    });
   }),
+
+  /**
+   * Mark a thread read for the caller (stamps chat_participants.last_read_at = now via the
+   * mark_thread_read RPC, which only ever writes the caller's own row). Called when a thread is
+   * opened; clears its unread badge in the inbox on next load.
+   */
+  markRead: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const looseRpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+      const { error } = await looseRpc("mark_thread_read", { p_thread: input.threadId });
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't mark read: ${error.message}` });
+      }
+      return { ok: true as const };
+    }),
 
   /**
    * Read one thread with its participants, for the detail view. RLS scopes the

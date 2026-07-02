@@ -29,6 +29,13 @@ import rowStyles from "./listRow.module.css";
 
 type ThreadKind = "plan" | "group" | "direct";
 
+interface LastMessage {
+  kind: string;
+  body: string | null;
+  senderId: string | null;
+  createdAt: string;
+}
+
 interface ThreadRow {
   id: string;
   isGroup: boolean;
@@ -38,6 +45,8 @@ interface ThreadRow {
   name: string | null;
   updatedAt: string;
   participantCount: number;
+  lastMessage: LastMessage | null;
+  unreadCount: number;
 }
 
 export function ThreadList() {
@@ -230,7 +239,7 @@ export function ThreadList() {
       ) : (
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
           {threads.map((t) => (
-            <ThreadRowCard key={t.id} thread={t} />
+            <ThreadRowCard key={t.id} thread={t} myId={session.user?.id ?? null} />
           ))}
         </div>
       )}
@@ -244,9 +253,31 @@ const KIND_META: Record<ThreadKind, { label: string; glyph: string; fallback: st
   direct: { label: "Direct", glyph: "✉", fallback: "Direct chat" },
 };
 
-function ThreadRowCard({ thread }: { thread: ThreadRow }) {
+/** The inbox preview line for a thread's last message ("You: …", or a label for a shared card). */
+function previewText(last: LastMessage | null, myId: string | null): string {
+  if (!last) return "No messages yet";
+  const prefix = last.senderId && last.senderId === myId ? "You: " : "";
+  switch (last.kind) {
+    case "text":
+      return prefix + (last.body?.trim() || "Message");
+    case "venue_card":
+      return prefix + "📍 Shared a place";
+    case "plan_card":
+      return prefix + "🗓 Shared a plan";
+    case "profile_card":
+      return prefix + "👤 Shared a contact";
+    case "image":
+      return prefix + "📷 Photo";
+    default:
+      return prefix + "Message";
+  }
+}
+
+function ThreadRowCard({ thread, myId }: { thread: ThreadRow; myId: string | null }) {
   const meta = KIND_META[thread.kind];
   const name = thread.name?.trim() || thread.title?.trim() || meta.fallback;
+  const unread = thread.unreadCount > 0;
+  const when = formatWhen(thread.lastMessage?.createdAt ?? thread.updatedAt);
   return (
     <Link href={`/threads/${thread.id}`} className={rowStyles.cardLift} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Card style={{ padding: "var(--space-4)" }}>
@@ -257,12 +288,34 @@ function ThreadRowCard({ thread }: { thread: ThreadRow }) {
               {name}
             </div>
           </div>
-          <Pill variant={thread.kind === "plan" ? "ghost-crim" : "neutral"} size="sm">
-            {meta.label}
-          </Pill>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0 }}>
+            {unread ? (
+              <span aria-label={`${thread.unreadCount} unread`} style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontSize: 11.5, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
+              </span>
+            ) : (
+              <Pill variant={thread.kind === "plan" ? "ghost-crim" : "neutral"} size="sm">
+                {meta.label}
+              </Pill>
+            )}
+          </div>
         </div>
-        <div style={{ marginTop: "var(--space-2)", fontSize: 12, color: "var(--faint)", fontFamily: "var(--ui)" }}>
-          {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"} · updated {formatWhen(thread.updatedAt)}
+        <div
+          style={{
+            marginTop: "var(--space-2)",
+            fontSize: 13,
+            color: unread ? "var(--ink)" : "var(--muted)",
+            fontWeight: unread ? 600 : 400,
+            fontFamily: "var(--ui)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {previewText(thread.lastMessage, myId)}
+        </div>
+        <div style={{ marginTop: 3, fontSize: 12, color: "var(--faint)", fontFamily: "var(--ui)" }}>
+          {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"} · {when}
         </div>
       </Card>
     </Link>
