@@ -18,9 +18,12 @@ import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
 import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
-import { siteUrl } from "../lib/seo";
+import { siteUrl, ogCardUrl } from "../lib/seo";
 
 const DESCRIPTION = "Discover the best local venues, read reviews, follow your town's news and plan days out with friends — all on Roam.";
+
+// The site-default share card: the generated 1200×630 (app/og/route.tsx), not the square mark.
+const DEFAULT_CARD = ogCardUrl({ title: "Your town, together", subtitle: "Local places, news, plans and people — all on Roam." });
 
 /**
  * Root metadata + the defaults every page inherits. `metadataBase` makes relative Open Graph
@@ -58,13 +61,13 @@ export const metadata: Metadata = {
     siteName: "Roam",
     title: "Roam — hyper-local discovery & social planning",
     description: DESCRIPTION,
-    images: [{ url: "/roam-mark.png" }],
+    images: [{ url: DEFAULT_CARD }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Roam — hyper-local discovery & social planning",
     description: DESCRIPTION,
-    images: ["/roam-mark.png"],
+    images: [DEFAULT_CARD],
   },
 };
 
