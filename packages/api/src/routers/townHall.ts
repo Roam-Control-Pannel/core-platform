@@ -53,7 +53,7 @@ const TOPIC_AUTHOR = "author:profiles!town_hall_topics_author_id_fkey(id, handle
 const REPLY_AUTHOR = "author:profiles!town_hall_replies_author_id_fkey(id, handle, display_name, avatar_url)";
 
 const TOPIC_COLS = `id, slug, locality, locality_label, title, body, upvote_count, reply_count, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
-const REPLY_COLS = `id, topic_id, body, created_at, ${REPLY_AUTHOR}`;
+const REPLY_COLS = `id, topic_id, body, upvote_count, created_at, ${REPLY_AUTHOR}`;
 
 interface RawTopic {
   id: string;
@@ -72,6 +72,7 @@ interface RawReply {
   id: string;
   topic_id: string;
   body: string;
+  upvote_count: number;
   created_at: string;
   author: AuthorEmbed | AuthorEmbed[] | null;
 }
@@ -106,6 +107,23 @@ function shapeTopic(t: RawTopic, viewerUpvoted: boolean) {
     lastActivityAt: t.last_activity_at,
     createdAt: t.created_at,
     author: shapeAuthor(t.author),
+    viewerUpvoted,
+  };
+}
+
+/** Reddit-style "hot" gravity: upvotes decayed by age, so fresh + upvoted topics rise. */
+function hotScore(t: RawTopic, now: number): number {
+  const ageHours = Math.max(0, (now - new Date(t.created_at).getTime()) / 3_600_000);
+  return t.upvote_count / Math.pow(ageHours + 2, 1.5);
+}
+
+function shapeReply(r: RawReply, viewerUpvoted: boolean) {
+  return {
+    id: r.id,
+    body: r.body,
+    upvoteCount: r.upvote_count,
+    createdAt: r.created_at,
+    author: shapeAuthor(r.author),
     viewerUpvoted,
   };
 }
@@ -159,12 +177,18 @@ async function fileReport(
 }
 
 export const townHallRouter = router({
-  /** Public: a locality's topics, by `popular` (upvotes) or `recent` (last activity). */
+  /**
+   * Public: a locality's topics. Reddit-style sorts:
+   *   hot (default) — recent activity ranked by a score/age gravity blend,
+   *   new           — most recently created,
+   *   top           — highest upvotes all-time.
+   * (legacy `recent` → hot, `popular` → top, so older clients keep working.)
+   */
   listTopics: publicProcedure
     .input(
       z.object({
         localityName: z.string().trim().min(1).max(120),
-        sort: z.enum(["popular", "recent"]).default("recent"),
+        sort: z.enum(["hot", "new", "top", "recent", "popular"]).default("hot"),
         limit: z.number().int().min(1).max(100).default(50),
       }),
     )
@@ -180,15 +204,22 @@ export const townHallRouter = router({
         return { locality: "", localityLabel: input.localityName, topics: [] };
       }
 
+      const sort: "hot" | "new" | "top" =
+        input.sort === "new" ? "new" : input.sort === "top" || input.sort === "popular" ? "top" : "hot";
+
       let q = db.from("town_hall_topics").select(TOPIC_COLS).eq("locality", slug);
-      q = input.sort === "popular"
-        ? q.order("upvote_count", { ascending: false }).order("last_activity_at", { ascending: false })
-        : q.order("last_activity_at", { ascending: false });
+      if (sort === "new") q = q.order("created_at", { ascending: false });
+      else if (sort === "top") q = q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
+      else q = q.order("last_activity_at", { ascending: false }); // hot: recent-activity candidates, re-ranked below
       const { data, error } = (await q.limit(input.limit)) as PgResult<RawTopic[] | null>;
       if (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load the Town Hall: ${error.message}` });
       }
-      const rows = data ?? [];
+      let rows = data ?? [];
+      if (sort === "hot") {
+        const now = Date.now();
+        rows = [...rows].sort((a, b) => hotScore(b, now) - hotScore(a, now));
+      }
 
       // Merge the caller's upvotes (one extra query, scoped to the shown ids) so each topic
       // renders its own ★ state. Anonymous callers see all-false.
@@ -224,15 +255,12 @@ export const townHallRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load replies: ${rErr.message}` });
       }
 
+      const rows = replyRows ?? [];
       const upvoted = await viewerUpvotes(db, [topic.id]);
+      const replyUpvoted = await viewerReplyUpvotes(db, rows.map((r) => r.id));
       return {
         topic: shapeTopic(topic, upvoted.has(topic.id)),
-        replies: (replyRows ?? []).map((r) => ({
-          id: r.id,
-          body: r.body,
-          createdAt: r.created_at,
-          author: shapeAuthor(r.author),
-        })),
+        replies: rows.map((r) => shapeReply(r, replyUpvoted.has(r.id))),
       };
     }),
 
@@ -305,15 +333,12 @@ export const townHallRouter = router({
       if (rErr) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load replies: ${rErr.message}` });
       }
+      const rows = replyRows ?? [];
       const upvoted = await viewerUpvotes(db, [topic.id]);
+      const replyUpvoted = await viewerReplyUpvotes(db, rows.map((r) => r.id));
       return {
         topic: shapeTopic(topic, upvoted.has(topic.id)),
-        replies: (replyRows ?? []).map((r) => ({
-          id: r.id,
-          body: r.body,
-          createdAt: r.created_at,
-          author: shapeAuthor(r.author),
-        })),
+        replies: rows.map((r) => shapeReply(r, replyUpvoted.has(r.id))),
       };
     }),
 
@@ -518,6 +543,45 @@ export const townHallRouter = router({
       return { upvoted: !existing, upvoteCount: fresh?.upvote_count ?? 0 };
     }),
 
+  /** Protected: add/remove your single upvote on a REPLY; counts are trigger-maintained. */
+  toggleReplyUpvote: protectedProcedure
+    .input(z.object({ replyId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const voter_id = await callerId(db);
+
+      const { data: existing, error: exErr } = (await db
+        .from("town_hall_reply_votes")
+        .select("reply_id")
+        .eq("reply_id", input.replyId)
+        .eq("voter_id", voter_id)
+        .maybeSingle()) as PgResult<{ reply_id: string } | null>;
+      if (exErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update your upvote." });
+      }
+
+      if (existing) {
+        const { error } = (await db
+          .from("town_hall_reply_votes")
+          .delete()
+          .eq("reply_id", input.replyId)
+          .eq("voter_id", voter_id)) as { error: { message: string } | null };
+        if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't remove your upvote." });
+      } else {
+        const { error } = (await db
+          .from("town_hall_reply_votes")
+          .insert({ reply_id: input.replyId, voter_id })) as { error: { message: string } | null };
+        if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't add your upvote." });
+      }
+
+      const { data: fresh } = (await db
+        .from("town_hall_replies")
+        .select("upvote_count")
+        .eq("id", input.replyId)
+        .maybeSingle()) as PgResult<{ upvote_count: number } | null>;
+      return { upvoted: !existing, upvoteCount: fresh?.upvote_count ?? 0 };
+    }),
+
   /** Protected: report a topic for review. */
   reportTopic: protectedProcedure
     .input(z.object({ topicId: z.string().uuid(), detail: z.string().trim().max(2000).optional() }))
@@ -553,4 +617,17 @@ async function viewerUpvotes(db: LooseDb, topicIds: string[]): Promise<Set<strin
     .eq("voter_id", me)
     .in("topic_id", topicIds)) as PgResult<{ topic_id: string }[] | null>;
   return new Set((data ?? []).map((v) => v.topic_id));
+}
+
+/** The subset of `replyIds` the caller has upvoted (reply votes). Anonymous → empty. */
+async function viewerReplyUpvotes(db: LooseDb, replyIds: string[]): Promise<Set<string>> {
+  if (replyIds.length === 0) return new Set();
+  const me = await maybeCallerId(db);
+  if (!me) return new Set();
+  const { data } = (await db
+    .from("town_hall_reply_votes")
+    .select("reply_id")
+    .eq("voter_id", me)
+    .in("reply_id", replyIds)) as PgResult<{ reply_id: string }[] | null>;
+  return new Set((data ?? []).map((v) => v.reply_id));
 }

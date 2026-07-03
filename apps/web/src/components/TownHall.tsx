@@ -42,7 +42,7 @@ interface TopicListItem {
   viewerUpvoted: boolean;
 }
 
-type Sort = "recent" | "popular";
+type Sort = "hot" | "new" | "top";
 
 export function TownHall() {
   const trpc = useTrpc();
@@ -51,7 +51,7 @@ export function TownHall() {
 
   const [topics, setTopics] = useState<TopicListItem[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<Sort>("recent");
+  const [sort, setSort] = useState<Sort>("hot");
   const [composing, setComposing] = useState(false);
 
   const load = useCallback(async () => {
@@ -115,8 +115,9 @@ export function TownHall() {
           <PlaceSwitcher value={place} onChange={setPlace} />
           <Seg
             options={[
-              { value: "recent", label: "Recent" },
-              { value: "popular", label: "Popular" },
+              { value: "hot", label: "Hot" },
+              { value: "new", label: "New" },
+              { value: "top", label: "Top" },
             ]}
             value={sort}
             onChange={(v) => setSort(v)}
