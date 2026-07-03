@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
-import { TopicUpvote } from "./TopicUpvote";
+import { TopicUpvote, ReplyUpvote } from "./TopicUpvote";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { AuthorLink } from "./AuthorLink";
@@ -34,6 +34,8 @@ interface TopicView {
 interface ReplyView {
   id: string;
   body: string;
+  upvoteCount: number;
+  viewerUpvoted: boolean;
   createdAt: string;
   author: TownHallAuthor;
 }
@@ -264,6 +266,9 @@ function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string |
       ) : (
         <>
           <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+          <div style={{ marginTop: "var(--space-2)" }}>
+            <ReplyUpvote replyId={reply.id} initialUpvoted={reply.viewerUpvoted} initialCount={reply.upvoteCount} canVote={!!myId} />
+          </div>
           {mine ? (
             <OwnerActions
               onEdit={() => setEditing(true)}
