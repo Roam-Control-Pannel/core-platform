@@ -75,6 +75,33 @@ export function moveWidget(
   return { ...layout, order };
 }
 
+/**
+ * Move a widget to an ABSOLUTE position within the orderable projection — the drag-and-drop drop
+ * target, as opposed to moveWidget's one-step neighbour swap. Removes the id from the applicable
+ * scope and reinserts it at `toIndex` (clamped to the scope), then splices the reordered projection
+ * back into the full order so non-applicable ids keep their slots. A no-op for an unknown id or a
+ * drop onto the same position.
+ */
+export function reorderWidget(
+  layout: HomeLayout,
+  id: string,
+  toIndex: number,
+  orderable?: readonly string[],
+): HomeLayout {
+  const scope = orderable ? layout.order.filter((x) => orderable.includes(x)) : [...layout.order];
+  const from = scope.indexOf(id);
+  if (from < 0) return layout;
+  const to = Math.max(0, Math.min(toIndex, scope.length - 1));
+  if (to === from) return layout;
+  scope.splice(from, 1);
+  scope.splice(to, 0, id);
+  // Rebuild the full order: refill the applicable slots from the reordered scope, in order.
+  const inScope = new Set(scope);
+  let k = 0;
+  const order = layout.order.map((x) => (inScope.has(x) ? (scope[k++] as string) : x));
+  return { ...layout, order };
+}
+
 /** Toggle a widget's hidden state. */
 export function toggleHidden(layout: HomeLayout, id: string): HomeLayout {
   const hidden = layout.hidden.includes(id)
@@ -124,6 +151,11 @@ export function useHomeLayout(registryIds: readonly string[]) {
       setLayout((l) => moveWidget(l, id, dir, orderable)),
     [],
   );
+  const reorder = useCallback(
+    (id: string, toIndex: number, orderable?: readonly string[]) =>
+      setLayout((l) => reorderWidget(l, id, toIndex, orderable)),
+    [],
+  );
   const toggle = useCallback((id: string) => setLayout((l) => toggleHidden(l, id)), []);
   const reset = useCallback(() => setLayout(defaultLayout(registryIds)), [registryIds]);
 
@@ -134,5 +166,5 @@ export function useHomeLayout(registryIds: readonly string[]) {
     [registryIds],
   );
 
-  return { layout, loaded, move, toggle, reset, replace };
+  return { layout, loaded, move, reorder, toggle, reset, replace };
 }

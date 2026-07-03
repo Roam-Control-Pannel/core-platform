@@ -61,6 +61,7 @@ import {
   EyeOff,
   Circle,
   CircleDot,
+  GripVertical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -117,6 +118,7 @@ const ICONS = {
   eyeOff: EyeOff,
   radioOn: CircleDot,
   radioOff: Circle,
+  grip: GripVertical,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
