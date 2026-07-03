@@ -30,6 +30,7 @@ import { planDateLabel } from "../lib/planDate";
 import { useHomeLayout, reconcile, type HomeLayout } from "../lib/homeLayout";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
 import { BirthdayTreats } from "./BirthdayTreats";
+import { DealsHomeWidget } from "./Deals";
 import styles from "./Home.module.css";
 
 /**
@@ -63,6 +64,7 @@ const HOME_WIDGETS: HomeWidget[] = [
   { id: "upcoming-plans", label: "Your plans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
   { id: "followed-venues", label: "Followed venues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
   { id: "saved-deals", label: "Saved deals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
+  { id: "affiliate-deals", label: "Deals", span: "half", render: () => <DealsHomeWidget /> },
   { id: "your-town", label: "Your town", span: "full", render: ({ place }) => <YourTown place={place} /> },
   { id: "local-news", label: "Local news", span: "half", render: ({ place }) => <LocalNews place={place} /> },
   { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
