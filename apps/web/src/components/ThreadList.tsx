@@ -182,7 +182,7 @@ export function ThreadList() {
           ) : null}
 
           <UserSearch
-            placeholder="Search people to chat with"
+            friendsFirst
             autoFocus
             selectedIds={selected.map((p) => p.id)}
             onRowClick={toggle}
