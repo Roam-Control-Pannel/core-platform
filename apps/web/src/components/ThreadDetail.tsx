@@ -23,6 +23,7 @@ import { MeetupPanel } from "./MeetupPanel";
 import { MessageCard } from "./ChatCards";
 import { ChatShareMenu } from "./ChatShareMenu";
 import type { MessageKind } from "../lib/chatKinds";
+import { useThreadRealtime } from "../lib/useThreadRealtime";
 import actions from "./inlineActions.module.css";
 import styles from "./Chat.module.css";
 
@@ -486,32 +487,54 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  // Whether the list is "stuck" to the bottom. True while the reader is at/near the newest
+  // message; a live message then auto-scrolls. Set false once they scroll up to read history,
+  // so an incoming message doesn't yank them down mid-read (WhatsApp behaviour).
+  const stickRef = useRef(true);
 
   const myId = session?.user?.id ?? null;
+  const token = session?.access_token ?? null;
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    setMessages(undefined);
-    setError(null);
-    trpc.chat.listMessages
-      .query({ threadId })
-      .then((rows) => {
-        if (!cancelled) setMessages(rows as ThreadMessage[]);
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load messages.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, threadId]);
+  // Fetch server-truth. `silent` keeps the current messages on screen (no skeleton) — used for
+  // background refetches (live events, after a send, edit/delete) so the view never flickers.
+  const fetchMessages = useCallback(
+    (silent = false) => {
+      let cancelled = false;
+      if (!silent) setMessages(undefined);
+      setError(null);
+      trpc.chat.listMessages
+        .query({ threadId })
+        .then((rows) => {
+          if (!cancelled) setMessages(rows as ThreadMessage[]);
+        })
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          if (!silent) setError(e instanceof Error ? e.message : "Failed to load messages.");
+        });
+      return () => {
+        cancelled = true;
+      };
+    },
+    [trpc, threadId],
+  );
+
+  const load = useCallback(() => fetchMessages(false), [fetchMessages]);
 
   useEffect(() => load(), [load]);
 
-  // Keep the list pinned to the newest message as content arrives / a send lands.
+  // Live delivery: a new/edited/deleted message in this thread triggers a silent refetch, and —
+  // since the thread is open — marks it read so the inbox badge stays in sync.
+  const onRealtime = useCallback(() => {
+    fetchMessages(true);
+    const mut = trpc.chat.markRead as unknown as { mutate: (i: { threadId: string }) => Promise<unknown> };
+    mut.mutate({ threadId }).catch(() => {});
+  }, [fetchMessages, trpc, threadId]);
+  useThreadRealtime(threadId, token, onRealtime);
+
+  // Keep the list pinned to the newest message as content arrives — but only when the reader is
+  // already at the bottom (see stickRef), so live messages don't interrupt reading history.
   useEffect(() => {
-    if (messages && messages.length > 0 && listRef.current) {
+    if (messages && messages.length > 0 && listRef.current && stickRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
@@ -527,13 +550,14 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
     try {
       await trpc.chat.sendMessage.mutate({ threadId, body });
       setDraft("");
-      load(); // refetch server-truth (includes the just-sent message)
+      stickRef.current = true; // sending always snaps you to your new message
+      fetchMessages(true); // refetch server-truth (includes the just-sent message)
     } catch (e: unknown) {
       setSendError(e instanceof Error ? e.message : "Couldn't send your message.");
     } finally {
       setSending(false);
     }
-  }, [trpc, threadId, draft, load]);
+  }, [trpc, threadId, draft, fetchMessages]);
 
   // Share a rich card (venue/plan/person) — same send path, a kind + validated payload snapshot.
   const sendRich = useCallback(
@@ -544,12 +568,13 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
       };
       try {
         await mut.mutate({ threadId, kind, payload });
-        load();
+        stickRef.current = true;
+        fetchMessages(true);
       } catch (e: unknown) {
         setSendError(e instanceof Error ? e.message : "Couldn't share that.");
       }
     },
-    [trpc, threadId, load],
+    [trpc, threadId, fetchMessages],
   );
 
   if (error) {
@@ -563,7 +588,14 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
 
   return (
     <div>
-      <div ref={listRef} className={styles.scroll}>
+      <div
+        ref={listRef}
+        className={styles.scroll}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+      >
         <div className={styles.scrollInner}>
           {messages.length === 0 ? (
             <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
