@@ -96,7 +96,10 @@ async function main(): Promise<void> {
     publisherId: process.env.AWIN_PUBLISHER_ID ?? null,
     baseUrl: process.env.AWIN_API_BASE ?? "https://api.awin.com",
     region: process.env.AWIN_REGION ?? "GB",
+    membership: process.env.AWIN_MEMBERSHIP ?? "joined",
     debug: process.env.AWIN_DEBUG === "1" || process.env.AWIN_DEBUG === "true",
+    offersPath: process.env.AWIN_OFFERS_PATH ?? null,
+    offersMethod: process.env.AWIN_OFFERS_METHOD ?? null,
   };
   const r = await runAwinOffersSync(service, cfg, (m) => console.log(`  ${m}`));
   console.log(`\nawin sync: fetched ${r.fetched}, upserted ${r.upserted}, retired ${r.deactivated}\n`);
