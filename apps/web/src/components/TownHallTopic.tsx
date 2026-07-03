@@ -16,6 +16,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { TopicUpvote, ReplyUpvote } from "./TopicUpvote";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { LinkPreviewCard } from "./LinkPreviewCard";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { AuthorLink } from "./AuthorLink";
 import actions from "./inlineActions.module.css";
@@ -30,6 +31,10 @@ interface TopicView {
   createdAt: string;
   author: TownHallAuthor;
   viewerUpvoted: boolean;
+  linkUrl: string | null;
+  linkDomain: string | null;
+  linkTitle: string | null;
+  linkImageUrl: string | null;
 }
 interface ReplyView {
   id: string;
@@ -149,6 +154,14 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
                 <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                   {data.topic.body}
                 </p>
+
+                {data.topic.linkUrl ? (
+                  <div style={{ marginTop: "var(--space-3)" }}>
+                    <LinkPreviewCard
+                      link={{ url: data.topic.linkUrl, domain: data.topic.linkDomain, title: data.topic.linkTitle, imageUrl: data.topic.linkImageUrl }}
+                    />
+                  </div>
+                ) : null}
 
                 {/* Action bar: vote · comments · share. */}
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-4)", flexWrap: "wrap" }}>
