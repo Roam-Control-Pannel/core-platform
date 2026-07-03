@@ -38,6 +38,8 @@ export function buildAwinLink(opts: {
 }): string {
   const { advertiserId, destinationUrl, clickRef } = opts;
   const publisherId = awinPublisherId();
+  // Already an Awin tracking link (e.g. an offer stored its pre-tracked url) — never double-wrap.
+  if (/awin1\.com\/(cread|awclick)/i.test(destinationUrl)) return destinationUrl;
   if (!publisherId || !advertiserId || !/^https?:\/\//i.test(destinationUrl)) return destinationUrl;
   const params = new URLSearchParams({
     awinmid: advertiserId,

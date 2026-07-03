@@ -70,6 +70,19 @@ export interface ApiEnv {
   transit: {
     config: EfaConfig | null;
   };
+  /**
+   * Awin affiliate Offers API (the deals ingestion). `apiKey` null disables it (the sync route is a
+   * no-op), so the API runs before the token is provisioned. `publisherId` is optional — auto-resolved
+   * via /accounts when null. `debug` logs the raw offers response so the field-mapping can be tuned
+   * to the real shape (Awin's docs are auth-gated), and `baseUrl`/`region` stay overridable.
+   */
+  awin: {
+    apiKey: string | null;
+    publisherId: string | null;
+    baseUrl: string;
+    region: string;
+    debug: boolean;
+  };
 }
 
 export interface Context {
