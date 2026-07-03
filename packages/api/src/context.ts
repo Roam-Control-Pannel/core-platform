@@ -81,6 +81,8 @@ export interface ApiEnv {
     publisherId: string | null;
     baseUrl: string;
     region: string;
+    /** Which advertisers' offers to pull: "joined" (default) | "notJoined" | "all". */
+    membership: string;
     debug: boolean;
     /** Override the offers endpoint (skips probing) — `{publisherId}` is substituted. */
     offersPath: string | null;

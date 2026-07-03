@@ -19,6 +19,8 @@ export interface AwinConfig {
   publisherId: string | null;
   baseUrl: string;
   region: string;
+  /** Which advertisers' offers to pull: "joined" (partners we earn from) | "notJoined" | "all". */
+  membership: string;
   debug: boolean;
   /** Override the offers endpoint path (use `{publisherId}` as a token). Skips endpoint probing. */
   offersPath?: string | null;
@@ -52,21 +54,35 @@ interface AwinResponse {
   text: string;
 }
 
+const PER_CALL_TIMEOUT_MS = 12_000;
+
 /** Authenticated request against the Awin API. Never throws on HTTP status — returns it, so the
- *  caller can probe candidate endpoints. Throws only on a network/transport failure. */
+ *  caller can probe candidate endpoints. A per-call timeout (AbortSignal) means no single call can
+ *  hang the whole job; a transport error / timeout comes back as status 0 with the reason in text. */
 async function awinReq(cfg: AwinConfig, method: string, path: string, body: string | null, log: (m: string) => void): Promise<AwinResponse> {
   const url = `${cfg.baseUrl.replace(/\/$/, "")}${path}`;
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${cfg.apiKey}`,
-      Accept: "application/json",
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(body ? { body } : {}),
-  });
+  const started = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${cfg.apiKey}`,
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      signal: AbortSignal.timeout(PER_CALL_TIMEOUT_MS),
+      ...(body ? { body } : {}),
+    });
+  } catch (e) {
+    const ms = Date.now() - started;
+    const reason = e instanceof Error ? e.message : String(e);
+    if (cfg.debug) log(`awin ${method} ${path} → ERROR ${ms}ms ${reason}`);
+    return { status: 0, json: null, text: `transport error after ${ms}ms: ${reason}` };
+  }
   const text = await res.text();
-  if (cfg.debug) log(`awin ${method} ${path} → ${res.status} ${trunc(text)}`);
+  const ms = Date.now() - started;
+  if (cfg.debug) log(`awin ${method} ${path} → ${res.status} ${ms}ms len=${text.length} ${trunc(text)}`);
   let json: unknown = null;
   try {
     json = text ? (JSON.parse(text) as unknown) : null;
@@ -146,7 +162,7 @@ function itemsFrom(json: unknown): Json[] {
 }
 
 const offersBody = (cfg: AwinConfig, page: number): string =>
-  JSON.stringify({ filters: { membership: "all", regionCodes: [cfg.region] }, pagination: { page, pageSize: PAGE_SIZE } });
+  JSON.stringify({ filters: { membership: cfg.membership, regionCodes: [cfg.region] }, pagination: { page, pageSize: PAGE_SIZE } });
 
 const withQuery = (path: string, page: number): string =>
   `${path}${path.includes("?") ? "&" : "?"}page=${page}&pageSize=${PAGE_SIZE}`;
@@ -210,11 +226,15 @@ export async function retrieveOffers(cfg: AwinConfig, log: (m: string) => void =
     return items.length;
   };
   let count = consume(first.json);
-  for (let page = 2; page <= 20 && count >= PAGE_SIZE; page++) {
+  if (cfg.debug) log(`awin: page 1 → ${count} items (${out.length} kept)`);
+  // Cap at 10 pages (1000 offers) — plenty for a curated deals surface, and a hard stop so a huge
+  // "all-network" pull can't run past the request budget.
+  for (let page = 2; page <= 10 && count >= PAGE_SIZE; page++) {
     const path = ep.method === "GET" ? withQuery(ep.path, page) : ep.path;
     const r = await awinReq(cfg, ep.method, path, ep.method === "POST" ? offersBody(cfg, page) : null, log);
     if (!ok2xx(r.status)) break;
     count = consume(r.json);
+    if (cfg.debug) log(`awin: page ${page} → ${count} items (${out.length} kept)`);
   }
   if (dropped > 0) log(`awin: skipped ${dropped} offer(s) missing required fields.`);
   return out;

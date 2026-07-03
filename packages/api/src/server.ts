@@ -76,6 +76,7 @@ function loadEnv(): ApiEnv {
       publisherId: process.env.AWIN_PUBLISHER_ID ?? null,
       baseUrl: process.env.AWIN_API_BASE ?? "https://api.awin.com",
       region: process.env.AWIN_REGION ?? "GB",
+      membership: process.env.AWIN_MEMBERSHIP ?? "joined",
       debug: process.env.AWIN_DEBUG === "1" || process.env.AWIN_DEBUG === "true",
       offersPath: process.env.AWIN_OFFERS_PATH ?? null,
       offersMethod: process.env.AWIN_OFFERS_METHOD ?? null,
