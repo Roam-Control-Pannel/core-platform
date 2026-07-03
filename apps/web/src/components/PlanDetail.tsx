@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
 import { planDateLabel, planDateInput } from "../lib/planDate";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
@@ -156,6 +157,7 @@ export function PlanDetail({ planId }: { planId: string }) {
             <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
               {openingChat ? "Opening…" : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="chat" size={14} /> Group chat</span>}
             </Button>
+            <CopyLinkButton variant="button" size="sm" title={plan.title} />
             <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
           </div>
 

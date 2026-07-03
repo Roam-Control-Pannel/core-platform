@@ -19,6 +19,7 @@ import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
 import { AddFriendButton } from "./AddFriendButton";
 import { MessageButton } from "./MessageButton";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import actions from "./inlineActions.module.css";
@@ -224,6 +225,12 @@ function ProfileHeader({
         }}
       >
         <div style={{ position: "absolute", top: "var(--space-3)", right: "var(--space-3)", display: "flex", gap: "var(--space-2)" }}>
+          <CopyLinkButton
+            variant="button"
+            size="sm"
+            path={`/u/${profile.handle ?? profile.id}`}
+            title={profile.displayName ?? (profile.handle ? `@${profile.handle}` : "A Roam member")}
+          />
           {isOwner ? (
             editable ? (
               <Button variant="neutral" size="sm" onClick={onToggleEdit}>
