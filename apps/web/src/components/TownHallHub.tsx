@@ -10,7 +10,7 @@
  * empty town still renders (a "be the first" prompt) but the page sets noindex (see hubMetadata).
  */
 import Link from "next/link";
-import { Card } from "@roam/design";
+import { Card, Icon, type IconName } from "@roam/design";
 import { townHallTopicPath } from "../lib/routes";
 import { timeAgo } from "../lib/townHall";
 import type { HubData, HubVenue, HubNews } from "../lib/serverApi";
@@ -80,9 +80,12 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
         )}
       </Section>
 
-      {/* Featured venues */}
-      {venues.length > 0 ? (
-        <Section title={`Places in ${label}`} count={venues.length}>
+      {/* Featured venues — real chips when we have them, a "coming soon" placeholder while the
+          town has none yet. The section always renders so the hub stays visibly richer than the
+          interactive board (which has no Places / Local news). Placeholders self-hide once real
+          venues arrive. */}
+      <Section title={`Places in ${label}`} count={venues.length}>
+        {venues.length > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
             {venues.map((v) => (
               <Link
@@ -95,12 +98,18 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
               </Link>
             ))}
           </div>
-        </Section>
-      ) : null}
+        ) : (
+          <PlaceholderCard
+            icon="shop"
+            title={`Local places in ${label}`}
+            body={`The top-rated and most-followed spots — cafés, bars, restaurants and more — will be featured here as venues join Roam in ${label}.`}
+          />
+        )}
+      </Section>
 
-      {/* Local news */}
-      {news.length > 0 ? (
-        <Section title={`Local news in ${label}`} count={news.length}>
+      {/* Local news — real posts when present, otherwise a placeholder describing what lands here. */}
+      <Section title={`Local news in ${label}`} count={news.length}>
+        {news.length > 0 ? (
           <div style={{ display: "grid", gap: "var(--space-2)" }}>
             {news.map((n) => (
               <Link key={n.id} href={`/feed/${n.id}`} style={{ textDecoration: "none", color: "inherit" }}>
@@ -118,9 +127,42 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
               </Link>
             ))}
           </div>
-        </Section>
-      ) : null}
+        ) : (
+          <PlaceholderCard
+            icon="megaphone"
+            title={`Local news in ${label}`}
+            body={`Updates, offers and events posted by ${label} venues will show up here as local businesses join Roam.`}
+          />
+        )}
+      </Section>
     </main>
+  );
+}
+
+/**
+ * PlaceholderCard — a temporary, clearly-labelled "coming soon" card shown in the Places / Local
+ * news sections while a town has none yet. It fills the hub out so it reads as a richer town
+ * overview (distinct from the interactive board), and disappears on its own once real venues or
+ * news exist. Intentionally illustrative — no fabricated venue names or headlines.
+ */
+function PlaceholderCard({ icon, title, body }: { icon: IconName; title: string; body: string }) {
+  return (
+    <Card flat style={{ padding: "var(--space-5)", borderStyle: "dashed", borderColor: "var(--line)", background: "var(--paper-2)" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 38, height: 38, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}>
+          <Icon name={icon} size={18} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{title}</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", padding: "2px 7px", borderRadius: 999 }}>
+              Coming soon
+            </span>
+          </div>
+          <p style={{ margin: "4px 0 0", color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>{body}</p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
