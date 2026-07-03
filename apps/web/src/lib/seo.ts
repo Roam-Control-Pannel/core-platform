@@ -30,8 +30,18 @@ export function clamp(text: string, max = 160): string {
   return `${t.slice(0, max - 1).replace(/\s+\S*$/, "")}…`;
 }
 
-/** The brand default share image (square brand mark; replaced by a proper 1200×630 OG later). */
-const DEFAULT_OG = "/roam-mark.png";
+/**
+ * The generated 1200×630 branded card (app/og/route.tsx) — the og:image for any page whose
+ * entity has no content image of its own. Params are length-capped here AND clamped again by
+ * the endpoint, so upstream text can be passed as-is.
+ */
+export function ogCardUrl(opts: { title: string; subtitle?: string; badge?: string }): string {
+  const p = new URLSearchParams();
+  p.set("title", clamp(opts.title, 90));
+  if (opts.subtitle) p.set("sub", clamp(opts.subtitle, 120));
+  if (opts.badge) p.set("badge", clamp(opts.badge, 40));
+  return absUrl(`/og?${p.toString()}`);
+}
 
 /** Drop keys whose value is undefined (keeps null — meaningful in Metadata/JSON-LD). */
 function compact<T extends Record<string, unknown>>(obj: T): T {
@@ -133,9 +143,15 @@ function topicPath(topic: { id: string; slug: string | null; locality: string },
 
 /* ── Metadata builders ───────────────────────────────────────────────────────────────────── */
 
-/** A consistent OpenGraph + Twitter block from the resolved title/description/image/url. */
-function social(opts: { title: string; description: string; url: string; image?: string; type?: "website" | "article" | "profile" }): Pick<Metadata, "openGraph" | "twitter"> {
-  const image = opts.image ?? DEFAULT_OG;
+/**
+ * A consistent OpenGraph + Twitter block from the resolved title/description/image/url.
+ * When the entity has no content image, the card is a GENERATED branded 1200×630 (ogCardUrl):
+ * title + description as the card copy, `badge` as its uppercase context line.
+ */
+function social(opts: { title: string; description: string; url: string; image?: string; badge?: string; type?: "website" | "article" | "profile" }): Pick<Metadata, "openGraph" | "twitter"> {
+  const image =
+    opts.image ??
+    ogCardUrl({ title: opts.title, subtitle: opts.description, ...(opts.badge ? { badge: opts.badge } : {}) });
   return {
     openGraph: compact({
       title: opts.title,
@@ -172,11 +188,12 @@ export function venueMetadata(venue: VenueSeo | null, id: string): Metadata {
   const fallback = `${venue.name}${venue.category ? ` — ${venue.category}` : ""}${place ? ` in ${place}` : ""}. Photos, reviews, opening hours and updates on Roam.`;
   const description = clamp((venue.description && venue.description.trim()) || fallback);
   const url = absUrl(path);
+  const badge = [venue.category, venue.locality].filter(Boolean).join(" · ") || "Place";
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url }),
+    ...social({ title, description, url, badge }),
   };
 }
 
@@ -194,7 +211,7 @@ export function profileMetadata(profile: ProfileSeo | null, id: string): Metadat
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url, type: "profile", ...(image ? { image } : {}) }),
+    ...social({ title, description, url, type: "profile", badge: profile.handle ? `@${profile.handle}` : "On Roam", ...(image ? { image } : {}) }),
   };
 }
 
@@ -206,11 +223,12 @@ export function postMetadata(post: PostSeo | null, id: string): Metadata {
   const description = clamp((post.body && post.body.trim()) || fallback);
   const url = absUrl(path);
   const image = post.media[0]?.url;
+  const badge = ["Local news", post.venueLocality].filter(Boolean).join(" · ");
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url, type: "article", ...(image ? { image } : {}) }),
+    ...social({ title, description, url, type: "article", badge, ...(image ? { image } : {}) }),
   };
 }
 
@@ -225,11 +243,12 @@ export function wallPostMetadata(post: WallPostSeo | null, id: string): Metadata
   const description = clamp((post.body && post.body.trim()) || `A post by ${name} on Roam.`);
   const url = absUrl(path);
   const image = post.media.find((m) => m.type === "image")?.url;
+  const badge = post.author.handle ? `@${post.author.handle}` : "On Roam";
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url, type: "article", ...(image ? { image } : {}) }),
+    ...social({ title, description, url, type: "article", badge, ...(image ? { image } : {}) }),
   };
 }
 
@@ -270,7 +289,7 @@ export function planMetadata(plan: PlanSeo | null, id: string): Metadata {
     alternates: { canonical: url },
     // Plans are private-by-membership; the teaser exists for link recipients, never for search.
     robots: { index: false, follow: false },
-    ...social({ title, description, url, ...(plan.headerUrl ? { image: plan.headerUrl } : {}) }),
+    ...social({ title, description, url, badge: "Plan", ...(plan.headerUrl ? { image: plan.headerUrl } : {}) }),
   };
 }
 
@@ -291,7 +310,7 @@ export function dealMetadata(deal: DealSeo | null, id: string): Metadata {
     // Deals expire and churn on the affiliate feed's schedule — keep them out of the index so
     // search never lands users on a dead offer, while the OG block still powers link previews.
     robots: { index: false, follow: true },
-    ...social({ title, description, url, ...(deal.imageUrl ? { image: deal.imageUrl } : {}) }),
+    ...social({ title, description, url, badge: deal.advertiserName ? `Deal · ${deal.advertiserName}` : "Deal", ...(deal.imageUrl ? { image: deal.imageUrl } : {}) }),
   };
 }
 
@@ -306,7 +325,7 @@ export function topicMetadata(data: TopicSeo | null, id: string): Metadata {
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url, type: "article" }),
+    ...social({ title, description, url, type: "article", badge: `Town Hall · ${topic.localityLabel}` }),
   };
 }
 
@@ -322,7 +341,7 @@ export function hubMetadata(localityLabel: string, locality: string, hasTopics: 
     description,
     alternates: { canonical: url },
     ...(hasTopics ? {} : { robots: { index: false, follow: true } }),
-    ...social({ title, description, url }),
+    ...social({ title, description, url, badge: "Town Hall" }),
   };
 }
 
