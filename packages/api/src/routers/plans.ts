@@ -5,12 +5,14 @@
  * membership (members/invite/removeMember), and the plan chat (chat → get_or_create_plan_thread).
  *
  * All procedures are protected and act as the caller under RLS (plans_*: owner manages; members
- * can add venues; reads gated to owner-or-member). The plan_* tables aren't in the generated DB
- * types, so the client is loose-typed (same idiom as townHall); resolvers return inline types.
+ * can add venues; reads gated to owner-or-member), EXCEPT `preview` — the public teaser a shared
+ * plan link shows a non-member (counts only; see its comment). The plan_* tables aren't in the
+ * generated DB types, so the client is loose-typed (same idiom as townHall); resolvers return
+ * inline types.
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { normalisePlanTitle, normalisePlanNotes, normalisePlannedFor, PLAN_TITLE_MAX, PLAN_NOTES_MAX } from "../plan-details.js";
 
 type PgResult<T> = { data: T; error: { message: string; code?: string } | null };
@@ -78,6 +80,40 @@ export const plansRouter = router({
       })),
     };
   }),
+
+  /**
+   * Public: the TEASER a shared plan link shows a non-member — title, date, header image, and
+   * member/venue COUNTS only. Deliberately excludes notes, venue names, member identities, and
+   * chat. Reads via the sanctioned service escalation (plans RLS is member-scoped, so an anon
+   * client sees nothing), with the column allowlist right here as the privacy boundary. A plan
+   * id is an unguessable uuid — possession of the link is the capability, same as a chat invite.
+   */
+  preview: publicProcedure
+    .input(z.object({ planId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const svc = escalateToService(ctx.env) as unknown as LooseDb;
+      const { data: plan, error } = (await svc
+        .from("plans")
+        .select("id, title, planned_for, header_url")
+        .eq("id", input.planId)
+        .maybeSingle()) as PgResult<{ id: string; title: string; planned_for: string | null; header_url: string | null } | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan: ${error.message}` });
+      }
+      if (!plan) return null;
+      const [members, venues] = await Promise.all([
+        svc.from("plan_members").select("plan_id", { count: "exact", head: true }).eq("plan_id", input.planId) as Promise<{ count: number | null }>,
+        svc.from("plan_venues").select("plan_id", { count: "exact", head: true }).eq("plan_id", input.planId) as Promise<{ count: number | null }>,
+      ]);
+      return {
+        id: plan.id,
+        title: plan.title,
+        plannedFor: plan.planned_for,
+        headerUrl: plan.header_url,
+        memberCount: members.count ?? 0,
+        venueCount: venues.count ?? 0,
+      };
+    }),
 
   /** Protected: one plan with its venues (RLS gates to owner-or-member). Null if not visible. */
   byId: protectedProcedure

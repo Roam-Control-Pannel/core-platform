@@ -53,7 +53,17 @@ function personName(p: { displayName: string | null; handle: string | null }): s
   return "Roam member";
 }
 
-export function PlanDetail({ planId }: { planId: string }) {
+/** The teaser a shared link shows a non-member (plans.preview): counts only, no names/notes. */
+export interface PlanPreview {
+  id: string;
+  title: string;
+  plannedFor: string | null;
+  headerUrl: string | null;
+  memberCount: number;
+  venueCount: number;
+}
+
+export function PlanDetail({ planId, preview }: { planId: string; preview?: PlanPreview | null }) {
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -133,15 +143,28 @@ export function PlanDetail({ planId }: { planId: string }) {
       </Link>
 
       {!hasSession ? (
-        <Card style={{ padding: "var(--space-4)" }}>
-          <AuthPanel intro="Sign in to view this plan." emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""} onAuthed={() => {}} />
-        </Card>
+        <PlanTeaser preview={preview ?? null}>
+          <AuthPanel
+            intro="Sign in to see the full plan and join in."
+            emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+            onAuthed={() => {}}
+          />
+        </PlanTeaser>
       ) : error ? (
         <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
           <p style={{ color: "var(--muted)", margin: 0 }}>{error}</p>
         </Card>
       ) : plan === undefined ? (
         <div style={{ height: 200, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+      ) : plan === null && preview ? (
+        // Signed in but not a member: RLS hid the plan but the teaser exists (this is a shared
+        // link). Show it with the way in — membership is invite-only, so point at the sharer.
+        <PlanTeaser preview={preview}>
+          <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.55 }}>
+            You&apos;re not in this plan yet — ask whoever shared it to invite you, and it&apos;ll appear in your
+            {" "}<Link href="/plans" style={{ color: "var(--crimson-700)" }}>Plans</Link>.
+          </p>
+        </PlanTeaser>
       ) : plan === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>Plan not found</div>
@@ -206,7 +229,7 @@ export function PlanDetail({ planId }: { planId: string }) {
  * none is set, with the title + date overlaid on a dark scrim. Designed to read like a card —
  * it's the part that shines on mobile/native.
  */
-function PlanBanner({ plan }: { plan: Plan }) {
+function PlanBanner({ plan }: { plan: { title: string; plannedFor: string | null; headerUrl: string | null } }) {
   return (
     <div
       style={{
@@ -259,6 +282,33 @@ function PlanBanner({ plan }: { plan: Plan }) {
         </h1>
       </div>
     </div>
+  );
+}
+
+/**
+ * The non-member view of a shared plan link: the banner (title, date, header image), the teaser
+ * counts, and — as children — the way in (sign-in panel for visitors, an invite note for
+ * signed-in non-members). When the preview couldn't load, just the children in a card.
+ */
+function PlanTeaser({ preview, children }: { preview: PlanPreview | null; children: React.ReactNode }) {
+  if (!preview) {
+    return <Card style={{ padding: "var(--space-4)" }}>{children}</Card>;
+  }
+  const bits = [
+    preview.venueCount > 0 ? `${preview.venueCount} ${preview.venueCount === 1 ? "place" : "places"}` : null,
+    preview.memberCount > 0 ? `${preview.memberCount} going` : null,
+  ].filter(Boolean);
+  return (
+    <>
+      <PlanBanner plan={preview} />
+      {bits.length > 0 ? (
+        <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, color: "var(--ink-2)" }}>
+          <Icon name="users" size={15} />
+          {bits.join(" · ")}
+        </div>
+      ) : null}
+      <Card style={{ padding: "var(--space-4)", marginTop: "var(--space-4)" }}>{children}</Card>
+    </>
   );
 }
 
