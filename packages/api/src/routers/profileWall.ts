@@ -8,6 +8,7 @@
  * set of posts they authored.
  *
  *   list        (public)    — a user's posts, newest first, with the viewer's like state.
+ *   byId        (public)    — one post by id (the /p/[postId] permalink).
  *   create      (protected) — post to your own wall (text and/or up to 4 images).
  *   remove      (protected) — delete your own post.
  *   toggleLike  (protected) — like/unlike a post; counts are trigger-maintained.
@@ -155,6 +156,24 @@ export const profileWallRouter = router({
       const rows = data ?? [];
       const liked = await viewerLikes(db, rows.map((r) => r.id));
       return { posts: rows.map((p) => shapePost(p, liked.has(p.id))) };
+    }),
+
+  /** Public: one post by id — the /p/[postId] permalink read. RLS hides non-approved rows. */
+  byId: publicProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const { data, error } = (await db
+        .from("profile_posts")
+        .select(POST_COLS)
+        .eq("id", input.postId)
+        .maybeSingle()) as PgResult<RawPost | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this post: ${error.message}` });
+      }
+      if (!data) return null;
+      const liked = await viewerLikes(db, [data.id]);
+      return shapePost(data, liked.has(data.id));
     }),
 
   /** Protected: post to your own wall (text and/or images). */

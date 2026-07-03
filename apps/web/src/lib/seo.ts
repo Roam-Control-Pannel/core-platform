@@ -77,6 +77,23 @@ export interface PostSeo {
   venueLocality: string | null;
 }
 
+export interface WallPostSeo {
+  id: string;
+  body: string | null;
+  media: { type: "image" | "video"; url: string }[];
+  createdAt: string;
+  author: { id: string | null; handle: string | null; displayName: string | null; avatarUrl: string | null };
+}
+
+export interface DealSeo {
+  id: string;
+  advertiserName: string | null;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  endsAt: string | null;
+}
+
 interface TopicAuthor {
   id: string | null;
   handle: string | null;
@@ -185,6 +202,62 @@ export function postMetadata(post: PostSeo | null, id: string): Metadata {
     description,
     alternates: { canonical: url },
     ...social({ title, description, url, type: "article", ...(image ? { image } : {}) }),
+  };
+}
+
+/** A personal wall post's permalink (/p/[postId]). Personal content: shareable, not sitemap'd. */
+export function wallPostMetadata(post: WallPostSeo | null, id: string): Metadata {
+  const path = `/p/${id}`;
+  if (!post) return notFoundMeta(path);
+  const name =
+    (post.author.displayName && post.author.displayName.trim()) ||
+    (post.author.handle ? `@${post.author.handle}` : "A Roam member");
+  const title = `${name} on Roam`;
+  const description = clamp((post.body && post.body.trim()) || `A post by ${name} on Roam.`);
+  const url = absUrl(path);
+  const image = post.media.find((m) => m.type === "image")?.url;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...social({ title, description, url, type: "article", ...(image ? { image } : {}) }),
+  };
+}
+
+export function wallPostJsonLd(post: WallPostSeo, id: string): Record<string, unknown> {
+  const name =
+    (post.author.displayName && post.author.displayName.trim()) ||
+    (post.author.handle ? `@${post.author.handle}` : null);
+  const images = post.media.filter((m) => m.type === "image").map((m) => m.url);
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "SocialMediaPosting",
+    articleBody: post.body ?? undefined,
+    datePublished: post.createdAt,
+    image: images.length ? images : undefined,
+    url: absUrl(`/p/${id}`),
+    author: name ? compact({ "@type": "Person", name, url: post.author.id ? absUrl(`/u/${post.author.handle ?? post.author.id}`) : undefined }) : undefined,
+  });
+}
+
+/** A deal's permalink (/deals/[dealId]). Affiliate content: shareable, noindex (ephemeral). */
+export function dealMetadata(deal: DealSeo | null, id: string): Metadata {
+  const path = `/deals/${id}`;
+  if (!deal) return notFoundMeta(path);
+  const title = deal.advertiserName ? `${deal.title} — ${deal.advertiserName}` : deal.title;
+  const description = clamp(
+    (deal.description && deal.description.trim()) ||
+      `${deal.title}${deal.advertiserName ? ` from ${deal.advertiserName}` : ""} — a partner deal on Roam.`,
+  );
+  const url = absUrl(path);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    // Deals expire and churn on the affiliate feed's schedule — keep them out of the index so
+    // search never lands users on a dead offer, while the OG block still powers link previews.
+    robots: { index: false, follow: true },
+    ...social({ title, description, url, ...(deal.imageUrl ? { image: deal.imageUrl } : {}) }),
   };
 }
 

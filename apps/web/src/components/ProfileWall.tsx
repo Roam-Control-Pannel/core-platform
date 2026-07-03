@@ -36,7 +36,7 @@ interface WallMedia {
   type: "image" | "video";
   url: string;
 }
-interface WallPost {
+export interface WallPost {
   id: string;
   authorId: string;
   body: string | null;
@@ -491,7 +491,8 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
 
 /* ── Post card ─────────────────────────────────────────────────────────────────────────── */
 
-function PostCard({
+/** One wall post card — used on the wall itself and standalone on the /p/[postId] permalink. */
+export function PostCard({
   post,
   canInteract,
   isOwner,
@@ -576,6 +577,10 @@ function PostCard({
               <Icon name="chat" size={15} />
               {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
             </button>
+            <CopyLinkButton
+              path={`/p/${post.id}`}
+              title={`${townHallAuthor(post.author)} on Roam`}
+            />
           </div>
 
           {showComments ? <Comments postId={post.id} canInteract={canInteract} myId={myId} onChanged={onChanged} /> : null}
