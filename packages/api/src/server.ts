@@ -77,6 +77,8 @@ function loadEnv(): ApiEnv {
       baseUrl: process.env.AWIN_API_BASE ?? "https://api.awin.com",
       region: process.env.AWIN_REGION ?? "GB",
       debug: process.env.AWIN_DEBUG === "1" || process.env.AWIN_DEBUG === "true",
+      offersPath: process.env.AWIN_OFFERS_PATH ?? null,
+      offersMethod: process.env.AWIN_OFFERS_METHOD ?? null,
     },
   };
 }
