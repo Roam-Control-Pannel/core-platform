@@ -82,6 +82,9 @@ export interface ApiEnv {
     baseUrl: string;
     region: string;
     debug: boolean;
+    /** Override the offers endpoint (skips probing) — `{publisherId}` is substituted. */
+    offersPath: string | null;
+    offersMethod: string | null;
   };
 }
 

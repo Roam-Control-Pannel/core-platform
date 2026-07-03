@@ -20,6 +20,10 @@ export interface AwinConfig {
   baseUrl: string;
   region: string;
   debug: boolean;
+  /** Override the offers endpoint path (use `{publisherId}` as a token). Skips endpoint probing. */
+  offersPath?: string | null;
+  /** Override the offers endpoint method (GET | POST). Defaults to POST (or per the probe). */
+  offersMethod?: string | null;
 }
 
 /** A normalised offer, shaped for the awin_deals row it becomes. */
@@ -42,31 +46,45 @@ type Json = Record<string, unknown>;
 
 const trunc = (s: string, n = 1200): string => (s.length > n ? `${s.slice(0, n)}…[+${s.length - n}]` : s);
 
-/** Authenticated fetch against the Awin API. Throws on a non-2xx with a truncated body for logs. */
-async function awinFetch(cfg: AwinConfig, path: string, init: RequestInit, log: (m: string) => void): Promise<unknown> {
+interface AwinResponse {
+  status: number;
+  json: unknown;
+  text: string;
+}
+
+/** Authenticated request against the Awin API. Never throws on HTTP status — returns it, so the
+ *  caller can probe candidate endpoints. Throws only on a network/transport failure. */
+async function awinReq(cfg: AwinConfig, method: string, path: string, body: string | null, log: (m: string) => void): Promise<AwinResponse> {
   const url = `${cfg.baseUrl.replace(/\/$/, "")}${path}`;
   const res = await fetch(url, {
-    ...init,
+    method,
     headers: {
       Authorization: `Bearer ${cfg.apiKey}`,
       Accept: "application/json",
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...(init.headers ?? {}),
+      ...(body ? { "Content-Type": "application/json" } : {}),
     },
+    ...(body ? { body } : {}),
   });
   const text = await res.text();
-  if (cfg.debug) log(`awin ${init.method ?? "GET"} ${path} → ${res.status} ${trunc(text)}`);
-  if (!res.ok) {
-    throw new Error(`Awin ${init.method ?? "GET"} ${path} failed: ${res.status} ${trunc(text, 300)}`);
+  if (cfg.debug) log(`awin ${method} ${path} → ${res.status} ${trunc(text)}`);
+  let json: unknown = null;
+  try {
+    json = text ? (JSON.parse(text) as unknown) : null;
+  } catch {
+    /* non-JSON body (e.g. an HTML error page) — leave json null */
   }
-  return text ? (JSON.parse(text) as unknown) : null;
+  return { status: res.status, json, text };
 }
+
+const ok2xx = (s: number): boolean => s >= 200 && s < 300;
 
 /** Resolve the publisher account id: the configured one, else the first publisher from /accounts. */
 export async function resolvePublisherId(cfg: AwinConfig, log: (m: string) => void): Promise<string> {
   if (cfg.publisherId) return cfg.publisherId;
-  const body = (await awinFetch(cfg, "/accounts?type=publisher", { method: "GET" }, log)) as Json | null;
-  const accounts = (body?.accounts ?? body?.data ?? []) as Json[];
+  const r = await awinReq(cfg, "GET", "/accounts?type=publisher", null, log);
+  if (!ok2xx(r.status)) throw new Error(`Awin /accounts failed: ${r.status} ${trunc(r.text, 300)}`);
+  const body = (r.json ?? {}) as Json;
+  const accounts = (body.accounts ?? body.data ?? []) as Json[];
   const first = accounts.find((a) => String(a.accountType ?? a.type ?? "publisher").toLowerCase() === "publisher") ?? accounts[0];
   const id = first ? String(first.accountId ?? first.id ?? "") : "";
   if (!id) throw new Error("Awin: could not resolve a publisher account id from /accounts.");
@@ -112,29 +130,86 @@ export function normalizeOffer(raw: Json): AwinOffer | null {
   };
 }
 
+interface Endpoint {
+  method: string;
+  path: string;
+}
+
+const PAGE_SIZE = 100;
+
+/** Pull the offers array out of whatever envelope Awin returns. */
+function itemsFrom(json: unknown): Json[] {
+  if (Array.isArray(json)) return json as Json[];
+  const o = (json ?? {}) as Json;
+  const cand = o.data ?? o.offers ?? o.promotions ?? o.results ?? o.content;
+  return Array.isArray(cand) ? (cand as Json[]) : [];
+}
+
+const offersBody = (cfg: AwinConfig, page: number): string =>
+  JSON.stringify({ filters: { membership: "all", regionCodes: [cfg.region] }, pagination: { page, pageSize: PAGE_SIZE } });
+
+const withQuery = (path: string, page: number): string =>
+  `${path}${path.includes("?") ? "&" : "?"}page=${page}&pageSize=${PAGE_SIZE}`;
+
 /**
- * Retrieve current offers for the publisher. POSTs a filter body (membership=all so we get offers
- * from advertisers we're joined to AND the wider network), pages until a short page, and normalises.
- * Returns the offers that map cleanly; malformed ones are skipped (logged in debug).
+ * Find the offers endpoint. Awin's docs are auth-gated so the exact path/method couldn't be pinned;
+ * when AWIN_OFFERS_PATH isn't set we PROBE the likely candidates (plural/singular × offers/promotions
+ * × POST/GET) and use the first that responds 2xx — so one real run discovers it. An explicit
+ * AWIN_OFFERS_PATH/METHOD override skips probing entirely.
+ */
+async function discoverEndpoint(cfg: AwinConfig, publisherId: string, log: (m: string) => void): Promise<{ ep: Endpoint; first: AwinResponse }> {
+  if (cfg.offersPath) {
+    const method = (cfg.offersMethod ?? "POST").toUpperCase();
+    const path = cfg.offersPath.replace("{publisherId}", publisherId);
+    const first = await awinReq(cfg, method, method === "GET" ? withQuery(path, 1) : path, method === "POST" ? offersBody(cfg, 1) : null, log);
+    return { ep: { method, path }, first };
+  }
+  const candidates: Endpoint[] = [
+    { method: "POST", path: `/publishers/${publisherId}/offers` },
+    { method: "GET", path: `/publishers/${publisherId}/offers` },
+    { method: "POST", path: `/publishers/${publisherId}/promotions` },
+    { method: "GET", path: `/publishers/${publisherId}/promotions` },
+    { method: "GET", path: `/publisher/${publisherId}/promotions` },
+    { method: "POST", path: `/publisher/${publisherId}/offers` },
+  ];
+  const failures: string[] = [];
+  for (const ep of candidates) {
+    const path = ep.method === "GET" ? withQuery(ep.path, 1) : ep.path;
+    const r = await awinReq(cfg, ep.method, path, ep.method === "POST" ? offersBody(cfg, 1) : null, log);
+    if (ok2xx(r.status)) {
+      log(`awin: offers endpoint = ${ep.method} ${ep.path}`);
+      return { ep, first: r };
+    }
+    failures.push(`${ep.method} ${ep.path} → ${r.status}`);
+  }
+  throw new Error(`Awin: no offers endpoint responded. Tried: ${failures.join("; ")}`);
+}
+
+/**
+ * Retrieve current offers for the publisher: discover the endpoint, page through it (membership=all
+ * so we get offers from advertisers we're joined to AND the wider network), and normalise. Offers
+ * that map cleanly are returned; malformed ones are skipped (counted in debug).
  */
 export async function retrieveOffers(cfg: AwinConfig, log: (m: string) => void = () => {}): Promise<AwinOffer[]> {
   const publisherId = await resolvePublisherId(cfg, log);
-  const pageSize = 100;
+  const { ep, first } = await discoverEndpoint(cfg, publisherId, log);
   const out: AwinOffer[] = [];
   let dropped = 0;
-  for (let page = 1; page <= 20; page++) {
-    const body = JSON.stringify({
-      filters: { membership: "all", regionCodes: [cfg.region] },
-      pagination: { page, pageSize },
-    });
-    const res = (await awinFetch(cfg, `/publisher/${publisherId}/offers`, { method: "POST", body }, log)) as Json | Json[] | null;
-    const items = (Array.isArray(res) ? res : ((res?.data ?? res?.offers ?? res?.promotions ?? []) as Json[])) ?? [];
+  const consume = (json: unknown): number => {
+    const items = itemsFrom(json);
     for (const raw of items) {
       const o = normalizeOffer(raw);
       if (o) out.push(o);
       else dropped++;
     }
-    if (items.length < pageSize) break;
+    return items.length;
+  };
+  let count = consume(first.json);
+  for (let page = 2; page <= 20 && count >= PAGE_SIZE; page++) {
+    const path = ep.method === "GET" ? withQuery(ep.path, page) : ep.path;
+    const r = await awinReq(cfg, ep.method, path, ep.method === "POST" ? offersBody(cfg, page) : null, log);
+    if (!ok2xx(r.status)) break;
+    count = consume(r.json);
   }
   if (dropped > 0) log(`awin: skipped ${dropped} offer(s) missing required fields.`);
   return out;
