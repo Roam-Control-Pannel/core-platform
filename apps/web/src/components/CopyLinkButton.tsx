@@ -72,10 +72,11 @@ export function CopyLinkButton({
     );
   }
 
+  // An empty label makes an icon-only pill (compact rows); the "Copied!" flash still shows.
   return (
     <button type="button" onClick={(e) => void share(e)} aria-label="Share" style={pill}>
       <Icon name="share" size={15} />
-      <span>{shown}</span>
+      {shown ? <span>{shown}</span> : null}
     </button>
   );
 }

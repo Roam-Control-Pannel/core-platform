@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { buildAwinLink } from "../lib/awin";
 
 export interface Deal {
@@ -124,15 +125,18 @@ export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
           </div>
         ) : null}
 
-        <div style={{ marginTop: "auto", paddingTop: "var(--space-3)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <a
-            href={href}
-            target="_blank"
-            rel="sponsored nofollow noopener noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 15px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}
-          >
-            {deal.kind === "voucher" ? "Get deal" : "Shop deal"} <Icon name="chevronRight" size={15} />
-          </a>
+        <div style={{ marginTop: "auto", paddingTop: "var(--space-3)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <a
+              href={href}
+              target="_blank"
+              rel="sponsored nofollow noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 15px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}
+            >
+              {deal.kind === "voucher" ? "Get deal" : "Shop deal"} <Icon name="chevronRight" size={15} />
+            </a>
+            <CopyLinkButton path={`/deals/${deal.id}`} title={deal.title} label="" />
+          </span>
           {deal.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>Ends {shortDate(deal.endsAt)}</span> : null}
         </div>
       </div>
@@ -178,6 +182,103 @@ export function Deals() {
 
 function DealsGrid({ children }: { children: React.ReactNode }) {
   return <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "var(--space-4)" }}>{children}</div>;
+}
+
+/**
+ * DealDetail — the /deals/[dealId] permalink: one deal, full description + terms, the affiliate
+ * CTA, and a Share button. This is the URL a shared deal resolves to (the OG tags on the route
+ * make it unfurl as a card), so an external recipient lands on Roam, not straight on the
+ * advertiser. Ships loading / not-found / error states; the server passes an SSR seed.
+ */
+export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDeal?: Deal | null }) {
+  const trpc = useTrpc();
+  const [deal, setDeal] = useState<Deal | null | undefined>(initialDeal);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    // When the server already resolved the deal (SSR seed), trust it — a deal carries no
+    // viewer-specific state, so there's nothing to refetch.
+    if (initialDeal !== undefined) return;
+    let cancelled = false;
+    const byId = trpc.deals.byId as unknown as { query: (i: { dealId: string }) => Promise<Deal | null> };
+    byId
+      .query({ dealId })
+      .then((d) => { if (!cancelled) setDeal(d); })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
+  }, [trpc, dealId, initialDeal]);
+
+  const href = deal
+    ? buildAwinLink({ advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef: "deal-detail" })
+    : "#";
+
+  return (
+    <main style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+      <Link href="/deals" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}>
+        <span aria-hidden>←</span> Deals
+      </Link>
+
+      {error ? (
+        <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
+          <p style={{ color: "var(--muted)", margin: 0 }}>Couldn&apos;t load this deal just now.</p>
+        </Card>
+      ) : deal === undefined ? (
+        <div style={{ height: 300, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+      ) : deal === null ? (
+        <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
+          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+            Deal not found
+          </div>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>This offer may have ended — fresh deals are on the deals page.</p>
+        </Card>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <DealThumb deal={deal} variant="hero" />
+          <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--crimson-700)" }}>
+                {deal.advertiserName ?? "Featured"}
+              </span>
+              <span aria-label="Affiliate ad" title="Affiliate link — Roam may earn a commission" style={{ flexShrink: 0, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>
+                Ad
+              </span>
+            </div>
+
+            <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, lineHeight: 1.25, letterSpacing: "-.015em", margin: 0 }}>
+              {deal.title}
+            </h1>
+
+            {deal.description ? (
+              <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6 }}>{deal.description}</p>
+            ) : null}
+
+            {deal.voucherCode ? (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start", fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, letterSpacing: ".03em", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px dashed var(--crimson-tint-2)", borderRadius: "var(--r-sm)", padding: "6px 14px" }}>
+                <Icon name="ticket" size={15} /> {deal.voucherCode}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
+              <a
+                href={href}
+                target="_blank"
+                rel="sponsored nofollow noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "10px 20px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 14.5, textDecoration: "none" }}
+              >
+                {deal.kind === "voucher" ? "Get deal" : "Shop deal"} <Icon name="chevronRight" size={16} />
+              </a>
+              <CopyLinkButton path={`/deals/${deal.id}`} title={deal.title} />
+              {deal.endsAt ? <span style={{ fontSize: 12.5, color: "var(--muted)", whiteSpace: "nowrap" }}>Ends {shortDate(deal.endsAt)}</span> : null}
+            </div>
+
+            {deal.terms ? (
+              <p style={{ margin: "var(--space-2) 0 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{deal.terms}</p>
+            ) : null}
+          </div>
+        </Card>
+      )}
+    </main>
+  );
 }
 
 /**
