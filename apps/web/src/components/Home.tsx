@@ -342,7 +342,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
     listThreads
       .query()
       .then((res) => {
-        if (!cancelled) setRows(Array.isArray(res) ? res.slice(0, 5) : []);
+        if (!cancelled) setRows(Array.isArray(res) ? res.slice(0, 3) : []);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -375,30 +375,30 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
                 key={t.id}
                 href={`/threads/${t.id}`}
                 className={styles.row}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "10px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "6px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                   <span
                     aria-hidden
                     style={{
-                      width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 14, flexShrink: 0,
+                      width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
                       background: meta.crim ? "var(--crimson-tint)" : "var(--paper-2)",
                       color: meta.crim ? "var(--crimson-700)" : "var(--ink-2)",
                       border: "1px solid var(--line)",
                     }}
                   >
-                    <Icon name={meta.glyph} size={15} />
+                    <Icon name={meta.glyph} size={13} />
                   </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {name}
                     </span>
-                    <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                    <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
                       {meta.label}{t.kind !== "direct" ? ` · ${t.participantCount} ${t.participantCount === 1 ? "person" : "people"}` : ""}
                     </span>
                   </span>
                 </span>
-                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{timeAgo(t.updatedAt)}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgo(t.updatedAt)}</span>
               </Link>
             );
           })}
