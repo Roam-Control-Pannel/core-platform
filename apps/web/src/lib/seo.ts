@@ -94,6 +94,15 @@ export interface DealSeo {
   endsAt: string | null;
 }
 
+export interface PlanSeo {
+  id: string;
+  title: string;
+  plannedFor: string | null;
+  headerUrl: string | null;
+  memberCount: number;
+  venueCount: number;
+}
+
 interface TopicAuthor {
   id: string | null;
   handle: string | null;
@@ -238,6 +247,31 @@ export function wallPostJsonLd(post: WallPostSeo, id: string): Record<string, un
     url: absUrl(`/p/${id}`),
     author: name ? compact({ "@type": "Person", name, url: post.author.id ? absUrl(`/u/${post.author.handle ?? post.author.id}`) : undefined }) : undefined,
   });
+}
+
+/** A plan's shared-link teaser (/plans/[planId]). Private content: link previews only, noindex. */
+export function planMetadata(plan: PlanSeo | null, id: string): Metadata {
+  const path = `/plans/${id}`;
+  if (!plan) return notFoundMeta(path);
+  const when = plan.plannedFor
+    ? new Date(plan.plannedFor).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+    : null;
+  const bits = [
+    when,
+    plan.venueCount > 0 ? `${plan.venueCount} ${plan.venueCount === 1 ? "place" : "places"}` : null,
+    plan.memberCount > 0 ? `${plan.memberCount} going` : null,
+  ].filter(Boolean);
+  const title = plan.title;
+  const description = clamp(`${bits.length ? `${bits.join(" · ")} — ` : ""}a plan on Roam. Sign in to see the details and join.`);
+  const url = absUrl(path);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    // Plans are private-by-membership; the teaser exists for link recipients, never for search.
+    robots: { index: false, follow: false },
+    ...social({ title, description, url, ...(plan.headerUrl ? { image: plan.headerUrl } : {}) }),
+  };
 }
 
 /** A deal's permalink (/deals/[dealId]). Affiliate content: shareable, noindex (ephemeral). */

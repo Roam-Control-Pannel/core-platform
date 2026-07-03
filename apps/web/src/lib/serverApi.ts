@@ -12,7 +12,7 @@
  */
 import { cache } from "react";
 import { makeTrpcClient } from "./trpc";
-import type { VenueSeo, ProfileSeo, PostSeo, TopicSeo, WallPostSeo, DealSeo } from "./seo";
+import type { VenueSeo, ProfileSeo, PostSeo, TopicSeo, WallPostSeo, DealSeo, PlanSeo } from "./seo";
 
 /** An anonymous tRPC client (no auth header) for public reads. */
 function anon() {
@@ -77,6 +77,15 @@ export const getDeal = cache(async (dealId: string): Promise<DealSeo | null> => 
   try {
     const c = anon() as unknown as { deals: { byId: { query: (i: { dealId: string }) => Promise<DealSeo | null> } } };
     return (await c.deals.byId.query({ dealId })) ?? null;
+  } catch {
+    return null;
+  }
+});
+
+export const getPlanPreview = cache(async (planId: string): Promise<PlanSeo | null> => {
+  try {
+    const c = anon() as unknown as { plans: { preview: { query: (i: { planId: string }) => Promise<PlanSeo | null> } } };
+    return (await c.plans.preview.query({ planId })) ?? null;
   } catch {
     return null;
   }
