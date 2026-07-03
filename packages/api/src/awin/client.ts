@@ -164,12 +164,15 @@ async function discoverEndpoint(cfg: AwinConfig, publisherId: string, log: (m: s
     const first = await awinReq(cfg, method, method === "GET" ? withQuery(path, 1) : path, method === "POST" ? offersBody(cfg, 1) : null, log);
     return { ep: { method, path }, first };
   }
+  // POST /publisher/{id}/promotions first: probing showed GET on it returns 405 (exists, wrong
+  // method) while every other path 404s — so this is the resource, and Awin's "Retrieve Offers"
+  // docs live at /apidocs/promotions. The rest stay as fallbacks for other accounts/regions.
   const candidates: Endpoint[] = [
-    { method: "POST", path: `/publishers/${publisherId}/offers` },
-    { method: "GET", path: `/publishers/${publisherId}/offers` },
+    { method: "POST", path: `/publisher/${publisherId}/promotions` },
     { method: "POST", path: `/publishers/${publisherId}/promotions` },
-    { method: "GET", path: `/publishers/${publisherId}/promotions` },
+    { method: "POST", path: `/publishers/${publisherId}/offers` },
     { method: "GET", path: `/publisher/${publisherId}/promotions` },
+    { method: "GET", path: `/publishers/${publisherId}/promotions` },
     { method: "POST", path: `/publisher/${publisherId}/offers` },
   ];
   const failures: string[] = [];
@@ -180,9 +183,11 @@ async function discoverEndpoint(cfg: AwinConfig, publisherId: string, log: (m: s
       log(`awin: offers endpoint = ${ep.method} ${ep.path}`);
       return { ep, first: r };
     }
-    failures.push(`${ep.method} ${ep.path} → ${r.status}`);
+    // Surface the body for anything that's NOT a plain 404 (a 400/422 means "right path, wrong
+    // request" — we want to see it in the response summary, not just the Railway log).
+    failures.push(`${ep.method} ${ep.path} → ${r.status}${r.status !== 404 ? ` ${trunc(r.text, 160)}` : ""}`);
   }
-  throw new Error(`Awin: no offers endpoint responded. Tried: ${failures.join("; ")}`);
+  throw new Error(`Awin: no offers endpoint responded. Tried: ${failures.join(" | ")}`);
 }
 
 /**
