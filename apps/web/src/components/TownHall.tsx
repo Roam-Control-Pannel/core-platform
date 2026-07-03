@@ -17,14 +17,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Button, Seg } from "@roam/design";
+import { Card, Button, Seg, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { PlaceSwitcher } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { TopicUpvote } from "./TopicUpvote";
 import { AuthorLink } from "./AuthorLink";
-import { timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { CopyLinkButton } from "./CopyLinkButton";
+import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { townHubPath, townSlug } from "../lib/routes";
 
 interface TopicListItem {
@@ -179,47 +180,72 @@ export function TownHall() {
 }
 
 function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }) {
+  const href = topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`;
   return (
     <Card style={{ padding: "var(--space-4)" }}>
-      <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-start" }}>
+      {/* Poster + time (Reddit-style header). */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "var(--space-2)", fontSize: 12, color: "var(--muted)" }}>
+        <span aria-hidden style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>
+          {authorInitial(topic.author)}
+        </span>
+        <AuthorLink author={topic.author} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }} />
+        <span aria-hidden>·</span>
+        <span>{timeAgo(topic.createdAt)}</span>
+      </div>
+
+      {/* Title + body — the tappable post body. */}
+      <Link href={href} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+        <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, lineHeight: 1.3, letterSpacing: "-.01em" }}>
+          {topic.title}
+        </div>
+        <p
+          style={{
+            margin: "4px 0 0",
+            color: "var(--ink-2)",
+            fontSize: 13.5,
+            lineHeight: 1.5,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {topic.body}
+        </p>
+      </Link>
+
+      {/* Action bar: vote · comments · share. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-3)", flexWrap: "wrap" }}>
         <TopicUpvote
           topicId={topic.id}
           initialUpvoted={topic.viewerUpvoted}
           initialCount={topic.upvoteCount}
           canVote={canVote}
         />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <Link href={topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, lineHeight: 1.3 }}>
-              {topic.title}
-            </div>
-          </Link>
-          <p
-            style={{
-              margin: "4px 0 0",
-              color: "var(--ink-2)",
-              fontSize: 13.5,
-              lineHeight: 1.5,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {topic.body}
-          </p>
-          <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
-            <AuthorLink author={topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
-            <span aria-hidden>·</span>
-            <span>{timeAgo(topic.createdAt)}</span>
-            <span aria-hidden>·</span>
-            <span>{topic.replyCount === 1 ? "1 reply" : `${topic.replyCount} replies`}</span>
-          </div>
-        </div>
+        <Link href={href} style={barPill} aria-label={`${topic.replyCount} ${topic.replyCount === 1 ? "reply" : "replies"}`}>
+          <Icon name="chat" size={15} /> {topic.replyCount}
+        </Link>
+        <CopyLinkButton path={href} />
       </div>
     </Card>
   );
 }
+
+/** Shared rounded action-bar pill (comments link etc.), matching the vote + share pills. */
+const barPill: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "5px 12px",
+  borderRadius: 999,
+  background: "var(--paper-2)",
+  border: "1px solid var(--line)",
+  color: "var(--ink-2)",
+  fontFamily: "var(--ui)",
+  fontSize: 13,
+  fontWeight: 600,
+  textDecoration: "none",
+};
 
 function TopicComposer({
   localityName,

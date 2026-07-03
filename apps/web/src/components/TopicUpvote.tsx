@@ -1,7 +1,8 @@
 /**
- * TopicUpvote — the vertical ▲ + count control on a Town Hall topic, used on both the board
- * list and the topic page. Optimistic: a tap flips the local state immediately and calls
- * townHall.toggleUpvote, reconciling to the server count (or reverting on error).
+ * TopicUpvote — the horizontal ▲ + count vote pill on a Town Hall topic (Reddit-style action bar),
+ * used on both the board list and the topic page. Optimistic: a tap flips the local state
+ * immediately and calls townHall.toggleUpvote, reconciling to the server count (or reverting on
+ * error). Upvote-only by design — a friendly, positive-only signal for a local community.
  *
  * Signed-out callers see the count read-only (browse-freely): the control is disabled with a
  * "sign in to upvote" hint rather than throwing them into auth mid-scroll — they can upvote
@@ -68,20 +69,19 @@ export function TopicUpvote({
         all: "unset",
         boxSizing: "border-box",
         cursor: canVote ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
+        display: "inline-flex",
         alignItems: "center",
-        gap: 2,
-        minWidth: 44,
-        padding: "6px 4px",
-        borderRadius: "var(--r-md)",
+        gap: 6,
+        padding: "5px 12px",
+        borderRadius: 999,
         border: `1px solid ${upvoted ? "var(--crimson-tint-2)" : "var(--line)"}`,
-        background: upvoted ? "var(--crimson-tint)" : "transparent",
+        background: upvoted ? "var(--crimson-tint)" : "var(--paper-2)",
         color: upvoted ? "var(--crimson-700)" : "var(--ink-2)",
+        fontFamily: "var(--ui)",
       }}
     >
       <Icon name="upvote" size={16} />
-      <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{count}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1 }}>{count}</span>
     </button>
   );
 }

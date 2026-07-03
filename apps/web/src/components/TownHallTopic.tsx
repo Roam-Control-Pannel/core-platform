@@ -11,10 +11,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { TopicUpvote } from "./TopicUpvote";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { AuthorLink } from "./AuthorLink";
 import actions from "./inlineActions.module.css";
@@ -118,62 +119,62 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
       ) : (
         <>
           <Card style={{ padding: "var(--space-4)" }}>
-            <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-start" }}>
-              <TopicUpvote
-                topicId={data.topic.id}
-                initialUpvoted={data.topic.viewerUpvoted}
-                initialCount={data.topic.upvoteCount}
-                canVote={!!session}
-              />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: 10.5,
-                    letterSpacing: ".04em",
-                    textTransform: "uppercase",
-                    color: "var(--muted)",
-                    marginBottom: 4,
-                  }}
-                >
-                  {data.topic.localityLabel}
-                </div>
-                {editingTopic ? (
-                  <TopicEditor
-                    topicId={data.topic.id}
-                    initialTitle={data.topic.title}
-                    initialBody={data.topic.body}
-                    onSaved={() => { setEditingTopic(false); void load().then((d) => setData(d)).catch(() => {}); }}
-                    onCancel={() => setEditingTopic(false)}
-                  />
-                ) : (
-                  <>
-                    <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, lineHeight: 1.25, margin: 0 }}>
-                      {data.topic.title}
-                    </h1>
-                    <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
-                      <AuthorLink author={data.topic.author} style={{ color: "var(--ink-2)", fontWeight: 600 }} />
-                      <span aria-hidden>·</span>
-                      <span>{timeAgo(data.topic.createdAt)}</span>
-                    </div>
-                    <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                      {data.topic.body}
-                    </p>
-                    {myId && data.topic.author.id === myId ? (
-                      <OwnerActions
-                        onEdit={() => setEditingTopic(true)}
-                        onDelete={async () => {
-                          const del = trpc.townHall.removeTopic as unknown as { mutate: (i: { topicId: string }) => Promise<unknown> };
-                          await del.mutate({ topicId });
-                          router.push("/town-hall");
-                        }}
-                        confirmLabel="Delete this topic?"
-                      />
-                    ) : null}
-                  </>
-                )}
-              </div>
+            {/* Poster + community. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "var(--space-2)", fontSize: 12, color: "var(--muted)" }}>
+              <span aria-hidden style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>
+                {authorInitial(data.topic.author)}
+              </span>
+              <AuthorLink author={data.topic.author} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }} />
+              <span aria-hidden>·</span>
+              <span>{timeAgo(data.topic.createdAt)}</span>
+              <span aria-hidden>·</span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--muted)" }}>{data.topic.localityLabel}</span>
             </div>
+
+            {editingTopic ? (
+              <TopicEditor
+                topicId={data.topic.id}
+                initialTitle={data.topic.title}
+                initialBody={data.topic.body}
+                onSaved={() => { setEditingTopic(false); void load().then((d) => setData(d)).catch(() => {}); }}
+                onCancel={() => setEditingTopic(false)}
+              />
+            ) : (
+              <>
+                <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, lineHeight: 1.25, margin: 0, letterSpacing: "-.01em" }}>
+                  {data.topic.title}
+                </h1>
+                <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                  {data.topic.body}
+                </p>
+
+                {/* Action bar: vote · comments · share. */}
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-4)", flexWrap: "wrap" }}>
+                  <TopicUpvote
+                    topicId={data.topic.id}
+                    initialUpvoted={data.topic.viewerUpvoted}
+                    initialCount={data.topic.upvoteCount}
+                    canVote={!!session}
+                  />
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", color: "var(--ink-2)", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600 }}>
+                    <Icon name="chat" size={15} /> {data.topic.replyCount}
+                  </span>
+                  <CopyLinkButton />
+                </div>
+
+                {myId && data.topic.author.id === myId ? (
+                  <OwnerActions
+                    onEdit={() => setEditingTopic(true)}
+                    onDelete={async () => {
+                      const del = trpc.townHall.removeTopic as unknown as { mutate: (i: { topicId: string }) => Promise<unknown> };
+                      await del.mutate({ topicId });
+                      router.push("/town-hall");
+                    }}
+                    confirmLabel="Delete this topic?"
+                  />
+                ) : null}
+              </>
+            )}
           </Card>
 
           {/* Replies */}
