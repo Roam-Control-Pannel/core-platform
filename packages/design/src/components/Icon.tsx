@@ -62,6 +62,12 @@ import {
   Circle,
   CircleDot,
   GripVertical,
+  BedDouble,
+  Plane,
+  Trees,
+  Utensils,
+  ShoppingBag,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 
@@ -119,6 +125,12 @@ const ICONS = {
   radioOn: CircleDot,
   radioOff: Circle,
   grip: GripVertical,
+  hotel: BedDouble,
+  flight: Plane,
+  outdoor: Trees,
+  dining: Utensils,
+  bag: ShoppingBag,
+  tag: Tag,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
