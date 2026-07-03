@@ -15,7 +15,7 @@
  */
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -160,6 +160,40 @@ export function Home() {
     };
   }, [layout, signedIn, loaded, serverLoadDone, trpc]);
 
+  // Flush any pending (debounced) layout save IMMEDIATELY. Called when the user closes the Customise
+  // sheet, navigates away (unmount), or backgrounds the tab — so a reorder made just before leaving
+  // still reaches the server (and thus other devices), not only localStorage. Reads live values via
+  // refs so it's a stable callback and never fires a stale layout.
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const flushLayout = useCallback(() => {
+    if (!signedIn || !loaded || !serverLoadDone) return;
+    const l = layoutRef.current;
+    const serialized = JSON.stringify(l);
+    if (serialized === lastSyncedRef.current) return; // already saved
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    lastSyncedRef.current = serialized; // optimistic: avoids a duplicate save from the debounce
+    const api = trpc.profiles.setHomeLayout as unknown as {
+      mutate: (i: { order: string[]; hidden: string[] }) => Promise<{ ok: boolean }>;
+    };
+    api.mutate({ order: l.order, hidden: l.hidden }).catch(() => {
+      lastSyncedRef.current = null; // failed — let the next edit retry
+    });
+  }, [signedIn, loaded, serverLoadDone, trpc]);
+
+  // Flush on unmount (SPA navigation) and when the tab is hidden (mobile background / close), so the
+  // last edit isn't stranded in localStorage if the user leaves within the debounce window.
+  const flushRef = useRef(flushLayout);
+  flushRef.current = flushLayout;
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === "hidden") flushRef.current(); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      flushRef.current(); // unmount
+    };
+  }, []);
+
   const byId = useMemo(() => new Map(HOME_WIDGETS.map((w) => [w.id, w])), []);
 
   // Widgets applicable to the current context (transit only inside Ireland), in the user's order.
@@ -234,7 +268,7 @@ export function Home() {
 
       <HomeCustomize
         open={customizing}
-        onClose={() => setCustomizing(false)}
+        onClose={() => { setCustomizing(false); flushLayout(); }}
         items={customizeItems}
         onMove={(id, dir) => move(id, dir, applicableIds)}
         onReorder={(id, toIndex) => reorder(id, toIndex, applicableIds)}
