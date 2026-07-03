@@ -9,8 +9,8 @@
  * Explore/Town Hall, so Home, Explore and Town Hall always agree on "where you are".
  *
  * Layout is a real dashboard: a hero (greeting · place · quick actions), then a grid where the
- * content-rich sections (Recent chats, Your town carousel) span full width and the lighter
- * widgets pair up two-across on desktop. Each section loads independently (its own query +
+ * content-rich carousels (Your town) span full width and the lighter widgets — including Recent
+ * chats — pair up two-across on desktop. Each section loads independently (its own query +
  * skeleton/empty/error), so a slow or failed one never blocks the rest of the hub.
  */
 "use client";
@@ -52,7 +52,7 @@ interface HomeWidget {
 }
 
 const HOME_WIDGETS: HomeWidget[] = [
-  { id: "recent-chats", label: "Recent chats", span: "full", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
+  { id: "recent-chats", label: "Recent chats", span: "half", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
   {
     id: "transit",
     label: "Nearby transit",
