@@ -25,6 +25,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { TopicUpvote } from "./TopicUpvote";
 import { AuthorLink } from "./AuthorLink";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { LinkPreviewCard } from "./LinkPreviewCard";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { townHubPath, townSlug } from "../lib/routes";
 
@@ -36,6 +37,10 @@ interface TopicListItem {
   body: string;
   upvoteCount: number;
   replyCount: number;
+  linkUrl: string | null;
+  linkDomain: string | null;
+  linkTitle: string | null;
+  linkImageUrl: string | null;
   lastActivityAt: string;
   createdAt: string;
   author: TownHallAuthor;
@@ -215,6 +220,12 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
         </p>
       </Link>
 
+      {topic.linkUrl ? (
+        <div style={{ marginTop: "var(--space-3)" }}>
+          <LinkPreviewCard link={{ url: topic.linkUrl, domain: topic.linkDomain, title: topic.linkTitle, imageUrl: topic.linkImageUrl }} />
+        </div>
+      ) : null}
+
       {/* Action bar: vote · comments · share. */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-3)", flexWrap: "wrap" }}>
         <TopicUpvote
@@ -260,23 +271,41 @@ function TopicComposer({
   const trpc = useTrpc();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [preview, setPreview] = useState<{ url: string; domain: string | null; title: string | null; imageUrl: string | null } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Debounced link preview — the server unfurls the URL (SSRF-safe) into a domain/title/image card.
+  useEffect(() => {
+    const url = linkUrl.trim();
+    if (!/^https?:\/\/.+/i.test(url)) { setPreview(null); setPreviewing(false); return; }
+    setPreviewing(true);
+    const q = trpc.townHall.previewLink as unknown as {
+      query: (i: { url: string }) => Promise<{ url: string; domain: string; title: string | null; imageUrl: string | null }>;
+    };
+    const t = setTimeout(() => {
+      q.query({ url }).then((r) => { setPreview(r); setPreviewing(false); }).catch(() => { setPreview(null); setPreviewing(false); });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [linkUrl, trpc]);
 
   const submit = useCallback(async () => {
     setBusy(true);
     setErr(null);
     const createTopic = trpc.townHall.createTopic as unknown as {
-      mutate: (input: { localityName: string; title: string; body: string }) => Promise<{ id: string }>;
+      mutate: (input: { localityName: string; title: string; body: string; linkUrl?: string }) => Promise<{ id: string }>;
     };
     try {
-      await createTopic.mutate({ localityName, title, body });
+      const url = linkUrl.trim();
+      await createTopic.mutate({ localityName, title, body, ...(/^https?:\/\//i.test(url) ? { linkUrl: url } : {}) });
       onPosted();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Couldn't post your topic.");
       setBusy(false);
     }
-  }, [trpc, localityName, title, body, onPosted]);
+  }, [trpc, localityName, title, body, linkUrl, onPosted]);
 
   const canPost = title.trim().length > 0 && body.trim().length > 0 && !busy;
 
@@ -301,6 +330,24 @@ function TopicComposer({
         rows={4}
         style={{ ...inputStyle, resize: "vertical", minHeight: 96 }}
       />
+      <input
+        value={linkUrl}
+        onChange={(e) => setLinkUrl(e.target.value)}
+        placeholder="Add a link (optional) — https://…"
+        aria-label="Link URL"
+        inputMode="url"
+        style={inputStyle}
+      />
+      {previewing ? (
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-3)" }}>Fetching link preview…</div>
+      ) : preview ? (
+        <div style={{ marginBottom: "var(--space-3)" }}>
+          <LinkPreviewCard
+            link={preview}
+            onRemove={() => { setLinkUrl(""); setPreview(null); }}
+          />
+        </div>
+      ) : null}
       {err ? (
         <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>
           {err}

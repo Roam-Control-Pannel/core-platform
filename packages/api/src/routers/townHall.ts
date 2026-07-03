@@ -31,6 +31,7 @@ import {
   TOPIC_BODY_MAX,
   REPLY_BODY_MAX,
 } from "../town-hall.js";
+import { unfurl } from "../townhall/unfurl.js";
 
 /* ── loose client shapes (town_hall_* isn't in the generated DB types) ─────────────────── */
 
@@ -52,7 +53,7 @@ interface AuthorEmbed {
 const TOPIC_AUTHOR = "author:profiles!town_hall_topics_author_id_fkey(id, handle, display_name, avatar_url)";
 const REPLY_AUTHOR = "author:profiles!town_hall_replies_author_id_fkey(id, handle, display_name, avatar_url)";
 
-const TOPIC_COLS = `id, slug, locality, locality_label, title, body, upvote_count, reply_count, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
+const TOPIC_COLS = `id, slug, locality, locality_label, title, body, upvote_count, reply_count, link_url, link_domain, link_title, link_image_url, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
 const REPLY_COLS = `id, topic_id, body, upvote_count, created_at, ${REPLY_AUTHOR}`;
 
 interface RawTopic {
@@ -64,6 +65,10 @@ interface RawTopic {
   body: string;
   upvote_count: number;
   reply_count: number;
+  link_url: string | null;
+  link_domain: string | null;
+  link_title: string | null;
+  link_image_url: string | null;
   last_activity_at: string;
   created_at: string;
   author: AuthorEmbed | AuthorEmbed[] | null;
@@ -104,6 +109,10 @@ function shapeTopic(t: RawTopic, viewerUpvoted: boolean) {
     body: t.body,
     upvoteCount: t.upvote_count,
     replyCount: t.reply_count,
+    linkUrl: t.link_url,
+    linkDomain: t.link_domain,
+    linkTitle: t.link_title,
+    linkImageUrl: t.link_image_url,
     lastActivityAt: t.last_activity_at,
     createdAt: t.created_at,
     author: shapeAuthor(t.author),
@@ -366,13 +375,29 @@ export const townHallRouter = router({
     return { localities: Array.from(map.values()) };
   }),
 
-  /** Protected: start a topic on the locality the caller is browsing. */
+  /**
+   * Public: preview a URL's link card (domain/title/image) for the composer. SSRF-hardened in
+   * unfurl(). Protected so it's only reachable by signed-in posters, not an open fetch proxy.
+   */
+  previewLink: protectedProcedure
+    .input(z.object({ url: z.string().url().max(2000) }))
+    .query(async ({ input }): Promise<{ url: string; domain: string; title: string | null; imageUrl: string | null }> => {
+      const link = await unfurl(input.url);
+      // Return a plain object literal (not unfurl's LinkPreview type) so the tRPC client type
+      // stays portable — the web package can't name a type from deep inside node_modules.
+      return link
+        ? { url: link.url, domain: link.domain, title: link.title, imageUrl: link.imageUrl }
+        : { url: input.url, domain: "", title: null, imageUrl: null };
+    }),
+
+  /** Protected: start a topic on the locality the caller is browsing (optionally a link post). */
   createTopic: protectedProcedure
     .input(
       z.object({
         localityName: z.string().trim().min(1).max(120),
         title: z.string().min(1).max(TOPIC_TITLE_MAX + 50),
         body: z.string().min(1).max(TOPIC_BODY_MAX + 1000),
+        linkUrl: z.string().url().max(2000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -389,9 +414,14 @@ export const townHallRouter = router({
       } catch (e) {
         throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid topic." });
       }
+      // Unfurl the link SERVER-SIDE so the stored image/title are trusted (never client-supplied).
+      const link = input.linkUrl ? await unfurl(input.linkUrl) : null;
+      const linkCols = link
+        ? { link_url: link.url, link_domain: link.domain || null, link_title: link.title, link_image_url: link.imageUrl }
+        : {};
       const { data, error } = (await db
         .from("town_hall_topics")
-        .insert({ ...row, author_id })
+        .insert({ ...row, ...linkCols, author_id })
         .select("id")
         .single()) as PgResult<{ id: string } | null>;
       if (error || !data) {

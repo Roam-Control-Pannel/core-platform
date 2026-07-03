@@ -69,6 +69,7 @@ import {
   ShoppingBag,
   Tag,
   Share2,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -133,6 +134,7 @@ const ICONS = {
   bag: ShoppingBag,
   tag: Tag,
   share: Share2,
+  link: Link2,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
