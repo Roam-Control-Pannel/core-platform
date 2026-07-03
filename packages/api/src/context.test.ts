@@ -18,6 +18,7 @@ const env: ApiEnv = {
   places: { apiKey: "test-places-key" },
   brevo: { apiKey: null, newUserListId: 93, businessListId: 3 },
   transit: { config: null },
+  awin: { apiKey: null, publisherId: null, baseUrl: "https://api.awin.com", region: "GB", debug: false },
 };
 
 const createContext = makeContextFactory(env);

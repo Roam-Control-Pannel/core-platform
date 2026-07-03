@@ -23,6 +23,7 @@ import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { escalateToService } from "./trpc.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
+import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
 import type { EfaConfig } from "./transit/client.js";
 
 function requireEnv(name: string): string {
@@ -66,6 +67,16 @@ function loadEnv(): ApiEnv {
       // Optional: unset TRANSLINK_API_KEY leaves config null and the NI transit feature dormant
       // (nearbyDepartures returns "unconfigured"), so the API boots fine before provisioning.
       config: loadTransitConfig(),
+    },
+    awin: {
+      // Optional: unset AWIN_API_KEY leaves the deals ingestion dormant (the sync route no-ops), so
+      // the API boots before the token is provisioned. publisherId auto-resolves via /accounts when
+      // unset. AWIN_DEBUG=1 logs the raw offers response so the field-mapping can be confirmed.
+      apiKey: process.env.AWIN_API_KEY ?? null,
+      publisherId: process.env.AWIN_PUBLISHER_ID ?? null,
+      baseUrl: process.env.AWIN_API_BASE ?? "https://api.awin.com",
+      region: process.env.AWIN_REGION ?? "GB",
+      debug: process.env.AWIN_DEBUG === "1" || process.env.AWIN_DEBUG === "true",
     },
   };
 }
@@ -191,6 +202,30 @@ export async function handler(request: Request): Promise<Response> {
         500,
         cors,
       );
+    }
+  }
+
+  // Internal cron route: sync Awin affiliate offers into awin_deals. Same internal-secret gate as
+  // the birthday route; dormant when AWIN_API_KEY is unset (returns "unconfigured", not an error).
+  // Triggered by pg_cron on a schedule; idempotent (upsert-by-promotion-id).
+  if (pathname === "/jobs/sync-awin-offers") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (!ctx.isInternalCall) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    const awin = ctx.env.awin;
+    if (!awin.apiKey) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 200, cors);
+    }
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runAwinOffersSync(service, { ...awin, apiKey: awin.apiKey }, (m) => console.log(m));
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
     }
   }
 
