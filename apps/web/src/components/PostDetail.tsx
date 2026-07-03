@@ -14,10 +14,11 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
 
 export interface FeedPost {
@@ -144,7 +145,11 @@ export function PostDetail({ post }: { post: FeedPost }) {
         ) : null}
 
         <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-5)" }}>
-          <ShareButton postId={post.id} title={post.title ?? post.venueName ?? "A post on Roam"} />
+          <CopyLinkButton
+            variant="button"
+            path={`/feed/${post.id}`}
+            title={post.title ?? post.venueName ?? "A post on Roam"}
+          />
           <Link href={venuePath(post.venueId)} style={{ textDecoration: "none", flex: 1 }}>
             <Button variant="neutral" block>
               View Venue →
@@ -153,31 +158,6 @@ export function PostDetail({ post }: { post: FeedPost }) {
         </div>
       </div>
     </Card>
-  );
-}
-
-/** Share via the Web Share sheet where available, else copy the post link to the clipboard. */
-function ShareButton({ postId, title }: { postId: string; title: string }) {
-  const [copied, setCopied] = useState(false);
-  const share = useCallback(async () => {
-    const url =
-      (typeof window !== "undefined" ? window.location.origin : "") + `/feed/${postId}`;
-    try {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({ title, url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* user dismissed the share sheet, or clipboard blocked — no-op */
-    }
-  }, [postId, title]);
-  return (
-    <Button variant="neutral" onClick={() => void share()}>
-      {copied ? "Link copied ✓" : "Share ↗"}
-    </Button>
   );
 }
 

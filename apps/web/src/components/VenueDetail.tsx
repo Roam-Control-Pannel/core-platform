@@ -42,6 +42,7 @@ import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
 import { AddToPlan } from "./AddToPlan";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { isOpenNow } from "../lib/openNow";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 import styles from "./VenueDetail.module.css";
@@ -509,7 +510,7 @@ function ClaimedDetail({
             </Link>
           ) : null}
 
-          <VenueActions venueId={venueId} initialFollowing={initialFollowing} address={venue.address} />
+          <VenueActions venueId={venueId} name={venue.name} initialFollowing={initialFollowing} address={venue.address} />
 
           {links.length > 0 ? (
             <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
@@ -737,10 +738,12 @@ function PanelSkeleton() {
  */
 function VenueActions({
   venueId,
+  name,
   initialFollowing,
   address,
 }: {
   venueId: string;
+  name: string;
   initialFollowing: boolean;
   address: string | null;
 }) {
@@ -753,6 +756,8 @@ function VenueActions({
       />
       <AddToPlan venueId={venueId} block />
       <DirectionsButton address={address} block />
+      {/* Shares the current canonical /venue/<slug> URL (the page redirects UUID → slug). */}
+      <CopyLinkButton variant="button" block title={name} />
     </div>
   );
 }
@@ -806,7 +811,7 @@ function UnclaimedDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <ActionRow venueId={venueId} address={venue.address} />
+      <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
     </>
   );
 }
@@ -951,7 +956,7 @@ function PendingClaimDetail({
 
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
-      <ActionRow venueId={venueId} address={venue.address} />
+      <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
     </>
   );
 }
@@ -1098,11 +1103,12 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
  * a dormant Stage-2 (Social) seam; Directions opens the device maps app by address text (not
  * lat/lng) so the provider resolves the named place rather than dropping an unlabelled pin.
  */
-function ActionRow({ venueId, address }: { venueId: string; address: string | null }) {
+function ActionRow({ venueId, name, address }: { venueId: string; name: string; address: string | null }) {
   return (
     <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
       <AddToPlan venueId={venueId} />
       <DirectionsButton address={address} />
+      <CopyLinkButton variant="button" size="sm" title={name} />
     </div>
   );
 }
