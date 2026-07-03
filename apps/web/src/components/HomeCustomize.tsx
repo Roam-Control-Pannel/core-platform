@@ -3,13 +3,15 @@
  *
  * A focused overlay (mirrors AuthModal's plumbing: scrim, centred card, Escape / click-outside to
  * close, body-scroll lock, focus moved in) that lists the Home widgets in their current order and
- * lets the user REORDER them (up / down) and SHOW/HIDE each one. Deliberately NOT drag-and-drop:
- * arrows + toggles are touch-friendly and accessible on a mobile-first app. Edits apply live to
- * the dashboard behind the sheet; a Reset restores the default order.
+ * lets the user REORDER them by DRAG-AND-DROP and SHOW/HIDE each one. Each row has a grip handle:
+ * drag it (pointer events — works with mouse and touch) to move the widget, and the list
+ * live-reorders under the pointer, committing on drop. The same handle is keyboard-operable
+ * (focus it, Arrow Up/Down to move a step) so reordering stays accessible without a pointer.
+ * Edits apply live to the dashboard behind the sheet; a Reset restores the default order.
  */
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@roam/design";
 
 export interface CustomizeItem {
@@ -23,6 +25,7 @@ export function HomeCustomize({
   onClose,
   items,
   onMove,
+  onReorder,
   onToggle,
   onReset,
 }: {
@@ -30,11 +33,27 @@ export function HomeCustomize({
   onClose: () => void;
   /** Applicable widgets in current display order (top → bottom). */
   items: CustomizeItem[];
+  /** One-step move (keyboard arrows on the handle). */
   onMove: (id: string, dir: -1 | 1) => void;
+  /** Drop a widget at an absolute index within the applicable list (drag-and-drop). */
+  onReorder: (id: string, toIndex: number) => void;
   onToggle: (id: string) => void;
   onReset: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Local working copy so the list can live-reorder under the pointer during a drag; it syncs from
+  // props whenever we're not mid-drag (props are the committed source of truth).
+  const [working, setWorking] = useState<CustomizeItem[]>(items);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
+  const workingRef = useRef(working);
+  workingRef.current = working;
+
+  useEffect(() => {
+    if (!dragId) setWorking(items);
+  }, [items, dragId]);
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +71,48 @@ export function HomeCustomize({
       prevFocus?.focus?.();
     };
   }, [open, onClose]);
+
+  // ── Drag mechanics (pointer events: mouse + touch) ──────────────────────────────────────────
+  const beginDrag = (e: React.PointerEvent, id: string) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return; // primary button / any touch only
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragIdRef.current = id;
+    setDragId(id);
+  };
+
+  const onDragMove = (e: React.PointerEvent) => {
+    const id = dragIdRef.current;
+    if (!id || !listRef.current) return;
+    e.preventDefault(); // stop touch-scroll while dragging
+    const y = e.clientY;
+    const rows = Array.from(listRef.current.querySelectorAll<HTMLLIElement>("[data-row]"));
+    // Target = the first row whose vertical midpoint sits below the pointer (else the last row).
+    let target = rows.length - 1;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!.getBoundingClientRect();
+      if (y < r.top + r.height / 2) {
+        target = i;
+        break;
+      }
+    }
+    setWorking((cur) => {
+      const from = cur.findIndex((x) => x.id === id);
+      if (from < 0 || from === target) return cur;
+      const next = cur.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(target, 0, moved as CustomizeItem);
+      return next;
+    });
+  };
+
+  const endDrag = () => {
+    const id = dragIdRef.current;
+    dragIdRef.current = null;
+    setDragId(null);
+    if (!id) return;
+    const toIndex = workingRef.current.findIndex((x) => x.id === id);
+    if (toIndex >= 0) onReorder(id, toIndex);
+  };
 
   if (!open) return null;
 
@@ -105,7 +166,7 @@ export function HomeCustomize({
               Customise home
             </h2>
             <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--ink-2)" }}>
-              Reorder or hide the sections you see.
+              Drag the handle to reorder, or hide the sections you see.
             </p>
           </div>
           <button
@@ -130,59 +191,93 @@ export function HomeCustomize({
           </button>
         </header>
 
-        <ul style={{ listStyle: "none", margin: 0, padding: "var(--space-2)", display: "grid", gap: 2 }}>
-          {items.map((it, i) => (
-            <li
-              key={it.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-2)",
-                padding: "var(--space-2)",
-                borderRadius: 12,
-                opacity: it.hidden ? 0.55 : 1,
-              }}
-            >
-              <span
+        <ul ref={listRef} style={{ listStyle: "none", margin: 0, padding: "var(--space-2)", display: "grid", gap: 2 }}>
+          {working.map((it) => {
+            const dragging = dragId === it.id;
+            return (
+              <li
+                key={it.id}
+                data-row
                 style={{
-                  flex: 1,
-                  minWidth: 0,
-                  fontFamily: "var(--ui)",
-                  fontSize: 14.5,
-                  fontWeight: 600,
-                  color: "var(--ink)",
-                  textDecoration: it.hidden ? "line-through" : "none",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                  padding: "var(--space-2)",
+                  borderRadius: 12,
+                  opacity: it.hidden && !dragging ? 0.55 : 1,
+                  background: dragging ? "var(--paper-2)" : "transparent",
+                  boxShadow: dragging ? "var(--shadow-pop)" : "none",
+                  position: "relative",
+                  zIndex: dragging ? 1 : 0,
                 }}
               >
-                {it.label}
-              </span>
+                <button
+                  type="button"
+                  aria-label={`Reorder ${it.label}`}
+                  onPointerDown={(e) => beginDrag(e, it.id)}
+                  onPointerMove={onDragMove}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") { e.preventDefault(); onMove(it.id, -1); }
+                    else if (e.key === "ArrowDown") { e.preventDefault(); onMove(it.id, 1); }
+                  }}
+                  style={{
+                    all: "unset",
+                    boxSizing: "border-box",
+                    width: 40,
+                    height: 44,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 10,
+                    cursor: dragging ? "grabbing" : "grab",
+                    color: "var(--faint)",
+                    touchAction: "none",
+                  }}
+                >
+                  <Icon name="grip" size={18} />
+                </button>
 
-              <IconBtn
-                label={`Move ${it.label} up`}
-                disabled={i === 0}
-                onClick={() => onMove(it.id, -1)}
-              >
-                ↑
-              </IconBtn>
-              <IconBtn
-                label={`Move ${it.label} down`}
-                disabled={i === items.length - 1}
-                onClick={() => onMove(it.id, 1)}
-              >
-                ↓
-              </IconBtn>
-              <IconBtn
-                label={it.hidden ? `Show ${it.label}` : `Hide ${it.label}`}
-                onClick={() => onToggle(it.id)}
-                active={!it.hidden}
-              >
-                <Icon name={it.hidden ? "eyeOff" : "eye"} size={18} />
-              </IconBtn>
-            </li>
-          ))}
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontFamily: "var(--ui)",
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    color: "var(--ink)",
+                    textDecoration: it.hidden ? "line-through" : "none",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {it.label}
+                </span>
+
+                <button
+                  type="button"
+                  aria-label={it.hidden ? `Show ${it.label}` : `Hide ${it.label}`}
+                  onClick={() => onToggle(it.id)}
+                  style={{
+                    all: "unset",
+                    boxSizing: "border-box",
+                    width: 44,
+                    height: 44,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    border: "1px solid var(--line)",
+                    background: it.hidden ? "var(--paper-2)" : "var(--crimson-tint)",
+                    color: "var(--ink-2)",
+                  }}
+                >
+                  <Icon name={it.hidden ? "eyeOff" : "eye"} size={18} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
 
         <footer
@@ -213,46 +308,5 @@ export function HomeCustomize({
         </footer>
       </div>
     </div>
-  );
-}
-
-/** A square ≥44px tap-target icon button used for the up / down / hide controls. */
-function IconBtn({
-  children,
-  label,
-  onClick,
-  disabled,
-  active,
-}: {
-  children: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        all: "unset",
-        boxSizing: "border-box",
-        width: 44,
-        height: 44,
-        display: "grid",
-        placeItems: "center",
-        borderRadius: 10,
-        cursor: disabled ? "default" : "pointer",
-        border: "1px solid var(--line)",
-        background: active ? "var(--crimson-tint)" : "var(--paper-2)",
-        color: disabled ? "var(--faint)" : "var(--ink-2)",
-        fontSize: 16,
-        opacity: disabled ? 0.4 : 1,
-      }}
-    >
-      <span aria-hidden>{children}</span>
-    </button>
   );
 }

@@ -82,7 +82,7 @@ export function Home() {
   const session = useSession();
   const trpc = useTrpc();
   const { place, setPlace } = useCurrentPlace();
-  const { layout, loaded, move, toggle, reset, replace } = useHomeLayout(HOME_WIDGET_IDS);
+  const { layout, loaded, move, reorder, toggle, reset, replace } = useHomeLayout(HOME_WIDGET_IDS);
   const [customizing, setCustomizing] = useState(false);
   const signedIn = !!session;
 
@@ -235,6 +235,7 @@ export function Home() {
         onClose={() => setCustomizing(false)}
         items={customizeItems}
         onMove={(id, dir) => move(id, dir, applicableIds)}
+        onReorder={(id, toIndex) => reorder(id, toIndex, applicableIds)}
         onToggle={toggle}
         onReset={reset}
       />
