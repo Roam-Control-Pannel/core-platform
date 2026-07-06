@@ -22,9 +22,11 @@ import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
 import styles from "./TopBar.module.css";
 
-/** Which primary nav item the current path belongs to (for the active pill). */
+/** Which primary nav item the current path belongs to (for the active pill). Basecamp is
+ *  deliberately NOT a nav item — it's reached from the Home header cards + rail — but it should
+ *  light the Home pill, since it's Home's companion surface. */
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" | "chat" | "you" | null {
-  if (pathname === "/" || pathname.startsWith("/home")) return "home";
+  if (pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/basecamp")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/plans")) return "plans";

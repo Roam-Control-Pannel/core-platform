@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
 
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
-  if (pathname === "/" || pathname.startsWith("/home")) return "home";
+  if (pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/basecamp")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";

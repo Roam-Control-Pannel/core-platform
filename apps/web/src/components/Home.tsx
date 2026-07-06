@@ -15,7 +15,7 @@
  */
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -26,7 +26,7 @@ import { NearbyDepartures } from "./NearbyDepartures";
 import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { planDateLabel } from "../lib/planDate";
-import { useHomeLayout, reconcile, type HomeLayout } from "../lib/homeLayout";
+import { useHomeLayoutSync } from "./useHomeLayoutSync";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
 import { BirthdayTreats } from "./BirthdayTreats";
 import { DealsHomeWidget } from "./Deals";
@@ -40,11 +40,11 @@ import styles from "./Home.module.css";
  * `render` given the live context. The user's saved layout reorders / hides these; anything not
  * in their saved order is appended in this order (see reconcile), so new widgets always surface.
  */
-interface WidgetCtx {
+export interface WidgetCtx {
   hasSession: boolean;
   place: Place;
 }
-interface HomeWidget {
+export interface HomeWidget {
   id: string;
   label: string;
   span: "full" | "half";
@@ -57,7 +57,7 @@ interface HomeWidget {
  * `span` is kept for layout-data compatibility but no longer affects rendering. The old
  * "local-news" widget is gone: the main-column feed (HomeFeed) IS the local news now.
  */
-const HOME_WIDGETS: HomeWidget[] = [
+export const HOME_WIDGETS: HomeWidget[] = [
   { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
   { id: "your-town", label: "Trending nearby", span: "full", render: ({ place }) => <TrendingNearby place={place} /> },
   { id: "recent-chats", label: "Recent chats", span: "half", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
@@ -74,7 +74,10 @@ const HOME_WIDGETS: HomeWidget[] = [
   { id: "saved-deals", label: "Saved deals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
   { id: "market", label: "Marketplace", span: "full", render: ({ place }) => <MarketSeam place={place} /> },
 ];
-const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
+export const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
+
+/** How many widgets Home's rail shows — the full set lives in Basecamp. */
+const RAIL_LIMIT = 5;
 
 /** Time-aware greeting — a warmer header than a flat "Home". */
 function greeting(): string {
@@ -88,7 +91,7 @@ export function Home() {
   const session = useSession();
   const trpc = useTrpc();
   const { place, setPlace } = useCurrentPlace();
-  const { layout, loaded, move, reorder, toggle, reset, replace } = useHomeLayout(HOME_WIDGET_IDS);
+  const { layout, move, reorder, toggle, reset, flushLayout } = useHomeLayoutSync(HOME_WIDGET_IDS);
   const [customizing, setCustomizing] = useState(false);
   const signedIn = !!session;
 
@@ -135,112 +138,6 @@ export function Home() {
     };
   }, [trpc, session]);
 
-  // ── Cross-device sync (signed-in only) ──────────────────────────────────────────────────────
-  // localStorage is the instant, offline, guest-friendly store (handled by the hook). For a
-  // signed-in user we ALSO sync to profiles.home_layout so their layout follows them across
-  // devices. Server wins on load; edits debounce-save up; a guest layout migrates up on sign-in.
-  const serverLoadedFor = useRef<string | null>(null); // uid we've loaded server layout for
-  const [serverLoadDone, setServerLoadDone] = useState(false);
-  const lastSyncedRef = useRef<string | null>(null); // serialized layout known to match the server
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load the server layout once per signed-in session; server wins over the local cache.
-  useEffect(() => {
-    const uid = session?.user?.id ?? null;
-    if (!uid) {
-      // Signed out → reset sync state so a later sign-in re-loads for that account.
-      serverLoadedFor.current = null;
-      lastSyncedRef.current = null;
-      setServerLoadDone(false);
-      return;
-    }
-    if (!loaded || serverLoadedFor.current === uid) return;
-    serverLoadedFor.current = uid;
-    let cancelled = false;
-    const api = trpc.profiles.homeLayout as unknown as {
-      query: () => Promise<{ layout: HomeLayout | null }>;
-    };
-    api
-      .query()
-      .then((res) => {
-        if (cancelled) return;
-        if (res?.layout) {
-          replace(res.layout);
-          // Mark this as already-synced so it isn't echoed straight back to the server.
-          lastSyncedRef.current = JSON.stringify(reconcile(res.layout, HOME_WIDGET_IDS));
-        }
-        // If the server has nothing, leave lastSyncedRef null so the local layout migrates up.
-      })
-      .catch(() => {
-        /* offline / not provisioned — localStorage keeps working */
-      })
-      .finally(() => {
-        if (!cancelled) setServerLoadDone(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, loaded, trpc, replace]);
-
-  // Persist edits to the server (debounced) once the initial server load has settled — so we never
-  // clobber the server layout with the local one before we've seen it.
-  useEffect(() => {
-    if (!signedIn || !loaded || !serverLoadDone) return;
-    const serialized = JSON.stringify(layout);
-    if (serialized === lastSyncedRef.current) return; // nothing new to save
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const api = trpc.profiles.setHomeLayout as unknown as {
-        mutate: (i: { order: string[]; hidden: string[] }) => Promise<{ ok: boolean }>;
-      };
-      api
-        .mutate({ order: layout.order, hidden: layout.hidden })
-        .then(() => {
-          lastSyncedRef.current = serialized;
-        })
-        .catch(() => {
-          /* transient — will retry on the next edit */
-        });
-    }, 800);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [layout, signedIn, loaded, serverLoadDone, trpc]);
-
-  // Flush any pending (debounced) layout save IMMEDIATELY. Called when the user closes the Customise
-  // sheet, navigates away (unmount), or backgrounds the tab — so a reorder made just before leaving
-  // still reaches the server (and thus other devices), not only localStorage. Reads live values via
-  // refs so it's a stable callback and never fires a stale layout.
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
-  const flushLayout = useCallback(() => {
-    if (!signedIn || !loaded || !serverLoadDone) return;
-    const l = layoutRef.current;
-    const serialized = JSON.stringify(l);
-    if (serialized === lastSyncedRef.current) return; // already saved
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    lastSyncedRef.current = serialized; // optimistic: avoids a duplicate save from the debounce
-    const api = trpc.profiles.setHomeLayout as unknown as {
-      mutate: (i: { order: string[]; hidden: string[] }) => Promise<{ ok: boolean }>;
-    };
-    api.mutate({ order: l.order, hidden: l.hidden }).catch(() => {
-      lastSyncedRef.current = null; // failed — let the next edit retry
-    });
-  }, [signedIn, loaded, serverLoadDone, trpc]);
-
-  // Flush on unmount (SPA navigation) and when the tab is hidden (mobile background / close), so the
-  // last edit isn't stranded in localStorage if the user leaves within the debounce window.
-  const flushRef = useRef(flushLayout);
-  flushRef.current = flushLayout;
-  useEffect(() => {
-    const onHide = () => { if (document.visibilityState === "hidden") flushRef.current(); };
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      flushRef.current(); // unmount
-    };
-  }, []);
-
   const byId = useMemo(() => new Map(HOME_WIDGETS.map((w) => [w.id, w])), []);
 
   // Widgets applicable to the current context (transit only inside Ireland), in the user's order.
@@ -256,6 +153,8 @@ export function Home() {
 
   const ctx: WidgetCtx = { hasSession: !!session, place };
   const visible = applicable.filter((w) => !layout.hidden.includes(w.id));
+  // The rail shows the TOP of the user's order; the full set (at full width) lives in Basecamp.
+  const railWidgets = visible.slice(0, RAIL_LIMIT);
   const customizeItems: CustomizeItem[] = applicable.map((w) => ({
     id: w.id,
     label: w.label,
@@ -293,6 +192,7 @@ export function Home() {
           <QuickAction href="/town-hall" glyph="forum" label="Start a topic" />
           <QuickAction href="/explore" glyph="search" label="Find venues" />
           <QuickAction href="/friends" glyph="chat" label="Message a friend" />
+          <QuickAction href="/basecamp" glyph="widgets" label="Basecamp" />
         </div>
       </header>
 
@@ -305,13 +205,21 @@ export function Home() {
           <HomeFeed place={place} />
         </div>
 
-        {/* Widget rail: the user's (customisable) stack. */}
+        {/* Widget rail: the top of the user's (customisable) stack — the full set is Basecamp. */}
         <aside className={styles.rail}>
-          {visible.length === 0 ? (
+          {railWidgets.length === 0 ? (
             <EmptyDashboard onCustomise={() => setCustomizing(true)} />
           ) : (
-            visible.map((w) => <Fragment key={w.id}>{w.render(ctx)}</Fragment>)
+            railWidgets.map((w) => <Fragment key={w.id}>{w.render(ctx)}</Fragment>)
           )}
+          <Link href="/basecamp" className={styles.basecampLink}>
+            <span className={styles.qtile} aria-hidden><Icon name="grip" size={16} /></span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Basecamp</span>
+              <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>All your widgets, full size</span>
+            </span>
+            <Icon name="chevronRight" size={16} style={{ color: "var(--faint)", flexShrink: 0 }} />
+          </Link>
         </aside>
       </div>
 

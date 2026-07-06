@@ -70,6 +70,7 @@ import {
   Tag,
   Share2,
   Link2,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 
@@ -135,6 +136,7 @@ const ICONS = {
   tag: Tag,
   share: Share2,
   link: Link2,
+  widgets: LayoutGrid,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
