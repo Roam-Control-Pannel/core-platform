@@ -19,8 +19,8 @@ const base: CSSProperties = {
   alignItems: "center",
   gap: 6,
   borderRadius: 999,
-  padding: "7px 13px",
-  fontSize: 12.5,
+  padding: "8px 14px",
+  fontSize: 13,
   fontWeight: 600,
   background: "#fff",
   border: "1px solid var(--line-2)",
@@ -32,14 +32,15 @@ const variants: Record<PillVariant, CSSProperties> = {
   neutral: {},
   on: { background: "var(--ink-hi)", color: "#fff", borderColor: "var(--ink-hi)" },
   crim: { background: "var(--crimson)", color: "#fff", borderColor: "var(--crimson)" },
+  // Borderless tint chip, per the hi-fi mockup (the "Belfast" / "Offer" chips).
   "ghost-crim": {
     background: "var(--crimson-tint)",
     color: "var(--crimson-700)",
-    borderColor: "var(--crimson-tint-2)",
+    borderColor: "transparent",
   },
 };
 
-const smStyle: CSSProperties = { padding: "5px 10px", fontSize: 11 };
+const smStyle: CSSProperties = { padding: "5px 11px", fontSize: 11.5 };
 
 export function Pill({
   variant = "neutral",
