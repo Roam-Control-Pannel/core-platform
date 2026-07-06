@@ -54,7 +54,9 @@
   min-height: 14px; /* reserve the line — the value fills in client-side */
 }
 
-/* Quick actions as white cards with an icon tile (mockup row under the greeting). */
+/* Quick actions as white cards with an icon tile (mockup row under the greeting). Fluid
+   auto-fit so the row adapts to its card count — 5 on Home, 6 on Basecamp — collapsing to
+   two-across on phones. */
 .qgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -64,7 +66,7 @@
 
 @media (min-width: 800px) {
   .qgrid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 }
 

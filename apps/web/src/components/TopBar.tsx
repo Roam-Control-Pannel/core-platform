@@ -22,10 +22,11 @@ import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
 import styles from "./TopBar.module.css";
 
-/** Which primary nav item the current path belongs to (for the active pill). */
-function activeKey(pathname: string): "home" | "basecamp" | "explore" | "townhall" | "plans" | "chat" | "you" | null {
-  if (pathname === "/" || pathname.startsWith("/home")) return "home";
-  if (pathname.startsWith("/basecamp")) return "basecamp";
+/** Which primary nav item the current path belongs to (for the active pill). Basecamp is
+ *  deliberately NOT a nav item — it's reached from the Home header cards + rail — but it should
+ *  light the Home pill, since it's Home's companion surface. */
+function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" | "chat" | "you" | null {
+  if (pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/basecamp")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/plans")) return "plans";
@@ -55,9 +56,6 @@ export function TopBar() {
       <nav className={styles.nav} aria-label="Primary">
         <Link href="/" className={`${styles.link} ${active === "home" ? styles.active : ""}`}>
           Home
-        </Link>
-        <Link href="/basecamp" className={`${styles.link} ${active === "basecamp" ? styles.active : ""}`}>
-          Basecamp
         </Link>
         <Link href="/explore" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
           Explore

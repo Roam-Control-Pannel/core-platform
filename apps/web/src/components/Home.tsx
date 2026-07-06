@@ -192,6 +192,7 @@ export function Home() {
           <QuickAction href="/town-hall" glyph="forum" label="Start a topic" />
           <QuickAction href="/explore" glyph="search" label="Find venues" />
           <QuickAction href="/friends" glyph="chat" label="Message a friend" />
+          <QuickAction href="/basecamp" glyph="widgets" label="Basecamp" />
         </div>
       </header>
 

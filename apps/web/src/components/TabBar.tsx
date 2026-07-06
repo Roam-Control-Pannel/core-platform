@@ -14,9 +14,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./TabBar.module.css";
 
-function activeKey(pathname: string): "home" | "basecamp" | "explore" | "townhall" | "chat" | "you" | null {
-  if (pathname === "/" || pathname.startsWith("/home")) return "home";
-  if (pathname.startsWith("/basecamp")) return "basecamp";
+function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
+  if (pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/basecamp")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/threads")) return "chat";
@@ -34,15 +33,6 @@ const icons = {
   home: (
     <svg viewBox="0 0 24 24" aria-hidden>
       <path d="M4 11.5 12 4l8 7.5M6 10v9.5h12V10" />
-    </svg>
-  ),
-  basecamp: (
-    // A widgets grid — four rounded tiles, the Basecamp dashboard mark.
-    <svg viewBox="0 0 24 24" aria-hidden>
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
-      <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
     </svg>
   ),
   explore: (
@@ -81,10 +71,6 @@ export function TabBar() {
         <Link href="/" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
           {icons.home}
           Home
-        </Link>
-        <Link href="/basecamp" className={`${styles.tab} ${active === "basecamp" ? styles.active : ""}`}>
-          {icons.basecamp}
-          Basecamp
         </Link>
         <Link href="/explore" className={`${styles.tab} ${active === "explore" ? styles.active : ""}`}>
           {icons.explore}
