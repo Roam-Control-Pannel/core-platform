@@ -112,6 +112,29 @@
   color: #fff;
 }
 
+/* Rail footer link into Basecamp — a quiet card-shaped row. */
+.basecampLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid rgba(33, 29, 26, 0.05);
+  box-shadow: var(--sh-1);
+  text-decoration: none;
+  transition:
+    transform var(--motion-transition) var(--ease),
+    box-shadow var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .basecampLink:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-key);
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
