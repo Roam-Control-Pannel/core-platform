@@ -1,17 +1,17 @@
 /**
- * Home — the signed-in hub (/home). One place that pulls together the surfaces a local cares
- * about day-to-day: your recent chats, your plans, what's happening near you, and your town's
- * forum — plus the Stage-5 market seam shown honestly as "coming soon".
+ * Home — the signed-in hub (/home), laid out as a WALL (per the hi-fi mockup): a main feed
+ * column — date kicker + personal greeting, quick-action cards, then the local feed (business
+ * posts + Town Hall topics, see HomeFeed) — beside a right RAIL of widgets (town forum,
+ * trending venues, recent chats, deals …). The rail keeps the Customise sheet + drag-reorder +
+ * cross-device layout persistence; the feed is the fixed heart of the page.
  *
  * PUBLIC to view (browse-freely): the live sections that need an account (Recent chats, Your
  * plans, Followed venues) show a gentle sign-in nudge rather than gating the whole page. Local
  * sections re-root off the shared current place (useCurrentPlace) via the same PlaceSwitcher as
  * Explore/Town Hall, so Home, Explore and Town Hall always agree on "where you are".
  *
- * Layout is a real dashboard: a hero (greeting · place · quick actions), then a grid where the
- * content-rich carousels (Your town) span full width and the lighter widgets — including Recent
- * chats — pair up two-across on desktop. Each section loads independently (its own query +
- * skeleton/empty/error), so a slow or failed one never blocks the rest of the hub.
+ * Each section loads independently (its own query + skeleton/empty/error), so a slow or failed
+ * one never blocks the rest of the hub.
  */
 "use client";
 
@@ -21,7 +21,6 @@ import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
-import { VenueCard, type VenueCardData } from "./VenueCard";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import { NearbyDepartures } from "./NearbyDepartures";
 import { isWithinIreland } from "../lib/transitRegion";
@@ -31,6 +30,7 @@ import { useHomeLayout, reconcile, type HomeLayout } from "../lib/homeLayout";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
 import { BirthdayTreats } from "./BirthdayTreats";
 import { DealsHomeWidget } from "./Deals";
+import { HomeFeed } from "./HomeFeed";
 import styles from "./Home.module.css";
 
 /**
@@ -52,8 +52,16 @@ interface HomeWidget {
   render: (ctx: WidgetCtx) => React.ReactNode;
 }
 
+/**
+ * The rail renders every widget at rail width, one per row, in the user's saved order —
+ * `span` is kept for layout-data compatibility but no longer affects rendering. The old
+ * "local-news" widget is gone: the main-column feed (HomeFeed) IS the local news now.
+ */
 const HOME_WIDGETS: HomeWidget[] = [
+  { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
+  { id: "your-town", label: "Trending nearby", span: "full", render: ({ place }) => <TrendingNearby place={place} /> },
   { id: "recent-chats", label: "Recent chats", span: "half", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
+  { id: "affiliate-deals", label: "Deals", span: "half", render: () => <DealsHomeWidget /> },
   {
     id: "transit",
     label: "Nearby transit",
@@ -64,10 +72,6 @@ const HOME_WIDGETS: HomeWidget[] = [
   { id: "upcoming-plans", label: "Your plans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
   { id: "followed-venues", label: "Followed venues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
   { id: "saved-deals", label: "Saved deals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
-  { id: "affiliate-deals", label: "Deals", span: "half", render: () => <DealsHomeWidget /> },
-  { id: "your-town", label: "Your town", span: "full", render: ({ place }) => <YourTown place={place} /> },
-  { id: "local-news", label: "Local news", span: "half", render: ({ place }) => <LocalNews place={place} /> },
-  { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
   { id: "market", label: "Marketplace", span: "full", render: ({ place }) => <MarketSeam place={place} /> },
 ];
 const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
@@ -87,6 +91,49 @@ export function Home() {
   const { layout, loaded, move, reorder, toggle, reset, replace } = useHomeLayout(HOME_WIDGET_IDS);
   const [customizing, setCustomizing] = useState(false);
   const signedIn = !!session;
+
+  // Date kicker ("MONDAY · 6 JULY · 14:31") — client-only so SSR HTML never disagrees with the
+  // viewer's clock; the line's height is reserved in CSS so nothing jumps when it fills in.
+  const [kicker, setKicker] = useState("");
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date();
+      const wd = d.toLocaleDateString("en-GB", { weekday: "long" });
+      const dm = d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+      const hm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      setKicker(`${wd} · ${dm} · ${hm}`.toUpperCase());
+    };
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // First name for the greeting — the profile's display name, first word.
+  const [firstName, setFirstName] = useState<string | null>(null);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) {
+      setFirstName(null);
+      return;
+    }
+    let cancelled = false;
+    const byId = trpc.profiles.byId as unknown as {
+      query: (i: { userId: string }) => Promise<{ displayName: string | null } | null>;
+    };
+    byId
+      .query({ userId: uid })
+      .then((p) => {
+        if (cancelled) return;
+        const first = (p?.displayName ?? "").trim().split(/\s+/)[0] ?? "";
+        setFirstName(first || null);
+      })
+      .catch(() => {
+        /* greeting stays impersonal */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, session]);
 
   // ── Cross-device sync (signed-in only) ──────────────────────────────────────────────────────
   // localStorage is the instant, offline, guest-friendly store (handled by the hook). For a
@@ -216,55 +263,57 @@ export function Home() {
   }));
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <header style={{ marginBottom: "var(--space-8)" }}>
-        <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, letterSpacing: "-.02em", margin: 0 }}>
-          {greeting()}
-        </h1>
-        <p style={{ marginTop: 4, marginBottom: "var(--space-4)", color: "var(--ink-2)", fontSize: 14, lineHeight: 1.5 }}>
-          Your chats, your plans, and what&apos;s happening in your town — all in one place.
-        </p>
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)" }}>
-          <PlaceSwitcher value={place} onChange={setPlace} />
-          <button
-            type="button"
-            onClick={() => setCustomizing(true)}
-            className={styles.customize}
-            aria-haspopup="dialog"
-          >
-            <Icon name="settings" size={14} /> Customise
-          </button>
+    <main style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+      <header style={{ marginBottom: "var(--space-2)" }}>
+        <div className={styles.headerRow}>
+          <div style={{ minWidth: 0 }}>
+            <div className={styles.kicker}>{kicker}</div>
+            <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 32, letterSpacing: "-.02em", margin: 0 }}>
+              {greeting()}
+              {firstName ? `, ${firstName}` : ""}
+            </h1>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.5 }}>
+              <span>Here&apos;s what&apos;s moving in</span>
+              <PlaceSwitcher value={place} onChange={setPlace} />
+              <button
+                type="button"
+                onClick={() => setCustomizing(true)}
+                className={styles.customize}
+                aria-haspopup="dialog"
+              >
+                <Icon name="settings" size={14} /> Customise
+              </button>
+            </div>
+          </div>
+          <HomePulse place={place} signedIn={signedIn} />
         </div>
-        <div className={styles.quickActions}>
+
+        <div className={styles.qgrid}>
           <QuickAction href="/plans" glyph="plus" label="New plan" />
           <QuickAction href="/town-hall" glyph="forum" label="Start a topic" />
-          <QuickAction href="/explore" glyph="sparkle" label="Find venues" />
+          <QuickAction href="/explore" glyph="search" label="Find venues" />
           <QuickAction href="/friends" glyph="chat" label="Message a friend" />
         </div>
       </header>
 
-      {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
-          customisable/hideable grid (a birthday treat shouldn't be dismissable). */}
-      <BirthdayTreats />
-
-      {visible.length === 0 ? (
-        <EmptyDashboard onCustomise={() => setCustomizing(true)} />
-      ) : (
-        <div className={styles.grid}>
-          {visible.map((w) =>
-            // Full-span widgets get a spanAll wrapper; half widgets render DIRECTLY (their Card is
-            // the grid item) so a widget that renders null (e.g. Saved deals with nothing to show)
-            // leaves no empty cell — matching the pre-registry layout.
-            w.span === "full" ? (
-              <div key={w.id} className={styles.spanAll}>
-                {w.render(ctx)}
-              </div>
-            ) : (
-              <Fragment key={w.id}>{w.render(ctx)}</Fragment>
-            ),
-          )}
+      <div className={styles.layout}>
+        {/* Main column: the wall. */}
+        <div style={{ minWidth: 0 }}>
+          {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
+              customisable/hideable rail (a birthday treat shouldn't be dismissable). */}
+          <BirthdayTreats />
+          <HomeFeed place={place} />
         </div>
-      )}
+
+        {/* Widget rail: the user's (customisable) stack. */}
+        <aside className={styles.rail}>
+          {visible.length === 0 ? (
+            <EmptyDashboard onCustomise={() => setCustomizing(true)} />
+          ) : (
+            visible.map((w) => <Fragment key={w.id}>{w.render(ctx)}</Fragment>)
+          )}
+        </aside>
+      </div>
 
       <HomeCustomize
         open={customizing}
@@ -295,10 +344,90 @@ function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
 
 function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; label: string }) {
   return (
-    <Link href={href} className={styles.qpill}>
-      <span className={styles.qglyph} aria-hidden><Icon name={glyph} size={16} /></span>
+    <Link href={href} className={styles.qcard}>
+      <span className={styles.qtile} aria-hidden><Icon name={glyph} size={16} /></span>
       {label}
     </Link>
+  );
+}
+
+/* ── Pulse — the header stat card (new posts today · topics live · friends) ───────────────── */
+
+function HomePulse({ place, signedIn }: { place: Place; signedIn: boolean }) {
+  const trpc = useTrpc();
+  const [postsToday, setPostsToday] = useState<number | null>(null);
+  const [topicsLive, setTopicsLive] = useState<number | null>(null);
+  const [friends, setFriends] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPostsToday(null);
+    setTopicsLive(null);
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    trpc.posts.feed
+      .query({ limit: 30, lat: place.lat, lng: place.lng })
+      .then((rows: unknown) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        const n = (rows as { publishedAt: string | null }[]).filter(
+          (p) => p.publishedAt && new Date(p.publishedAt).getTime() >= midnight.getTime(),
+        ).length;
+        setPostsToday(n);
+      })
+      .catch(() => {});
+    const listTopics = trpc.townHall.listTopics as unknown as {
+      query: (i: { localityName: string; sort: "hot" }) => Promise<{ topics: unknown[] }>;
+    };
+    listTopics
+      .query({ localityName: place.name, sort: "hot" })
+      .then((res) => {
+        if (!cancelled) setTopicsLive((res.topics ?? []).length);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, place.lat, place.lng, place.name]);
+
+  useEffect(() => {
+    if (!signedIn) {
+      setFriends(null);
+      return;
+    }
+    let cancelled = false;
+    const mf = trpc.social.myFriends as unknown as {
+      query: () => Promise<{ ok: boolean; friends?: unknown[] }>;
+    };
+    mf.query()
+      .then((r) => {
+        if (!cancelled) setFriends((r.friends ?? []).length);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, signedIn]);
+
+  const cells: { value: number; label: string; crim?: boolean }[] = [];
+  if (postsToday != null) cells.push({ value: postsToday, label: "new posts today" });
+  if (topicsLive != null) cells.push({ value: topicsLive, label: "topics live" });
+  if (friends != null) cells.push({ value: friends, label: "friends", crim: true });
+  if (cells.length === 0) return null;
+
+  return (
+    <Card style={{ display: "flex", alignItems: "stretch", padding: "var(--space-3) var(--space-2)", alignSelf: "start" }}>
+      {cells.map((c, i) => (
+        <Fragment key={c.label}>
+          {i > 0 ? <span aria-hidden style={{ width: 1, background: "var(--line)", margin: "2px 0" }} /> : null}
+          <span style={{ display: "flex", flexDirection: "column", gap: 2, padding: "2px 18px", textAlign: "left" }}>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, lineHeight: 1.1, letterSpacing: "-.02em", color: c.crim ? "var(--crimson)" : "var(--ink-hi)" }}>
+              {c.value}
+            </span>
+            <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{c.label}</span>
+          </span>
+        </Fragment>
+      ))}
+    </Card>
   );
 }
 
@@ -445,42 +574,21 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
   );
 }
 
-/* ── Your town (live: nearby venues peek) ──────────────────────────────────────────────── */
+/* ── Trending nearby (live: ranked venue rows — the mockup's compact rail list) ─────────── */
 
-/** The subset of a venues.near row we map onto a card. Optional fields stay optional. */
+/** The subset of a venues.near row the trending rows use. */
 interface NearRow {
   id: string;
   name: string;
-  claimed: boolean;
   category: string | null;
   rating: number | null;
   ratingCount?: number | null;
-  priceLevel?: string | null;
   primaryTypeLabel?: string | null;
-  businessStatus?: string | null;
-  distanceM?: number;
-  coverPhotoId?: string | null;
 }
 
-function toCard(v: NearRow): VenueCardData {
-  return {
-    id: v.id,
-    name: v.name,
-    claimed: v.claimed,
-    category: v.category,
-    rating: v.rating,
-    ratingCount: v.ratingCount,
-    priceLevel: v.priceLevel,
-    primaryTypeLabel: v.primaryTypeLabel,
-    businessStatus: v.businessStatus,
-    distanceM: v.distanceM,
-    coverPhotoId: v.coverPhotoId,
-  };
-}
-
-function YourTown({ place }: { place: Place }) {
+function TrendingNearby({ place }: { place: Place }) {
   const trpc = useTrpc();
-  const [venues, setVenues] = useState<VenueCardData[] | undefined>(undefined);
+  const [venues, setVenues] = useState<NearRow[] | undefined>(undefined);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -491,8 +599,12 @@ function YourTown({ place }: { place: Place }) {
       .query({ lat: place.lat, lng: place.lng, limit: 12 })
       .then((rows: unknown) => {
         if (cancelled) return;
-        const list = Array.isArray(rows) ? (rows as NearRow[]).slice(0, 12).map(toCard) : [];
-        setVenues(list);
+        const list = Array.isArray(rows) ? (rows as NearRow[]) : [];
+        // "Trending" = the best-reviewed of what's nearby: rating desc, review volume breaking ties.
+        const ranked = [...list].sort(
+          (a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.ratingCount ?? 0) - (a.ratingCount ?? 0),
+        );
+        setVenues(ranked.slice(0, 5));
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -503,21 +615,47 @@ function YourTown({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title={`${place.name} online`} icon="sparkle" action={{ label: "Explore", href: "/explore" }}>
+    <Section title="Trending nearby" icon="sparkle" action={{ label: "Explore", href: "/explore" }}>
       {error ? (
         <p style={mutedNote}>Couldn&apos;t load venues near you just now.</p>
       ) : venues === undefined ? (
-        <div className={styles.venuePeek}>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 180, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
-          ))}
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          <div style={rowSkeleton} />
+          <div style={rowSkeleton} />
+          <div style={rowSkeleton} />
         </div>
       ) : venues.length === 0 ? (
         <p style={mutedNote}>No venues found near {place.name} yet.</p>
       ) : (
-        <div className={styles.venuePeek}>
-          {venues.map((v) => (
-            <VenueCard key={v.id} venue={v} />
+        <div style={{ display: "grid", gap: 2 }}>
+          {venues.map((v, i) => (
+            <Link
+              key={v.id}
+              href={`/venue/${v.id}`}
+              className={styles.row}
+              style={{ display: "flex", alignItems: "center", gap: 11, padding: "7px 8px", textDecoration: "none", color: "inherit" }}
+            >
+              <span style={{ width: 14, fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--muted)", flexShrink: 0, textAlign: "center" }}>
+                {i + 1}
+              </span>
+              <span aria-hidden style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 13.5, fontWeight: 700, flexShrink: 0 }}>
+                {initial(v.name)}
+              </span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {v.name}
+                </span>
+                <span style={{ fontSize: 11.5, color: "var(--muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {v.primaryTypeLabel ?? v.category ?? "Venue"}
+                </span>
+              </span>
+              {v.rating != null ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12.5, fontWeight: 600, color: "var(--ink-hi)", flexShrink: 0 }}>
+                  <span style={{ color: "var(--gold)" }}>★</span>
+                  {v.rating.toFixed(1)}
+                </span>
+              ) : null}
+            </Link>
           ))}
         </div>
       )}
@@ -757,92 +895,6 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
               </p>
             )}
           </div>
-        </div>
-      )}
-    </Section>
-  );
-}
-
-/* ── Local news from businesses (live, public) ─────────────────────────────────────────── */
-
-interface NewsPost {
-  id: string;
-  kind: "news" | "offer" | "event";
-  title: string | null;
-  body: string | null;
-  media?: { type: "image"; url: string }[];
-  publishedAt: string | null;
-  venueId: string;
-  venueName: string | null;
-  venueLocality: string | null;
-}
-
-const NEWS_KIND: Record<NewsPost["kind"], { label: string; glyph: IconName }> = {
-  news: { label: "News", glyph: "chevronRight" },
-  offer: { label: "Offer", glyph: "sparkle" },
-  event: { label: "Event", glyph: "event" },
-};
-
-function LocalNews({ place }: { place: Place }) {
-  const trpc = useTrpc();
-  const [posts, setPosts] = useState<NewsPost[] | undefined>(undefined);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setPosts(undefined);
-    setError(false);
-    // Geofenced to the current town (same place centre as the rest of Home).
-    trpc.posts.feed
-      .query({ limit: 6, lat: place.lat, lng: place.lng })
-      .then((rows: unknown) => {
-        if (cancelled) return;
-        setPosts(Array.isArray(rows) ? (rows as NewsPost[]).slice(0, 4) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, place.lat, place.lng]);
-
-  return (
-    <Section title={`${place.name} news`} icon="sparkle">
-      {error ? (
-        <p style={mutedNote}>Couldn&apos;t load local updates just now.</p>
-      ) : posts === undefined ? (
-        <div className={styles.newsGrid}>
-          <div style={rowSkeleton} />
-          <div style={rowSkeleton} />
-        </div>
-      ) : posts.length === 0 ? (
-        <p style={mutedNote}>No updates from local businesses yet. Follow a few and their news will land here.</p>
-      ) : (
-        <div className={styles.newsGrid}>
-          {posts.map((p) => {
-            const meta = NEWS_KIND[p.kind] ?? NEWS_KIND.news;
-            return (
-              <Link key={p.id} href={`/venue/${p.venueId}`} className={`${styles.newsCard} ${styles.lift}`} style={{ padding: 0, overflow: "hidden" }}>
-                {p.media && p.media.length > 0 ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-                  <img src={p.media[0]!.url} alt="" loading="lazy" style={{ width: "100%", height: 120, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
-                ) : null}
-                <span style={{ display: "flex", flexDirection: "column", gap: 6, padding: "var(--space-3) var(--space-4)" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 999, padding: "1px 8px" }}>
-                      {meta.label}
-                    </span>
-                    {p.publishedAt ? <span style={{ fontSize: 11, color: "var(--muted)" }}>{timeAgo(p.publishedAt)}</span> : null}
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {p.title ?? p.body ?? "Update"}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.venueName ?? "A local business"}</span>
-                </span>
-              </Link>
-            );
-          })}
         </div>
       )}
     </Section>
