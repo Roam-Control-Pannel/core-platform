@@ -1,15 +1,119 @@
 /*
- * Home hub layout. A single dashboard of sections (recent chats · your town · town forum ·
- * upcoming plans · market). Mobile-first single column; on web (≥900) a two-column grid where
- * the live, content-rich sections span the full width and the two "coming soon" seams pair up
- * in one row. A CSS Module because the reflow is a media query and globals.css is generated.
+ * Home hub layout — a Facebook-style wall: a MAIN feed column (greeting · quick actions ·
+ * the local feed) beside a right RAIL of widgets (forum · trending · chats · deals …), per
+ * the hi-fi mockup. Mobile-first single column (feed first, rail below); the two columns
+ * appear from ≥1000px. A CSS Module because the reflow is media queries and globals.css is
+ * generated.
  */
-.grid {
+.layout {
   display: grid;
   /* minmax(0, 1fr), NOT the implicit `auto`: a grid column defaults to min-content sizing, so a
-     horizontally-scrolling child (the plan/venue carousels) would force the column — and the whole
-     page — as wide as ALL its cards, overflowing on tablet. minmax(0, …) lets the column shrink
-     below its content and the carousel's own overflow-x:auto scrolls instead. */
+     horizontally-scrolling child would force the column — and the whole page — wider than the
+     viewport. minmax(0, …) lets each column shrink below its content. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+/* The widget rail: one stacked column in the user's (customisable) order. */
+.rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Header row: greeting block + the pulse stat card side-by-side once there's width. */
+.headerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .headerRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+/* Mono uppercase date kicker above the greeting, per the mockup. */
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--crimson-700);
+  margin-bottom: 6px;
+  min-height: 14px; /* reserve the line — the value fills in client-side */
+}
+
+/* Quick actions as white cards with an icon tile (mockup row under the greeting). */
+.qgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-6);
+}
+
+@media (min-width: 800px) {
+  .qgrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.qcard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid rgba(33, 29, 26, 0.05);
+  box-shadow: var(--sh-1);
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform var(--motion-transition) var(--ease),
+    box-shadow var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .qcard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-key);
+  }
+}
+
+.qtile {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+  flex-shrink: 0;
+}
+
+/* The first quick action leads with a filled crimson tile (the mockup's "New plan"). */
+.qcard:first-child .qtile {
+  background: var(--crimson);
+  color: #fff;
+}
+
+.grid {
+  display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
