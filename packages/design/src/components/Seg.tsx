@@ -23,8 +23,9 @@ export function Seg<T extends string>({ options, value, onChange, style }: SegPr
       style={{
         display: "inline-flex",
         background: "var(--paper-2)",
-        borderRadius: 11,
-        padding: 3,
+        // Fully-rounded sunken track with pill segments, per the hi-fi mockup.
+        borderRadius: 999,
+        padding: 4,
         gap: 2,
         ...style,
       }}
@@ -38,8 +39,8 @@ export function Seg<T extends string>({ options, value, onChange, style }: SegPr
             style={{
               fontSize: 12.5,
               fontWeight: 600,
-              padding: "7px 14px",
-              borderRadius: 8,
+              padding: "7px 15px",
+              borderRadius: 999,
               border: 0,
               cursor: "pointer",
               fontFamily: "var(--ui)",

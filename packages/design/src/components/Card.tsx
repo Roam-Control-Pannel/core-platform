@@ -1,7 +1,9 @@
 /**
- * Card / Stat — ported from `.card-hi` and `.stat-hi`.
+ * Card / Stat — ported from `.card-hi` and `.stat-hi`, tuned to the hi-fi mockup's softer
+ * surface language: bigger radius, a hairline (not a drawn border), and the diffuse key
+ * shadow doing the lifting. `flat` keeps the drawn border and drops the shadow — for
+ * empty/quiet states that shouldn't float.
  *
- * Card: white raised surface, lg radius (16 per hi-fi), L1 shadow; `flat` drops shadow.
  * Stat: a KPI tile — big display value + mono uppercase key label, used on the Business
  * overview and the You-profile stat row. `delta` shows up/down change in mono.
  */
@@ -14,9 +16,9 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export function Card({ flat = false, style, children, ...rest }: CardProps) {
   const composed: CSSProperties = {
     background: "#fff",
-    border: "1px solid var(--line)",
-    borderRadius: 16,
-    boxShadow: flat ? "none" : "var(--sh-1)",
+    border: flat ? "1px solid var(--line)" : "1px solid rgba(33,29,26,.05)",
+    borderRadius: 20,
+    boxShadow: flat ? "none" : "var(--shadow-key)",
     overflow: "hidden",
     ...style,
   };
@@ -42,8 +44,9 @@ export function Stat({ value, label, delta, style }: StatProps) {
     <div
       style={{
         background: "#fff",
-        border: "1px solid var(--line)",
-        borderRadius: 14,
+        border: "1px solid rgba(33,29,26,.05)",
+        borderRadius: 16,
+        boxShadow: "var(--sh-1)",
         padding: "13px 14px",
         ...style,
       }}

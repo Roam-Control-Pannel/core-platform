@@ -23,8 +23,9 @@ const base: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   gap: 7,
-  borderRadius: 12,
-  padding: "11px 16px",
+  // Fully-rounded pill buttons, per the hi-fi mockup ("+ Create", "Follow").
+  borderRadius: 999,
+  padding: "11px 18px",
   fontSize: 13.5,
   fontWeight: 600,
   border: "1px solid var(--line-2)",
@@ -54,7 +55,7 @@ const variants: Record<ButtonVariant, CSSProperties> = {
   },
 };
 
-const smStyle: CSSProperties = { padding: "8px 13px", fontSize: 12.5, borderRadius: 10 };
+const smStyle: CSSProperties = { padding: "8px 15px", fontSize: 12.5, borderRadius: 999 };
 
 export function Button({
   variant = "neutral",
