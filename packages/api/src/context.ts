@@ -88,6 +88,19 @@ export interface ApiEnv {
     offersPath: string | null;
     offersMethod: string | null;
   };
+  /**
+   * Stripe Connect (the venue marketplace's payment engine). `secretKey` null disables the
+   * whole payments surface (procedures answer "not configured", the webhook 503s), so the API
+   * runs before Stripe is provisioned. `webOrigin` is where hosted-onboarding redirects land
+   * (the web app). `applicationFeeBps` is the platform commission in basis points — read at
+   * charge time (next marketplace slice), so changing it never needs code.
+   */
+  stripe: {
+    secretKey: string | null;
+    webhookSecret: string | null;
+    webOrigin: string;
+    applicationFeeBps: number;
+  };
 }
 
 export interface Context {

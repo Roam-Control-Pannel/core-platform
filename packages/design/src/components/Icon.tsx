@@ -73,6 +73,7 @@ import {
   LayoutGrid,
   Briefcase,
   Church,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -141,6 +142,7 @@ const ICONS = {
   widgets: LayoutGrid,
   briefcase: Briefcase,
   church: Church,
+  card: CreditCard,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
