@@ -95,3 +95,14 @@
   font-weight: 600;
   margin-bottom: var(--space-3);
 }
+
+/* "← Chats" back link — mobile only; the desktop ChatShell shows the list beside the thread. */
+.mobileBack {
+  display: inline-flex;
+}
+
+@media (min-width: 960px) {
+  .mobileBack {
+    display: none;
+  }
+}

@@ -1,0 +1,62 @@
+/*
+ * ChatShell — the two-pane chat layout (hi-fi mockup): the Chats list docked left, the open
+ * conversation right, one continuous card. Desktop (≥960px) shows both panes; below that the
+ * shell collapses to whichever pane the route is about (list on /threads, thread on
+ * /threads/[id]) and navigation moves between them.
+ */
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--card);
+  border: 1px solid rgba(33, 29, 26, 0.05);
+  border-radius: 22px;
+  box-shadow: var(--shadow-key);
+  overflow: hidden;
+  min-height: 72vh;
+  align-items: stretch;
+}
+
+.listPane {
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.detailPane {
+  min-width: 0;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile: one pane at a time, by route. */
+.listMode .detailPane {
+  display: none;
+}
+
+.detailMode .listPane {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .shell {
+    grid-template-columns: 350px minmax(0, 1fr);
+  }
+
+  .listPane {
+    border-right: 1px solid var(--line);
+  }
+
+  /* Desktop always shows both panes, whatever the mode. */
+  .listMode .detailPane,
+  .detailMode .listPane {
+    display: flex;
+  }
+
+  .listMode .detailPane {
+    flex-direction: column;
+  }
+
+  .detailMode .listPane {
+    display: block;
+  }
+}
