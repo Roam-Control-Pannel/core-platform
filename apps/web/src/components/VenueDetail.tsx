@@ -73,6 +73,12 @@ export interface VenueDetailData {
   } | null;
   links: Record<string, unknown> | null;
   source_attribution: string | null;
+  /* Rich Places facts (0065) — absent until the migration + enrichment have run, so every
+     read below is defensive: missing/undefined just hides the section. */
+  phone?: string | null;
+  website_url?: string | null;
+  price_range?: { start: number | null; end: number | null; currency: string | null } | null;
+  attributes?: Record<string, boolean | Record<string, boolean>> | null;
 }
 
 /** Where the claim CTA currently stands, locally. Drives which affordance shows. */
@@ -962,33 +968,202 @@ function PendingClaimDetail({
 }
 
 function DetailsBlock({ venue }: { venue: VenueDetailData }) {
-  const rows: Array<[string, string]> = [];
+  const rows: Array<[string, React.ReactNode]> = [];
   if (venue.address) rows.push(["Address", venue.address]);
   if (venue.locality) rows.push(["Locality", venue.locality]);
   if (venue.region) rows.push(["Region", venue.region]);
-  if (rows.length === 0) return null;
+  if (venue.phone) {
+    rows.push([
+      "Phone",
+      <a key="tel" href={`tel:${venue.phone.replace(/\s+/g, "")}`} style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
+        {venue.phone}
+      </a>,
+    ]);
+  }
+  if (venue.website_url) {
+    let host = venue.website_url;
+    try {
+      host = new URL(venue.website_url).hostname.replace(/^www\./, "");
+    } catch {
+      /* show as-is */
+    }
+    rows.push([
+      "Website",
+      <a key="web" href={venue.website_url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
+        {host} ↗
+      </a>,
+    ]);
+  }
   return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "var(--space-3)",
-        }}
-      >
-        Details
+    <>
+      {rows.length > 0 ? (
+        <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
+          <div
+            style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              marginBottom: "var(--space-3)",
+            }}
+          >
+            Details
+          </div>
+          <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-2) var(--space-4)", margin: 0 }}>
+            {rows.map(([k, v]) => (
+              <div key={k} style={{ display: "contents" }}>
+                <dt style={{ color: "var(--muted)", fontSize: 13 }}>{k}</dt>
+                <dd style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)" }}>{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+      ) : null}
+      <GoodToKnow venue={venue} />
+    </>
+  );
+}
+
+/* ── Good to know — the Places attribute facts as grouped chips (0065) ──────────────────── */
+
+/** Attribute key → chip label, grouped as the section renders them. Only TRUE facts show
+ *  (a missing key is "unknown", not "no"); the one exception is cash-only, a true-only flag. */
+const GOOD_TO_KNOW_GROUPS: { title: string; keys: [string, string][] }[] = [
+  {
+    title: "Service options",
+    keys: [
+      ["dineIn", "Dine-in"],
+      ["takeout", "Takeaway"],
+      ["delivery", "Delivery"],
+      ["curbsidePickup", "Kerbside pickup"],
+      ["reservable", "Takes bookings"],
+    ],
+  },
+  {
+    title: "Dining",
+    keys: [
+      ["servesBreakfast", "Breakfast"],
+      ["servesBrunch", "Brunch"],
+      ["servesLunch", "Lunch"],
+      ["servesDinner", "Dinner"],
+      ["servesCoffee", "Coffee"],
+      ["servesDessert", "Dessert"],
+      ["servesBeer", "Beer"],
+      ["servesWine", "Wine"],
+      ["servesCocktails", "Cocktails"],
+      ["servesVegetarianFood", "Vegetarian options"],
+    ],
+  },
+  {
+    title: "Amenities",
+    keys: [
+      ["outdoorSeating", "Outdoor seating"],
+      ["liveMusic", "Live music"],
+      ["goodForGroups", "Good for groups"],
+      ["goodForChildren", "Good for kids"],
+      ["menuForChildren", "Children's menu"],
+      ["goodForWatchingSports", "Good for watching sport"],
+      ["allowsDogs", "Dogs welcome"],
+      ["restroom", "Toilets"],
+    ],
+  },
+];
+
+const OPTION_GROUPS: { title: string; source: string; keys: [string, string][] }[] = [
+  {
+    title: "Payments",
+    source: "paymentOptions",
+    keys: [
+      ["acceptsNfc", "Contactless"],
+      ["acceptsCreditCards", "Credit cards"],
+      ["acceptsDebitCards", "Debit cards"],
+      ["acceptsCashOnly", "Cash only"],
+    ],
+  },
+  {
+    title: "Parking",
+    source: "parkingOptions",
+    keys: [
+      ["freeParkingLot", "Free car park"],
+      ["paidParkingLot", "Paid car park"],
+      ["freeStreetParking", "Free street parking"],
+      ["paidStreetParking", "Paid street parking"],
+      ["freeGarageParking", "Free garage"],
+      ["paidGarageParking", "Paid garage"],
+      ["valetParking", "Valet"],
+    ],
+  },
+  {
+    title: "Accessibility",
+    source: "accessibilityOptions",
+    keys: [
+      ["wheelchairAccessibleEntrance", "Wheelchair entrance"],
+      ["wheelchairAccessibleParking", "Wheelchair parking"],
+      ["wheelchairAccessibleRestroom", "Wheelchair toilet"],
+      ["wheelchairAccessibleSeating", "Wheelchair seating"],
+    ],
+  },
+];
+
+/** Format a stored price range as "£10–20" (symbol for the common currencies, code otherwise). */
+function priceRangeLabel(pr: NonNullable<VenueDetailData["price_range"]>): string | null {
+  const sym = pr.currency === "GBP" ? "£" : pr.currency === "EUR" ? "€" : pr.currency === "USD" ? "$" : pr.currency ? `${pr.currency} ` : "";
+  if (pr.start !== null && pr.end !== null) return `${sym}${pr.start}–${pr.end}`;
+  if (pr.start !== null) return `${sym}${pr.start}+`;
+  if (pr.end !== null) return `Up to ${sym}${pr.end}`;
+  return null;
+}
+
+function GoodToKnow({ venue }: { venue: VenueDetailData }) {
+  const attrs = venue.attributes ?? null;
+  const price = venue.price_range ? priceRangeLabel(venue.price_range) : null;
+
+  const groups: { title: string; labels: string[] }[] = [];
+  if (attrs) {
+    for (const g of GOOD_TO_KNOW_GROUPS) {
+      const labels = g.keys.filter(([k]) => attrs[k] === true).map(([, label]) => label);
+      if (labels.length > 0) groups.push({ title: g.title, labels });
+    }
+    for (const g of OPTION_GROUPS) {
+      const bag = attrs[g.source];
+      if (!bag || typeof bag !== "object") continue;
+      const labels = g.keys.filter(([k]) => bag[k] === true).map(([, label]) => label);
+      if (labels.length > 0) groups.push({ title: g.title, labels });
+    }
+  }
+  if (groups.length === 0 && !price) return null;
+
+  return (
+    <Card flat style={{ marginTop: "var(--space-4)", padding: "var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
+          Good to know
+        </div>
+        {price ? (
+          <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 999, padding: "3px 10px" }}>
+            {price} <span style={{ fontWeight: 400 }}>per person</span>
+          </span>
+        ) : null}
       </div>
-      <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-2) var(--space-4)", margin: 0 }}>
-        {rows.map(([k, v]) => (
-          <div key={k} style={{ display: "contents" }}>
-            <dt style={{ color: "var(--muted)", fontSize: 13 }}>{k}</dt>
-            <dd style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)" }}>{v}</dd>
+      <div style={{ display: "grid", gap: "var(--space-3)" }}>
+        {groups.map((g) => (
+          <div key={g.title}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>{g.title}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {g.labels.map((label) => (
+                <span
+                  key={label}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", background: "var(--paper-2)", borderRadius: 999, padding: "5px 11px" }}
+                >
+                  <Icon name="check" size={12} style={{ color: "var(--success)" }} />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         ))}
-      </dl>
+      </div>
     </Card>
   );
 }

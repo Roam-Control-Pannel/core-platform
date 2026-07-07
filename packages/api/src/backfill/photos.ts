@@ -44,10 +44,11 @@ export interface BackfillPhotosDeps {
   upsertVenuePhotos: (payload: BackfillPhotoEntry[]) => Promise<number>;
   /**
    * Optional: also refresh a venue's card fields (rating/count/price/type label/business
-   * status) from the same Details call. Absent → photos-only (the original behaviour).
+   * status) AND the rich-detail facts (0065: phone/website/price range/attributes) from
+   * the same Details call. Absent → photos-only (the original behaviour).
    */
   updateVenueFields?:
-    | ((venueId: string, fields: corePlaces.PlaceCardFields) => Promise<void>)
+    | ((venueId: string, fields: corePlaces.PlaceCardFields, rich: corePlaces.PlaceRichFields) => Promise<void>)
     | undefined;
   /** Optional progress sink. */
   log?: ((msg: string) => void) | undefined;
@@ -127,9 +128,9 @@ export async function backfillVenuePhotosCore(
     try {
       const place = await deps.getDetails(v.source_ref);
       fetched++;
-      // Refresh the card fields from the same Details call (rating/count/price/label/status).
+      // Refresh the card fields + rich facts from the same Details call.
       if (deps.updateVenueFields && !dryRun) {
-        await deps.updateVenueFields(v.id, corePlaces.placeCardFields(place));
+        await deps.updateVenueFields(v.id, corePlaces.placeCardFields(place), corePlaces.placeRichFields(place));
         enriched++;
       }
       const photos = corePlaces
