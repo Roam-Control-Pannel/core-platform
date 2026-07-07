@@ -175,10 +175,16 @@ export function ProfileWall({
                 ))}
               </div>
             ) : posts.length === 0 ? (
-              <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
-                <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
+              <Card style={{ padding: "var(--space-8)", textAlign: "center" }}>
+                <span aria-hidden style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--paper-2)", color: "var(--muted)" }}>
+                  <Icon name="chat" size={20} />
+                </span>
+                <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>
+                  {isOwner ? "Your wall is quiet" : "A quiet wall"}
+                </div>
+                <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5, fontSize: 13.5 }}>
                   {isOwner
-                    ? "Your wall is empty. Share your first post above."
+                    ? "Share your first post, or follow a few venues and friends to fill your feed."
                     : `${profile.displayName ?? "This user"} hasn't posted yet.`}
                 </p>
               </Card>
@@ -212,19 +218,46 @@ function ProfileHeader({
   ownerNav?: ReactNode;
 }) {
   return (
-    <div style={{ marginBottom: "var(--space-4)" }}>
-      {/* Header banner — actions sit top-right ON the banner (buttons carry their own solid
-          background so they stay legible over any image). Only the avatar overlaps below. */}
+    <div style={{ marginBottom: "var(--space-4)", padding: "var(--space-4) var(--space-4) 0" }}>
+      {/* Cover photo — a rounded banner card (hi-fi mockup). Owners with no cover yet see the
+          quiet mono placeholder label; Edit profile is where they set one. */}
       <div
         style={{
           position: "relative",
-          height: 150,
+          height: 190,
+          borderRadius: 22,
+          overflow: "hidden",
           background: profile.headerUrl
             ? `center / cover no-repeat url(${profile.headerUrl})`
-            : "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
+            : "linear-gradient(120deg, var(--crimson-tint) 0%, var(--paper-2) 55%, var(--crimson-tint-2) 100%)",
         }}
       >
-        <div style={{ position: "absolute", top: "var(--space-3)", right: "var(--space-3)", display: "flex", gap: "var(--space-2)" }}>
+        {isOwner && !profile.headerUrl ? (
+          <span style={{ position: "absolute", left: 14, bottom: 10, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>
+            Your cover photo
+          </span>
+        ) : null}
+      </div>
+
+      {/* Identity row: overlapping avatar · name/handle/bio · Share + owner-or-visitor actions. */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap", padding: "0 var(--space-2)" }}>
+        <div style={{ marginTop: -44, position: "relative" }}>
+          <Avatar url={profile.avatarUrl} name={townHallAuthor(profileToAuthor(profile))} size={96} ring />
+        </div>
+        <div style={{ minWidth: 0, flex: 1, paddingTop: "var(--space-3)" }}>
+          <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.015em", margin: 0, lineHeight: 1.15 }}>
+            {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
+          </h1>
+          {profile.handle ? (
+            <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", marginTop: 3 }}>@{profile.handle}</div>
+          ) : null}
+          {profile.bio ? (
+            <p style={{ margin: "6px 0 0", color: "var(--ink-2)", lineHeight: 1.5, fontSize: 14, whiteSpace: "pre-wrap" }}>
+              {profile.bio}
+            </p>
+          ) : null}
+        </div>
+        <div style={{ display: "flex", gap: "var(--space-2)", paddingTop: "var(--space-3)", flexShrink: 0 }}>
           <CopyLinkButton
             variant="button"
             size="sm"
@@ -233,12 +266,12 @@ function ProfileHeader({
           />
           {isOwner ? (
             editable ? (
-              <Button variant="neutral" size="sm" onClick={onToggleEdit}>
+              <Button variant="dark" size="sm" onClick={onToggleEdit}>
                 {editing ? "Close" : "Edit profile"}
               </Button>
             ) : (
               <Link href="/account" style={{ textDecoration: "none" }}>
-                <Button variant="neutral" size="sm">Edit profile</Button>
+                <Button variant="dark" size="sm">Edit profile</Button>
               </Link>
             )
           ) : (
@@ -249,24 +282,66 @@ function ProfileHeader({
           )}
         </div>
       </div>
-      <div style={{ padding: "0 var(--space-4)" }}>
-        {/* Avatar overlaps the banner; name + handle sit cleanly below it. */}
-        <div style={{ marginTop: -38, width: "fit-content", position: "relative" }}>
-          <Avatar url={profile.avatarUrl} name={townHallAuthor(profileToAuthor(profile))} size={76} ring />
+
+      {isOwner ? <ProfileStats /> : null}
+
+      {/* Owner tab chips — Wall active (this page), the rest one tap away (mockup nav). */}
+      {isOwner ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
+          <span style={{ padding: "7px 15px", borderRadius: 999, background: "var(--ink-hi)", color: "#fff", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600 }}>Wall</span>
+          {[
+            ["Friends", "/friends"],
+            ["Following", "/following"],
+            ["Plans", "/plans"],
+            ["Notifications", "/notifications"],
+            ["Business dashboard", "/dashboard"],
+            ["Settings", "/account"],
+          ].map(([label, href]) => (
+            <Link key={href} href={href!} style={{ padding: "7px 15px", borderRadius: 999, background: "#fff", border: "1px solid var(--line-2)", color: "var(--ink-2)", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+              {label}
+            </Link>
+          ))}
         </div>
-        <div style={{ marginTop: "var(--space-2)" }}>
-          <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, margin: 0, lineHeight: 1.2 }}>
-            {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
-          </h1>
-          {profile.handle ? <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>@{profile.handle}</div> : null}
-        </div>
-        {profile.bio ? (
-          <p style={{ margin: "var(--space-3) 0 0", color: "var(--ink-2)", lineHeight: 1.55, fontSize: 14, whiteSpace: "pre-wrap" }}>
-            {profile.bio}
-          </p>
-        ) : null}
-        {isOwner && ownerNav ? <div style={{ marginTop: "var(--space-3)" }}>{ownerNav}</div> : null}
-      </div>
+      ) : null}
+
+      {isOwner && ownerNav ? <div style={{ marginTop: "var(--space-3)", padding: "0 var(--space-2)" }}>{ownerNav}</div> : null}
+    </div>
+  );
+}
+
+/** The mockup's stats strip (owner only): Friends · Following · Plans — each cell loads
+ *  independently from reads that already exist and simply hides if its read fails. */
+function ProfileStats() {
+  const trpc = useTrpc();
+  const [stats, setStats] = useState<{ label: string; value: number }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const mf = trpc.social.myFriends as unknown as { query: () => Promise<{ friends?: unknown[] }> };
+    const fo = trpc.social.myFollows as unknown as { query: () => Promise<{ follows?: unknown[] }> };
+    const pl = trpc.plans.list as unknown as { query: () => Promise<{ plans?: unknown[] }> };
+    Promise.allSettled([mf.query(), fo.query(), pl.query()]).then(([f, w, p]) => {
+      if (cancelled) return;
+      const next: { label: string; value: number }[] = [];
+      if (f.status === "fulfilled") next.push({ label: "Friends", value: (f.value.friends ?? []).length });
+      if (w.status === "fulfilled") next.push({ label: "Following", value: (w.value.follows ?? []).length });
+      if (p.status === "fulfilled") next.push({ label: "Plans", value: (p.value.plans ?? []).length });
+      setStats(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc]);
+
+  if (stats.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
+      {stats.map((s) => (
+        <span key={s.label}>
+          <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{s.value}</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>{s.label}</span>
+        </span>
+      ))}
     </div>
   );
 }
@@ -396,7 +471,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Share something…"
+        placeholder="Share something with your locals…"
         aria-label="Write a post"
         rows={3}
         style={{
