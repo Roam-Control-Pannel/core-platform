@@ -93,7 +93,6 @@ export function Home() {
   const { place, setPlace } = useCurrentPlace();
   const { layout, move, reorder, toggle, reset, flushLayout } = useHomeLayoutSync(HOME_WIDGET_IDS);
   const [customizing, setCustomizing] = useState(false);
-  const signedIn = !!session;
 
   // Date kicker ("MONDAY · 6 JULY · 14:31") — client-only so SSR HTML never disagrees with the
   // viewer's clock; the line's height is reserved in CSS so nothing jumps when it fills in.
@@ -184,7 +183,6 @@ export function Home() {
               </button>
             </div>
           </div>
-          <HomePulse place={place} signedIn={signedIn} />
         </div>
 
         <div className={styles.qgrid}>
@@ -256,86 +254,6 @@ function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; la
       <span className={styles.qtile} aria-hidden><Icon name={glyph} size={16} /></span>
       {label}
     </Link>
-  );
-}
-
-/* ── Pulse — the header stat card (new posts today · topics live · friends) ───────────────── */
-
-function HomePulse({ place, signedIn }: { place: Place; signedIn: boolean }) {
-  const trpc = useTrpc();
-  const [postsToday, setPostsToday] = useState<number | null>(null);
-  const [topicsLive, setTopicsLive] = useState<number | null>(null);
-  const [friends, setFriends] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setPostsToday(null);
-    setTopicsLive(null);
-    const midnight = new Date();
-    midnight.setHours(0, 0, 0, 0);
-    trpc.posts.feed
-      .query({ limit: 30, lat: place.lat, lng: place.lng })
-      .then((rows: unknown) => {
-        if (cancelled || !Array.isArray(rows)) return;
-        const n = (rows as { publishedAt: string | null }[]).filter(
-          (p) => p.publishedAt && new Date(p.publishedAt).getTime() >= midnight.getTime(),
-        ).length;
-        setPostsToday(n);
-      })
-      .catch(() => {});
-    const listTopics = trpc.townHall.listTopics as unknown as {
-      query: (i: { localityName: string; sort: "hot" }) => Promise<{ topics: unknown[] }>;
-    };
-    listTopics
-      .query({ localityName: place.name, sort: "hot" })
-      .then((res) => {
-        if (!cancelled) setTopicsLive((res.topics ?? []).length);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, place.lat, place.lng, place.name]);
-
-  useEffect(() => {
-    if (!signedIn) {
-      setFriends(null);
-      return;
-    }
-    let cancelled = false;
-    const mf = trpc.social.myFriends as unknown as {
-      query: () => Promise<{ ok: boolean; friends?: unknown[] }>;
-    };
-    mf.query()
-      .then((r) => {
-        if (!cancelled) setFriends((r.friends ?? []).length);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, signedIn]);
-
-  const cells: { value: number; label: string; crim?: boolean }[] = [];
-  if (postsToday != null) cells.push({ value: postsToday, label: "new posts today" });
-  if (topicsLive != null) cells.push({ value: topicsLive, label: "topics live" });
-  if (friends != null) cells.push({ value: friends, label: "friends", crim: true });
-  if (cells.length === 0) return null;
-
-  return (
-    <Card style={{ display: "flex", alignItems: "stretch", padding: "var(--space-3) var(--space-2)", alignSelf: "start" }}>
-      {cells.map((c, i) => (
-        <Fragment key={c.label}>
-          {i > 0 ? <span aria-hidden style={{ width: 1, background: "var(--line)", margin: "2px 0" }} /> : null}
-          <span style={{ display: "flex", flexDirection: "column", gap: 2, padding: "2px 18px", textAlign: "left" }}>
-            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, lineHeight: 1.1, letterSpacing: "-.02em", color: c.crim ? "var(--crimson)" : "var(--ink-hi)" }}>
-              {c.value}
-            </span>
-            <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{c.label}</span>
-          </span>
-        </Fragment>
-      ))}
-    </Card>
   );
 }
 
