@@ -30,6 +30,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
   const [items, setItems] = useState<ShopItem[] | undefined>(undefined);
   const [sellable, setSellable] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
+  const [qty, setQty] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,14 +49,14 @@ export function VenueShop({ venueId }: { venueId: string }) {
     return () => { cancelled = true; };
   }, [trpc, venueId]);
 
-  const buy = useCallback(async (productId: string) => {
+  const buy = useCallback(async (productId: string, quantity: number) => {
     setBuying(productId);
     setError(null);
     try {
       const checkout = trpc.market.checkout as unknown as {
         mutate: (i: { productId: string; quantity: number }) => Promise<{ url: string }>;
       };
-      const { url } = await checkout.mutate({ productId, quantity: 1 });
+      const { url } = await checkout.mutate({ productId, quantity });
       window.location.href = url; // Stripe-hosted payment page
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
@@ -103,9 +104,23 @@ export function VenueShop({ venueId }: { venueId: string }) {
                 </div>
                 {sellable && !soldOut ? (
                   session ? (
-                    <Button variant="pri" size="sm" onClick={() => void buy(p.id)} disabled={buying !== null}>
-                      {buying === p.id ? "Opening checkout…" : "Buy"}
-                    </Button>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {p.kind === "product" ? (
+                        <select
+                          value={qty[p.id] ?? 1}
+                          onChange={(e) => setQty((m) => ({ ...m, [p.id]: Number(e.target.value) }))}
+                          aria-label="Quantity"
+                          style={{ padding: "7px 8px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper-2)", fontFamily: "var(--ui)", fontSize: 13, color: "var(--ink)" }}
+                        >
+                          {Array.from({ length: Math.min(10, p.stock ?? 10) }, (_, i) => i + 1).map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      ) : null}
+                      <Button variant="pri" size="sm" onClick={() => void buy(p.id, qty[p.id] ?? 1)} disabled={buying !== null}>
+                        {buying === p.id ? "Opening checkout…" : "Buy"}
+                      </Button>
+                    </div>
                   ) : (
                     <Link href="/account" style={{ textDecoration: "none" }}>
                       <Button variant="neutral" size="sm">Sign in to buy</Button>
