@@ -12,7 +12,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Pill } from "@roam/design";
+import { Button } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { ProfileWall } from "./ProfileWall";
@@ -69,30 +69,7 @@ export function AccountHub() {
     );
   }
 
-  // The secondary "you" surfaces, surfaced beneath the profile header on your own wall.
-  const ownerNav = (
-    <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-      <Link href="/notifications" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Notifications</Pill>
-      </Link>
-      <Link href="/friends" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Friends</Pill>
-      </Link>
-      <Link href="/plans" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Plans</Pill>
-      </Link>
-      <Link href="/following" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Following</Pill>
-      </Link>
-      <Link href="/dashboard" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Business dashboard</Pill>
-      </Link>
-      <Link href="/settings" style={{ textDecoration: "none" }}>
-        <Pill variant="neutral">Settings</Pill>
-      </Link>
-    </div>
-  );
-
+  // The secondary "you" surfaces now live in ProfileWall's owner tab chips — no extra nav here.
   return (
     <>
       <div
@@ -116,7 +93,7 @@ export function AccountHub() {
         </Button>
       </div>
 
-      <ProfileWall userId={userId} editable ownerNav={ownerNav} />
+      <ProfileWall userId={userId} editable />
     </>
   );
 }

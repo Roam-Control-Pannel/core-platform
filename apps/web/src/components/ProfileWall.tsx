@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
@@ -58,12 +58,10 @@ export interface WallPost {
 export function ProfileWall({
   userId,
   editable = false,
-  ownerNav,
   initialProfile,
 }: {
   userId: string;
   editable?: boolean;
-  ownerNav?: ReactNode;
   initialProfile?: PublicProfile | null;
 }) {
   const trpc = useTrpc();
@@ -153,7 +151,6 @@ export function ProfileWall({
             editable={editable}
             editing={editing}
             onToggleEdit={() => setEditing((e) => !e)}
-            ownerNav={ownerNav}
           />
           <div style={{ padding: "0 var(--space-4)" }}>
             {isOwner && editable && editing ? (
@@ -208,14 +205,12 @@ function ProfileHeader({
   editable,
   editing,
   onToggleEdit,
-  ownerNav,
 }: {
   profile: PublicProfile;
   isOwner: boolean;
   editable: boolean;
   editing: boolean;
   onToggleEdit: () => void;
-  ownerNav?: ReactNode;
 }) {
   return (
     <div style={{ marginBottom: "var(--space-4)", padding: "var(--space-4) var(--space-4) 0" }}>
@@ -295,7 +290,7 @@ function ProfileHeader({
             ["Plans", "/plans"],
             ["Notifications", "/notifications"],
             ["Business dashboard", "/dashboard"],
-            ["Settings", "/account"],
+            ["Settings", "/settings"],
           ].map(([label, href]) => (
             <Link key={href} href={href!} style={{ padding: "7px 15px", borderRadius: 999, background: "#fff", border: "1px solid var(--line-2)", color: "var(--ink-2)", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
               {label}
@@ -304,7 +299,6 @@ function ProfileHeader({
         </div>
       ) : null}
 
-      {isOwner && ownerNav ? <div style={{ marginTop: "var(--space-3)", padding: "0 var(--space-2)" }}>{ownerNav}</div> : null}
     </div>
   );
 }
