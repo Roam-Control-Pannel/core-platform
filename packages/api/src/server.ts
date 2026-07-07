@@ -24,6 +24,7 @@ import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { escalateToService } from "./trpc.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
+import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
 function requireEnv(name: string): string {
@@ -80,6 +81,20 @@ function loadEnv(): ApiEnv {
       debug: process.env.AWIN_DEBUG === "1" || process.env.AWIN_DEBUG === "true",
       offersPath: process.env.AWIN_OFFERS_PATH ?? null,
       offersMethod: process.env.AWIN_OFFERS_METHOD ?? null,
+    },
+    stripe: {
+      // Optional: unset STRIPE_SECRET_KEY leaves the payments surface dormant (procedures answer
+      // "not configured", the webhook 503s), so the API boots before Stripe is provisioned.
+      secretKey: process.env.STRIPE_SECRET_KEY ?? null,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? null,
+      // Where Stripe's hosted-onboarding redirects land: the web app. Falls back to the first
+      // allowed CORS origin (the deployed web origin in prod, localhost in dev).
+      webOrigin:
+        process.env.WEB_ORIGIN ??
+        (process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:3000").split(",")[0]!.trim(),
+      // Platform commission in basis points (800 = 8%). Read at charge time, so tuning it is
+      // an env change, never a deploy of new code.
+      applicationFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? "800"),
     },
   };
 }
@@ -227,6 +242,47 @@ export async function handler(request: Request): Promise<Response> {
       const service = escalateToService(ctx.env);
       const result = await runAwinOffersSync(service, { ...awin, apiKey: awin.apiKey }, (m) => console.log(m));
       return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // Stripe webhook (NOT tRPC — Stripe posts raw JSON and signs the exact bytes). Auth is the
+  // signature check itself: verifyStripeSignature proves the payload came from Stripe and is
+  // fresh, so no internal-call secret applies here. PR 1 handles account.updated (payout
+  // onboarding status sync); payment events join in the checkout slice. Always answers 200 on
+  // a verified event — even ones we ignore — so Stripe doesn't retry them forever.
+  if (pathname === "/webhooks/stripe") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    if (!env.stripe.secretKey || !env.stripe.webhookSecret) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 503, cors);
+    }
+    const rawBody = await request.text();
+    const signature = request.headers.get("stripe-signature");
+    if (!verifyStripeSignature(rawBody, signature, env.stripe.webhookSecret, Date.now())) {
+      return jsonResponse({ ok: false, error: "bad_signature" }, 400, cors);
+    }
+    try {
+      const event = JSON.parse(rawBody) as {
+        type?: string;
+        data?: { object?: { id?: string; charges_enabled?: boolean; payouts_enabled?: boolean; details_submitted?: boolean } };
+      };
+      if (event.type === "account.updated" && event.data?.object?.id) {
+        const acct = event.data.object;
+        const service = escalateToService(env);
+        type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+        await (service as unknown as Loose)
+          .from("venue_payment_accounts")
+          .update({
+            charges_enabled: acct.charges_enabled ?? false,
+            payouts_enabled: acct.payouts_enabled ?? false,
+            details_submitted: acct.details_submitted ?? false,
+          })
+          .eq("stripe_account_id", acct.id);
+      }
+      return jsonResponse({ received: true }, 200, cors);
     } catch (e) {
       return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
     }

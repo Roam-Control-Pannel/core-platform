@@ -19,6 +19,7 @@ const env: ApiEnv = {
   brevo: { apiKey: null, newUserListId: 93, businessListId: 3 },
   transit: { config: null },
   awin: { apiKey: null, publisherId: null, baseUrl: "https://api.awin.com", region: "GB", membership: "joined", debug: false, offersPath: null, offersMethod: null },
+  stripe: { secretKey: null, webhookSecret: null, webOrigin: "http://localhost:3000", applicationFeeBps: 800 },
 };
 
 const createContext = makeContextFactory(env);

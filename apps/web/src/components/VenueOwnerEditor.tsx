@@ -38,6 +38,7 @@ import { MarketingSuggestions } from "./MarketingSuggestions";
 import { SuggestedForYou } from "./SuggestedForYou";
 import { PushHistory } from "./PushHistory";
 import { BirthdayOffer } from "./BirthdayOffer";
+import { VenuePayments } from "./VenuePayments";
 import { venuePath } from "../lib/routes";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { timeAgo } from "../lib/townHall";
@@ -231,6 +232,9 @@ function Dashboard({
             </DashCard>
             <DashCard icon="bell" title="Activity" subtitle="What locals are doing with your business.">
               <VenueActivity venueId={venueId} />
+            </DashCard>
+            <DashCard icon="card" title="Payments" subtitle="Payouts for selling on Roam — powered by Stripe.">
+              <VenuePayments venueId={venueId} />
             </DashCard>
             <DashCard icon="idea" title="Marketing assistant" subtitle="Let Roam draft tailored offers & posts — you approve everything.">
               <MarketingSuggestions venueId={venueId} />
