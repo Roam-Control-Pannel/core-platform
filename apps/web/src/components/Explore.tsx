@@ -28,7 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Seg, Pill, Icon } from "@roam/design";
+import { Seg, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
@@ -43,6 +43,23 @@ import { NearbyDepartures } from "./NearbyDepartures";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
+
+/**
+ * A glyph per category chip (the improved-design rail is icon-led). Keyed by the CANONICAL
+ * group name (what the API validates), same lockstep-by-contract as CATEGORY_LABELS —
+ * a group with no entry just falls back to the place pin.
+ */
+const CATEGORY_ICONS: Record<string, IconName> = {
+  "Food & Drink": "dining",
+  Shopping: "bag",
+  "Entertainment & Recreation": "star",
+  "Automotive & Transport": "bus",
+  "Finance & Business": "briefcase",
+  "Health & Wellness": "person",
+  Lodging: "hotel",
+  "Education & Government": "landmark",
+  "Places of Worship": "church",
+};
 
 /** Venues shown per page in the grid; "Load more" reveals the next page of this many. */
 const PAGE_SIZE = 15;
@@ -360,39 +377,32 @@ export function Explore() {
     [shown],
   );
 
-  // The category chips, rendered twice by the responsive layout: vertical in the desktop
-  // rail, horizontal in the mobile pill row. Same handlers + active state; only the chip
-  // shape differs (full-width left-aligned vs auto). vStyle is applied only when vertical.
-  const vStyle = { width: "100%", justifyContent: "flex-start" as const };
-  const renderCategories = (vertical: boolean) => (
+  // The category chips, rendered twice by the responsive layout: full-width icon rows in
+  // the desktop rail, a sliding icon-pill row on phones. One component (.catBtn); the rail
+  // media query reshapes it, so both share the handlers and the crimson-filled active state.
+  const categoryChips = (
     <>
       <button
         onClick={() => loadAll()}
-        style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
+        className={`${styles.catBtn} ${activeCategory === null ? styles.catActive : ""}`}
+        aria-pressed={activeCategory === null}
       >
-        <Pill variant={activeCategory === null ? "crim" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
-          All
-        </Pill>
+        <Icon name="widgets" size={16} /> All
       </button>
       {CATEGORY_GROUPS.map((c) => (
         <button
           key={c}
           onClick={() => loadCategory(c)}
-          style={{ all: "unset", cursor: "pointer", ...(vertical ? { width: "100%" } : {}) }}
+          className={`${styles.catBtn} ${activeCategory === c ? styles.catActive : ""}`}
+          aria-pressed={activeCategory === c}
         >
-          <Pill variant={activeCategory === c ? "crim" : "neutral"} {...(vertical ? { style: vStyle } : {})}>
-            {categoryLabel(c)}
-          </Pill>
+          <Icon name={CATEGORY_ICONS[c] ?? "place"} size={16} /> {categoryLabel(c)}
         </button>
       ))}
       {/* Marketplace seam — dormant (Stage 5), present in the IA so lighting it up needs no reshuffle. */}
-      <span title="Marketplace is coming soon" style={{ cursor: "default", ...(vertical ? { width: "100%" } : {}) }}>
-        <Pill
-          variant="neutral"
-          style={{ borderStyle: "dashed", color: "var(--faint)", ...(vertical ? vStyle : {}) }}
-        >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>Market <Icon name="shop" size={13} /></span>
-        </Pill>
+      <span title="Marketplace is coming soon" className={`${styles.catBtn} ${styles.catSoon}`}>
+        <Icon name="shop" size={16} /> Market
+        <span className={`${styles.soonTag} ${styles.soonRight}`}>Soon</span>
       </span>
     </>
   );
@@ -429,7 +439,7 @@ export function Explore() {
           {/* desktop categories rail (hidden on phones — there the pills sit inline) */}
           <aside className={styles.rail}>
             <span className={styles.railLabel}>Categories</span>
-            {renderCategories(true)}
+            {categoryChips}
           </aside>
 
           {/* centre column: search · (mobile pills) · sub-categories · venue grid */}
@@ -457,8 +467,8 @@ export function Explore() {
               }}
             />
 
-            {/* category pills — phones only; on web the rail above carries them */}
-            <div className={styles.mobilePills}>{renderCategories(false)}</div>
+            {/* category chips — phones only; on web the rail above carries them */}
+            <div className={styles.mobilePills}>{categoryChips}</div>
 
             {/* NI live transit — self-hiding outside Northern Ireland / when unconfigured */}
             <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />
@@ -568,11 +578,17 @@ export function Explore() {
           </div>
 
           {/* desktop map column — a live Leaflet/OSM map (no provider key) with a pin per
-              venue, plus the hand-off to the device's default maps app below it. */}
+              venue; a floating bar along its bottom edge carries the in-view count and the
+              hand-off to the device's default maps app. */}
           <aside className={styles.mapCol}>
-            <VenueMap venues={mapVenues} center={place} className={styles.mapEmbed} />
-            <div style={{ marginTop: "var(--space-2)", textAlign: "center" }}>
-              <OpenInMaps place={place} variant="pill" />
+            <div className={styles.mapPanel}>
+              <VenueMap venues={mapVenues} center={place} className={styles.mapEmbed} />
+              <div className={styles.mapBar}>
+                <span className={styles.mapCount}>
+                  {mapVenues.length} venue{mapVenues.length === 1 ? "" : "s"} in view
+                </span>
+                <OpenInMaps place={place} variant="bar" />
+              </div>
             </div>
           </aside>
         </div>
@@ -585,10 +601,10 @@ export function Explore() {
 /**
  * OpenInMaps — the "open this area in your maps app" hand-off. Roam deliberately doesn't
  * embed a map provider (no SDK, no key, no cost); it centres the device's DEFAULT maps app
- * on the current place. Renders as the desktop map-column tile or a mobile pill. Platform is
+ * on the current place. Renders as the map panel's bar button or a mobile pill. Platform is
  * client-only, so we render the web URL first and swap to the device-specific one on mount.
  */
-function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill" }) {
+function OpenInMaps({ place, variant }: { place: Place; variant: "bar" | "pill" }) {
   const [href, setHref] = useState(() => placeMapsUrl(place.lat, place.lng, place.name, "web"));
   useEffect(() => {
     const platform = detectMapsPlatform(
@@ -603,11 +619,11 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "tile" | "pill"
   const external = href.startsWith("http");
   const anchorProps = external ? { target: "_blank", rel: "noopener noreferrer" as const } : {};
 
-  if (variant === "tile") {
+  if (variant === "bar") {
+    // The map panel's floating bar action — a quiet bordered pill on the translucent bar.
     return (
-      <a href={href} {...anchorProps} className={styles.mapTile}>
-        <span className={styles.mapGlyph}><Icon name="place" size={26} /></span>
-        <span className={styles.mapLabel}>Open {place.name} in Maps ↗</span>
+      <a href={href} {...anchorProps} style={{ textDecoration: "none", flexShrink: 0 }}>
+        <Pill variant="neutral">Open in Maps</Pill>
       </a>
     );
   }
@@ -680,16 +696,16 @@ function VenueGridSkeleton() {
         <div
           key={i}
           style={{
-            borderRadius: 16,
+            borderRadius: 20,
             border: "1px solid var(--line)",
             overflow: "hidden",
             background: "var(--card)",
           }}
         >
-          <div style={{ height: 132, background: "var(--paper-2)" }} />
-          <div style={{ padding: "var(--space-3)", display: "grid", gap: "var(--space-2)" }}>
-            <div style={{ height: 14, width: "70%", background: "var(--paper-2)", borderRadius: 6 }} />
-            <div style={{ height: 11, width: "45%", background: "var(--paper-2)", borderRadius: 6 }} />
+          <div style={{ height: 168, background: "var(--paper-2)" }} />
+          <div style={{ padding: "var(--space-3) var(--space-4)", display: "grid", gap: "var(--space-2)" }}>
+            <div style={{ height: 16, width: "70%", background: "var(--paper-2)", borderRadius: 6 }} />
+            <div style={{ height: 12, width: "45%", background: "var(--paper-2)", borderRadius: 6 }} />
           </div>
         </div>
       ))}

@@ -15,10 +15,10 @@
  *    (there isn't one). The claim affordance itself lives on the detail page — the card is
  *    the navigational entry, keeping one clear claim CTA.
  *
- * Distance: when the card is fed from venues.near it carries `distanceM`, and the
- * DistanceChip renders a real, RPC-computed distance (formatted by a local helper).
- * When fed from the no-origin `list`, distanceM is undefined and no chip shows — we
- * still never fake one.
+ * Distance: when the card is fed from venues.near it carries `distanceM`, and a tinted
+ * pill over the cover renders a real, RPC-computed distance (formatted by a local
+ * helper). When fed from the no-origin `list`, distanceM is undefined and no pill
+ * shows — we still never fake one.
  *
  * Mobile note: this card is the grid's repeated unit (up to ~50 per load, single-column
  * on phones). Two things follow from that: (1) all static style objects are hoisted to
@@ -32,7 +32,7 @@
 import { memo, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import styles from "./VenueCard.module.css";
 import Link from "next/link";
-import { Card, Pill, Rate, DistanceChip } from "@roam/design";
+import { Card, Pill, Rate, Icon } from "@roam/design";
 import { FollowButton } from "./FollowButton";
 import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
@@ -123,24 +123,23 @@ interface VenueCardProps {
 
 const linkStyle: CSSProperties = { textDecoration: "none", color: "inherit", display: "block" };
 
-const claimedBody: CSSProperties = {
-  padding: "var(--space-3)",
+const cardBody: CSSProperties = {
+  padding: "var(--space-3) var(--space-4)",
   display: "grid",
-  gap: "var(--space-1)",
+  gap: 6,
 };
 
-// Card title at the design's in-frame scale (~15px), not the 20px page .t-h3 — calmer grids.
-const nameStyle: CSSProperties = { fontFamily: "var(--display)", fontWeight: 600, fontSize: 15.5, lineHeight: 1.25 };
+// Card title at the improved design's scale — the name leads the card below the tall cover.
+const nameStyle: CSSProperties = { fontFamily: "var(--display)", fontWeight: 600, fontSize: 17.5, lineHeight: 1.25, letterSpacing: "-.01em" };
 
-// One line, no wrapping: the rating/price/distance atoms stay intact and the type label
-// is the single flexible element — it truncates with an ellipsis when space is tight,
-// instead of the whole row reflowing (which previously squeezed the distance pill into a
-// cramped "19 / m" circle on narrow cards).
+// One line, no wrapping: the rating/price atoms stay intact and the type label is the
+// single flexible element — it truncates with an ellipsis when space is tight, instead
+// of the whole row reflowing. Dots separate the atoms (the improved design's meta rhythm).
 const metaRow: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "var(--space-2)",
-  fontSize: 12.5,
+  gap: 7,
+  fontSize: 13.5,
   color: "var(--ink-2)",
   flexWrap: "nowrap",
   minWidth: 0,
@@ -149,14 +148,14 @@ const metaRow: CSSProperties = {
 // The type label ("Clothing Store") — the only element allowed to shrink; ellipsis when it
 // can't fit so it never wraps to a second line.
 const labelStyle: CSSProperties = {
-  flex: "1 1 auto",
+  flex: "0 1 auto",
   minWidth: 0,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 };
 
-const distanceRight: CSSProperties = { marginLeft: "auto", flexShrink: 0, whiteSpace: "nowrap" };
+const metaDot: CSSProperties = { color: "var(--faint)", flex: "0 0 auto" };
 
 // Rating + its count sit together ("4.6 ★ (1.2k)"); the count is a quiet secondary cue.
 const ratingCluster: CSSProperties = {
@@ -166,14 +165,32 @@ const ratingCluster: CSSProperties = {
   flex: "0 0 auto",
   whiteSpace: "nowrap",
 };
-const ratingCountStyle: CSSProperties = { color: "var(--faint)", fontSize: 12 };
+const ratingCountStyle: CSSProperties = { color: "var(--faint)", fontSize: 12.5 };
 const priceStyle: CSSProperties = { color: "var(--ink-2)", fontWeight: 600, flex: "0 0 auto" };
 
-// Temporarily-closed badge — a quiet warning chip over the cover, top-left.
+// Distance — a soft crimson-tinted mono pill floated over the cover, top-left (per the
+// improved design), instead of a chip squeezed into the meta row.
+const distancePill: CSSProperties = {
+  position: "absolute",
+  top: "var(--space-3)",
+  left: "var(--space-3)",
+  padding: "4px 12px",
+  borderRadius: 999,
+  fontFamily: "var(--mono)",
+  fontSize: 11.5,
+  fontWeight: 600,
+  letterSpacing: ".02em",
+  color: "var(--crimson-700)",
+  background: "var(--crimson-tint)",
+  boxShadow: "var(--shadow-key)",
+};
+
+// Temporarily-closed badge — a quiet warning chip over the cover, top-right (the distance
+// pill owns the top-left corner).
 const closedBadge: CSSProperties = {
   position: "absolute",
-  top: "var(--space-2)",
-  left: "var(--space-2)",
+  top: "var(--space-3)",
+  right: "var(--space-3)",
   padding: "2px 8px",
   borderRadius: 999,
   fontSize: 11,
@@ -184,9 +201,38 @@ const closedBadge: CSSProperties = {
 };
 const coverWrap: CSSProperties = { position: "relative" };
 
-const followWrap: CSSProperties = { marginTop: "var(--space-1)" };
+// The footer strip below a hairline: claim/provenance status on the left, the card's one
+// action (Follow / Claim it free) on the right.
+const footerRow: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "var(--space-2)",
+  borderTop: "1px solid var(--line)",
+  margin: "var(--space-2) 0 0",
+  padding: "var(--space-3) var(--space-4)",
+};
 
-const coverImg: CSSProperties = { display: "block", width: "100%", height: 132, objectFit: "cover" };
+// The "✓ Claimed" trust chip — the mono/uppercase status language, in success green.
+const claimedChip: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "5px 10px",
+  borderRadius: 8,
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  color: "var(--success)",
+  background: "var(--success-tint)",
+  whiteSpace: "nowrap",
+};
+
+const actionWrap: CSSProperties = { flexShrink: 0 };
+
+const coverImg: CSSProperties = { display: "block", width: "100%", height: 168, objectFit: "cover" };
 
 /**
  * The default cover, shown when a venue has no Google Places photo and no owner-uploaded
@@ -199,31 +245,32 @@ const VENUE_FALLBACK_SRC = "/venue-fallback.svg";
 const fallbackImg: CSSProperties = {
   display: "block",
   width: "100%",
-  height: 132,
+  height: 168,
   objectFit: "cover",
   // a soft warm base shows for the instant before the SVG paints (no flash of empty box)
   background: "linear-gradient(150deg, var(--paper-2), var(--crimson-tint))",
 };
 
-const unclaimedBody: CSSProperties = {
-  padding: "var(--space-3)",
-  display: "grid",
-  gap: "var(--space-2)",
-};
-
-const claimRow: CSSProperties = { display: "flex", gap: "var(--space-2)", marginTop: "var(--space-1)" };
-
-// Provenance, demoted to a faint footnote — present for honesty, quiet enough to recede.
+// Provenance, a quiet footer tag — present for honesty, styled to match the claimed chip's
+// footprint (mono, uppercase) without borrowing its trust colour.
 const provenance: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "5px 10px",
+  borderRadius: 8,
   fontFamily: "var(--mono)",
-  fontSize: 9.5,
-  letterSpacing: ".04em",
+  fontSize: 10,
+  letterSpacing: ".06em",
   textTransform: "uppercase",
-  color: "var(--faint)",
+  color: "var(--muted)",
+  background: "var(--paper-2)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 /**
- * The default illustrated cover (no Places photo, no owner cover). Same 132px height as a
+ * The default illustrated cover (no Places photo, no owner cover). Same 168px height as a
  * real cover, so swapping it in causes no layout shift. Decorative → empty alt + aria-hidden.
  */
 function FallbackCover() {
@@ -247,15 +294,16 @@ function typeLabel(venue: VenueCardData): string | null {
 }
 
 /**
- * The shared meta row — rating + count, type label, price level, distance. Used by both
- * card states (a Places rating is real supply whether or not the venue is claimed, so we
- * surface it on both). Renders nothing when the venue has none of these.
+ * The shared meta row — rating + count · type label · price level, dot-separated (the
+ * improved design's rhythm; distance lives on the cover now). Used by both card states
+ * (a Places rating is real supply whether or not the venue is claimed, so we surface it
+ * on both). Renders nothing when the venue has none of these.
  */
 function CardMeta({ venue }: { venue: VenueCardData }) {
   const price = priceLevelLabel(venue.priceLevel);
   const label = typeLabel(venue);
   const hasRating = venue.rating != null;
-  if (!hasRating && !label && price == null && venue.distanceM == null) return null;
+  if (!hasRating && !label && price == null) return null;
   return (
     <div style={metaRow}>
       {hasRating ? (
@@ -266,16 +314,24 @@ function CardMeta({ venue }: { venue: VenueCardData }) {
           ) : null}
         </span>
       ) : null}
-      {label ? <span style={labelStyle}>{label}</span> : null}
-      {price ? <span style={priceStyle}>{price}</span> : null}
-      {venue.distanceM != null ? (
-        <DistanceChip style={distanceRight}>{formatDistance(venue.distanceM)}</DistanceChip>
+      {label ? (
+        <>
+          {hasRating ? <span style={metaDot} aria-hidden>·</span> : null}
+          <span style={labelStyle}>{label}</span>
+        </>
+      ) : null}
+      {price ? (
+        <>
+          {hasRating || label ? <span style={metaDot} aria-hidden>·</span> : null}
+          <span style={priceStyle}>{price}</span>
+        </>
       ) : null}
     </div>
   );
 }
 
-/** The cover plus an optional "Temporarily closed" badge overlay. */
+/** The cover plus its overlays — the distance pill (top-left) and, when Google says the
+ *  venue is temporarily closed, the warning badge (top-right). */
 function CoverWithBadge({
   venue,
   coverUrl,
@@ -287,6 +343,7 @@ function CoverWithBadge({
   return (
     <div style={coverWrap}>
       <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
+      {venue.distanceM != null ? <span style={distancePill}>{formatDistance(venue.distanceM)}</span> : null}
       {closed ? <span style={closedBadge}>Temporarily closed</span> : null}
     </div>
   );
@@ -374,21 +431,27 @@ function ClaimedCard({
   return (
     <Card>
       <CoverWithBadge venue={venue} coverUrl={coverUrl} />
-      <div style={claimedBody}>
+      <div style={cardBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
         <CardMeta venue={venue} />
-        {/* Follow control. Wrapped in a click-isolating div: the card is a <Link>, so
+      </div>
+      {/* Footer strip: the trust chip + the follow action, split by a hairline. */}
+      <div style={footerRow}>
+        <span style={claimedChip}>
+          <Icon name="check" size={11} strokeWidth={2.5} /> Claimed
+        </span>
+        {/* Follow control. Wrapped in a click-isolating span: the card is a <Link>, so
             without stopPropagation/preventDefault a follow tap would navigate to the
             detail page. This keeps FollowButton host-agnostic (no Link awareness). */}
-        <div onClick={isolateClick} style={followWrap}>
+        <span onClick={isolateClick} style={actionWrap}>
           <FollowButton
             venueId={venue.id}
             initialFollowing={initialFollowing}
             emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
           />
-        </div>
+        </span>
       </div>
     </Card>
   );
@@ -399,18 +462,20 @@ function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: st
     <Card>
       {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
       <CoverWithBadge venue={venue} coverUrl={coverUrl} />
-      <div style={unclaimedBody}>
+      <div style={cardBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
         <CardMeta venue={venue} />
-        {/* The single unclaimed signal. */}
-        <div style={claimRow}>
+      </div>
+      {/* Footer strip: provenance on the left, the single unclaimed signal on the right. */}
+      <div style={footerRow}>
+        <span style={provenance}>From public sources</span>
+        <span style={actionWrap}>
           <Pill variant="ghost-crim" size="sm">
             Claim it free
           </Pill>
-        </div>
-        <div style={provenance}>From public sources</div>
+        </span>
       </div>
     </Card>
   );
