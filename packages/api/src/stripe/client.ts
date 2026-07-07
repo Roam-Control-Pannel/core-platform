@@ -124,6 +124,64 @@ export async function getAccount(cfg: StripeConfig, accountId: string): Promise<
 }
 
 /**
+ * Create a hosted Checkout session for a marketplace sale: a DESTINATION charge — the buyer
+ * pays on the platform, funds route to the venue's connected account, and Roam's commission
+ * is taken as the application fee. Ad-hoc price_data (our DB is the catalogue; no Stripe
+ * Products). Metadata carries the order id so the webhook can mark it paid.
+ */
+export async function createCheckoutSession(
+  cfg: StripeConfig,
+  input: {
+    destinationAccount: string;
+    applicationFeePence: number;
+    title: string;
+    unitAmountPence: number;
+    currency: string;
+    quantity: number;
+    orderId: string;
+    successUrl: string;
+    cancelUrl: string;
+  },
+): Promise<{ id: string; url: string }> {
+  return stripeRequest(cfg, "POST", "/v1/checkout/sessions", {
+    mode: "payment",
+    line_items: [
+      {
+        quantity: input.quantity,
+        price_data: {
+          currency: input.currency,
+          unit_amount: input.unitAmountPence,
+          product_data: { name: input.title },
+        },
+      },
+    ],
+    payment_intent_data: {
+      application_fee_amount: input.applicationFeePence,
+      transfer_data: { destination: input.destinationAccount },
+    },
+    metadata: { order_id: input.orderId },
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+  });
+}
+
+/**
+ * Refund a marketplace payment in full: pull the funds back from the connected account
+ * (reverse_transfer) and return Roam's commission too (refund_application_fee) — the buyer
+ * is made whole; Stripe's processing fee is the platform's cost of the refund.
+ */
+export async function refundPayment(
+  cfg: StripeConfig,
+  input: { paymentIntent: string },
+): Promise<{ id: string; status: string }> {
+  return stripeRequest(cfg, "POST", "/v1/refunds", {
+    payment_intent: input.paymentIntent,
+    reverse_transfer: true,
+    refund_application_fee: true,
+  });
+}
+
+/**
  * Verify a Stripe webhook signature (the Stripe-Signature header: `t=<ts>,v1=<hmac>,...`).
  * The v1 scheme is HMAC-SHA256 over `${t}.${rawBody}` with the endpoint secret. Pure —
  * `nowMs` is injectable so the timestamp-tolerance check is unit-testable.

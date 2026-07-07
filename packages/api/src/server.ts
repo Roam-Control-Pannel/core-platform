@@ -87,14 +87,15 @@ function loadEnv(): ApiEnv {
       // "not configured", the webhook 503s), so the API boots before Stripe is provisioned.
       secretKey: process.env.STRIPE_SECRET_KEY ?? null,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? null,
+      webhookSecretPlatform: process.env.STRIPE_WEBHOOK_SECRET_PLATFORM ?? null,
       // Where Stripe's hosted-onboarding redirects land: the web app. Falls back to the first
       // allowed CORS origin (the deployed web origin in prod, localhost in dev).
       webOrigin:
         process.env.WEB_ORIGIN ??
         (process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:3000").split(",")[0]!.trim(),
-      // Platform commission in basis points (800 = 8%). Read at charge time, so tuning it is
+      // Platform commission in basis points (500 = 5%). Read at charge time, so tuning it is
       // an env change, never a deploy of new code.
-      applicationFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? "800"),
+      applicationFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? "500"),
     },
   };
 }
@@ -256,23 +257,37 @@ export async function handler(request: Request): Promise<Response> {
     if (request.method !== "POST") {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
-    if (!env.stripe.secretKey || !env.stripe.webhookSecret) {
+    // Two destinations post here — the connected-accounts one (account.updated) and the
+    // platform one (checkout events) — each with its own signing secret; accept either.
+    const secrets = [env.stripe.webhookSecret, env.stripe.webhookSecretPlatform].filter(
+      (s): s is string => !!s,
+    );
+    if (!env.stripe.secretKey || secrets.length === 0) {
       return jsonResponse({ ok: false, error: "unconfigured" }, 503, cors);
     }
     const rawBody = await request.text();
     const signature = request.headers.get("stripe-signature");
-    if (!verifyStripeSignature(rawBody, signature, env.stripe.webhookSecret, Date.now())) {
+    if (!secrets.some((s) => verifyStripeSignature(rawBody, signature, s, Date.now()))) {
       return jsonResponse({ ok: false, error: "bad_signature" }, 400, cors);
     }
     try {
       const event = JSON.parse(rawBody) as {
         type?: string;
-        data?: { object?: { id?: string; charges_enabled?: boolean; payouts_enabled?: boolean; details_submitted?: boolean } };
+        data?: {
+          object?: {
+            id?: string;
+            charges_enabled?: boolean;
+            payouts_enabled?: boolean;
+            details_submitted?: boolean;
+            payment_intent?: string;
+            metadata?: { order_id?: string };
+          };
+        };
       };
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       if (event.type === "account.updated" && event.data?.object?.id) {
         const acct = event.data.object;
         const service = escalateToService(env);
-        type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
         await (service as unknown as Loose)
           .from("venue_payment_accounts")
           .update({
@@ -281,6 +296,34 @@ export async function handler(request: Request): Promise<Response> {
             details_submitted: acct.details_submitted ?? false,
           })
           .eq("stripe_account_id", acct.id);
+      } else if (event.type === "checkout.session.completed" && event.data?.object?.metadata?.order_id) {
+        // Payment landed: pending → paid (idempotent — the eq(status,'pending') makes a
+        // replayed event a no-op), then decrement tracked stock once.
+        const session = event.data.object;
+        const orderId = session.metadata!.order_id!;
+        const service = escalateToService(env) as unknown as Loose;
+        const { data: updated } = (await service
+          .from("orders")
+          .update({ status: "paid", stripe_payment_intent_id: session.payment_intent ?? null })
+          .eq("id", orderId)
+          .eq("status", "pending")
+          .select("id, product_id, quantity")) as {
+          data: { id: string; product_id: string | null; quantity: number }[] | null;
+        };
+        const order = updated?.[0];
+        if (order?.product_id) {
+          const { data: prod } = (await service
+            .from("venue_products")
+            .select("stock")
+            .eq("id", order.product_id)
+            .maybeSingle()) as { data: { stock: number | null } | null };
+          if (prod && prod.stock != null) {
+            await service
+              .from("venue_products")
+              .update({ stock: Math.max(0, prod.stock - order.quantity) })
+              .eq("id", order.product_id);
+          }
+        }
       }
       return jsonResponse({ received: true }, 200, cors);
     } catch (e) {

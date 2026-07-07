@@ -97,7 +97,11 @@ export interface ApiEnv {
    */
   stripe: {
     secretKey: string | null;
+    /** Signing secret of the CONNECTED-ACCOUNTS webhook destination (account.updated). */
     webhookSecret: string | null;
+    /** Signing secret of the PLATFORM ("Your account") destination (checkout events) — Stripe
+     *  can't scope one destination to both, so there are two, each with its own secret. */
+    webhookSecretPlatform: string | null;
     webOrigin: string;
     applicationFeeBps: number;
   };
