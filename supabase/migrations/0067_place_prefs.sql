@@ -1,0 +1,22 @@
+-- 0067_place_prefs.sql
+--
+-- Cross-device sync for the place preferences that previously lived only in localStorage:
+-- the user's SAVED (pinned) places and their LAST active browsing place. Signed-in users'
+-- pins now follow them across devices, and a brand-new device starts from the last place
+-- they browsed elsewhere (the client only seeds from `last` when the device has no local
+-- choice — an actively-used device never gets yanked to another device's town).
+--
+-- place_prefs is a small, NON-SENSITIVE UI preference shaped
+--   { "saved": Place[], "last": Place | null }
+-- where Place is the client's { id, name, hint?, lat, lng, source? } shape. NULL means "never
+-- synced" → the client keeps its local (or default) state, and migrates a guest's local prefs
+-- up on first sign-in. The DB stores the value verbatim and never interprets it (same contract
+-- as home_layout, 0047).
+--
+-- No new RLS needed: profiles already has profiles_update (id = auth.uid()) gating self-writes
+-- and profiles_read for reads. The API only ever touches this column for the authed user's OWN
+-- row (profiles.placePrefs / profiles.setPlacePrefs — both protected procedures). The
+-- set_updated_at trigger (0001) bumps updated_at on write. Idempotent; safe to run once on the
+-- Roam-Core project.
+
+alter table profiles add column if not exists place_prefs jsonb;

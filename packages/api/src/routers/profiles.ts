@@ -36,6 +36,28 @@ interface ProfileRow {
   social_links: Record<string, unknown> | null;
 }
 
+/**
+ * A client Place as stored in profiles.place_prefs — the web PlaceSwitcher's shape, kept in
+ * lockstep by contract (the client owns the shape; the API bounds and echoes it). `hint` is
+ * the menu sublabel; `source` is selection provenance (drives the anon discovery meter).
+ */
+const placeSchema = z.object({
+  id: z.string().min(1).max(160),
+  name: z.string().min(1).max(160),
+  hint: z.string().max(160).optional(),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  source: z.enum(["search", "current", "suggested", "saved", "default"]).optional(),
+});
+export interface StoredPlace {
+  id: string;
+  name: string;
+  hint?: string;
+  lat: number;
+  lng: number;
+  source?: "search" | "current" | "suggested" | "saved" | "default";
+}
+
 async function currentUserId(ctx: { db: { auth: { getUser: () => Promise<{ data: { user: { id: string } | null }; error: unknown }> } } }): Promise<string> {
   const { data, error } = await ctx.db.auth.getUser();
   if (error || !data.user) {
@@ -367,6 +389,75 @@ export const profilesRouter = router({
       const { data, error } = await db.from("profiles").update({ home_layout: payload }).eq("id", uid).select("id");
       if (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to save your layout: ${error.message}` });
+      }
+      return { ok: !!data && data.length > 0 };
+    }),
+
+  /**
+   * Protected: read the caller's saved place preferences (cross-device sync of the pinned
+   * places + the last active browsing place). Returns { prefs: { saved, last } } or
+   * { prefs: null } when they've never synced. Validated leniently — a malformed stored
+   * value (or malformed entries within it) reads as null/dropped so the client falls back
+   * to its local state.
+   */
+  placePrefs: protectedProcedure.query(async ({ ctx }) => {
+    const uid = await currentUserId(ctx);
+    type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const db = ctx.db as unknown as Loose;
+    const { data, error } = (await db
+      .from("profiles")
+      .select("place_prefs")
+      .eq("id", uid)
+      .maybeSingle()) as { data: { place_prefs: unknown } | null; error: { message: string } | null };
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your places: ${error.message}` });
+    }
+    const raw = data?.place_prefs as { saved?: unknown; last?: unknown } | null | undefined;
+    const isPlace = (v: unknown): v is StoredPlace => {
+      const p = v as StoredPlace | null;
+      return (
+        !!p &&
+        typeof p === "object" &&
+        typeof p.id === "string" &&
+        typeof p.name === "string" &&
+        typeof p.lat === "number" &&
+        typeof p.lng === "number"
+      );
+    };
+    const prefs: { saved: StoredPlace[]; last: StoredPlace | null } | null =
+      raw && typeof raw === "object" && Array.isArray(raw.saved)
+        ? { saved: raw.saved.filter(isPlace).slice(0, 24), last: isPlace(raw.last) ? raw.last : null }
+        : null;
+    return { prefs };
+  }),
+
+  /**
+   * Protected: save the caller's place preferences. Bounded, shape-validated Places; the
+   * server stores them verbatim (RLS profiles_update gates the write to the caller's own row).
+   */
+  setPlacePrefs: protectedProcedure
+    .input(
+      z.object({
+        saved: z.array(placeSchema).max(24),
+        last: placeSchema.nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const uid = await currentUserId(ctx);
+      const payload = { saved: input.saved, last: input.last };
+      type LooseUpdate = {
+        from: (t: string) => {
+          update: (p: Record<string, unknown>) => {
+            eq: (col: string, val: string) => {
+              select: (c: string) => Promise<{ data: { id: string }[] | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const db = ctx.db as unknown as LooseUpdate;
+      const { data, error } = await db.from("profiles").update({ place_prefs: payload }).eq("id", uid).select("id");
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to save your places: ${error.message}` });
       }
       return { ok: !!data && data.length > 0 };
     }),

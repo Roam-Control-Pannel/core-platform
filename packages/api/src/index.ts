@@ -8,6 +8,9 @@
  * it imports only the type.
  */
 export { appRouter, type AppRouter } from "./routers/index.js";
+// Re-exported so client packages can NAME the inferred router type (TS2883 portability) —
+// profiles.placePrefs surfaces StoredPlace in its return shape.
+export { type StoredPlace } from "./routers/profiles.js";
 export {
   makeContextFactory,
   type Context,
