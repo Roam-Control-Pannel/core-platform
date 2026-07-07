@@ -1,0 +1,72 @@
+/*
+ * Town Hall board layout — the redesigned forum: topic list beside a right rail (trending
+ * tags · active locals) from ≥1000px, single column below. A CSS Module because the reflow
+ * is a media query and globals.css is generated.
+ */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+.rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Category filter chips — pill row under the controls; the active chip is ink-filled. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-5);
+}
+
+.chip {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: #fff;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition:
+    background var(--motion-transition) var(--ease),
+    color var(--motion-transition) var(--ease),
+    border-color var(--motion-transition) var(--ease);
+}
+
+@media (hover: hover) {
+  .chip:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+}
+
+.chipActive {
+  background: var(--ink-hi);
+  border-color: var(--ink-hi);
+  color: #fff;
+}
+
+@media (hover: hover) {
+  .chipActive:hover {
+    background: var(--ink-hi);
+    color: #fff;
+  }
+}

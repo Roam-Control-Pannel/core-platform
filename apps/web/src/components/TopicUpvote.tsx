@@ -24,12 +24,15 @@ function VotePill({
   canVote,
   onToggle,
   size = "md",
+  vertical = false,
 }: {
   initialUpvoted: boolean;
   initialCount: number;
   canVote: boolean;
   onToggle: () => Promise<ToggleResult>;
   size?: "md" | "sm";
+  /** Column form (chevron button above the count) — the board card's left vote rail. */
+  vertical?: boolean;
 }) {
   const [upvoted, setUpvoted] = useState(initialUpvoted);
   const [count, setCount] = useState(initialCount);
@@ -55,6 +58,40 @@ function VotePill({
   }, [canVote, busy, upvoted, count, onToggle]);
 
   const sm = size === "sm";
+
+  if (vertical) {
+    return (
+      <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); void toggle(); }}
+          disabled={!canVote || busy}
+          aria-pressed={upvoted}
+          aria-label={upvoted ? "Remove upvote" : "Upvote"}
+          title={canVote ? (upvoted ? "Remove upvote" : "Upvote") : "Sign in to upvote"}
+          style={{
+            all: "unset",
+            boxSizing: "border-box",
+            cursor: canVote ? "pointer" : "default",
+            display: "grid",
+            placeItems: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            border: `1px solid ${upvoted ? "var(--crimson-tint-2)" : "var(--line)"}`,
+            background: upvoted ? "var(--crimson-tint)" : "#fff",
+            color: upvoted ? "var(--crimson-700)" : "var(--ink-2)",
+          }}
+        >
+          <Icon name="upvote" size={16} />
+        </button>
+        <span style={{ fontFamily: "var(--ui)", fontSize: 14, fontWeight: 700, lineHeight: 1, color: upvoted ? "var(--crimson-700)" : "var(--ink)" }}>
+          {count}
+        </span>
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -89,18 +126,20 @@ export function TopicUpvote({
   initialUpvoted,
   initialCount,
   canVote,
+  vertical = false,
 }: {
   topicId: string;
   initialUpvoted: boolean;
   initialCount: number;
   canVote: boolean;
+  vertical?: boolean;
 }) {
   const trpc = useTrpc();
   const onToggle = useCallback(() => {
     const mut = trpc.townHall.toggleUpvote as unknown as { mutate: (i: { topicId: string }) => Promise<ToggleResult> };
     return mut.mutate({ topicId });
   }, [trpc, topicId]);
-  return <VotePill initialUpvoted={initialUpvoted} initialCount={initialCount} canVote={canVote} onToggle={onToggle} />;
+  return <VotePill initialUpvoted={initialUpvoted} initialCount={initialCount} canVote={canVote} onToggle={onToggle} vertical={vertical} />;
 }
 
 export function ReplyUpvote({

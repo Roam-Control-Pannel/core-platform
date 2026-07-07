@@ -53,7 +53,11 @@ interface AuthorEmbed {
 const TOPIC_AUTHOR = "author:profiles!town_hall_topics_author_id_fkey(id, handle, display_name, avatar_url)";
 const REPLY_AUTHOR = "author:profiles!town_hall_replies_author_id_fkey(id, handle, display_name, avatar_url)";
 
-const TOPIC_COLS = `id, slug, locality, locality_label, title, body, upvote_count, reply_count, link_url, link_domain, link_title, link_image_url, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
+const TOPIC_COLS = `id, slug, locality, locality_label, title, body, category, upvote_count, reply_count, link_url, link_domain, link_title, link_image_url, last_activity_at, created_at, ${TOPIC_AUTHOR}`;
+
+/** The topic categories (0066) — the board's filter chips. App-enforced vocabulary. */
+const TOPIC_CATEGORIES = ["food-drink", "things-to-do", "recommendations", "events", "neighbourhood"] as const;
+const categorySchema = z.enum(TOPIC_CATEGORIES);
 const REPLY_COLS = `id, topic_id, body, upvote_count, created_at, ${REPLY_AUTHOR}`;
 
 interface RawTopic {
@@ -63,6 +67,7 @@ interface RawTopic {
   locality_label: string;
   title: string;
   body: string;
+  category: string | null;
   upvote_count: number;
   reply_count: number;
   link_url: string | null;
@@ -107,6 +112,7 @@ function shapeTopic(t: RawTopic, viewerUpvoted: boolean) {
     localityLabel: t.locality_label,
     title: t.title,
     body: t.body,
+    category: t.category,
     upvoteCount: t.upvote_count,
     replyCount: t.reply_count,
     linkUrl: t.link_url,
@@ -198,6 +204,7 @@ export const townHallRouter = router({
       z.object({
         localityName: z.string().trim().min(1).max(120),
         sort: z.enum(["hot", "new", "top", "recent", "popular"]).default("hot"),
+        category: categorySchema.optional(),
         limit: z.number().int().min(1).max(100).default(50),
       }),
     )
@@ -217,6 +224,7 @@ export const townHallRouter = router({
         input.sort === "new" ? "new" : input.sort === "top" || input.sort === "popular" ? "top" : "hot";
 
       let q = db.from("town_hall_topics").select(TOPIC_COLS).eq("locality", slug);
+      if (input.category) q = q.eq("category", input.category);
       if (sort === "new") q = q.order("created_at", { ascending: false });
       else if (sort === "top") q = q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
       else q = q.order("last_activity_at", { ascending: false }); // hot: recent-activity candidates, re-ranked below
@@ -238,6 +246,53 @@ export const townHallRouter = router({
         localityLabel: label,
         topics: rows.map((t) => shapeTopic(t, upvoted.has(t.id))),
       };
+    }),
+
+  /**
+   * Public: the board's "Active locals" rail — the authors whose topics have earned the most
+   * upvotes in this locality recently. Aggregated in JS over the latest 200 topics (a board
+   * this size has nowhere near that many), so no new SQL is needed.
+   */
+  activeLocals: publicProcedure
+    .input(z.object({ localityName: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(10).default(3) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      let slug: string;
+      try {
+        slug = localitySlug(input.localityName);
+      } catch {
+        return { locals: [] };
+      }
+      const { data, error } = (await db
+        .from("town_hall_topics")
+        .select(`upvote_count, reply_count, ${TOPIC_AUTHOR}`)
+        .eq("locality", slug)
+        .order("last_activity_at", { ascending: false })
+        .limit(200)) as PgResult<{ upvote_count: number; reply_count: number; author: AuthorEmbed | AuthorEmbed[] | null }[] | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load active locals: ${error.message}` });
+      }
+      const tally = new Map<
+        string,
+        {
+          author: { id: string | null; handle: string | null; displayName: string | null; avatarUrl: string | null };
+          helpfulVotes: number;
+          topics: number;
+        }
+      >();
+      for (const row of data ?? []) {
+        const author = shapeAuthor(row.author);
+        if (!author.id) continue; // deleted accounts don't rank
+        const entry = tally.get(author.id) ?? { author, helpfulVotes: 0, topics: 0 };
+        entry.helpfulVotes += row.upvote_count;
+        entry.topics += 1;
+        tally.set(author.id, entry);
+      }
+      const locals = [...tally.values()]
+        .filter((e) => e.helpfulVotes > 0)
+        .sort((a, b) => b.helpfulVotes - a.helpfulVotes || b.topics - a.topics)
+        .slice(0, input.limit);
+      return { locals };
     }),
 
   /** Public: one topic with its replies (oldest-first), plus the caller's upvote state. */
@@ -397,6 +452,7 @@ export const townHallRouter = router({
         localityName: z.string().trim().min(1).max(120),
         title: z.string().min(1).max(TOPIC_TITLE_MAX + 50),
         body: z.string().min(1).max(TOPIC_BODY_MAX + 1000),
+        category: categorySchema.optional(),
         linkUrl: z.string().url().max(2000).optional(),
       }),
     )
@@ -421,7 +477,7 @@ export const townHallRouter = router({
         : {};
       const { data, error } = (await db
         .from("town_hall_topics")
-        .insert({ ...row, ...linkCols, author_id })
+        .insert({ ...row, ...linkCols, category: input.category ?? null, author_id })
         .select("id")
         .single()) as PgResult<{ id: string } | null>;
       if (error || !data) {
