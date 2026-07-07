@@ -123,6 +123,11 @@ export async function getAccount(cfg: StripeConfig, accountId: string): Promise<
   return stripeRequest(cfg, "GET", `/v1/accounts/${encodeURIComponent(accountId)}`);
 }
 
+/** A one-time login URL into the venue's Express dashboard (payouts, bank details). */
+export async function createLoginLink(cfg: StripeConfig, accountId: string): Promise<{ url: string }> {
+  return stripeRequest(cfg, "POST", `/v1/accounts/${encodeURIComponent(accountId)}/login_links`);
+}
+
 /**
  * Create a hosted Checkout session for a marketplace sale: a DESTINATION charge — the buyer
  * pays on the platform, funds route to the venue's connected account, and Roam's commission
