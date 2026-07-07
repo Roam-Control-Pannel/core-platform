@@ -13,6 +13,7 @@ export { appRouter, type AppRouter } from "./routers/index.js";
 export { type StoredPlace } from "./routers/profiles.js";
 export { type PayoutStatus } from "./routers/payments.js";
 export { type MarketProduct } from "./routers/market.js";
+export { type MarketListing } from "./routers/listings.js";
 export {
   makeContextFactory,
   type Context,
