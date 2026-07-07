@@ -43,6 +43,7 @@ import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
 import { AddToPlan } from "./AddToPlan";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { VenueShop } from "./VenueShop";
 import { isOpenNow } from "../lib/openNow";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 import styles from "./VenueDetail.module.css";
@@ -548,14 +549,14 @@ function ClaimedDetail({
 
         {/* Scrolling tabbed content column on web. */}
         <div className={styles.content}>
-          {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop).
-              Posts/Offers/Gallery/Details are live; Shop is the one remaining seam. */}
+          {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop) —
+              all live now that the marketplace catalogue exists. */}
           <div className={styles.tabstrip} role="tablist" aria-label="Venue sections">
             <TabButton label="Posts" value="posts" active={tab} onSelect={setTab} />
             <TabButton label="Offers" value="offers" active={tab} onSelect={setTab} />
             <TabButton label="Gallery" value="gallery" active={tab} onSelect={setTab} />
             <TabButton label="Details" value="details" active={tab} onSelect={setTab} />
-            <DormantTab label="Shop" />
+            <TabButton label="Shop" value="shop" active={tab} onSelect={setTab} />
           </div>
 
           {tab === "details" ? (
@@ -572,6 +573,8 @@ function ClaimedDetail({
             <VenueOffersPanel venueId={venueId} />
           ) : tab === "gallery" ? (
             <VenueGalleryPanel venueId={venueId} />
+          ) : tab === "shop" ? (
+            <VenueShop venueId={venueId} />
           ) : null}
         </div>
       </div>
@@ -602,15 +605,6 @@ function TabButton({
     >
       {label}
     </button>
-  );
-}
-
-/** A faint, inert tab — the one remaining Stage-5 seam (Shop) not yet built. */
-function DormantTab({ label }: { label: string }) {
-  return (
-    <span className={`${styles.tab} ${styles.tabDormant}`} title="Coming soon" aria-disabled>
-      {label}
-    </span>
   );
 }
 

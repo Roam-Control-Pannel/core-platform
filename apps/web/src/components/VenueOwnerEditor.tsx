@@ -39,6 +39,7 @@ import { SuggestedForYou } from "./SuggestedForYou";
 import { PushHistory } from "./PushHistory";
 import { BirthdayOffer } from "./BirthdayOffer";
 import { VenuePayments } from "./VenuePayments";
+import { VenueShopManager } from "./VenueShopManager";
 import { venuePath } from "../lib/routes";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { timeAgo } from "../lib/townHall";
@@ -49,6 +50,7 @@ const TABS = [
   { key: "audience", label: "Audience" },
   { key: "posts", label: "Posts" },
   { key: "offers", label: "Offers" },
+  { key: "shop", label: "Shop" },
   { key: "notifications", label: "Notifications" },
   { key: "venue", label: "Venue" },
 ] as const;
@@ -271,6 +273,21 @@ function Dashboard({
             {/* Renders itself only when the business has opted into suggestions. */}
             <SuggestedForYou venueId={venueId} />
           </div>
+        </div>
+      ) : null}
+
+      {tab === "shop" ? (
+        <div className={styles.split}>
+          <DashCard
+            icon="bag"
+            title="Your shop"
+            subtitle="Products, services and vouchers you sell on Roam. Everything here shows on your public page's Shop tab; online checkout switches on shortly."
+          >
+            <VenueShopManager venueId={venueId} />
+          </DashCard>
+          <DashCard icon="card" title="Payments" subtitle="Payouts for selling on Roam — powered by Stripe.">
+            <VenuePayments venueId={venueId} />
+          </DashCard>
         </div>
       ) : null}
 
