@@ -69,15 +69,24 @@ function threadHeading(thread: ThreadData, myId: string | null): string {
   return "Untitled group";
 }
 
-/** One-line context under the heading: who/how many, or the chat kind. */
+/** One-line context under the heading: "4 people · Sarah, Tom, Grace, you" (mockup style). */
 function threadSubtitle(thread: ThreadData, myId: string | null): string {
   if (!thread.isGroup) {
     const other = thread.participants.find((p) => p.profileId !== myId) ?? thread.participants[0];
     return other?.handle ? `@${other.handle}` : "Direct chat";
   }
-  if (thread.planId) return "Plan chat";
   const n = thread.participants.length;
-  return `${n} ${n === 1 ? "person" : "people"} · tap for info`;
+  // First names, self shown as "you" (last), capped so long groups stay one line.
+  const others = thread.participants
+    .filter((p) => p.profileId !== myId)
+    .map((p) => (p.displayName?.trim() || (p.handle ? `@${p.handle}` : "Someone")).split(/\s+/)[0]!)
+    .slice(0, 3);
+  const hasMe = thread.participants.some((p) => p.profileId === myId);
+  const shown = [...others, ...(hasMe ? ["you"] : [])];
+  const more = n - others.length - (hasMe ? 1 : 0);
+  const names = shown.join(", ") + (more > 0 ? ` +${more}` : "");
+  const kind = thread.planId ? "Plan chat" : `${n} ${n === 1 ? "person" : "people"}`;
+  return names ? `${kind} · ${names}` : kind;
 }
 
 export function ThreadDetail({ threadId }: { threadId: string }) {
@@ -125,7 +134,7 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
   }, [session, threadId, trpc]);
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-3) var(--space-4) var(--space-6)" }}>
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
       {!session ? (
         <SignedOut />
       ) : error ? (
@@ -139,7 +148,7 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
       ) : (
         <ChatInfoView thread={thread} myId={myId} onBack={() => setView("chat")} onChanged={load} />
       )}
-    </main>
+    </div>
   );
 }
 
@@ -156,8 +165,10 @@ function ConversationView({
 }) {
   return (
     <>
+      {/* Mobile back to the list — the desktop shell shows the list beside us. */}
       <Link
         href="/threads"
+        className={styles.mobileBack}
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-2)" }}
       >
         <span aria-hidden>←</span> Chats

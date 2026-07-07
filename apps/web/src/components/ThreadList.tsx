@@ -21,11 +21,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, Pill, Button, Icon, type IconName } from "@roam/design";
+import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { UserSearch, PersonAvatar, personName, type SearchedPerson } from "./UserSearch";
-import rowStyles from "./listRow.module.css";
 
 type ThreadKind = "plan" | "group" | "direct";
 
@@ -49,7 +48,7 @@ interface ThreadRow {
   unreadCount: number;
 }
 
-export function ThreadList() {
+export function ThreadList({ activeThreadId = null }: { activeThreadId?: string | null }) {
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -129,28 +128,16 @@ export function ThreadList() {
   }, [trpc, selected, groupTitle, router]);
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+    <div>
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "var(--space-2) 0 var(--space-4)",
+          gap: "var(--space-3)",
+          padding: "var(--space-1) var(--space-1) var(--space-4)",
         }}
       >
-        <Link
-          href="/explore"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 13,
-            color: "var(--muted)",
-            textDecoration: "none",
-          }}
-        >
-          <span aria-hidden>←</span> Explore
-        </Link>
         <h1
           className="t-h2"
           style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}
@@ -159,11 +146,9 @@ export function ThreadList() {
         </h1>
         {session ? (
           <Button variant="pri" size="sm" onClick={() => (showCreate ? resetCreate() : setShowCreate(true))}>
-            {showCreate ? "Cancel" : "New chat"}
+            {showCreate ? "Cancel" : "＋ New"}
           </Button>
-        ) : (
-          <span style={{ width: 1 }} />
-        )}
+        ) : null}
       </header>
 
       {session && showCreate ? (
@@ -237,13 +222,19 @@ export function ThreadList() {
       ) : threads.length === 0 ? (
         <EmptyState />
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-3)" }}>
-          {threads.map((t) => (
-            <ThreadRowCard key={t.id} thread={t} myId={session.user?.id ?? null} />
+        <div>
+          {threads.map((t, i) => (
+            <ThreadRowCard
+              key={t.id}
+              thread={t}
+              myId={session.user?.id ?? null}
+              active={t.id === activeThreadId}
+              first={i === 0}
+            />
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -287,55 +278,78 @@ function previewText(last: LastMessage | null, myId: string | null): string {
   }
 }
 
-function ThreadRowCard({ thread, myId }: { thread: ThreadRow; myId: string | null }) {
+/** One conversation row (hi-fi mockup): avatar · name + snippet · time, tinted when open. */
+function ThreadRowCard({ thread, myId, active, first }: { thread: ThreadRow; myId: string | null; active: boolean; first: boolean }) {
   const meta = KIND_META[thread.kind];
   const name = thread.name?.trim() || thread.title?.trim() || meta.fallback;
   const unread = thread.unreadCount > 0;
   const when = formatWhen(thread.lastMessage?.createdAt ?? thread.updatedAt);
   return (
-    <Link href={`/threads/${thread.id}`} className={rowStyles.cardLift} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-      <Card style={{ padding: "var(--space-4)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
-            <Icon name={meta.icon} size={16} style={{ flexShrink: 0, color: "var(--muted)" }} />
-            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {name}
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0 }}>
-            {unread ? (
-              <span aria-label={`${thread.unreadCount} unread`} style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontSize: 11.5, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
-              </span>
-            ) : (
-              <Pill variant={thread.kind === "plan" ? "ghost-crim" : "neutral"} size="sm">
-                {meta.label}
-              </Pill>
-            )}
-          </div>
-        </div>
-        <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+    <Link
+      href={`/threads/${thread.id}`}
+      aria-current={active ? "page" : undefined}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "12px 12px",
+        borderRadius: 14,
+        background: active ? "var(--crimson-tint)" : "transparent",
+        borderTop: first ? "none" : "1px solid var(--line)",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: "50%",
+          flexShrink: 0,
+          display: "grid",
+          placeItems: "center",
+          background: thread.kind === "plan" ? "var(--crimson-tint-2)" : "var(--paper-2)",
+          color: thread.kind === "plan" ? "var(--crimson-700)" : "var(--ink-2)",
+          fontSize: 16,
+          fontWeight: 700,
+        }}
+      >
+        {thread.kind === "plan" ? <Icon name="plan" size={18} /> : name.charAt(0).toUpperCase() || "·"}
+      </span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink-hi)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {name}
+          </span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{when}</span>
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, marginTop: 2 }}>
           {thread.lastMessage && previewIcon(thread.lastMessage.kind) ? (
-            <Icon name={previewIcon(thread.lastMessage.kind) as IconName} size={13} style={{ flexShrink: 0, color: unread ? "var(--ink)" : "var(--muted)" }} />
+            <Icon name={previewIcon(thread.lastMessage.kind) as IconName} size={13} style={{ flexShrink: 0, color: active ? "var(--crimson-700)" : unread ? "var(--ink)" : "var(--muted)" }} />
           ) : null}
           <span
             style={{
               fontSize: 13,
-              color: unread ? "var(--ink)" : "var(--muted)",
-              fontWeight: unread ? 600 : 400,
+              color: active ? "var(--crimson-700)" : unread ? "var(--ink)" : "var(--muted)",
+              fontWeight: unread || active ? 600 : 400,
               fontFamily: "var(--ui)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
             }}
           >
             {previewText(thread.lastMessage, myId)}
           </span>
-        </div>
-        <div style={{ marginTop: 3, fontSize: 12, color: "var(--faint)", fontFamily: "var(--ui)" }}>
-          {thread.participantCount} {thread.participantCount === 1 ? "person" : "people"} · {when}
-        </div>
-      </Card>
+          {unread ? (
+            <span aria-label={`${thread.unreadCount} unread`} style={{ minWidth: 19, height: 19, padding: "0 6px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
+            </span>
+          ) : null}
+        </span>
+      </span>
     </Link>
   );
 }
