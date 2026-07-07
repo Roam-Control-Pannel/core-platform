@@ -28,6 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Seg, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
@@ -399,11 +400,10 @@ export function Explore() {
           <Icon name={CATEGORY_ICONS[c] ?? "place"} size={16} /> {categoryLabel(c)}
         </button>
       ))}
-      {/* Marketplace seam — dormant (Stage 5), present in the IA so lighting it up needs no reshuffle. */}
-      <span title="Marketplace is coming soon" className={`${styles.catBtn} ${styles.catSoon}`}>
+      {/* The Market — the once-dormant seam, now a live surface of its own. */}
+      <Link href="/market" className={styles.catBtn} style={{ textDecoration: "none" }}>
         <Icon name="shop" size={16} /> Market
-        <span className={`${styles.soonTag} ${styles.soonRight}`}>Soon</span>
-      </span>
+      </Link>
     </>
   );
 

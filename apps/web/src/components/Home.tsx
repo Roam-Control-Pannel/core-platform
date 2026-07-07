@@ -826,13 +826,20 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
   );
 }
 
+/** The Market widget — the old dormant seam, LIVE now the C2C marketplace exists. */
 function MarketSeam({ place }: { place: Place }) {
   return (
-    <SeamCard
-      title={`${place.name} market`}
-      glyph="shop"
-      blurb="Buy, sell and swap with people in your town — a local marketplace, right where you already browse."
-    />
+    <Section title={`${place.name} market`} icon="shop" action={{ label: "Browse", href: "/market" }}>
+      <p style={mutedNote}>
+        Buy, sell and swap with people in your town — list something in a minute, agree in chat,
+        meet locally.
+      </p>
+      <div style={{ marginTop: "var(--space-3)" }}>
+        <Link href="/market" style={{ textDecoration: "none" }}>
+          <Button variant="pri" size="sm">Open the Market</Button>
+        </Link>
+      </div>
+    </Section>
   );
 }
 
@@ -852,21 +859,3 @@ function SignInNudge({ note }: { note: string }) {
   );
 }
 
-function SeamCard({ title, glyph, blurb }: { title: string; glyph: IconName; blurb: string }) {
-  return (
-    <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)", borderStyle: "dashed" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
-        <Icon name={glyph} size={18} style={{ color: "var(--crimson-700)", opacity: 0.6 }} />
-        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, margin: 0, color: "var(--ink-2)" }}>
-          {title}
-        </h2>
-        <span
-          style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line-2)", borderRadius: 999, padding: "2px 8px" }}
-        >
-          Coming soon
-        </span>
-      </header>
-      <p style={mutedNote}>{blurb}</p>
-    </Card>
-  );
-}
