@@ -22,6 +22,7 @@ export interface MarketListing {
   locality: string | null;
   photoUrls: string[];
   status: "live" | "sold" | "removed";
+  views: number;
   createdAt: string;
   seller: { id: string; displayName: string | null; handle: string | null; avatarUrl: string | null };
 }
@@ -37,11 +38,12 @@ interface Row {
   locality: string | null;
   photo_urls: unknown;
   status: "live" | "sold" | "removed";
+  views: number | null;
   created_at: string;
   profiles: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null } | { id: string; display_name: string | null; handle: string | null; avatar_url: string | null }[] | null;
 }
 
-const COLS = "id, owner_id, title, description, price_pence, mode, category, locality, photo_urls, status, created_at, profiles!market_listings_owner_id_fkey(id, display_name, handle, avatar_url)";
+const COLS = "id, owner_id, title, description, price_pence, mode, category, locality, photo_urls, status, views, created_at, profiles!market_listings_owner_id_fkey(id, display_name, handle, avatar_url)";
 
 function shape(r: Row): MarketListing {
   const p = Array.isArray(r.profiles) ? (r.profiles[0] ?? null) : r.profiles;
@@ -55,6 +57,7 @@ function shape(r: Row): MarketListing {
     locality: r.locality,
     photoUrls: Array.isArray(r.photo_urls) ? (r.photo_urls as string[]).filter((u) => typeof u === "string").slice(0, 6) : [],
     status: r.status,
+    views: r.views ?? 0,
     createdAt: r.created_at,
     seller: { id: p?.id ?? r.owner_id, displayName: p?.display_name ?? null, handle: p?.handle ?? null, avatarUrl: p?.avatar_url ?? null },
   };
@@ -143,6 +146,15 @@ export const listingsRouter = router({
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't post that: ${error.message}` });
       const row = data?.[0];
       return row ? { ok: true, id: row.id } : { ok: false };
+    }),
+
+  /** Public: count a listing view (fire-and-forget from the detail page; identity-free). */
+  recordView: publicProcedure
+    .input(z.object({ listingId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
+      type LooseRpc = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
+      const { error } = await (ctx.db as unknown as LooseRpc).rpc("record_listing_view", { p_listing: input.listingId });
+      return { ok: !error };
     }),
 
   /** Owner: mark sold / remove / relist (RLS scopes the write to own rows). */

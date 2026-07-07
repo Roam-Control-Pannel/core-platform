@@ -21,6 +21,32 @@ type LooseRpc = (
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
 export const moderationRouter = router({
+  /** Protected: report a C2C market listing (scam, prohibited item, abuse) for human review.
+   *  Same moderation_queue insert the venue report uses — the 0004 policy gates on
+   *  reason='user_report' + self as reporter, not on entity type. */
+  reportListing: protectedProcedure
+    .input(z.object({ listingId: z.string().uuid(), detail: z.string().trim().max(2000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { data: u, error: uErr } = await ctx.db.auth.getUser();
+      if (uErr || !u.user) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Could not resolve the signed-in user." });
+      }
+      type LooseInsert = {
+        from: (t: string) => { insert: (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
+      };
+      const { error } = await (ctx.db as unknown as LooseInsert).from("moderation_queue").insert({
+        entity_type: "market_listing",
+        entity_id: input.listingId,
+        reason: "user_report",
+        reporter_id: u.user.id,
+        detail: input.detail ?? null,
+      });
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't submit your report. Please try again." });
+      }
+      return { ok: true as const };
+    }),
+
   /** Protected: report a venue (wrong claim, abusive content, etc.) for human review. */
   reportVenue: protectedProcedure
     .input(z.object({ venueId: z.string().uuid(), detail: z.string().trim().max(2000).optional() }))

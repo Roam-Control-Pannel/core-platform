@@ -23,6 +23,7 @@ type Mode = "sell" | "swap" | "free";
 
 interface Listing {
   id: string;
+  views?: number;
   title: string;
   description: string | null;
   pricePence: number | null;
@@ -141,7 +142,7 @@ export function Market() {
                     {l.mode === "free" ? "Free" : l.mode === "swap" ? "Swap" : l.pricePence != null ? formatPence(l.pricePence) : ""}
                   </strong>
                   <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{l.locality ?? "Nearby"} · {timeAgo(l.createdAt)}{l.status !== "live" ? ` · ${l.status}` : ""}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{l.locality ?? "Nearby"} · {timeAgo(l.createdAt)}{l.status !== "live" ? ` · ${l.status}` : ""}{view === "mine" && l.views != null ? ` · ${l.views} view${l.views === 1 ? "" : "s"}` : ""}</div>
                 </div>
               </Link>
               {view === "mine" ? (

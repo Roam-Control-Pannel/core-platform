@@ -5,11 +5,12 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Pill, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
-import { MessageButton } from "./MessageButton";
+import { useRouter } from "next/navigation";
+import { Button } from "@roam/design";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 
@@ -27,11 +28,22 @@ interface Listing {
   seller: { id: string; displayName: string | null; handle: string | null; avatarUrl: string | null };
 }
 
+/** Listings already view-counted this page lifetime (guards SPA re-mount recounts). */
+const viewedListings = new Set<string>();
+
 export function ListingDetail({ listingId }: { listingId: string }) {
   const trpc = useTrpc();
   const session = useSession();
   const [listing, setListing] = useState<Listing | null | undefined>(undefined);
   const [photo, setPhoto] = useState(0);
+
+  // Count the view once — identity-free, sellers see the tally on their listings.
+  useEffect(() => {
+    if (viewedListings.has(listingId)) return;
+    viewedListings.add(listingId);
+    const rec = trpc.listings.recordView as unknown as { mutate: (i: { listingId: string }) => Promise<{ ok: boolean }> };
+    rec.mutate({ listingId }).catch(() => {});
+  }, [trpc, listingId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,10 +130,16 @@ export function ListingDetail({ listingId }: { listingId: string }) {
           </Link>
           {isOwn ? (
             <Pill variant="neutral" size="sm">Your listing</Pill>
+          ) : session ? (
+            <MessageSeller listing={listing} />
           ) : (
-            <MessageButton profileId={listing.seller.id} variant="pri" label="Message seller" />
+            <Link href="/account" style={{ textDecoration: "none" }}>
+              <Button variant="neutral" size="sm">Sign in to message</Button>
+            </Link>
           )}
         </Card>
+
+        {!isOwn && session ? <ReportListing listingId={listing.id} /> : null}
 
         <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
           Roam doesn&apos;t handle payment for local listings — agree the details in chat and meet
@@ -129,6 +147,62 @@ export function ListingDetail({ listingId }: { listingId: string }) {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * MessageSeller — opens (or reuses) the DM and seeds it with the listing context, so the
+ * seller knows exactly what the enquiry is about (the Facebook "Is this available?" moment).
+ */
+function MessageSeller({ listing }: { listing: { id: string; title: string; seller: { id: string } } }) {
+  const trpc = useTrpc();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  const go = useCallback(async () => {
+    setBusy(true);
+    try {
+      const dt = trpc.chat.directThread as unknown as { mutate: (i: { profileId: string }) => Promise<{ threadId: string }> };
+      const { threadId } = await dt.mutate({ profileId: listing.seller.id });
+      const send = trpc.chat.sendMessage as unknown as { mutate: (i: { threadId: string; body: string }) => Promise<unknown> };
+      const url = `${window.location.origin}/market/${listing.id}`;
+      await send.mutate({ threadId, body: `About your listing “${listing.title}” — is it still available? ${url}` }).catch(() => {});
+      router.push(`/threads/${threadId}`);
+    } catch {
+      setBusy(false);
+    }
+  }, [trpc, router, listing]);
+
+  return (
+    <Button variant="pri" size="sm" onClick={() => void go()} disabled={busy}>
+      {busy ? "Opening chat…" : "Message seller"}
+    </Button>
+  );
+}
+
+/** ReportListing — a quiet flag-for-review affordance (moderation.reportListing). */
+function ReportListing({ listingId }: { listingId: string }) {
+  const trpc = useTrpc();
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  if (state === "done") {
+    return <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Reported — thanks, we’ll take a look.</p>;
+  }
+  return (
+    <button
+      type="button"
+      disabled={state === "busy"}
+      onClick={() => {
+        const detail = window.prompt("What’s wrong with this listing? (optional)") ?? undefined;
+        setState("busy");
+        const rep = trpc.moderation.reportListing as unknown as { mutate: (i: { listingId: string; detail?: string }) => Promise<{ ok: boolean }> };
+        rep.mutate({ listingId, ...(detail?.trim() ? { detail: detail.trim() } : {}) })
+          .then(() => setState("done"))
+          .catch(() => setState("idle"));
+      }}
+      style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "var(--muted)", textDecoration: "underline" }}
+    >
+      Report this listing
+    </button>
   );
 }
 
