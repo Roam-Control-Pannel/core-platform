@@ -1,18 +1,28 @@
 /**
- * PlansList — the /plans surface: your plans (personal venue itineraries) and a quick composer
- * to start one. Private (protected); signed out shows the just-in-time sign-in.
+ * PlansList — the /plans surface, redesigned to the hi-fi mockup: a kicker header
+ * ("TOGETHER IN BELFAST" · Plans · subline · ＋ New plan), a two-up grid of image cards
+ * (date chip over the header image, title over the scrim, an avatar stack + "N going"
+ * footer with the plan's locality), and a ghost "Start a new plan" card closing the grid.
  *
- * A plan is a collection of venues with a title, optional date and notes — shared with the
- * friends you invite, and each plan has its own group chat (managed on the plan's detail page).
+ * Private (protected); signed out shows the just-in-time sign-in. A plan is a collection of
+ * venues with a title, optional date and notes — shared with the friends you invite, and each
+ * plan has its own group chat (managed on the plan's detail page).
  */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Button } from "@roam/design";
+import { Card, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { useCurrentPlace } from "../lib/currentPlace";
 import { planDateLabel } from "../lib/planDate";
+
+interface PlanMemberAvatar {
+  id: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
 
 interface PlanRow {
   id: string;
@@ -20,6 +30,9 @@ interface PlanRow {
   plannedFor: string | null;
   headerUrl: string | null;
   venueCount: number;
+  locality: string | null;
+  goingCount: number;
+  memberAvatars: PlanMemberAvatar[];
 }
 
 /** Calm crimson gradient for plans without a custom header — matches PlanDetail. */
@@ -28,6 +41,7 @@ const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-
 export function PlansList() {
   const trpc = useTrpc();
   const session = useSession();
+  const { place } = useCurrentPlace();
   const hasSession = !!session;
   const [plans, setPlans] = useState<PlanRow[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -62,19 +76,21 @@ export function PlansList() {
   }, [load]);
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <Link
-        href="/"
-        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
-      >
-        <span aria-hidden>←</span> Home
-      </Link>
-      <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-        <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.02em", margin: 0 }}>
-          Plans
-        </h1>
+    <main style={{ maxWidth: 1060, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
+      <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)", marginBottom: "var(--space-6)", flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
+            Together in {place.name}
+          </div>
+          <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
+            Plans
+          </h1>
+          <p style={{ margin: "6px 0 0", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.5 }}>
+            Line up an outing, add venues, and let the group decide where to meet.
+          </p>
+        </div>
         {hasSession && !composing ? (
-          <Button variant="pri" size="sm" onClick={() => setComposing(true)}>
+          <Button variant="pri" onClick={() => setComposing(true)} style={{ flexShrink: 0 }}>
             ＋ New plan
           </Button>
         ) : null}
@@ -97,24 +113,16 @@ export function PlansList() {
               <p style={{ color: "var(--muted)", margin: 0 }}>{error}</p>
             </Card>
           ) : plans === undefined ? (
-            <div style={{ display: "grid", gap: "var(--space-3)" }}>
-              <div style={{ height: 72, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
-              <div style={{ height: 72, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+            <div style={grid}>
+              <div style={{ height: 300, borderRadius: 20, background: "var(--paper-2)" }} />
+              <div style={{ height: 300, borderRadius: 20, background: "var(--paper-2)" }} />
             </div>
-          ) : plans.length === 0 ? (
-            <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
-              <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-                No plans yet
-              </div>
-              <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
-                Make a plan — a night out, a weekend, a list to try — then add venues to it from anywhere on Roam.
-              </p>
-            </Card>
           ) : (
-            <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            <div style={grid}>
               {plans.map((p) => (
-                <PlanRowCard key={p.id} plan={p} />
+                <PlanCard key={p.id} plan={p} />
               ))}
+              <NewPlanCard onClick={() => setComposing(true)} />
             </div>
           )}
         </>
@@ -123,39 +131,121 @@ export function PlansList() {
   );
 }
 
-/** A plan in the list: a header banner (custom image or gradient) with the title + date
- *  overlaid, and a venue-count footer. Reads like a card — the look that shines on mobile. */
-function PlanRowCard({ plan }: { plan: PlanRow }) {
+/** Two-up (fluid) card grid — auto-fill keeps it inline-style-only, no media query needed. */
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+  gap: "var(--space-5)",
+  alignItems: "stretch",
+};
+
+/** A plan card per the mockup: date chip over the header image, title over the scrim, and a
+ *  white footer with the avatar stack + "N going" and the plan's locality. */
+function PlanCard({ plan }: { plan: PlanRow }) {
   return (
     <Link href={`/plans/${plan.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-      <Card style={{ padding: 0, overflow: "hidden" }}>
+      <Card style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
         <div
           style={{
-            position: "relative", minHeight: 124, display: "flex", alignItems: "flex-end",
+            position: "relative",
+            height: 210,
+            display: "flex",
+            alignItems: "flex-end",
             background: plan.headerUrl ? "var(--paper-2)" : PLAN_GRADIENT,
+            flexShrink: 0,
           }}
         >
           {plan.headerUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
             <img src={plan.headerUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
           ) : null}
-          <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.1) 50%, rgba(0,0,0,0) 78%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.12) 55%, rgba(0,0,0,0) 80%)" }} />
+          <span
+            style={{
+              position: "absolute",
+              top: "var(--space-4)",
+              left: "var(--space-4)",
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: ".08em",
+              textTransform: "uppercase",
+              color: "#fff",
+              background: "rgba(20,16,14,.45)",
+              backdropFilter: "blur(4px)",
+              borderRadius: 999,
+              padding: "4px 12px",
+            }}
+          >
+            {plan.plannedFor ? planDateLabel(plan.plannedFor) : "No date yet"}
+          </span>
           <div style={{ position: "relative", padding: "var(--space-4)", width: "100%" }}>
-            {plan.plannedFor ? (
-              <span style={{ display: "inline-block", marginBottom: 6, fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase", color: "#fff", background: "rgba(255,255,255,.18)", borderRadius: 999, padding: "2px 9px" }}>
-                {planDateLabel(plan.plannedFor)}
-              </span>
-            ) : null}
-            <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, color: "#fff", textShadow: "0 1px 12px rgba(0,0,0,.35)", lineHeight: 1.25 }}>
+            <div className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 23, color: "#fff", textShadow: "0 1px 14px rgba(0,0,0,.4)", lineHeight: 1.25, letterSpacing: "-.015em" }}>
               {plan.title}
             </div>
           </div>
         </div>
-        <div style={{ padding: "10px var(--space-4)", fontSize: 12.5, color: "var(--muted)" }}>
-          {plan.venueCount === 1 ? "1 venue" : `${plan.venueCount} venues`}
+
+        {/* Footer: who's going · where. */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "12px var(--space-4)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+            {plan.memberAvatars.length > 0 ? (
+              <AvatarStack size={28}>
+                {plan.memberAvatars.map((m) =>
+                  m.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+                    <img key={m.id} src={m.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span key={m.id} style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 12, fontWeight: 700 }}>
+                      {(m.displayName ?? "·").trim().charAt(0).toUpperCase() || "·"}
+                    </span>
+                  ),
+                )}
+              </AvatarStack>
+            ) : null}
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>
+              {plan.goingCount} going
+            </span>
+          </span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {plan.locality ?? (plan.venueCount === 1 ? "1 venue" : `${plan.venueCount} venues`)}
+          </span>
         </div>
       </Card>
     </Link>
+  );
+}
+
+/** The ghost "Start a new plan" card closing the grid — the mockup's soft call to action. */
+function NewPlanCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        all: "unset",
+        boxSizing: "border-box",
+        cursor: "pointer",
+        minHeight: 264,
+        borderRadius: 20,
+        background: "var(--card)",
+        border: "1px solid rgba(33,29,26,.05)",
+        boxShadow: "var(--sh-1)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        textAlign: "center",
+        padding: "var(--space-5)",
+      }}
+    >
+      <span aria-hidden style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 22, fontWeight: 600 }}>
+        +
+      </span>
+      <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, color: "var(--ink)" }}>Start a new plan</span>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted)" }}>Pick a date, invite friends</span>
+    </button>
   );
 }
 
@@ -185,7 +275,7 @@ function PlanComposer({ onCreated, onCancel }: { onCreated: () => void; onCancel
   }, [trpc, title, date, notes, onCreated]);
 
   return (
-    <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+    <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-5)" }}>
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}

@@ -40,44 +40,95 @@ interface EmbeddedVenue {
 const PLAN_VENUE_COLS = "venue_id, position, venues(id, name, category, cover_photo_id)";
 
 export const plansRouter = router({
-  /** Protected: the caller's plans (owned or member-of), newest first, with a venue count. */
+  /**
+   * Protected: the caller's plans (owned or member-of), newest first, with the card facts:
+   * venue count, "going" count (owner + accepted members), the first few member avatars for
+   * the stack, and a locality (the first venue's) for the footer.
+   */
   list: protectedProcedure.query(async ({ ctx }) => {
     const db = ctx.db as unknown as LooseDb;
     await callerId(db);
+    type Embed = { id: string; display_name: string | null; avatar_url: string | null };
+    const one = (e: Embed | Embed[] | null | undefined): Embed | null =>
+      Array.isArray(e) ? (e[0] ?? null) : (e ?? null);
     // RLS plans_read already scopes to owner-or-member. Plain select (no aggregate embed —
-    // PostgREST count-embeds are finicky); venue counts are a second, cheap lookup below.
+    // PostgREST count-embeds are finicky); the card facts are cheap batched lookups below.
     const { data, error } = (await db
       .from("plans")
-      .select("id, title, notes, planned_for, header_url, created_at")
+      .select("id, owner_id, title, notes, planned_for, header_url, created_at, owner:profiles!plans_owner_id_fkey(id, display_name, avatar_url)")
       .order("created_at", { ascending: false })) as PgResult<
-      { id: string; title: string; notes: string | null; planned_for: string | null; header_url: string | null; created_at: string }[] | null
+      {
+        id: string;
+        owner_id: string;
+        title: string;
+        notes: string | null;
+        planned_for: string | null;
+        header_url: string | null;
+        created_at: string;
+        owner: Embed | Embed[] | null;
+      }[] | null
     >;
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your plans: ${error.message}` });
     }
     const rows = data ?? [];
+    const ids = rows.map((r) => r.id);
 
-    // Venue counts: one query over the visible plans (RLS scopes plan_venues to those), tallied
-    // in JS. Avoids the aggregate-embed; a plan with none simply has count 0.
+    // Venue count + first locality per plan (RLS scopes plan_venues to visible plans).
     const counts = new Map<string, number>();
-    if (rows.length > 0) {
+    const localities = new Map<string, string>();
+    if (ids.length > 0) {
       const { data: pv } = (await db
         .from("plan_venues")
-        .select("plan_id")
-        .in("plan_id", rows.map((r) => r.id))) as PgResult<{ plan_id: string }[] | null>;
-      for (const v of pv ?? []) counts.set(v.plan_id, (counts.get(v.plan_id) ?? 0) + 1);
+        .select("plan_id, venues(locality)")
+        .in("plan_id", ids)) as PgResult<{ plan_id: string; venues: { locality: string | null } | { locality: string | null }[] | null }[] | null>;
+      for (const v of pv ?? []) {
+        counts.set(v.plan_id, (counts.get(v.plan_id) ?? 0) + 1);
+        const venue = Array.isArray(v.venues) ? (v.venues[0] ?? null) : v.venues;
+        if (venue?.locality && !localities.has(v.plan_id)) localities.set(v.plan_id, venue.locality);
+      }
+    }
+
+    // Members per plan (for the avatar stack + going count). Owner is implicit, never a dupe.
+    const membersByPlan = new Map<string, Embed[]>();
+    if (ids.length > 0) {
+      const { data: pm } = (await db
+        .from("plan_members")
+        .select("plan_id, profile_id, profiles(id, display_name, avatar_url)")
+        .in("plan_id", ids)) as PgResult<
+        { plan_id: string; profile_id: string; profiles: Embed | Embed[] | null }[] | null
+      >;
+      for (const m of pm ?? []) {
+        const prof = one(m.profiles);
+        if (!prof) continue;
+        const list = membersByPlan.get(m.plan_id) ?? [];
+        list.push(prof);
+        membersByPlan.set(m.plan_id, list);
+      }
     }
 
     return {
-      plans: rows.map((p) => ({
-        id: p.id,
-        title: p.title,
-        notes: p.notes,
-        plannedFor: p.planned_for,
-        headerUrl: p.header_url,
-        createdAt: p.created_at,
-        venueCount: counts.get(p.id) ?? 0,
-      })),
+      plans: rows.map((p) => {
+        const owner = one(p.owner);
+        const invited = (membersByPlan.get(p.id) ?? []).filter((m) => m.id !== p.owner_id);
+        const people = [...(owner ? [owner] : []), ...invited];
+        return {
+          id: p.id,
+          title: p.title,
+          notes: p.notes,
+          plannedFor: p.planned_for,
+          headerUrl: p.header_url,
+          createdAt: p.created_at,
+          venueCount: counts.get(p.id) ?? 0,
+          locality: localities.get(p.id) ?? null,
+          goingCount: people.length,
+          memberAvatars: people.slice(0, 3).map((m) => ({
+            id: m.id,
+            displayName: m.display_name,
+            avatarUrl: m.avatar_url,
+          })),
+        };
+      }),
     };
   }),
 
