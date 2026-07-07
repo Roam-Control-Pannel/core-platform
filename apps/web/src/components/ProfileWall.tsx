@@ -288,6 +288,7 @@ function ProfileHeader({
             ["Friends", "/friends"],
             ["Following", "/following"],
             ["Plans", "/plans"],
+            ["Orders", "/orders"],
             ["Notifications", "/notifications"],
             ["Business dashboard", "/dashboard"],
             ["Settings", "/settings"],

@@ -80,7 +80,7 @@ async function ownedOrder(
   ctx: { db: unknown; env: Parameters<typeof escalateToService>[0] },
   orderId: string,
 ): Promise<{
-  order: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null };
+  order: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number };
   service: LooseDb;
 }> {
   const { data: auth } = await (ctx.db as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
@@ -89,9 +89,9 @@ async function ownedOrder(
   const service = escalateToService(ctx.env) as unknown as LooseDb;
   const { data: order } = (await service
     .from("orders")
-    .select("id, venue_id, product_kind, status, stripe_payment_intent_id")
+    .select("id, venue_id, product_kind, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence")
     .eq("id", orderId)
-    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null } | null };
+    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number } | null };
   if (!order) throw new TRPCError({ code: "NOT_FOUND" });
   const { data: venue } = (await service
     .from("venues")
@@ -386,6 +386,15 @@ export const marketRouter = router({
         .update({ status: "refunded" })
         .eq("id", input.orderId)
         .select("id")) as { data: { id: string }[] | null };
+      // Tell the buyer (best-effort — the refund itself has already succeeded).
+      if (order.buyer_id) {
+        const pounds = `£${(order.amount_pence / 100).toFixed(order.amount_pence % 100 === 0 ? 0 : 2)}`;
+        await service.from("notifications").insert({
+          recipient_id: order.buyer_id,
+          type: "order_refunded",
+          payload: { text: `Refunded — “${order.product_title}” (${pounds}) is on its way back to your card.`, href: "/orders" },
+        });
+      }
       return { ok: !!data && data.length > 0 };
     }),
 

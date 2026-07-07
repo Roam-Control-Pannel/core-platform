@@ -34,6 +34,8 @@ function glyph(type: string): IconName {
       return "heart";
     case "offer_redeem":
       return "redeem";
+    case "sale":
+      return "bag";
     default:
       return "sparkle";
   }
@@ -49,6 +51,8 @@ function phrase(it: ActivityItem): string {
       return `${who} saved ${what}`;
     case "offer_redeem":
       return `${who} redeemed ${what}`;
+    case "sale":
+      return `${who} bought ${what}`;
     default:
       return `${who} interacted with your venue`;
   }

@@ -32,6 +32,8 @@ const GLYPH: Record<string, IconName> = {
   friend_request: "wave",
   friend_accept: "handshake",
   venue_message: "bell",
+  order_paid: "bag",
+  order_refunded: "card",
 };
 
 export function NotificationCenter() {
