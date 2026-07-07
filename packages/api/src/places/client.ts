@@ -26,11 +26,15 @@ const SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby"
 const PLACE_DETAILS_BASE = "https://places.googleapis.com/v1/places/";
 
 /**
- * The Place Details field mask for the BACKFILL — photos plus the card-enrichment facts
- * (rating, count, price, type label, business status) that older venues were ingested
- * before we requested. Details uses BARE field names (no `places.` prefix, unlike
- * searchNearby). These all share the Enterprise/Pro tiers we already pay on searchNearby,
- * so one Details call per venue refreshes everything the card needs at no extra tier cost.
+ * The Place Details field mask for the BACKFILL/ENRICHMENT — photos + the card facts
+ * (rating, count, price, type label, business status) + the RICH venue facts (0065):
+ * contact, price range, and the Atmosphere attribute block (service options, dining,
+ * amenities, payments, parking, accessibility). Details uses BARE field names (no
+ * `places.` prefix, unlike searchNearby).
+ *
+ * BILLING: the attribute fields are the Enterprise + Atmosphere SKU — the top Details
+ * tier. That cost lives ONLY here, on the once-per-venue enrichment path; the per-search
+ * mask (FIELD_MASK below) deliberately stays on the cheaper tiers.
  */
 const DETAILS_BACKFILL_FIELD_MASK = [
   "id",
@@ -40,6 +44,37 @@ const DETAILS_BACKFILL_FIELD_MASK = [
   "priceLevel",
   "primaryTypeDisplayName",
   "businessStatus",
+  // Contact (Pro/Enterprise tier)
+  "nationalPhoneNumber",
+  "websiteUri",
+  // Rich facts (Enterprise + Atmosphere tier)
+  "priceRange",
+  "paymentOptions",
+  "parkingOptions",
+  "accessibilityOptions",
+  "takeout",
+  "delivery",
+  "dineIn",
+  "curbsidePickup",
+  "reservable",
+  "servesBreakfast",
+  "servesBrunch",
+  "servesLunch",
+  "servesDinner",
+  "servesBeer",
+  "servesWine",
+  "servesCocktails",
+  "servesCoffee",
+  "servesDessert",
+  "servesVegetarianFood",
+  "outdoorSeating",
+  "liveMusic",
+  "menuForChildren",
+  "goodForChildren",
+  "goodForGroups",
+  "goodForWatchingSports",
+  "allowsDogs",
+  "restroom",
 ].join(",");
 
 /**

@@ -8,6 +8,7 @@ import {
   placeToVenueRow,
   placeOpeningTimes,
   placePhotos,
+  placeRichFields,
   snapToIngestGrid,
   INGEST_SNAP_DEGREES,
   type CategoryId,
@@ -411,6 +412,49 @@ describe("placePhotos", () => {
       ],
     });
     expect(result[0]!.attribution).toEqual([{ displayName: "Real Name", uri: null }]);
+  });
+});
+
+describe("placeRichFields", () => {
+  it("extracts contact, price range and the attribute bag", () => {
+    const rich = placeRichFields({
+      id: "p1",
+      nationalPhoneNumber: " 028 9024 1100 ",
+      websiteUri: "https://example.com/",
+      priceRange: {
+        startPrice: { currencyCode: "GBP", units: "10" },
+        endPrice: { currencyCode: "GBP", units: "20" },
+      },
+      outdoorSeating: true,
+      servesVegetarianFood: true,
+      liveMusic: false, // false is signal ("no live music"), not absence
+      paymentOptions: { acceptsCreditCards: true, acceptsNfc: true, acceptsCashOnly: false },
+      accessibilityOptions: { wheelchairAccessibleEntrance: true },
+    });
+    expect(rich.phone).toBe("028 9024 1100");
+    expect(rich.website_url).toBe("https://example.com/");
+    expect(rich.price_range).toEqual({ start: 10, end: 20, currency: "GBP" });
+    expect(rich.attributes).toEqual({
+      outdoorSeating: true,
+      servesVegetarianFood: true,
+      liveMusic: false,
+      paymentOptions: { acceptsCreditCards: true, acceptsNfc: true, acceptsCashOnly: false },
+      accessibilityOptions: { wheelchairAccessibleEntrance: true },
+    });
+  });
+
+  it("returns all-null when Places gives no signal (never writes an empty bag)", () => {
+    const rich = placeRichFields({ id: "p2" });
+    expect(rich).toEqual({ phone: null, website_url: null, price_range: null, attributes: null });
+  });
+
+  it("handles an open-ended price range and unparseable units", () => {
+    const rich = placeRichFields({
+      id: "p3",
+      priceRange: { startPrice: { currencyCode: "GBP", units: "15" } },
+    });
+    expect(rich.price_range).toEqual({ start: 15, end: null, currency: "GBP" });
+    expect(placeRichFields({ id: "p4", priceRange: { startPrice: { units: "abc" } } }).price_range).toBeNull();
   });
 });
 

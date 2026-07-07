@@ -128,7 +128,7 @@ async function main(): Promise<void> {
         if (error) throw new Error(`upsert_venue_photos failed: ${error.message}`);
         return typeof data === "number" ? data : Number(data ?? 0);
       },
-      updateVenueFields: async (venueId, fields) => {
+      updateVenueFields: async (venueId, fields, rich) => {
         const { error } = await looseDb
           .from("venues")
           .update({
@@ -137,6 +137,12 @@ async function main(): Promise<void> {
             price_level: fields.price_level,
             primary_type_label: fields.primary_type_label,
             business_status: fields.business_status,
+            // Rich facts (0065) — written as Google returns them (this path only touches
+            // unclaimed google_places venues, so the row stays canonical to the source).
+            phone: rich.phone,
+            website_url: rich.website_url,
+            price_range: rich.price_range,
+            attributes: rich.attributes,
           })
           .eq("id", venueId);
         if (error) throw new Error(`venue field update failed: ${error.message}`);

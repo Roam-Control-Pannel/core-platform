@@ -344,6 +344,134 @@ export interface PlaceResult {
         authorAttributions?: readonly { displayName?: string; uri?: string }[];
       }[]
     | undefined;
+
+  /* ── Details-only enrichment fields (rich venue facts; requested ONLY on the Place
+     Details path — never on searchNearby, whose field mask stays lean for cost). ─────── */
+
+  /** Local-format phone number, e.g. "028 9024 1100". */
+  nationalPhoneNumber?: string | undefined;
+  /** The business's own website. */
+  websiteUri?: string | undefined;
+  /** Places (New) price range: start/end money amounts. `units` is a decimal string. */
+  priceRange?:
+    | {
+        startPrice?: { currencyCode?: string; units?: string } | undefined;
+        endPrice?: { currencyCode?: string; units?: string } | undefined;
+      }
+    | undefined;
+  paymentOptions?: Record<string, boolean | undefined> | undefined;
+  parkingOptions?: Record<string, boolean | undefined> | undefined;
+  accessibilityOptions?: Record<string, boolean | undefined> | undefined;
+  // Service options
+  takeout?: boolean | undefined;
+  delivery?: boolean | undefined;
+  dineIn?: boolean | undefined;
+  curbsidePickup?: boolean | undefined;
+  reservable?: boolean | undefined;
+  // Dining
+  servesBreakfast?: boolean | undefined;
+  servesBrunch?: boolean | undefined;
+  servesLunch?: boolean | undefined;
+  servesDinner?: boolean | undefined;
+  servesBeer?: boolean | undefined;
+  servesWine?: boolean | undefined;
+  servesCocktails?: boolean | undefined;
+  servesCoffee?: boolean | undefined;
+  servesDessert?: boolean | undefined;
+  servesVegetarianFood?: boolean | undefined;
+  // Amenities & vibe
+  outdoorSeating?: boolean | undefined;
+  liveMusic?: boolean | undefined;
+  menuForChildren?: boolean | undefined;
+  goodForChildren?: boolean | undefined;
+  goodForGroups?: boolean | undefined;
+  goodForWatchingSports?: boolean | undefined;
+  allowsDogs?: boolean | undefined;
+  restroom?: boolean | undefined;
+}
+
+/** The boolean attribute keys we lift verbatim from a Places Details result into the
+ *  venues.attributes jsonb bag. One list so the field mask, the extractor and the tests
+ *  can never drift. */
+export const PLACE_ATTRIBUTE_KEYS = [
+  "takeout",
+  "delivery",
+  "dineIn",
+  "curbsidePickup",
+  "reservable",
+  "servesBreakfast",
+  "servesBrunch",
+  "servesLunch",
+  "servesDinner",
+  "servesBeer",
+  "servesWine",
+  "servesCocktails",
+  "servesCoffee",
+  "servesDessert",
+  "servesVegetarianFood",
+  "outdoorSeating",
+  "liveMusic",
+  "menuForChildren",
+  "goodForChildren",
+  "goodForGroups",
+  "goodForWatchingSports",
+  "allowsDogs",
+  "restroom",
+] as const;
+
+/** The Places option-group keys stored as sub-objects inside venues.attributes. */
+export const PLACE_OPTION_GROUP_KEYS = ["paymentOptions", "parkingOptions", "accessibilityOptions"] as const;
+
+/** Normalized rich-detail facts for a venue row (0065): phone, website, price range, and
+ *  the attributes jsonb bag. Everything null when Places gave no signal. */
+export interface PlaceRichFields {
+  phone: string | null;
+  website_url: string | null;
+  /** {start, end, currency} in whole currency units, or null when Places has no range. */
+  price_range: { start: number | null; end: number | null; currency: string | null } | null;
+  /** Boolean facts + option-group sub-objects; ONLY keys Places actually returned. Null
+   *  when it returned none, so enrichment never overwrites data with an empty bag. */
+  attributes: Record<string, boolean | Record<string, boolean>> | null;
+}
+
+/** Parse a Places money `units` decimal string to a number, or null. */
+function moneyUnits(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Extract the rich-detail facts from a Places Details result. Pure; null-safe. Booleans
+ * are copied ONLY when present (true or false both carry signal: "no outdoor seating" is
+ * a fact); absent keys stay absent so the UI can distinguish "no" from "unknown".
+ */
+export function placeRichFields(place: PlaceResult): PlaceRichFields {
+  const attributes: Record<string, boolean | Record<string, boolean>> = {};
+  for (const key of PLACE_ATTRIBUTE_KEYS) {
+    const v = place[key];
+    if (typeof v === "boolean") attributes[key] = v;
+  }
+  for (const group of PLACE_OPTION_GROUP_KEYS) {
+    const raw = place[group];
+    if (!raw) continue;
+    const cleaned: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (typeof v === "boolean") cleaned[k] = v;
+    }
+    if (Object.keys(cleaned).length > 0) attributes[group] = cleaned;
+  }
+
+  const start = moneyUnits(place.priceRange?.startPrice?.units);
+  const end = moneyUnits(place.priceRange?.endPrice?.units);
+  const currency = place.priceRange?.startPrice?.currencyCode ?? place.priceRange?.endPrice?.currencyCode ?? null;
+
+  return {
+    phone: place.nationalPhoneNumber?.trim() || null,
+    website_url: place.websiteUri?.trim() || null,
+    price_range: start !== null || end !== null ? { start, end, currency } : null,
+    attributes: Object.keys(attributes).length > 0 ? attributes : null,
+  };
 }
 
 /**
