@@ -18,6 +18,7 @@ import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
 import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
+import { PlacePrefsSync } from "../components/PlacePrefsSync";
 import { siteUrl, ogCardUrl } from "../lib/seo";
 
 const DESCRIPTION = "Discover the best local venues, read reviews, follow your town's news and plan days out with friends — all on Roam.";
@@ -81,6 +82,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <CreateFab />
           <TabBar />
           <FirstRunProfilePrompt />
+          {/* Headless: syncs saved/current place to the account (cross-device). */}
+          <PlacePrefsSync />
         </TrpcProvider>
       </body>
     </html>
