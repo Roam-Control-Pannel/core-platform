@@ -31,6 +31,7 @@ const NAV_TILES: { href: string; glyph: IconName; label: string }[] = [
   { href: "/threads", glyph: "chat", label: "Chat" },
   { href: "/deals", glyph: "ticket", label: "Deals" },
   { href: "/market", glyph: "shop", label: "Market" },
+  { href: "/orders", glyph: "bag", label: "Orders" },
   { href: "/friends", glyph: "users", label: "Friends" },
 ];
 

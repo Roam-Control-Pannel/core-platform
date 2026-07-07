@@ -307,10 +307,35 @@ export async function handler(request: Request): Promise<Response> {
           .update({ status: "paid", stripe_payment_intent_id: session.payment_intent ?? null })
           .eq("id", orderId)
           .eq("status", "pending")
-          .select("id, product_id, quantity")) as {
-          data: { id: string; product_id: string | null; quantity: number }[] | null;
+          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, amount_pence")) as {
+          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; amount_pence: number }[] | null;
         };
         const order = updated?.[0];
+        if (order) {
+          // The marketplace nervous system: the sale lands in the venue's Activity feed, and
+          // the buyer's bell confirms payment (with the voucher pointer where relevant).
+          // Both best-effort — a failed insert never breaks payment confirmation.
+          const pounds = `£${(order.amount_pence / 100).toFixed(order.amount_pence % 100 === 0 ? 0 : 2)}`;
+          await service.from("venue_activity").insert({
+            venue_id: order.venue_id,
+            type: "sale",
+            actor_id: order.buyer_id,
+            payload: { orderId: order.id, offerTitle: order.product_title, amountPence: order.amount_pence },
+          });
+          if (order.buyer_id) {
+            await service.from("notifications").insert({
+              recipient_id: order.buyer_id,
+              type: "order_paid",
+              payload: {
+                text:
+                  order.product_kind === "service"
+                    ? `Payment confirmed — “${order.product_title}” (${pounds}). Your redeem code is in Your orders.`
+                    : `Payment confirmed — “${order.product_title}” (${pounds}). Collect it in venue.`,
+                href: "/orders",
+              },
+            });
+          }
+        }
         if (order?.product_id) {
           const { data: prod } = (await service
             .from("venue_products")
