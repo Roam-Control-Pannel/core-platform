@@ -12,6 +12,7 @@ export { appRouter, type AppRouter } from "./routers/index.js";
 // profiles.placePrefs surfaces StoredPlace; payments.accountStatus surfaces PayoutStatus.
 export { type StoredPlace } from "./routers/profiles.js";
 export { type PayoutStatus } from "./routers/payments.js";
+export { type MarketProduct } from "./routers/market.js";
 export {
   makeContextFactory,
   type Context,
