@@ -1,0 +1,247 @@
+/*
+ * Business dashboard layout (owner console redesign). Wide two-column work surface on
+ * desktop — main column + a 340px rail on the Overview/Offers/Notifications tabs — with a
+ * 4-up stat strip under the identity header. Everything stacks on phones. Tokens only.
+ */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.statCard {
+  position: relative;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--shadow-key);
+  min-width: 0;
+}
+
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink-hi);
+}
+
+.statDelta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deltaUp {
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Tiny sparkline bars in a stat card's top-right corner — real data only. */
+.spark {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+
+.sparkBar {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--crimson);
+  min-height: 2px;
+}
+
+.sparkBar:not(:last-child) {
+  opacity: 0.35;
+}
+
+/* Two-column tab body: main + rail. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* The Audience tab's 2-up card grid. */
+.duo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .duo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Next-best-action banner — the tinted crimson strip at the top of Overview. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 18px;
+  border: 1px solid var(--crimson-tint-2);
+  background: linear-gradient(120deg, var(--crimson-tint), rgba(255, 255, 255, 0.55));
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.bannerGlyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--crimson);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.bannerKicker {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--crimson-700);
+  font-weight: 700;
+}
+
+.bannerTitle {
+  margin: 2px 0 2px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--ink-hi);
+}
+
+.bannerSub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+/* Quick action tiles (rail). */
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.quickTile {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: var(--space-3) var(--space-2);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: center;
+  transition:
+    border-color var(--motion-transition) var(--ease),
+    color var(--motion-transition) var(--ease);
+}
+
+.quickTile:hover {
+  border-color: var(--crimson-tint-2);
+  color: var(--ink);
+}
+
+.quickTile:focus-visible {
+  outline: 2px solid var(--crimson);
+  outline-offset: 2px;
+}
+
+.quickGlyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+}
+
+/* Follower growth bars (Audience tab). */
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 140px;
+  padding-top: var(--space-2);
+}
+
+.barCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 100%;
+  max-width: 56px;
+  border-radius: 8px 8px 3px 3px;
+  background: var(--crimson-tint-2);
+  min-height: 3px;
+}
+
+.barHot {
+  background: var(--crimson);
+}
+
+.barLabel {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+  white-space: nowrap;
+}

@@ -168,6 +168,43 @@ export const socialRouter = router({
       return { ok: true as const, count: count ?? followers.length, followers };
     }),
 
+  /**
+   * A venue's follower growth — net new follows per week over the last `weeks` weeks (oldest
+   * first, zero-filled), for the dashboard's growth bars. follows_read RLS is public and this
+   * is COUNTS only (created_at timestamps aggregated server-side; no follower identity).
+   */
+  venueFollowerGrowth: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), weeks: z.number().int().min(4).max(12).default(6) }))
+    .query(async ({ ctx, input }) => {
+      const since = new Date();
+      since.setUTCDate(since.getUTCDate() - input.weeks * 7);
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("follows")
+        .select("created_at")
+        .eq("venue_id", input.venueId)
+        .gte("created_at", since.toISOString())
+        .order("created_at", { ascending: true })
+        .limit(5000)) as { data: { created_at: string }[] | null; error: { message: string } | null };
+      if (error) return { ok: false as const, weeks: [] as { weekStart: string; count: number }[] };
+      // Bucket by week, anchored so the LAST bucket ends now (partial current week included).
+      const msWeek = 7 * 24 * 60 * 60 * 1000;
+      const end = Date.now();
+      const buckets: { weekStart: string; count: number }[] = [];
+      for (let i = input.weeks - 1; i >= 0; i--) {
+        const start = new Date(end - (i + 1) * msWeek);
+        buckets.push({ weekStart: start.toISOString().slice(0, 10), count: 0 });
+      }
+      for (const r of data ?? []) {
+        const t = new Date(r.created_at).getTime();
+        const idx = input.weeks - 1 - Math.floor((end - t) / msWeek);
+        const b = buckets[idx];
+        if (b) b.count += 1;
+      }
+      return { ok: true as const, weeks: buckets };
+    }),
+
   /** Venues the caller follows, newest first, with each follow's push preference. */
   myFollows: protectedProcedure
     .query(async ({ ctx }) => {

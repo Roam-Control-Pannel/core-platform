@@ -517,6 +517,60 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Public: count a profile view — the venue page calls this fire-and-forget on load. Bumps
+   * today's per-venue counter via the record_venue_view definer RPC (migration 0068); no
+   * viewer identity is ever stored. Never throws into the page: a failed count is just an
+   * uncounted view.
+   */
+  recordView: publicProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      type LooseRpc = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
+      const db = ctx.db as unknown as LooseRpc;
+      const { error } = await db.rpc("record_venue_view", { p_venue: input.venueId });
+      return { ok: !error };
+    }),
+
+  /**
+   * Owner: daily profile-view counts for the dashboard — the requested window plus the window
+   * before it (for the delta), oldest first. RLS (venue_views_owner_read) means a non-owner
+   * simply reads zero rows; the counters only exist from migration 0068 onward, so a venue's
+   * history starts the day tracking shipped.
+   */
+  viewStats: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), days: z.union([z.literal(30), z.literal(90)]).default(30) }))
+    .query(async ({ ctx, input }) => {
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const since = new Date();
+      since.setUTCDate(since.getUTCDate() - input.days * 2);
+      const sinceDay = since.toISOString().slice(0, 10);
+      const { data, error } = (await db
+        .from("venue_views")
+        .select("day, views")
+        .eq("venue_id", input.venueId)
+        .gte("day", sinceDay)
+        .order("day", { ascending: true })) as {
+        data: { day: string; views: number }[] | null;
+        error: { message: string } | null;
+      };
+      if (error) throw new Error(`Failed to load view stats: ${error.message}`);
+      const rows = data ?? [];
+      const cutoff = new Date();
+      cutoff.setUTCDate(cutoff.getUTCDate() - input.days);
+      const cutoffDay = cutoff.toISOString().slice(0, 10);
+      const current = rows.filter((r) => r.day >= cutoffDay);
+      const previous = rows.filter((r) => r.day < cutoffDay);
+      const sum = (list: { views: number }[]) => list.reduce((n, r) => n + (r.views ?? 0), 0);
+      return {
+        days: input.days,
+        total: sum(current),
+        previousTotal: sum(previous),
+        daily: current.map((r) => ({ day: r.day, views: r.views ?? 0 })),
+      };
+    }),
+
+  /**
    * Public: top venues in a town (matched on the locality display name, case-insensitively),
    * highest-rated first — the "featured venues" strip on the Town Hall town hub. Loose-typed read
    * so `slug` (migration 0044) is selectable before db:types reruns.

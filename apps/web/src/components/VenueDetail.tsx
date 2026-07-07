@@ -89,6 +89,9 @@ type ClaimUiState =
   | "submitted" // success — under review
   | "error"; // requestClaim failed (message in claimError)
 
+/** Venue ids already counted as viewed this page lifetime (guards SPA re-mount recounts). */
+const viewedVenues = new Set<string>();
+
 export function VenueDetail({ venueId, initialVenue }: { venueId: string; initialVenue?: VenueDetailData | null }) {
   const trpc = useTrpc();
   const session = useSession();
@@ -139,6 +142,20 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       cancelled = true;
     };
   }, [loadVenue, initialVenue]);
+
+  // Count a profile view for the owner's dashboard — fire-and-forget, once per venue per
+  // page lifetime (the module-level set survives client-side nav re-mounts, so back-and-forth
+  // browsing doesn't inflate the counter). No viewer identity is ever sent or stored.
+  useEffect(() => {
+    if (viewedVenues.has(venueId)) return;
+    viewedVenues.add(venueId);
+    const rec = trpc.venues.recordView as unknown as {
+      mutate: (i: { venueId: string }) => Promise<{ ok: boolean }>;
+    };
+    rec.mutate({ venueId }).catch(() => {
+      /* an uncounted view, nothing more */
+    });
+  }, [trpc, venueId]);
 
   // Read whether the caller already follows this venue. Signed-out → not following.
   // We load the full myFollows set and check membership: one extra query on a detail
