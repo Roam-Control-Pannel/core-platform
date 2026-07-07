@@ -1,12 +1,12 @@
 /*
  * Venue card hover-lift. The card is a <Link> wrapping the design <Card>; on pointer hover it
  * rises a touch and its shadow deepens (the design's pop shadow), so a grid/carousel of cards
- * feels alive and tappable. Radius matches the Card (16px) so the deepened shadow hugs it.
+ * feels alive and tappable. Radius matches the Card (20px) so the deepened shadow hugs it.
  * Disabled on touch (no hover) so phones get no sticky hover state. Tokens only.
  */
 .card {
   display: block;
-  border-radius: 16px;
+  border-radius: 20px;
   transition:
     transform var(--motion-transition) var(--ease),
     box-shadow var(--motion-transition) var(--ease);
