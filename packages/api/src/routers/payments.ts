@@ -22,6 +22,7 @@ import { router, protectedProcedure, escalateToService } from "../trpc.js";
 import {
   createExpressAccount,
   createOnboardingLink,
+  createLoginLink,
   getAccount,
   type StripeConfig,
 } from "../stripe/client.js";
@@ -147,6 +148,23 @@ export const paymentsRouter = router({
         returnUrl: `${base}/dashboard/${input.venueId}?payments=return`,
       });
       return { url: link.url };
+    }),
+
+  /**
+   * Owner: a one-time login URL into the venue's Express dashboard on Stripe — payout
+   * history, bank details, identity settings. Minted on demand (the URLs are short-lived).
+   */
+  loginLink: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }): Promise<{ url: string }> => {
+      await requireVenueOwner(ctx, input.venueId);
+      const cfg = stripeConfig(ctx.env);
+      const service = escalateToService(ctx.env);
+      const row = await readAccountRow(service, input.venueId);
+      if (!row) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Set up payouts first." });
+      }
+      return createLoginLink(cfg, row.stripe_account_id);
     }),
 
   /**

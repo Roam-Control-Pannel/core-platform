@@ -105,10 +105,27 @@ export function VenuePayments({ venueId }: { venueId: string }) {
             <StatusChip ok label="Payouts active" />
             <StatusChip ok label="Charges enabled" />
           </div>
-          <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            You&apos;re set up to get paid. Your shop — products, services and vouchers — arrives
-            here next; everything you sell will pay out to the bank account you connected.
+          <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+            You&apos;re set up to get paid — everything you sell pays out to the bank account you
+            connected. Payout history and bank details live in your Stripe dashboard:
           </p>
+          <Button
+            variant="neutral"
+            size="sm"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setError(null);
+              const link = trpc.payments.loginLink as unknown as { mutate: (i: { venueId: string }) => Promise<{ url: string }> };
+              link
+                .mutate({ venueId })
+                .then(({ url }) => { window.open(url, "_blank", "noopener"); })
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : "Couldn't open Stripe."))
+                .finally(() => setBusy(false));
+            }}
+          >
+            {busy ? "Opening…" : "Manage payouts on Stripe ↗"}
+          </Button>
         </>
       ) : status.connected ? (
         <>

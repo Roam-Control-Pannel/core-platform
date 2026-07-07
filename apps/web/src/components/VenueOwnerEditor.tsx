@@ -43,6 +43,7 @@ import { VenueShopManager } from "./VenueShopManager";
 import { VenueOrders } from "./VenueOrders";
 import { venuePath } from "../lib/routes";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
+import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 import styles from "./BizDash.module.css";
 
@@ -107,12 +108,15 @@ interface DashData {
   growth: GrowthWeek[] | null;
   engagement: Engagement | null;
   credits: number | null;
+  /** Shop takings: gross pence across paid/collected/redeemed orders, + the order count. */
+  revenuePence: number | null;
+  salesCount: number | null;
 }
 
 /** Load every cross-tab number in one settled batch — a failed read is a null, never a block. */
 function useDashData(venueId: string): DashData {
   const trpc = useTrpc();
-  const [data, setData] = useState<DashData>({ audience: null, views: null, growth: null, engagement: null, credits: null });
+  const [data, setData] = useState<DashData>({ audience: null, views: null, growth: null, engagement: null, credits: null, revenuePence: null, salesCount: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -121,20 +125,27 @@ function useDashData(venueId: string): DashData {
     const gr = trpc.social.venueFollowerGrowth as unknown as { query: (i: { venueId: string }) => Promise<{ ok: boolean; weeks: GrowthWeek[] }> };
     const eng = trpc.offers.engagement as unknown as { query: (i: { venueId: string }) => Promise<Engagement> };
     const bal = trpc.credits.balance as unknown as { query: (i: { venueId: string }) => Promise<{ balance: number }> };
+    const ord = trpc.market.venueOrders as unknown as { query: (i: { venueId: string }) => Promise<{ amountPence: number; status: string }[]> };
     void Promise.allSettled([
       aud.query({ venueId }),
       vs.query({ venueId, days: 30 }),
       gr.query({ venueId }),
       eng.query({ venueId }),
       bal.query({ venueId }),
-    ]).then(([a, v, g, e, b]) => {
+      ord.query({ venueId }),
+    ]).then(([a, v, g, e, b, o]) => {
       if (cancelled) return;
+      const paidish = o.status === "fulfilled" && Array.isArray(o.value)
+        ? o.value.filter((x) => ["paid", "collected", "redeemed"].includes(x.status))
+        : null;
       setData({
         audience: a.status === "fulfilled" ? a.value : null,
         views: v.status === "fulfilled" ? v.value : null,
         growth: g.status === "fulfilled" && g.value.ok ? g.value.weeks : null,
         engagement: e.status === "fulfilled" ? e.value : null,
         credits: b.status === "fulfilled" ? (b.value.balance ?? 0) : null,
+        revenuePence: paidish ? paidish.reduce((n, x) => n + x.amountPence, 0) : null,
+        salesCount: paidish ? paidish.length : null,
       });
     });
     return () => {
@@ -501,6 +512,13 @@ function StatRow({ venue, data }: { venue: OwnerVenue; data: DashData }) {
         value={engagement ? engagement.totals.redemptions.toLocaleString() : "–"}
         delta={engagement ? `${engagement.totals.saves.toLocaleString()} saves · all time` : undefined}
         up={!!engagement && engagement.totals.redemptions > 0}
+      />
+      <StatCard
+        glyph="card"
+        label="Shop revenue"
+        value={data.revenuePence != null ? formatPence(data.revenuePence) : "–"}
+        delta={data.salesCount != null ? `${data.salesCount} order${data.salesCount === 1 ? "" : "s"} · all time` : undefined}
+        up={!!data.revenuePence && data.revenuePence > 0}
       />
       <StatCard
         glyph="star"
