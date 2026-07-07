@@ -40,6 +40,7 @@ import { PushHistory } from "./PushHistory";
 import { BirthdayOffer } from "./BirthdayOffer";
 import { VenuePayments } from "./VenuePayments";
 import { VenueShopManager } from "./VenueShopManager";
+import { VenueOrders } from "./VenueOrders";
 import { venuePath } from "../lib/routes";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { timeAgo } from "../lib/townHall";
@@ -278,13 +279,18 @@ function Dashboard({
 
       {tab === "shop" ? (
         <div className={styles.split}>
-          <DashCard
-            icon="bag"
-            title="Your shop"
-            subtitle="Products, services and vouchers you sell on Roam. Everything here shows on your public page's Shop tab; online checkout switches on shortly."
-          >
-            <VenueShopManager venueId={venueId} />
-          </DashCard>
+          <div style={{ minWidth: 0, display: "grid", gap: "var(--space-4)" }}>
+            <DashCard
+              icon="bag"
+              title="Your shop"
+              subtitle="Products, services and vouchers you sell on Roam. Everything here shows on your public page's Shop tab."
+            >
+              <VenueShopManager venueId={venueId} />
+            </DashCard>
+            <DashCard icon="redeem" title="Orders" subtitle="Sales come in here — mark them collected or redeemed in-venue, or refund.">
+              <VenueOrders venueId={venueId} />
+            </DashCard>
+          </div>
           <DashCard icon="card" title="Payments" subtitle="Payouts for selling on Roam — powered by Stripe.">
             <VenuePayments venueId={venueId} />
           </DashCard>
