@@ -69,7 +69,7 @@ const productFields = {
   kind: z.enum(["product", "service"]),
   title: z.string().trim().min(3).max(120),
   description: z.string().trim().max(2000).nullish(),
-  pricePence: z.number().int().min(50).max(5_000_000),
+  pricePence: z.number().int().min(50).max(999_900),
   stock: z.number().int().min(0).max(100_000).nullish(),
   photoUrl: z.string().trim().url().max(600).nullish(),
 };

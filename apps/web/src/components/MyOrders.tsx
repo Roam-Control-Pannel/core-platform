@@ -96,7 +96,8 @@ export function MyOrders() {
                       {o.title}{o.quantity > 1 ? ` × ${o.quantity}` : ""}
                     </div>
                     <div style={{ marginTop: 3, fontSize: 13, color: "var(--ink-2)" }}>
-                      {o.venueName}{o.venueLocality ? ` · ${o.venueLocality}` : ""} · {timeAgo(o.createdAt)}
+                      <Link href={`/venue/${o.venueId}`} style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>{o.venueName}</Link>
+                      {o.venueLocality ? ` · ${o.venueLocality}` : ""} · {timeAgo(o.createdAt)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
