@@ -45,6 +45,53 @@ interface Listing {
   seller: { id: string; displayName: string | null; handle: string | null; avatarUrl: string | null };
 }
 
+/**
+ * SurfaceToggle — the Shops | Marketplace switch, per the improved design: a soft tinted
+ * track with the active option raised as a white pill (crimson icon + label) and the
+ * inactive one resting muted. Bigger than the standard Seg on purpose — this is the page's
+ * primary mode switch, not a filter.
+ */
+function SurfaceToggle({ value, onChange }: { value: "shops" | "market"; onChange: (v: "shops" | "market") => void }) {
+  const options = [
+    { v: "shops" as const, label: "Shops", icon: "bag" as const },
+    { v: "market" as const, label: "Marketplace", icon: "gift" as const },
+  ];
+  return (
+    <div role="tablist" aria-label="Market mode" style={{ display: "inline-flex", gap: 4, padding: 6, borderRadius: 999, background: "var(--paper-2)", flexShrink: 0 }}>
+      {options.map((o) => {
+        const on = value === o.v;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(o.v)}
+            style={{
+              all: "unset",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 18px",
+              borderRadius: 999,
+              fontFamily: "var(--ui)",
+              fontWeight: 700,
+              fontSize: 15,
+              color: on ? "var(--crimson-700)" : "var(--muted)",
+              background: on ? "var(--card)" : "transparent",
+              boxShadow: on ? "var(--shadow-key)" : "none",
+              transition: "background var(--motion-transition) var(--ease), color var(--motion-transition) var(--ease)",
+            }}
+          >
+            <Icon name={o.icon} size={17} /> {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Market() {
   const trpc = useTrpc();
   const session = useSession();
@@ -102,11 +149,7 @@ export function Market() {
             <strong style={{ color: "var(--ink)" }}>{place.name}</strong>.
           </p>
         </div>
-        <Seg
-          options={[{ value: "shops", label: "Shops" }, { value: "market", label: "Marketplace" }]}
-          value={surface}
-          onChange={(v) => setSurface(v as "shops" | "market")}
-        />
+        <SurfaceToggle value={surface} onChange={setSurface} />
       </header>
 
       {/* Search · place · sell — one control row for both modes. */}
