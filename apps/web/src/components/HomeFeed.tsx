@@ -193,10 +193,20 @@ export function HomeFeed({ place }: { place: Place }) {
           </div>
         </Card>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-4)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-4)" }}>
           {items.map((it) => (
             <div key={it.key}>{it.node}</div>
           ))}
+          {/* End-of-feed marker — a short feed otherwise just stops into blank space; this
+              closes the column deliberately and hands the reader somewhere to go next. */}
+          <div style={{ textAlign: "center", padding: "var(--space-4) 0 var(--space-2)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>
+              You&apos;re all caught up
+            </div>
+            <Link href="/explore" style={{ display: "inline-block", marginTop: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none" }}>
+              Explore what&apos;s around you <span aria-hidden>→</span>
+            </Link>
+          </div>
         </div>
       )}
     </section>

@@ -253,7 +253,7 @@ function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; la
   return (
     <Link href={href} className={styles.qcard}>
       <span className={styles.qtile} aria-hidden><Icon name={glyph} size={16} /></span>
-      {label}
+      <span className={styles.qlabel}>{label}</span>
     </Link>
   );
 }
@@ -346,7 +346,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Recent chats" icon="sparkle" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
+    <Section title="Recent chats" icon="chat" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
       {!hasSession ? (
         <SignInNudge note="Sign in to see your conversations and plans with people nearby." />
       ) : error ? (
@@ -359,7 +359,7 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
       ) : rows.length === 0 ? (
         <p style={mutedNote}>No chats yet. Message a friend or open a plan to start one — it&apos;ll show up here.</p>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-1)" }}>
           {rows.map((t) => {
             const meta = CHAT_KIND[t.kind] ?? CHAT_KIND.group;
             const name = t.name?.trim() || t.title?.trim() || meta.label;
@@ -454,7 +454,7 @@ function TrendingNearby({ place }: { place: Place }) {
       ) : venues.length === 0 ? (
         <p style={mutedNote}>No venues found near {place.name} yet.</p>
       ) : (
-        <div style={{ display: "grid", gap: 2 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2 }}>
           {venues.map((v, i) => (
             <Link
               key={v.id}
@@ -545,7 +545,7 @@ function TownForum({ place }: { place: Place }) {
           </Link>
         </p>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
           {topics.map((t) => (
             <Link
               key={t.id}
@@ -602,7 +602,7 @@ function SavedDeals({ hasSession }: { hasSession: boolean }) {
       ) : offers.length === 0 ? (
         <p style={mutedNote}>Deals you save will appear here, ready to redeem in-venue.</p>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
           {offers.map((o) => (
             <OfferCard key={o.id} offer={o} showVenue />
           ))}
@@ -711,7 +711,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
               Exclusive deals for you
             </div>
             {deals && deals.length > 0 ? (
-              <div style={{ display: "grid", gap: "var(--space-2)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
                 {deals.map((d) => (
                   <OfferCard key={d.id} offer={d} showVenue />
                 ))}
