@@ -28,18 +28,12 @@
   gap: var(--space-4);
 }
 
-/* Header row: greeting block + the pulse stat card side-by-side once there's width. */
+/* Header row: the greeting block. (Single column — the old pulse stat card is gone.) */
 .headerRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-}
-
-@media (min-width: 1000px) {
-  .headerRow {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
 }
 
 /* Mono uppercase date kicker above the greeting, per the mockup. */
@@ -55,8 +49,7 @@
 }
 
 /* Quick actions as white cards with an icon tile (mockup row under the greeting). Fluid
-   auto-fit so the row adapts to its card count — 5 on Home, 6 on Basecamp — collapsing to
-   two-across on phones. */
+   auto-fit so the row adapts to its card count, collapsing to two-across on phones. */
 .qgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -85,9 +78,17 @@
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
+  min-width: 0; /* let the card shrink to its auto-fit track… */
   transition:
     transform var(--motion-transition) var(--ease),
     box-shadow var(--motion-transition) var(--ease);
+}
+
+/* …and the label ellipsise inside it, rather than painting under the next card. */
+.qlabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (hover: hover) {
@@ -171,12 +172,12 @@
   }
 }
 
-/* "Customise" button — sits beside the place switcher; opens the widget editor sheet. A quiet
-   outline pill so it reads as a utility, not a primary action. */
+/* "Customise" button — sits right after the place switcher (one control cluster, nothing
+   floating off at the far edge); opens the widget editor sheet. A quiet outline pill so it
+   reads as a utility, not a primary action. */
 .customize {
   all: unset;
   box-sizing: border-box;
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -207,54 +208,6 @@
 @media (pointer: coarse) {
   .customize {
     min-height: 44px;
-  }
-}
-
-/* Hero quick-action pills — one-tap into the core create actions. */
-.quickActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.qpill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  font-family: var(--ui);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink-2);
-  text-decoration: none;
-  transition:
-    background var(--motion-transition) var(--ease),
-    border-color var(--motion-transition) var(--ease),
-    color var(--motion-transition) var(--ease);
-}
-
-.qpill .qglyph {
-  color: var(--crimson);
-  font-size: 14px;
-  line-height: 1;
-}
-
-/* Comfortable ≥44px tap height on touch devices only — desktop keeps the compact pill. */
-@media (pointer: coarse) {
-  .qpill {
-    min-height: 44px;
-  }
-}
-
-@media (hover: hover) {
-  .qpill:hover {
-    background: var(--crimson-tint);
-    border-color: var(--crimson-tint-2);
-    color: var(--crimson-700);
   }
 }
 
@@ -296,31 +249,6 @@
   }
 }
 
-.planCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background: var(--card);
-  text-decoration: none;
-  color: inherit;
-}
-
-/* Local-news cards: a responsive grid of compact update cards. */
-.newsGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
-}
-
-@media (min-width: 560px) {
-  .newsGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 .newsCard {
   display: flex;
   flex-direction: column;
@@ -353,35 +281,6 @@
 @media (hover: hover) {
   .venueChip:hover {
     background: var(--crimson-tint);
-  }
-}
-
-/* The venue peek inside "your town": a single horizontally-scrolling track (a carousel),
-   not a vertical 2-up grid. One card dominates the view with the next peeking in; swipe/scroll
-   sideways. Scroll-snap gives the carousel a tidy resting position per card. */
-.venuePeek {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 82%;
-  gap: var(--space-3);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: var(--space-2);
-  /* a calm, thin scrollbar (where shown) */
-  scrollbar-width: thin;
-}
-
-.venuePeek > * {
-  scroll-snap-align: start;
-  min-width: 0;
-}
-
-/* Roomier cards once there's width: a fixed track width so several show and the rest scroll. */
-@media (min-width: 560px) {
-  .venuePeek {
-    grid-auto-columns: 300px;
   }
 }
 

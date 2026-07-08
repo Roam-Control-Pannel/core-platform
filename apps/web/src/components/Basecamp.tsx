@@ -86,7 +86,7 @@ export function Basecamp() {
           {NAV_TILES.map((t) => (
             <Link key={t.href} href={t.href} className={styles.qcard}>
               <span className={styles.qtile} aria-hidden><Icon name={t.glyph} size={16} /></span>
-              {t.label}
+              <span className={styles.qlabel}>{t.label}</span>
             </Link>
           ))}
         </div>

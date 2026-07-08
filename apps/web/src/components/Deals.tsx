@@ -293,7 +293,7 @@ export function DealsHomeWidget() {
     <Card style={{ padding: "var(--space-4)" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
-          <span aria-hidden style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 8, background: "var(--crimson-tint)", color: "var(--crimson-700)" }}><Icon name="ticket" size={15} /></span>
+          <span aria-hidden style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 9, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}><Icon name="ticket" size={15} /></span>
           <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Deals</h2>
           <span aria-label="Affiliate" title="Affiliate links — Roam may earn a commission" style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>Ad</span>
         </div>
@@ -301,7 +301,9 @@ export function DealsHomeWidget() {
           All deals <span aria-hidden>→</span>
         </Link>
       </header>
-      <div style={{ display: "grid", gap: 4 }}>
+      {/* minmax(0, 1fr), not the implicit auto column: a nowrap deal title's min-content would
+          otherwise set the track width and push every row past the card's padding. */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 4 }}>
         {deals.map((d) => {
           const href = buildAwinLink({ advertiserId: d.advertiserId, destinationUrl: d.destinationUrl, clickRef: "home" });
           return (
@@ -313,9 +315,11 @@ export function DealsHomeWidget() {
               style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 6px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
             >
               <DealThumb deal={d} variant="tile" />
-              <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* overflow:hidden + minWidth:0 down the chain — long advertiser names/titles must
+                  ellipsise inside the rail card, never paint past its padding. */}
+              <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.advertiserName ?? "Featured"}</span>
+                  <span style={{ minWidth: 0, fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.advertiserName ?? "Featured"}</span>
                   {d.voucherCode ? <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 4, padding: "0 5px", flexShrink: 0 }}>CODE</span> : null}
                 </span>
                 <span style={{ maxWidth: "100%", fontFamily: "var(--display)", fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
