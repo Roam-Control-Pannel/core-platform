@@ -20,6 +20,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "./TrpcProvider";
 import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
+import { Icon } from "@roam/design";
 import styles from "./TopBar.module.css";
 
 /** Which primary nav item the current path belongs to (for the active pill). Basecamp is
@@ -87,8 +88,16 @@ export function TopBar() {
           For businesses
         </Link>
         <Link href="/plans" className={styles.create}>
-          ＋ Create
+          <Icon name="edit" size={14} /> Create
         </Link>
+        <Link href="/market" className={styles.sell}>
+          ＋ Sell
+        </Link>
+        {session ? (
+          <Link href="/orders" className={styles.iconBtn} aria-label="Your orders">
+            <Icon name="bag" size={17} />
+          </Link>
+        ) : null}
         {session ? <NotificationBell /> : null}
         {session ? (
           <Link href="/account" className={styles.avatar} aria-label="Your account">

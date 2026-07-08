@@ -91,22 +91,67 @@
 
 /* ＋ Create — starts a new plan (the live create surface today). */
 .create {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--ui);
   font-size: 13px;
   font-weight: 700;
   padding: 8px 14px;
   border-radius: 999px;
-  border: 1px solid var(--crimson-tint-2);
-  background: var(--crimson-tint);
-  color: var(--crimson-700);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background var(--motion-transition) var(--ease);
+  box-shadow: var(--shadow-key);
+  transition: border-color var(--motion-transition) var(--ease);
 }
 
 .create:hover {
-  background: var(--crimson-tint-2);
+  border-color: var(--crimson-tint-2);
+}
+
+/* The marketplace door — the bar's one solid-crimson action (mock: ＋ Sell). */
+.sell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ui);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--crimson);
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-key);
+  transition: background var(--motion-transition) var(--ease);
+}
+
+.sell:hover {
+  background: var(--crimson-700);
+}
+
+/* Circular icon buttons (orders bag …) — the mock's white chrome circles. */
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: var(--shadow-key);
+  transition: border-color var(--motion-transition) var(--ease);
+}
+
+.iconBtn:hover {
+  border-color: var(--crimson-tint-2);
 }
 
 /* Quiet "For businesses" door — present but not a primary nav pill. Desktop only. */
