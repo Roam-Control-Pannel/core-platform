@@ -88,6 +88,10 @@ const FIELD_MASK = [
   "places.location",
   "places.types",
   "places.formattedAddress",
+  // BILLING: addressComponents is the same Pro field class formattedAddress already pulls
+  // (and the call is Enterprise-tier via rating anyway) — no cost bump. It supplies the
+  // venue's town (postal_town/locality) for venues.locality.
+  "places.addressComponents",
   "places.rating",
   // userRatingCount + priceLevel ride the SAME Enterprise SKU `rating` already pulls, so
   // they add no per-call cost. primaryTypeDisplayName is a cheaper (Pro) field. None of
