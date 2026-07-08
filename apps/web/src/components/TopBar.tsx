@@ -87,11 +87,11 @@ export function TopBar() {
         <Link href="/business" className={styles.forbiz}>
           For businesses
         </Link>
-        <Link href="/plans" className={styles.create}>
-          <Icon name="edit" size={14} /> Create
+        <Link href="/plans" className={styles.create} aria-label="Create">
+          <Icon name="edit" size={14} /> <span className={styles.actionLabel}>Create</span>
         </Link>
-        <Link href="/market" className={styles.sell}>
-          ＋ Sell
+        <Link href="/market" className={styles.sell} aria-label="Sell on Roam">
+          ＋ <span className={styles.actionLabel}>Sell</span>
         </Link>
         {session ? (
           <Link href="/orders" className={styles.iconBtn} aria-label="Your orders">

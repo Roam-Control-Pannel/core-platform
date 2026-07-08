@@ -216,14 +216,47 @@
 }
 
 /* Phones AND tablet-portrait (< 980px): the primary nav + Create + For-businesses move into the
-   bottom TabBar, so hide them here and keep the bar to brand + sign-in/avatar. The full top nav
-   (brand + 6 pills + For businesses + Create + Sign in) needs ~935px to lay out without spilling,
-   so we only reveal it at ≥ 980px; below that the touch-friendly bottom TabBar carries navigation.
+   bottom TabBar, so hide them here and keep the bar to brand + sign-in/avatar. Below that the
+   touch-friendly bottom TabBar carries navigation.
    MUST stay in lockstep with the same breakpoint in TabBar.module.css and CreateFab.module.css. */
 @media (max-width: 979px) {
   .nav,
   .create,
   .forbiz {
     display: none;
+  }
+}
+
+/* The squeeze band (980–1139px, e.g. iPad landscape / small laptops): the FULL chrome — brand +
+   6 nav pills + For businesses + Create + ＋Sell + orders bag + bell + avatar — needs ~1090px,
+   which only exists at ≥1140px. In the band, keep every door present but compact: icon-only
+   Create/Sell (aria-labels carry the names), tighter pills and gaps. Without this the whole
+   site horizontally scrolls at 1024px. */
+@media (min-width: 980px) and (max-width: 1139px) {
+  .bar {
+    gap: 10px;
+    padding: 11px 14px;
+  }
+
+  .nav {
+    margin-left: 0;
+    gap: 2px;
+  }
+
+  .link,
+  .dormant {
+    padding: 7px 9px;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .actionLabel {
+    display: none;
+  }
+
+  .forbiz {
+    padding: 7px 8px;
   }
 }
