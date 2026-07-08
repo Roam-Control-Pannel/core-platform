@@ -606,6 +606,33 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Public: how much of a town Roam covers — total venue count + the top categories, for the
+   * Town Hall hub's server-rendered summary line ("142 places in Darlington — eateries,
+   * shops…"). Counted in JS over a single-column read; a town is a few hundred rows at most.
+   */
+  localityStats: publicProcedure
+    .input(z.object({ locality: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }): Promise<{ total: number; categories: { category: string; count: number }[] }> => {
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("venues")
+        .select("category")
+        .ilike("locality", input.locality)
+        .limit(10000)) as { data: { category: string | null }[] | null; error: { message: string } | null };
+      if (error) throw new Error(`Failed to load venue stats: ${error.message}`);
+      const counts = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (row.category) counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
+      }
+      const categories = Array.from(counts.entries())
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      return { total: (data ?? []).length, categories };
+    }),
+
+  /**
    * Public: load a venue by its slug — the canonical, human-readable lookup behind /venue/{slug}.
    * Same full-row shape as byId; an unknown slug resolves to null. venues_read RLS is public.
    */

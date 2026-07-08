@@ -8,8 +8,8 @@
  * empty and we still emit a valid sitemap of the static routes.
  */
 import type { MetadataRoute } from "next";
-import { siteUrl } from "../lib/seo";
-import { getSeoLists, getTownLocalities } from "../lib/serverApi";
+import { siteUrl, HUB_MIN_VENUES } from "../lib/seo";
+import { getSeoLists, getHubTowns } from "../lib/serverApi";
 
 export const revalidate = 3600;
 
@@ -22,7 +22,7 @@ function mod(lastmod: string | null): { lastModified?: Date } {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
-  const [lists, townHalls] = await Promise.all([getSeoLists(), getTownLocalities()]);
+  const [lists, towns] = await Promise.all([getSeoLists(), getHubTowns()]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "daily", priority: 1 },
@@ -55,12 +55,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
     ...mod(t.lastmod),
   }));
-  const hubs: MetadataRoute.Sitemap = townHalls.map((h) => ({
-    url: `${base}/town-hall/${h.locality}`,
-    changeFrequency: "daily",
-    priority: 0.7,
-    ...mod(h.lastActivityAt),
-  }));
+  // Hub pages: topic towns AND venue-backed towns, but only hubs substantial enough to
+  // index (the same rule the hub page's metadata applies) — never list a noindex URL.
+  const hubs: MetadataRoute.Sitemap = towns
+    .filter((h) => h.topicCount > 0 || h.venueCount >= HUB_MIN_VENUES)
+    .map((h) => ({
+      url: `${base}/town-hall/${h.locality}`,
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+      ...mod(h.lastmod),
+    }));
 
   return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics];
 }

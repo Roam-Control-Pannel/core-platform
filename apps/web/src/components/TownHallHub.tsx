@@ -13,12 +13,20 @@ import Link from "next/link";
 import { Card, Icon, type IconName } from "@roam/design";
 import { townHallTopicPath } from "../lib/routes";
 import { timeAgo } from "../lib/townHall";
-import type { HubData, HubVenue, HubNews } from "../lib/serverApi";
+import { categoryLabel } from "../lib/categories";
+import type { HubData, HubVenue, HubStats, HubNews } from "../lib/serverApi";
 
 const heroIntro = (label: string) =>
   `What locals in ${label} are talking about — discussion, news and recommendations, plus places worth your time.`;
 
-export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVenue[]; news: HubNews[] }) {
+/** The town-coverage line under the hero: "142 places in Darlington — eateries, shops…". */
+function coverageLine(label: string, stats: HubStats): string {
+  const cats = stats.categories.slice(0, 3).map((c) => categoryLabel(c.category).toLowerCase());
+  const catText = cats.length > 0 ? ` — ${cats.join(", ")} and more` : "";
+  return `${stats.total} ${stats.total === 1 ? "place" : "places"} in ${label} on Roam${catText}.`;
+}
+
+export function TownHallHub({ hub, venues, stats, news }: { hub: HubData; venues: HubVenue[]; stats: HubStats | null; news: HubNews[] }) {
   const label = hub.localityLabel;
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -38,6 +46,7 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
         </h1>
         <p style={{ margin: "var(--space-2) 0 var(--space-4)", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.55 }}>
           {heroIntro(label)}
+          {stats && stats.total > 0 ? <> {coverageLine(label, stats)}</> : null}
         </p>
         <Link href="/town-hall" style={{ textDecoration: "none" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontWeight: 600, fontSize: 14 }}>
@@ -84,7 +93,7 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
           town has none yet. The section always renders so the hub stays visibly richer than the
           interactive board (which has no Places / Local news). Placeholders self-hide once real
           venues arrive. */}
-      <Section title={`Places in ${label}`} count={venues.length}>
+      <Section title={`Places in ${label}`} count={stats?.total ?? venues.length}>
         {venues.length > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
             {venues.map((v) => (
@@ -97,6 +106,14 @@ export function TownHallHub({ hub, venues, news }: { hub: HubData; venues: HubVe
                 {v.rating != null ? <span style={{ fontSize: 12, color: "var(--muted)" }}>★ {v.rating.toFixed(1)}</span> : null}
               </Link>
             ))}
+            {stats && stats.total > venues.length ? (
+              <Link
+                href="/explore"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", textDecoration: "none", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13.5 }}
+              >
+                Explore all {stats.total} places <span aria-hidden>→</span>
+              </Link>
+            ) : null}
           </div>
         ) : (
           <PlaceholderCard

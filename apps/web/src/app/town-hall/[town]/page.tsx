@@ -13,8 +13,8 @@ import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { TownHallHub } from "../../../components/TownHallHub";
 import { JsonLd } from "../../../components/JsonLd";
-import { getHub, getHubVenues, getHubNews, getTopic } from "../../../lib/serverApi";
-import { hubMetadata, hubJsonLd } from "../../../lib/seo";
+import { getHub, getHubVenues, getHubStats, getHubNews, getTopic } from "../../../lib/serverApi";
+import { hubMetadata, hubJsonLd, hubIndexable } from "../../../lib/seo";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,7 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ town: str
   if (UUID_RE.test(town)) return { title: "Town Hall" };
   const hub = await getHub(town);
   const label = hub?.localityLabel ?? town;
-  return hubMetadata(label, town, !!hub?.hasTopics);
+  // Venue-backed towns index too (React cache() shares these reads with the page render).
+  const [venues, stats] = await Promise.all([getHubVenues(label), getHubStats(label)]);
+  return hubMetadata(label, town, hubIndexable(!!hub?.hasTopics, venues.length), stats?.total ?? venues.length);
 }
 
 export default async function TownHubPage({ params }: { params: Promise<{ town: string }> }) {
@@ -37,12 +39,17 @@ export default async function TownHubPage({ params }: { params: Promise<{ town: 
   }
 
   const hub = (await getHub(town)) ?? { locality: town, localityLabel: town, hasTopics: false, topics: [] };
-  const [venues, news] = await Promise.all([getHubVenues(hub.localityLabel), getHubNews(hub.localityLabel)]);
+  const [venues, stats, news] = await Promise.all([
+    getHubVenues(hub.localityLabel),
+    getHubStats(hub.localityLabel),
+    getHubNews(hub.localityLabel),
+  ]);
+  const indexable = hubIndexable(hub.hasTopics, venues.length);
 
   return (
     <>
-      {hub.hasTopics ? <JsonLd data={hubJsonLd(hub.localityLabel, hub.locality || town)} /> : null}
-      <TownHallHub hub={hub} venues={venues} news={news} />
+      {indexable ? <JsonLd data={hubJsonLd(hub.localityLabel, hub.locality || town, venues)} /> : null}
+      <TownHallHub hub={hub} venues={venues} stats={stats} news={news} />
     </>
   );
 }
