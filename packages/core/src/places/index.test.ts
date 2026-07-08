@@ -7,6 +7,9 @@ import {
   classifyPlaceTypes,
   placeToVenueRow,
   placeLocality,
+  hubCategoryTier,
+  weightedVenueRating,
+  RATING_PRIOR_MEAN,
   placeOpeningTimes,
   placePhotos,
   placeRichFields,
@@ -533,5 +536,36 @@ describe("placeLocality", () => {
     expect(row!.locality).toBe("Belfast");
     const bare = placeToVenueRow(base, "Food & Drink");
     expect(bare!.locality).toBeNull();
+  });
+});
+
+describe("hub venue ranking helpers", () => {
+  it("tiers consumer categories as 1 and everything else (incl. null) as 2", () => {
+    expect(hubCategoryTier("Food & Drink")).toBe(1);
+    expect(hubCategoryTier("Shopping")).toBe(1);
+    expect(hubCategoryTier("Entertainment & Recreation")).toBe(1);
+    expect(hubCategoryTier("Lodging")).toBe(1);
+    expect(hubCategoryTier("Places of Worship")).toBe(2);
+    expect(hubCategoryTier("Finance & Business")).toBe(2);
+    expect(hubCategoryTier(null)).toBe(2);
+    expect(hubCategoryTier("not-a-category")).toBe(2);
+  });
+
+  it("weights ratings by review volume: a 4.8×400 beats a 5.0×3", () => {
+    const pub = weightedVenueRating(4.8, 400);
+    const threeReviewPerfect = weightedVenueRating(5.0, 3);
+    expect(pub).toBeGreaterThan(threeReviewPerfect);
+  });
+
+  it("scores unrated venues at the prior mean (neutral, not punished)", () => {
+    expect(weightedVenueRating(null, 0)).toBe(RATING_PRIOR_MEAN);
+    expect(weightedVenueRating(4.9, 0)).toBe(RATING_PRIOR_MEAN);
+  });
+
+  it("converges to the true rating as reviews accumulate", () => {
+    const few = weightedVenueRating(5.0, 5);
+    const many = weightedVenueRating(5.0, 5000);
+    expect(many).toBeGreaterThan(few);
+    expect(many).toBeCloseTo(5.0, 1);
   });
 });

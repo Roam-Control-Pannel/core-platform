@@ -571,9 +571,15 @@ export const venuesRouter = router({
     }),
 
   /**
-   * Public: top venues in a town (matched on the locality display name, case-insensitively),
-   * highest-rated first — the "featured venues" strip on the Town Hall town hub. Loose-typed read
-   * so `slug` (migration 0044) is selectable before db:types reruns.
+   * Public: the venues that best REPRESENT a town (matched on the locality display name,
+   * case-insensitively) — the "featured venues" strip on the Town Hall town hub. Ranking is
+   * deliberately editorial, not raw-rating: consumer categories lead (eateries/shops/hotels/
+   * things-to-do; tier 2 — transport, business, health, civic, worship — only fills in when
+   * tier 1 runs dry), claimed venues jump to the front of their tier (joining Roam earns the
+   * town-page spotlight), and within that, a review-volume-weighted rating so a 4.8 with 400
+   * ratings outranks a 5.0 with 3. Pool is fetched by review volume then ranked in JS — town
+   * volumes are a few hundred rows at most. Loose-typed read so `slug` (migration 0044) is
+   * selectable before db:types reruns.
    */
   byLocality: publicProcedure
     .input(z.object({ locality: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(24).default(8) }))
@@ -584,15 +590,23 @@ export const venuesRouter = router({
         .from("venues")
         .select("id, slug, name, category, locality, region, rating, rating_count, status")
         .ilike("locality", input.locality)
-        .order("rating", { ascending: false, nullsFirst: false })
-        .limit(input.limit)) as {
+        .order("rating_count", { ascending: false, nullsFirst: false })
+        .limit(150)) as {
         data:
           | { id: string; slug: string | null; name: string; category: string | null; locality: string | null; region: string | null; rating: number | null; rating_count: number | null; status: string }[]
           | null;
         error: { message: string } | null;
       };
       if (error) throw new Error(`Failed to load venues: ${error.message}`);
-      return (data ?? []).map((v) => ({
+      const ranked = (data ?? [])
+        .map((v) => ({
+          v,
+          tier: corePlaces.hubCategoryTier(v.category),
+          claimed: v.status === "claimed" ? 0 : 1,
+          score: corePlaces.weightedVenueRating(v.rating, v.rating_count ?? 0),
+        }))
+        .sort((a, b) => a.tier - b.tier || a.claimed - b.claimed || b.score - a.score);
+      return ranked.slice(0, input.limit).map(({ v }) => ({
         id: v.id,
         slug: v.slug ?? null,
         name: v.name,
@@ -625,9 +639,15 @@ export const venuesRouter = router({
       for (const row of data ?? []) {
         if (row.category) counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
       }
+      // Consumer categories lead the summary line ("eateries, shopping, hotels…") even when a
+      // tier-2 category has more rows — an honest count, presented as a discovery pitch.
       const categories = Array.from(counts.entries())
         .map(([category, count]) => ({ category, count }))
-        .sort((a, b) => b.count - a.count)
+        .sort(
+          (a, b) =>
+            corePlaces.hubCategoryTier(a.category) - corePlaces.hubCategoryTier(b.category) ||
+            b.count - a.count,
+        )
         .slice(0, 5);
       return { total: (data ?? []).length, categories };
     }),
