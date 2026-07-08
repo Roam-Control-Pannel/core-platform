@@ -20,6 +20,8 @@ export interface MarketListing {
   mode: "sell" | "swap" | "free";
   category: string;
   locality: string | null;
+  lat: number | null;
+  lng: number | null;
   photoUrls: string[];
   status: "live" | "sold" | "removed";
   views: number;
@@ -36,6 +38,8 @@ interface Row {
   mode: "sell" | "swap" | "free";
   category: string;
   locality: string | null;
+  lat: number | null;
+  lng: number | null;
   photo_urls: unknown;
   status: "live" | "sold" | "removed";
   views: number | null;
@@ -43,7 +47,7 @@ interface Row {
   profiles: { id: string; display_name: string | null; handle: string | null; avatar_url: string | null } | { id: string; display_name: string | null; handle: string | null; avatar_url: string | null }[] | null;
 }
 
-const COLS = "id, owner_id, title, description, price_pence, mode, category, locality, photo_urls, status, views, created_at, profiles!market_listings_owner_id_fkey(id, display_name, handle, avatar_url)";
+const COLS = "id, owner_id, title, description, price_pence, mode, category, locality, lat, lng, photo_urls, status, views, created_at, profiles!market_listings_owner_id_fkey(id, display_name, handle, avatar_url)";
 
 function shape(r: Row): MarketListing {
   const p = Array.isArray(r.profiles) ? (r.profiles[0] ?? null) : r.profiles;
@@ -55,6 +59,8 @@ function shape(r: Row): MarketListing {
     mode: r.mode,
     category: r.category,
     locality: r.locality,
+    lat: r.lat,
+    lng: r.lng,
     photoUrls: Array.isArray(r.photo_urls) ? (r.photo_urls as string[]).filter((u) => typeof u === "string").slice(0, 6) : [],
     status: r.status,
     views: r.views ?? 0,
