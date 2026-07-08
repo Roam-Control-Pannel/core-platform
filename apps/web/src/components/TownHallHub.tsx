@@ -15,6 +15,7 @@ import { townHallTopicPath } from "../lib/routes";
 import { timeAgo } from "../lib/townHall";
 import { categoryLabel } from "../lib/categories";
 import type { HubData, HubVenue, HubStats, HubNews } from "../lib/serverApi";
+import type { TownGuide } from "../lib/townGuides";
 
 const heroIntro = (label: string) =>
   `What locals in ${label} are talking about — discussion, news and recommendations, plus places worth your time.`;
@@ -26,7 +27,19 @@ function coverageLine(label: string, stats: HubStats): string {
   return `${stats.total} ${stats.total === 1 ? "place" : "places"} in ${label} on Roam${catText}.`;
 }
 
-export function TownHallHub({ hub, venues, stats, news }: { hub: HubData; venues: HubVenue[]; stats: HubStats | null; news: HubNews[] }) {
+export function TownHallHub({
+  hub,
+  venues,
+  stats,
+  news,
+  guide,
+}: {
+  hub: HubData;
+  venues: HubVenue[];
+  stats: HubStats | null;
+  news: HubNews[];
+  guide: TownGuide | null;
+}) {
   const label = hub.localityLabel;
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -43,6 +56,11 @@ export function TownHallHub({ hub, venues, stats, news }: { hub: HubData; venues
         </div>
         <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
           {label}
+          {guide?.region ? (
+            <span style={{ fontFamily: "var(--ui)", fontWeight: 500, fontSize: 15, letterSpacing: 0, color: "var(--muted)", marginLeft: 10 }}>
+              {guide.region}
+            </span>
+          ) : null}
         </h1>
         <p style={{ margin: "var(--space-2) 0 var(--space-4)", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.55 }}>
           {heroIntro(label)}
@@ -54,6 +72,19 @@ export function TownHallHub({ hub, venues, stats, news }: { hub: HubData; venues
           </span>
         </Link>
       </header>
+
+      {/* About the town — the editorial guide (known for · history · local tip) carried over
+          from the original roam-local.co.uk town pages. Server-rendered, unique per town: the
+          copy that makes a quiet hub a real page (and the 301 target for the old site). */}
+      {guide ? (
+        <Section title={`About ${label}`}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-3)" }}>
+            <GuideCard icon="sparkle" heading="Known for" body={guide.knownFor} />
+            <GuideCard icon="landmark" heading="A little history" body={guide.history} />
+            <GuideCard icon="place" heading="Local tip" body={guide.localTip} accent />
+          </div>
+        </Section>
+      ) : null}
 
       {/* Discussion */}
       <Section title="Discussion" count={hub.topics.length}>
@@ -153,6 +184,25 @@ export function TownHallHub({ hub, venues, stats, news }: { hub: HubData; venues
         )}
       </Section>
     </main>
+  );
+}
+
+/** One town-guide fact card: icon chip, mono kicker heading, the editorial copy. */
+function GuideCard({ icon, heading, body, accent = false }: { icon: IconName; heading: string; body: string; accent?: boolean }) {
+  return (
+    <Card style={{ padding: "var(--space-4)", ...(accent ? { background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)" } : {}) }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 10, background: accent ? "rgba(255,255,255,.75)" : "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}>
+          <Icon name={icon} size={16} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 4 }}>
+            {heading}
+          </div>
+          <p style={{ margin: 0, color: "var(--ink)", fontSize: 14, lineHeight: 1.6 }}>{body}</p>
+        </div>
+      </div>
+    </Card>
   );
 }
 

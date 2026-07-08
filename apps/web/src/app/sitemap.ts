@@ -10,6 +10,7 @@
 import type { MetadataRoute } from "next";
 import { siteUrl, HUB_MIN_VENUES } from "../lib/seo";
 import { getSeoLists, getHubTowns } from "../lib/serverApi";
+import { townGuideSlugs } from "../lib/townGuides";
 
 export const revalidate = 3600;
 
@@ -55,16 +56,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
     ...mod(t.lastmod),
   }));
-  // Hub pages: topic towns AND venue-backed towns, but only hubs substantial enough to
-  // index (the same rule the hub page's metadata applies) — never list a noindex URL.
-  const hubs: MetadataRoute.Sitemap = towns
+  // Hub pages: topic towns, venue-backed towns AND guide-backed towns — the union, but only
+  // hubs substantial enough to index (the same rule the hub page's metadata applies), so the
+  // sitemap never lists a noindex URL. Guide towns come from the checked-in town-guides data.
+  const hubSlugs = new Set(townGuideSlugs());
+  const hubRows: MetadataRoute.Sitemap = towns
     .filter((h) => h.topicCount > 0 || h.venueCount >= HUB_MIN_VENUES)
-    .map((h) => ({
-      url: `${base}/town-hall/${h.locality}`,
-      changeFrequency: "daily" as const,
-      priority: 0.7,
-      ...mod(h.lastmod),
-    }));
+    .map((h) => {
+      hubSlugs.delete(h.locality);
+      return {
+        url: `${base}/town-hall/${h.locality}`,
+        changeFrequency: "daily" as const,
+        priority: 0.7,
+        ...mod(h.lastmod),
+      };
+    });
+  const hubs: MetadataRoute.Sitemap = [
+    ...hubRows,
+    ...Array.from(hubSlugs).map((slug) => ({
+      url: `${base}/town-hall/${slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    })),
+  ];
 
   return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics];
 }

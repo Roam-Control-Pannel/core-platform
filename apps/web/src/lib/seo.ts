@@ -330,22 +330,37 @@ export function topicMetadata(data: TopicSeo | null, id: string): Metadata {
 }
 
 /**
- * A hub is substantial enough to index once the town has discussion OR this many venues —
- * genuine local content either way. Below that it stays noindex (no thin doorway pages).
+ * A hub is substantial enough to index once the town has discussion, OR this many venues,
+ * OR an editorial town guide (the roam-local.co.uk "Known for / history / tip" copy) —
+ * genuine local content any way. Below that it stays noindex (no thin doorway pages).
  * The sitemap applies the SAME rule so it never lists a noindex URL.
  */
 export const HUB_MIN_VENUES = 3;
 
 /** Whether a town hub clears the thin-content bar (shared by hub metadata + sitemap). */
-export function hubIndexable(hasTopics: boolean, venueCount: number): boolean {
-  return hasTopics || venueCount >= HUB_MIN_VENUES;
+export function hubIndexable(hasTopics: boolean, venueCount: number, hasGuide = false): boolean {
+  return hasTopics || venueCount >= HUB_MIN_VENUES || hasGuide;
 }
 
-/** Metadata for a town hub. Thin towns (no topics, too few venues) are noindex. */
-export function hubMetadata(localityLabel: string, locality: string, indexable: boolean, venueTotal = 0): Metadata {
-  const title = `${localityLabel} — local community & what's on`;
+/** Metadata for a town hub. Thin towns (no topics/venues/guide) are noindex. */
+export function hubMetadata(
+  localityLabel: string,
+  locality: string,
+  indexable: boolean,
+  venueTotal = 0,
+  guide: { region: string; knownFor: string } | null = null,
+): Metadata {
+  // With a guide, lead the description with its proven "known for" copy (what the old
+  // roam-local.co.uk pages ranked on); otherwise the generic Town Hall line.
+  const title = guide
+    ? `${localityLabel} — local community, places & what's on in ${guide.region}`
+    : `${localityLabel} — local community & what's on`;
   const places = venueTotal > 0 ? `${venueTotal} places to go in ${localityLabel}` : `places to go in ${localityLabel}`;
-  const description = clamp(`${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus ${places}.`);
+  const description = clamp(
+    guide
+      ? `${localityLabel}, ${guide.region} — ${guide.knownFor}`
+      : `${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus ${places}.`,
+  );
   const url = absUrl(`/town-hall/${locality}`);
   return {
     title,
@@ -360,14 +375,19 @@ export function hubJsonLd(
   localityLabel: string,
   locality: string,
   venues: { name: string; slug: string | null; id: string }[] = [],
+  guide: { region: string; knownFor: string } | null = null,
 ): Record<string, unknown> {
   return compact({
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: `${localityLabel} — Town Hall`,
-    description: `Local discussion, news and places in ${localityLabel}.`,
+    description: guide ? clamp(guide.knownFor) : `Local discussion, news and places in ${localityLabel}.`,
     url: absUrl(`/town-hall/${locality}`),
-    about: { "@type": "Place", name: localityLabel },
+    about: compact({
+      "@type": "Place",
+      name: localityLabel,
+      ...(guide ? { containedInPlace: { "@type": "AdministrativeArea", name: guide.region } } : {}),
+    }),
     ...(venues.length > 0
       ? {
           mainEntity: {
