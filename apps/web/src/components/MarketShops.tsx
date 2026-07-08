@@ -79,8 +79,10 @@ export function MarketShops({ localityName, query }: { localityName: string; que
   if (products.length === 0) {
     return (
       <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
-        No shops in {localityName} have stocked up yet — businesses add products from their
-        dashboard, and they&apos;ll appear here the moment they do.
+        {/* One template literal, not `{name} text` JSX: Turbopack's JSX transform drops the
+            space after an expression when the following text wraps to the next source line
+            (rendered "Darlingtonhave"). The literal keeps the spacing compiler-proof. */}
+        {`No shops in ${localityName} have stocked up yet — businesses add products from their dashboard, and they'll appear here the moment they do.`}
       </p>
     );
   }
