@@ -103,6 +103,42 @@ async function ownedOrder(
 }
 
 export const marketRouter = router({
+  /**
+   * Public: the TOWN-WIDE shop feed — every live product across the locality's claimed
+   * venues, newest first, each carrying its venue's public card fields (name, category,
+   * rating) so the Market page renders "product by venue" cards without N venue lookups.
+   * Locality matches on the display name, Town Hall style.
+   */
+  browseProducts: publicProcedure
+    .input(z.object({ localityName: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }) => {
+      type VenueEmbed = { id: string; name: string; locality: string | null; category: string | null; rating: number | null; status: string };
+      type FeedRow = Row & { venues: VenueEmbed | VenueEmbed[] | null };
+      const db = ctx.db as unknown as LooseDb;
+      const { data, error } = (await db
+        .from("venue_products")
+        .select(`${COLS}, venues!inner(id, name, locality, category, rating, status)`)
+        .eq("active", true)
+        .eq("venues.status", "claimed")
+        .ilike("venues.locality", input.localityName)
+        .order("created_at", { ascending: false })
+        .limit(80)) as { data: FeedRow[] | null; error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load the market: ${error.message}` });
+      const one = (v: VenueEmbed | VenueEmbed[] | null): VenueEmbed | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+      return (data ?? []).map((r) => {
+        const v = one(r.venues);
+        return {
+          ...shape(r),
+          venue: {
+            id: v?.id ?? r.venue_id,
+            name: v?.name ?? "A venue",
+            category: v?.category ?? null,
+            rating: v?.rating ?? null,
+          },
+        };
+      });
+    }),
+
   /** Public: a venue's live catalogue (active products, newest first) + whether the venue
    *  can take online payments right now ("is there a Buy button" is public information). */
   listByVenue: publicProcedure

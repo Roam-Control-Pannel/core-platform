@@ -490,7 +490,14 @@ function ClaimedDetail({
   const links = linkEntries(venue.links);
   // Posts · Offers · Gallery · Details are live (data already exists); Shop is the one
   // remaining Stage-5 seam. Details leads — it always has something to show.
-  const [tab, setTab] = useState<VenueTab>("details");
+  // Initial tab honours a ?tab= deep link (e.g. the Market's product cards land on the
+  // Shop tab); anything unrecognised falls back to Details. Read once at mount — the tab
+  // is client state after that, not URL state.
+  const [tab, setTab] = useState<VenueTab>(() => {
+    if (typeof window === "undefined") return "details";
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    return wanted === "posts" || wanted === "offers" || wanted === "gallery" || wanted === "shop" ? wanted : "details";
+  });
 
   return (
     <>

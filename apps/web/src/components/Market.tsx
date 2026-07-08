@@ -1,9 +1,17 @@
 /**
- * Market — /market: the C2C buy/sell/swap marketplace (marketplace PR 4). Town-scoped via
- * the shared current place; category chips + mode filter; a listing composer (photos to the
- * profile-media bucket under the caller's uid prefix — same storage RLS as avatars); and a
- * "Your listings" view with mark-sold/remove. No payments: buyers message the seller (chat)
- * and settle in person — zero KYC friction for casual sellers.
+ * Market — /market, per the improved Market design: ONE town-scoped shopping surface with
+ * two modes behind a toggle.
+ *
+ *   Shops       — the B2C feed: every product/voucher across the town's claimed venue
+ *                 shops (MarketShops; cards land on the venue's Shop tab to buy).
+ *   Marketplace — the C2C buy/sell/swap grid: peer listings, message-the-seller hand-off,
+ *                 the composer, and "Your listings" management.
+ *
+ * Shared header: ROAM MARKET kicker, mode-aware headline, one search field filtering
+ * whichever mode is active, the place switcher, and a mode-aware Sell button (Shops →
+ * the business dashboard; Marketplace → the listing composer). Deep-linkable:
+ * /market?view=shops|market&mine=1. C2C stays payment-free by design (agree in chat,
+ * settle in person — zero KYC friction for casual sellers).
  */
 "use client";
 
@@ -16,6 +24,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { getSupabaseBrowser } from "../lib/supabase";
 import { formatPence, parsePriceToPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
+import { MarketShops } from "./MarketShops";
 
 const CATEGORIES = ["furniture", "electronics", "clothing", "kids", "home", "garden", "sports", "books", "vehicles", "other"] as const;
 type Cat = (typeof CATEGORIES)[number];
@@ -45,6 +54,15 @@ export function Market() {
   const [mode, setMode] = useState<"all" | Mode>("all");
   const [view, setView] = useState<"browse" | "mine">("browse");
   const [composing, setComposing] = useState(false);
+  // Which half of the market: venue shops (B2C) or peer listings (C2C). Deep-linkable.
+  const [surface, setSurface] = useState<"shops" | "market">("shops");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "market" || params.get("mine") === "1") setSurface("market");
+    if (params.get("mine") === "1") setView("mine");
+  }, []);
 
   const load = useCallback(async () => {
     if (view === "mine") {
@@ -71,21 +89,54 @@ export function Market() {
 
   return (
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
-        <div>
-          <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.02em", margin: 0 }}>Market</h1>
-          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
-            Buy, sell and swap with locals in <PlaceSwitcher value={place} onChange={setPlace} />
+      <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
+            Roam Market
           </div>
+          <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
+            {surface === "shops" ? "Buy from your high street" : "Buy, sell & swap with locals"}
+          </h1>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--ink-2)" }}>
+            {surface === "shops" ? "Products, vouchers & experiences from local businesses in " : "Peer-to-peer listings from people in "}
+            <strong style={{ color: "var(--ink)" }}>{place.name}</strong>.
+          </p>
         </div>
-        <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
-          {session ? (
-            <Seg options={[{ value: "browse", label: "Browse" }, { value: "mine", label: "Your listings" }]} value={view} onChange={(v) => setView(v as "browse" | "mine")} />
-          ) : null}
-          <Button variant="pri" size="sm" onClick={() => setComposing((v) => !v)}>＋ New listing</Button>
-        </div>
+        <Seg
+          options={[{ value: "shops", label: "Shops" }, { value: "market", label: "Marketplace" }]}
+          value={surface}
+          onChange={(v) => setSurface(v as "shops" | "market")}
+        />
       </header>
 
+      {/* Search · place · sell — one control row for both modes. */}
+      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={surface === "shops" ? "Search products & local shops…" : "Search listings…"}
+          aria-label="Search the market"
+          style={{ flex: "1 1 260px", boxSizing: "border-box", padding: "11px 18px", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, fontFamily: "var(--ui)", fontSize: 16, color: "var(--ink)", outline: "none", boxShadow: "var(--shadow-key)" }}
+        />
+        <PlaceSwitcher value={place} onChange={setPlace} />
+        {surface === "shops" ? (
+          <Link href="/dashboard" style={{ textDecoration: "none" }}>
+            <Button variant="pri" size="sm">＋ Sell on Roam</Button>
+          </Link>
+        ) : (
+          <>
+            {session ? (
+              <Seg options={[{ value: "browse", label: "Browse" }, { value: "mine", label: "Your listings" }]} value={view} onChange={(v) => setView(v as "browse" | "mine")} />
+            ) : null}
+            <Button variant="pri" size="sm" onClick={() => setComposing((v) => !v)}>＋ Sell</Button>
+          </>
+        )}
+      </div>
+
+      {surface === "shops" ? (
+        <MarketShops localityName={place.name} query={query} />
+      ) : (
+      <>
       {composing ? (
         session ? (
           <ListingComposer
@@ -120,13 +171,13 @@ export function Market() {
 
       {listings === undefined ? (
         <div style={{ height: 220, borderRadius: 16, background: "var(--paper-2)" }} aria-hidden />
-      ) : listings.length === 0 ? (
+      ) : listings.filter((l) => !query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase())).length === 0 ? (
         <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
           {view === "mine" ? "You haven't listed anything yet." : `Nothing listed in ${place.name} yet — be the first.`}
         </p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "var(--space-3)" }}>
-          {listings.map((l) => (
+          {listings.filter((l) => !query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase())).map((l) => (
             <Card key={l.id} style={{ overflow: "hidden", opacity: l.status === "live" ? 1 : 0.6 }}>
               <Link href={`/market/${l.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                 {l.photoUrls[0] ? (
@@ -160,6 +211,8 @@ export function Market() {
             </Card>
           ))}
         </div>
+      )}
+      </>
       )}
     </main>
   );
