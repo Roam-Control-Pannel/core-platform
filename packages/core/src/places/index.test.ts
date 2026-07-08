@@ -6,6 +6,7 @@ import {
   categoryToPlacesTypes,
   classifyPlaceTypes,
   placeToVenueRow,
+  placeLocality,
   placeOpeningTimes,
   placePhotos,
   placeRichFields,
@@ -481,5 +482,56 @@ describe("snapToIngestGrid — spatial cost bound", () => {
     const a = snapToIngestGrid(54.5253, -1.5849);
     const b = snapToIngestGrid(54.5253 + INGEST_SNAP_DEGREES * 2, -1.5849);
     expect(a.lat).not.toBeCloseTo(b.lat, 6);
+  });
+});
+
+describe("placeLocality", () => {
+  const base: PlaceResult = {
+    id: "ChIJ_test",
+    displayName: { text: "Test" },
+    location: { latitude: 54.6, longitude: -5.93 },
+    types: ["restaurant"],
+  };
+
+  it("prefers the UK postal_town over locality", () => {
+    const loc = placeLocality({
+      ...base,
+      addressComponents: [
+        { longText: "Cathedral Quarter", types: ["locality", "political"] },
+        { longText: "Belfast", types: ["postal_town"] },
+      ],
+    });
+    expect(loc).toBe("Belfast");
+  });
+
+  it("falls back to locality when there is no postal_town", () => {
+    const loc = placeLocality({
+      ...base,
+      addressComponents: [{ longText: "Darlington", types: ["locality", "political"] }],
+    });
+    expect(loc).toBe("Darlington");
+  });
+
+  it("uses shortText when longText is missing, and null when neither town type exists", () => {
+    expect(
+      placeLocality({ ...base, addressComponents: [{ shortText: "Harlech", types: ["postal_town"] }] }),
+    ).toBe("Harlech");
+    expect(
+      placeLocality({ ...base, addressComponents: [{ longText: "GB", types: ["country"] }] }),
+    ).toBeNull();
+    expect(placeLocality(base)).toBeNull();
+  });
+
+  it("rides placeToVenueRow into the venue insert row", () => {
+    const row = placeToVenueRow(
+      {
+        ...base,
+        addressComponents: [{ longText: "Belfast", types: ["postal_town"] }],
+      },
+      "Food & Drink",
+    );
+    expect(row!.locality).toBe("Belfast");
+    const bare = placeToVenueRow(base, "Food & Drink");
+    expect(bare!.locality).toBeNull();
   });
 });

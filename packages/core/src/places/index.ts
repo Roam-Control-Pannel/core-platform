@@ -321,6 +321,13 @@ export interface PlaceResult {
   location?: { latitude?: number; longitude?: number } | undefined;
   types?: readonly string[] | undefined;
   formattedAddress?: string | undefined;
+  /**
+   * Places (New) address components — we read only the town: `postal_town` (the UK's
+   * postal town, usually the name locals use) with `locality` as the fallback.
+   */
+  addressComponents?:
+    | readonly { longText?: string; shortText?: string; types?: readonly string[] }[]
+    | undefined;
   rating?: number | undefined;
   /** Total number of user ratings behind `rating` (credibility on the card). */
   userRatingCount?: number | undefined;
@@ -505,11 +512,37 @@ export interface VenueRowFromPlace {
    */
   business_status: string | null;
   address: string | null;
+  /**
+   * The town the venue belongs to (Places' postal_town, falling back to locality), or
+   * null when Places gives neither. Powers every by-town read: the Town Hall hub's
+   * Places strip, the Market's town feed, hub indexability and the sitemap's venue towns.
+   */
+  locality: string | null;
   source_attribution: string;
   opening_times: OpeningTimes | null;
 }
 
 const ATTRIBUTION = "Information from public sources";
+
+/**
+ * The venue's town from Places address components. UK addressing quirk: the name locals
+ * (and the old town pages) use is usually the POSTAL TOWN ("Belfast", "Darlington"), while
+ * `locality` is often a smaller district or missing — so prefer postal_town, fall back to
+ * locality, else null. Pure; tolerant of partial components.
+ */
+export function placeLocality(place: PlaceResult): string | null {
+  const components = place.addressComponents ?? [];
+  const byType = (t: string): string | null => {
+    for (const c of components) {
+      if (c.types?.includes(t)) {
+        const name = c.longText?.trim() || c.shortText?.trim();
+        if (name) return name;
+      }
+    }
+    return null;
+  };
+  return byType("postal_town") ?? byType("locality");
+}
 
 /**
  * Normalize a Places (New) priceLevel to our stored value: the enum string as-is, except
@@ -586,6 +619,7 @@ export function placeToVenueRow(
     categories: leaves,
     ...placeCardFields(place),
     address: place.formattedAddress?.trim() || null,
+    locality: placeLocality(place),
     source_attribution: ATTRIBUTION,
     opening_times: placeOpeningTimes(place),
   };
