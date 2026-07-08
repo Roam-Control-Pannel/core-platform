@@ -15,6 +15,7 @@ import { TownHallHub } from "../../../components/TownHallHub";
 import { JsonLd } from "../../../components/JsonLd";
 import { getHub, getHubVenues, getHubStats, getHubNews, getTopic } from "../../../lib/serverApi";
 import { hubMetadata, hubJsonLd, hubIndexable } from "../../../lib/seo";
+import { townGuide } from "../../../lib/townGuides";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,10 +23,12 @@ export async function generateMetadata({ params }: { params: Promise<{ town: str
   const { town } = await params;
   if (UUID_RE.test(town)) return { title: "Town Hall" };
   const hub = await getHub(town);
-  const label = hub?.localityLabel ?? town;
-  // Venue-backed towns index too (React cache() shares these reads with the page render).
+  const guide = townGuide(town);
+  // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds").
+  const label = guide?.name ?? hub?.localityLabel ?? town;
+  // Venue- and guide-backed towns index too (React cache() shares these reads with the page render).
   const [venues, stats] = await Promise.all([getHubVenues(label), getHubStats(label)]);
-  return hubMetadata(label, town, hubIndexable(!!hub?.hasTopics, venues.length), stats?.total ?? venues.length);
+  return hubMetadata(label, town, hubIndexable(!!hub?.hasTopics, venues.length, !!guide), stats?.total ?? venues.length, guide);
 }
 
 export default async function TownHubPage({ params }: { params: Promise<{ town: string }> }) {
@@ -38,18 +41,21 @@ export default async function TownHubPage({ params }: { params: Promise<{ town: 
     // Unknown UUID — fall through to an (empty) hub render, which is noindexed.
   }
 
-  const hub = (await getHub(town)) ?? { locality: town, localityLabel: town, hasTopics: false, topics: [] };
+  const fetched = (await getHub(town)) ?? { locality: town, localityLabel: town, hasTopics: false, topics: [] };
+  const guide = townGuide(town);
+  // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds").
+  const hub = { ...fetched, localityLabel: guide?.name ?? fetched.localityLabel };
   const [venues, stats, news] = await Promise.all([
     getHubVenues(hub.localityLabel),
     getHubStats(hub.localityLabel),
     getHubNews(hub.localityLabel),
   ]);
-  const indexable = hubIndexable(hub.hasTopics, venues.length);
+  const indexable = hubIndexable(hub.hasTopics, venues.length, !!guide);
 
   return (
     <>
-      {indexable ? <JsonLd data={hubJsonLd(hub.localityLabel, hub.locality || town, venues)} /> : null}
-      <TownHallHub hub={hub} venues={venues} stats={stats} news={news} />
+      {indexable ? <JsonLd data={hubJsonLd(hub.localityLabel, hub.locality || town, venues, guide)} /> : null}
+      <TownHallHub hub={hub} venues={venues} stats={stats} news={news} guide={guide} />
     </>
   );
 }
