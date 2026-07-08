@@ -24,15 +24,38 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { getSupabaseBrowser } from "../lib/supabase";
 import { formatPence, parsePriceToPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
-import { MarketShops } from "./MarketShops";
+import { MarketShops, HeartButton } from "./MarketShops";
+import { useWishlist } from "../lib/wishlist";
 
 const CATEGORIES = ["furniture", "electronics", "clothing", "kids", "home", "garden", "sports", "books", "vehicles", "other"] as const;
+
+/** Great-circle miles between two points — the listing cards' "0.8 mi" pill. */
+function milesBetween(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371e3;
+  const dLat = rad(bLat - aLat);
+  const dLng = rad(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return (2 * R * Math.asin(Math.sqrt(h))) / 1609.344;
+}
+
+/** The listing card's status badge — coloured per the mock. */
+function listingBadge(l: { mode: Mode; status: string; createdAt: string }): { label: string; color: string } {
+  if (l.status === "sold") return { label: "Sold", color: "var(--muted)" };
+  if (l.status === "removed") return { label: "Removed", color: "var(--muted)" };
+  if (l.mode === "free") return { label: "Free", color: "var(--success)" };
+  if (l.mode === "swap") return { label: "Swap ok", color: "var(--gold)" };
+  const ageH = (Date.now() - new Date(l.createdAt).getTime()) / 36e5;
+  return ageH < 72 ? { label: "New in", color: "var(--crimson-700)" } : { label: "For sale", color: "var(--ink-2)" };
+}
 type Cat = (typeof CATEGORIES)[number];
 type Mode = "sell" | "swap" | "free";
 
 interface Listing {
   id: string;
   views?: number;
+  lat?: number | null;
+  lng?: number | null;
   title: string;
   description: string | null;
   pricePence: number | null;
@@ -104,6 +127,8 @@ export function Market() {
   // Which half of the market: venue shops (B2C) or peer listings (C2C). Deep-linkable.
   const [surface, setSurface] = useState<"shops" | "market">("shops");
   const [query, setQuery] = useState("");
+  const [savedOnly, setSavedOnly] = useState(false);
+  const wish = useWishlist("listing");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -138,14 +163,14 @@ export function Market() {
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
-            Roam Market
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", color: surface === "shops" ? "var(--crimson-700)" : "var(--gold)", marginBottom: 6 }}>
+            {surface === "shops" ? "Roam Market" : "Roam Marketplace"}
           </div>
           <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
-            {surface === "shops" ? "Buy from your high street" : "Buy, sell & swap with locals"}
+            {surface === "shops" ? "Buy from your high street" : "Buy, sell & swap with neighbours"}
           </h1>
           <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--ink-2)" }}>
-            {surface === "shops" ? "Products, vouchers & experiences from local businesses in " : "Peer-to-peer listings from people in "}
+            {surface === "shops" ? "Products, vouchers & experiences from local businesses in " : "Second-hand and handmade from real locals near "}
             <strong style={{ color: "var(--ink)" }}>{place.name}</strong>.
           </p>
         </div>
@@ -157,7 +182,7 @@ export function Market() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={surface === "shops" ? "Search products & local shops…" : "Search listings…"}
+          placeholder={surface === "shops" ? "Search products & local shops…" : "Search bikes, furniture, clothes…"}
           aria-label="Search the market"
           style={{ flex: "1 1 260px", boxSizing: "border-box", padding: "11px 18px", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 999, fontFamily: "var(--ui)", fontSize: 16, color: "var(--ink)", outline: "none", boxShadow: "var(--shadow-key)" }}
         />
@@ -171,7 +196,7 @@ export function Market() {
             {session ? (
               <Seg options={[{ value: "browse", label: "Browse" }, { value: "mine", label: "Your listings" }]} value={view} onChange={(v) => setView(v as "browse" | "mine")} />
             ) : null}
-            <Button variant="pri" size="sm" onClick={() => setComposing((v) => !v)}>＋ Sell</Button>
+            <Button variant="pri" size="sm" onClick={() => setComposing((v) => !v)}>＋ List an item</Button>
           </>
         )}
       </div>
@@ -200,7 +225,7 @@ export function Market() {
 
       {view === "browse" ? (
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center", marginBottom: "var(--space-4)" }}>
-          <Seg options={[{ value: "all", label: "All" }, { value: "sell", label: "For sale" }, { value: "swap", label: "Swap" }, { value: "free", label: "Free" }]} value={mode} onChange={(v) => setMode(v as typeof mode)} />
+          <Seg options={[{ value: "all", label: "All" }, { value: "sell", label: "For sale" }, { value: "swap", label: "Open to swap" }, { value: "free", label: "Free" }]} value={mode} onChange={(v) => setMode(v as typeof mode)} />
           <button onClick={() => setCategory(null)} style={{ all: "unset", cursor: "pointer" }}>
             <Pill variant={category === null ? "crim" : "neutral"} size="sm">All categories</Pill>
           </button>
@@ -209,36 +234,56 @@ export function Market() {
               <Pill variant={category === c ? "crim" : "neutral"} size="sm">{c[0]!.toUpperCase() + c.slice(1)}</Pill>
             </button>
           ))}
+          {wish.saved.size > 0 ? (
+            <button onClick={() => setSavedOnly((v) => !v)} style={{ all: "unset", cursor: "pointer" }}>
+              <Pill variant={savedOnly ? "crim" : "neutral"} size="sm">♥ Saved · {wish.saved.size}</Pill>
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       {listings === undefined ? (
         <div style={{ height: 220, borderRadius: 16, background: "var(--paper-2)" }} aria-hidden />
-      ) : listings.filter((l) => !query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase())).length === 0 ? (
+      ) : listings.filter((l) => (!savedOnly || wish.isSaved(l.id)) && (!query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase()))).length === 0 ? (
         <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
           {view === "mine" ? "You haven't listed anything yet." : `Nothing listed in ${place.name} yet — be the first.`}
         </p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "var(--space-3)" }}>
-          {listings.filter((l) => !query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase())).map((l) => (
-            <Card key={l.id} style={{ overflow: "hidden", opacity: l.status === "live" ? 1 : 0.6 }}>
+          {listings.filter((l) => (!savedOnly || wish.isSaved(l.id)) && (!query.trim() || l.title.toLowerCase().includes(query.trim().toLowerCase()))).map((l) => (
+            <Card key={l.id} style={{ overflow: "hidden", position: "relative", opacity: l.status === "live" ? 1 : 0.6 }}>
               <Link href={`/market/${l.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                {l.photoUrls[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-                  <img src={l.photoUrls[0]} alt="" loading="lazy" style={{ display: "block", width: "100%", height: 150, objectFit: "cover" }} />
-                ) : (
-                  <div aria-hidden style={{ height: 150, display: "grid", placeItems: "center", background: "linear-gradient(150deg, var(--paper-2), var(--crimson-tint))", color: "var(--crimson-700)" }}>
-                    <Icon name="tag" size={28} />
+                <div style={{ position: "relative" }}>
+                  {l.photoUrls[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+                    <img src={l.photoUrls[0]} alt="" loading="lazy" style={{ display: "block", width: "100%", height: 230, objectFit: "cover" }} />
+                  ) : (
+                    <div aria-hidden style={{ height: 230, display: "grid", placeItems: "center", background: "linear-gradient(150deg, var(--paper-2), var(--crimson-tint))", color: "var(--crimson-700)" }}>
+                      <Icon name="tag" size={32} />
+                    </div>
+                  )}
+                  {(() => { const b = listingBadge(l); return (
+                    <span style={{ position: "absolute", top: "var(--space-3)", left: "var(--space-3)", display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: b.color, background: "rgba(255,255,255,.94)", boxShadow: "var(--shadow-key)" }}>
+                      {b.label}
+                    </span>
+                  ); })()}
+                </div>
+                <div style={{ padding: "var(--space-3) var(--space-4) var(--space-4)", display: "grid", gap: 6 }}>
+                  <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15.5, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <strong style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 18, color: l.mode === "free" ? "var(--success)" : l.mode === "swap" ? "var(--gold)" : "var(--ink-hi)" }}>
+                      {l.mode === "free" ? "Free" : l.mode === "swap" ? "Swap" : l.pricePence != null ? formatPence(l.pricePence) : ""}
+                    </strong>
+                    {l.lat != null && l.lng != null ? (
+                      <span style={{ padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", whiteSpace: "nowrap" }}>
+                        {milesBetween(place.lat, place.lng, l.lat, l.lng).toFixed(1)} mi
+                      </span>
+                    ) : null}
                   </div>
-                )}
-                <div style={{ padding: "var(--space-3)", display: "grid", gap: 4 }}>
-                  <strong style={{ fontFamily: "var(--display)", fontSize: 15, color: "var(--ink-hi)" }}>
-                    {l.mode === "free" ? "Free" : l.mode === "swap" ? "Swap" : l.pricePence != null ? formatPence(l.pricePence) : ""}
-                  </strong>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{l.locality ?? "Nearby"} · {timeAgo(l.createdAt)}{l.status !== "live" ? ` · ${l.status}` : ""}{view === "mine" && l.views != null ? ` · ${l.views} view${l.views === 1 ? "" : "s"}` : ""}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{l.locality ?? "Nearby"} · {timeAgo(l.createdAt)}{view === "mine" && l.views != null ? ` · ${l.views} view${l.views === 1 ? "" : "s"}` : ""}</div>
                 </div>
               </Link>
+              <HeartButton saved={wish.isSaved(l.id)} onToggle={() => wish.toggle(l.id)} label={l.title} />
               {view === "mine" ? (
                 <div style={{ display: "flex", gap: 6, padding: "0 var(--space-3) var(--space-3)" }}>
                   {l.status === "live" ? (
@@ -321,7 +366,7 @@ function ListingComposer({ localityName, lat, lng, onDone, onCancel }: { localit
     <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)", display: "grid", gap: "var(--space-3)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
         <strong style={{ fontFamily: "var(--display)", fontSize: 15.5 }}>New listing in {localityName}</strong>
-        <Seg options={[{ value: "sell", label: "Sell" }, { value: "swap", label: "Swap" }, { value: "free", label: "Free" }]} value={mode} onChange={(v) => setMode(v as Mode)} />
+        <Seg options={[{ value: "sell", label: "Sell" }, { value: "swap", label: "Open to swap" }, { value: "free", label: "Free" }]} value={mode} onChange={(v) => setMode(v as Mode)} />
       </div>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you listing?" maxLength={120} aria-label="Title" style={fieldStyle} disabled={busy} />
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
