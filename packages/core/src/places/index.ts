@@ -553,6 +553,42 @@ export function normalizePriceLevel(raw: string | undefined): string | null {
   return raw;
 }
 
+/* ── Town-hub venue ranking (which venues represent a town) ─────────────────────────────── */
+
+/**
+ * The consumer categories a town's discovery surfaces lead with — eateries, shops, hotels
+ * and things to do. Everything else (transport, business services, health, civic, worship)
+ * is genuine coverage but a poor first impression, so it only fills in when tier-1 runs dry.
+ */
+export const HUB_TIER_1_CATEGORIES: readonly CategoryId[] = [
+  "Food & Drink",
+  "Shopping",
+  "Entertainment & Recreation",
+  "Lodging",
+];
+
+const HUB_TIER_1 = new Set<string>(HUB_TIER_1_CATEGORIES);
+
+/** 1 = lead category (consumer/discovery), 2 = fill-in. Unknown/null categories are tier 2. */
+export function hubCategoryTier(category: string | null): 1 | 2 {
+  return category !== null && HUB_TIER_1.has(category) ? 1 : 2;
+}
+
+/**
+ * Bayesian-shrunk rating: pull a venue's rating toward the site-wide prior until enough
+ * reviews back it up, so a 4.8 with 400 ratings outranks a 5.0 with 3. Standard weighted
+ * mean — score = (n·R + m·C) / (n + m) with prior weight m and prior mean C. No ratings at
+ * all scores the prior mean exactly (neutral, not punished).
+ */
+export const RATING_PRIOR_WEIGHT = 25;
+export const RATING_PRIOR_MEAN = 4.2;
+
+export function weightedVenueRating(rating: number | null, ratingCount: number): number {
+  const n = Math.max(0, ratingCount);
+  if (rating === null || n === 0) return RATING_PRIOR_MEAN;
+  return (n * rating + RATING_PRIOR_WEIGHT * RATING_PRIOR_MEAN) / (n + RATING_PRIOR_WEIGHT);
+}
+
 /** The card-enrichment facts pulled from a Places result, shared by the ingest row mapper
  *  and the enrichment backfill so the mapping lives in exactly one place. */
 export interface PlaceCardFields {
