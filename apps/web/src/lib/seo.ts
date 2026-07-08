@@ -329,23 +329,38 @@ export function topicMetadata(data: TopicSeo | null, id: string): Metadata {
   };
 }
 
-/** Metadata for a town hub. Empty towns are noindex (no thin/duplicate pages get indexed). */
-export function hubMetadata(localityLabel: string, locality: string, hasTopics: boolean): Metadata {
+/**
+ * A hub is substantial enough to index once the town has discussion OR this many venues —
+ * genuine local content either way. Below that it stays noindex (no thin doorway pages).
+ * The sitemap applies the SAME rule so it never lists a noindex URL.
+ */
+export const HUB_MIN_VENUES = 3;
+
+/** Whether a town hub clears the thin-content bar (shared by hub metadata + sitemap). */
+export function hubIndexable(hasTopics: boolean, venueCount: number): boolean {
+  return hasTopics || venueCount >= HUB_MIN_VENUES;
+}
+
+/** Metadata for a town hub. Thin towns (no topics, too few venues) are noindex. */
+export function hubMetadata(localityLabel: string, locality: string, indexable: boolean, venueTotal = 0): Metadata {
   const title = `${localityLabel} — local community & what's on`;
-  const description = clamp(
-    `${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus places to go in ${localityLabel}.`,
-  );
+  const places = venueTotal > 0 ? `${venueTotal} places to go in ${localityLabel}` : `places to go in ${localityLabel}`;
+  const description = clamp(`${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus ${places}.`);
   const url = absUrl(`/town-hall/${locality}`);
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...(hasTopics ? {} : { robots: { index: false, follow: true } }),
+    ...(indexable ? {} : { robots: { index: false, follow: true } }),
     ...social({ title, description, url, badge: "Town Hall" }),
   };
 }
 
-export function hubJsonLd(localityLabel: string, locality: string): Record<string, unknown> {
+export function hubJsonLd(
+  localityLabel: string,
+  locality: string,
+  venues: { name: string; slug: string | null; id: string }[] = [],
+): Record<string, unknown> {
   return compact({
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -353,6 +368,20 @@ export function hubJsonLd(localityLabel: string, locality: string): Record<strin
     description: `Local discussion, news and places in ${localityLabel}.`,
     url: absUrl(`/town-hall/${locality}`),
     about: { "@type": "Place", name: localityLabel },
+    ...(venues.length > 0
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            name: `Places in ${localityLabel}`,
+            itemListElement: venues.map((v, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: v.name,
+              url: absUrl(`/venue/${v.slug ?? v.id}`),
+            })),
+          },
+        }
+      : {}),
   });
 }
 

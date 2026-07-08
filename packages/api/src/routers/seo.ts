@@ -16,6 +16,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc.js";
+import { localitySlug } from "../town-hall.js";
 
 type LooseDb = {
   from: (t: string) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -96,27 +97,47 @@ export const seoRouter = router({
   }),
 
   /**
-   * Public: the distinct localities that have a Town Hall board, with their display label and
-   * how recently they saw activity. Powers the (forthcoming) per-town hub pages and their
-   * sitemap entries. Derived from town_hall_topics; deduped and freshest-first in JS since
-   * PostgREST has no DISTINCT-ON over an ordered window here.
+   * Public: every town that can carry a hub page (/town-hall/{town}) — the UNION of towns
+   * with Town Hall topics and towns with venues, with per-town counts so callers (the
+   * sitemap, the hub indexability rule) can decide which hubs are substantial enough to
+   * list. Deduped by locality slug in JS since PostgREST has no DISTINCT-ON over an
+   * ordered window here; topic-board labels win over raw venue locality spellings.
    */
   localities: publicProcedure.query(async ({ ctx }) => {
     const db = ctx.db as unknown as LooseDb;
-    const { data, error } = (await db
-      .from("town_hall_topics")
-      .select("locality, locality_label, last_activity_at")
-      .order("last_activity_at", { ascending: false })
-      .limit(20000)) as {
-      data: { locality: string | null; locality_label: string | null; last_activity_at: string | null }[] | null;
-      error: { message: string } | null;
-    };
-    if (error) fail("localities", error.message);
-    const seen = new Map<string, { locality: string; label: string; lastmod: string | null }>();
-    for (const row of data ?? []) {
+    const [topicsRes, venuesRes] = (await Promise.all([
+      db
+        .from("town_hall_topics")
+        .select("locality, locality_label, last_activity_at")
+        .order("last_activity_at", { ascending: false })
+        .limit(20000),
+      db.from("venues").select("locality").not("locality", "is", null).limit(20000),
+    ])) as [
+      { data: { locality: string | null; locality_label: string | null; last_activity_at: string | null }[] | null; error: { message: string } | null },
+      { data: { locality: string | null }[] | null; error: { message: string } | null },
+    ];
+    if (topicsRes.error) fail("localities", topicsRes.error.message);
+    // Venue towns are additive — a venues read failure degrades to topic towns only.
+    const seen = new Map<string, { locality: string; label: string; lastmod: string | null; topicCount: number; venueCount: number }>();
+    for (const row of topicsRes.data ?? []) {
       const slug = row.locality;
-      if (!slug || seen.has(slug)) continue;
-      seen.set(slug, { locality: slug, label: row.locality_label ?? slug, lastmod: row.last_activity_at ?? null });
+      if (!slug) continue;
+      const ex = seen.get(slug);
+      if (ex) ex.topicCount += 1;
+      else seen.set(slug, { locality: slug, label: row.locality_label ?? slug, lastmod: row.last_activity_at ?? null, topicCount: 1, venueCount: 0 });
+    }
+    for (const row of venuesRes.data ?? []) {
+      const label = row.locality?.trim();
+      if (!label) continue;
+      let slug: string;
+      try {
+        slug = localitySlug(label);
+      } catch {
+        continue; // a locality that can't slug (e.g. all-symbol) can't have a hub URL
+      }
+      const ex = seen.get(slug);
+      if (ex) ex.venueCount += 1;
+      else seen.set(slug, { locality: slug, label, lastmod: null, topicCount: 0, venueCount: 1 });
     }
     return Array.from(seen.values());
   }),

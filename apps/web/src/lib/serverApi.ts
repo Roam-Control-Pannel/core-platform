@@ -154,11 +154,16 @@ export interface HubNews {
   venueName: string | null;
   venueLocality: string | null;
 }
-export interface TownLocality {
+export interface HubStats {
+  total: number;
+  categories: { category: string; count: number }[];
+}
+export interface HubTown {
   locality: string;
   label: string;
+  lastmod: string | null;
   topicCount: number;
-  lastActivityAt: string;
+  venueCount: number;
 }
 
 /** The town's board (topics) by locality slug. Returns null only on a hard failure. */
@@ -175,9 +180,19 @@ export const getHub = cache(async (locality: string): Promise<HubData | null> =>
 export const getHubVenues = cache(async (localityLabel: string): Promise<HubVenue[]> => {
   try {
     const c = anon() as unknown as { venues: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubVenue[]> } } };
-    return await c.venues.byLocality.query({ locality: localityLabel, limit: 6 });
+    return await c.venues.byLocality.query({ locality: localityLabel, limit: 12 });
   } catch {
     return [];
+  }
+});
+
+/** Town coverage stats (venue total + top categories) for the hub's summary line. */
+export const getHubStats = cache(async (localityLabel: string): Promise<HubStats | null> => {
+  try {
+    const c = anon() as unknown as { venues: { localityStats: { query: (i: { locality: string }) => Promise<HubStats> } } };
+    return await c.venues.localityStats.query({ locality: localityLabel });
+  } catch {
+    return null;
   }
 });
 
@@ -191,11 +206,11 @@ export const getHubNews = cache(async (localityLabel: string): Promise<HubNews[]
   }
 });
 
-/** All towns with a Town Hall board, for the /town-hall index + sitemap hub URLs. */
-export const getTownLocalities = cache(async (): Promise<TownLocality[]> => {
+/** Every town that can carry a hub page (topics ∪ venues, with counts), for the sitemap. */
+export const getHubTowns = cache(async (): Promise<HubTown[]> => {
   try {
-    const c = anon() as unknown as { townHall: { localities: { query: () => Promise<{ localities: TownLocality[] }> } } };
-    return (await c.townHall.localities.query()).localities ?? [];
+    const c = anon() as unknown as { seo: { localities: { query: () => Promise<HubTown[]> } } };
+    return (await c.seo.localities.query()) ?? [];
   } catch {
     return [];
   }
