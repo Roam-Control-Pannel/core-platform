@@ -10,6 +10,7 @@
  * bucket's allowed_mime_types + file_size_limit), so these are UX, not the security gate.
  */
 import { getSupabaseBrowser } from "./supabase";
+import { prepareImage } from "./prepareImage";
 
 const CHAT_MEDIA_BUCKET = "chat-media";
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
@@ -54,24 +55,27 @@ export async function uploadChatImage(threadId: string, file: File): Promise<Cha
   if (!(ALLOWED_MIME as readonly string[]).includes(file.type)) {
     throw new Error("Please pick a JPEG, PNG, WebP or GIF image.");
   }
-  if (file.size > MAX_BYTES) {
-    throw new Error("That image is over 10 MB. Please pick a smaller one.");
+  // Downscale + re-encode in the browser (lib/prepareImage; GIFs pass through untouched so
+  // animation survives) — then re-check the cap against what will actually be uploaded.
+  const prepared = await prepareImage(file, "chat");
+  if (prepared.size > MAX_BYTES) {
+    throw new Error("That image is over 10 MB even after compressing. Please pick a smaller one.");
   }
 
-  const ext = EXT_BY_MIME[file.type] ?? "jpg";
+  const ext = EXT_BY_MIME[prepared.type] ?? "webp";
   // First path segment MUST be the thread id (0058 storage RLS reads it from the path).
   const path = `${threadId}/${crypto.randomUUID()}.${ext}`;
-  const { width, height } = await readDimensions(file);
+  const { width, height } = await readDimensions(prepared);
 
   const supabase = getSupabaseBrowser();
   const { error } = await supabase.storage
     .from(CHAT_MEDIA_BUCKET)
-    .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+    .upload(path, prepared, { cacheControl: "3600", upsert: false, contentType: prepared.type });
   if (error) {
     throw new Error(`Upload failed: ${error.message}`);
   }
 
-  return { path, width, height, mime: file.type };
+  return { path, width, height, mime: prepared.type };
 }
 
 /** Mint a short-lived signed URL for a chat photo (the bucket is private). Null on failure. */

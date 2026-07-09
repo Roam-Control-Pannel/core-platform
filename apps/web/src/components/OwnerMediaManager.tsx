@@ -31,6 +31,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { getSupabaseBrowser } from "../lib/supabase";
+import { prepareImage } from "../lib/prepareImage";
 
 /** The Storage bucket owner uploads land in (migration 0021). Mirror of the API const. */
 const VENUE_MEDIA_BUCKET = "venue-media";
@@ -146,18 +147,21 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
 
       setBusy(true);
       try {
+        // Downscale + re-encode in the browser first (lib/prepareImage) — readers get a
+        // fast photo, the 10MB cap stops mattering.
+        const prepared = await prepareImage(file, "venue-photo");
         // Object path MUST start with the venue id — the 0021 storage RLS extracts the
         // first path segment and checks venue ownership. A safe, unique filename avoids
-        // collisions; we keep the original extension for the MIME match.
-        const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+        // collisions; the extension mirrors what prepareImage produced.
+        const ext = prepared.name.includes(".") ? prepared.name.split(".").pop() : "webp";
         const filename = `${crypto.randomUUID()}.${ext}`;
         const storagePath = `${venueId}/${filename}`;
 
         const supabase = getSupabaseBrowser();
         const { error: upErr } = await supabase.storage
           .from(VENUE_MEDIA_BUCKET)
-          .upload(storagePath, file, {
-            contentType: file.type,
+          .upload(storagePath, prepared, {
+            contentType: prepared.type,
             upsert: false,
           });
         if (upErr) {
@@ -166,7 +170,7 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
           return;
         }
 
-        const { width, height } = await readDimensions(file);
+        const { width, height } = await readDimensions(prepared);
 
         const addOwnerPhoto = trpc.venues.addOwnerPhoto as unknown as AddOwnerPhotoMutation;
         const result = await addOwnerPhoto.mutate({
