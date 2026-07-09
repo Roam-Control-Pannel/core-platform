@@ -16,6 +16,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import actions from "./inlineActions.module.css";
 import { linkifyHashtags } from "../lib/hashtags";
+import { imageFilesFrom, moveItem, thumbButtonStyle } from "../lib/composerMedia";
 
 type PostKind = "news" | "offer" | "event";
 interface PostMedia { type: "image"; url: string }
@@ -364,8 +365,10 @@ function MediaPicker({
 }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const [progress, setProgress] = useState<string | null>(null);
+
   const pick = useCallback(
-    async (files: FileList | null) => {
+    async (files: FileList | File[] | null) => {
       if (!files || files.length === 0) return;
       if (!userId) { onError("You need to be signed in to add images."); return; }
       const room = MAX_POST_IMAGES - media.length;
@@ -374,7 +377,9 @@ function MediaPicker({
       onError(null);
       const next: PostMedia[] = [];
       try {
-        for (const file of Array.from(files).slice(0, room)) {
+        const chosen = Array.from(files).slice(0, room);
+        for (const [i, file] of chosen.entries()) {
+          if (chosen.length > 1) setProgress(`Uploading ${i + 1} of ${chosen.length}…`);
           const { url } = await uploadProfileImage(userId, file, "post");
           next.push({ type: "image", url });
         }
@@ -383,13 +388,18 @@ function MediaPicker({
         onError(e instanceof Error ? e.message : "Couldn't upload that image.");
       } finally {
         setUploading(false);
+        setProgress(null);
       }
     },
     [userId, media, onChange, setUploading, onError],
   );
 
   return (
-    <div style={{ marginTop: "var(--space-3)" }}>
+    <div
+      style={{ marginTop: "var(--space-3)" }}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+      onDrop={(e) => { const fs = imageFilesFrom(e.dataTransfer); if (fs.length > 0) { e.preventDefault(); void pick(fs); } }}
+    >
       {media.length > 0 ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
           {media.map((m, i) => (
@@ -404,6 +414,12 @@ function MediaPicker({
               >
                 ×
               </button>
+              {media.length > 1 ? (
+                <div style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3 }}>
+                  <button type="button" aria-label="Move earlier" disabled={i === 0} onClick={() => onChange(moveItem(media, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
+                  <button type="button" aria-label="Move later" disabled={i === media.length - 1} onClick={() => onChange(moveItem(media, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -416,7 +432,7 @@ function MediaPicker({
             disabled={uploading}
             style={{ all: "unset", cursor: uploading ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}
           >
-            {uploading ? "Uploading…" : `＋ Add photo${media.length > 0 ? ` (${media.length}/${MAX_POST_IMAGES})` : ""}`}
+            {uploading ? (progress ?? "Uploading…") : `＋ Add photo${media.length > 0 ? ` (${media.length}/${MAX_POST_IMAGES})` : ""}`}
           </button>
           <input
             ref={fileRef}
