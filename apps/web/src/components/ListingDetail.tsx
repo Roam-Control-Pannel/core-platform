@@ -31,10 +31,12 @@ interface Listing {
 /** Listings already view-counted this page lifetime (guards SPA re-mount recounts). */
 const viewedListings = new Set<string>();
 
-export function ListingDetail({ listingId }: { listingId: string }) {
+export function ListingDetail({ listingId, initial }: { listingId: string; initial?: Listing | null }) {
   const trpc = useTrpc();
   const session = useSession();
-  const [listing, setListing] = useState<Listing | null | undefined>(undefined);
+  // Seeded from the server render when the route resolved the listing (SEO path): the full
+  // content is in the initial HTML and the client fetch below is skipped.
+  const [listing, setListing] = useState<Listing | null | undefined>(initial);
   const [photo, setPhoto] = useState(0);
 
   // Count the view once — identity-free, sellers see the tally on their listings.
@@ -46,11 +48,12 @@ export function ListingDetail({ listingId }: { listingId: string }) {
   }, [trpc, listingId]);
 
   useEffect(() => {
+    if (initial !== undefined) return; // server already resolved it for this render
     let cancelled = false;
     const q = trpc.listings.byId as unknown as { query: (i: { listingId: string }) => Promise<Listing | null> };
     q.query({ listingId }).then((r) => { if (!cancelled) setListing(r ?? null); }).catch(() => { if (!cancelled) setListing(null); });
     return () => { cancelled = true; };
-  }, [trpc, listingId]);
+  }, [trpc, listingId, initial]);
 
   if (listing === undefined) {
     return <main style={pageStyle}><div style={{ height: 360, borderRadius: 20, background: "var(--paper-2)" }} aria-hidden /></main>;

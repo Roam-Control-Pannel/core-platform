@@ -96,6 +96,24 @@ export const seoRouter = router({
     }));
   }),
 
+  /** Public: LIVE marketplace listing ids (+ created time) for /market/[id] sitemap entries.
+   *  Sold/removed listings are excluded — their pages flip to noindex, so listing them would
+   *  advertise URLs we're telling crawlers to drop. */
+  listings: publicProcedure.input(limitInput).query(async ({ ctx, input }) => {
+    const db = ctx.db as unknown as LooseDb;
+    const { data, error } = (await db
+      .from("market_listings")
+      .select("id, created_at")
+      .eq("status", "live")
+      .order("created_at", { ascending: false })
+      .limit(input.limit)) as {
+      data: { id: string; created_at: string | null }[] | null;
+      error: { message: string } | null;
+    };
+    if (error) fail("listings", error.message);
+    return (data ?? []).map((l) => ({ id: l.id, lastmod: l.created_at ?? null }));
+  }),
+
   /**
    * Public: every town that can carry a hub page (/town-hall/{town}) — the UNION of towns
    * with Town Hall topics and towns with venues, with per-town counts so callers (the

@@ -80,5 +80,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics];
+  const listings: MetadataRoute.Sitemap = lists.listings.map((l) => ({
+    url: `${base}/market/${l.id}`,
+    changeFrequency: "weekly",
+    priority: 0.5,
+    ...mod(l.lastmod),
+  }));
+
+  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics, ...listings];
 }
