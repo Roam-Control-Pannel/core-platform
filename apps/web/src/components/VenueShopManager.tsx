@@ -20,6 +20,7 @@ import { useTrpc } from "./TrpcProvider";
 import { getSupabaseBrowser } from "../lib/supabase";
 import { formatPence, parsePriceToPence } from "../lib/money";
 import { prepareImage } from "../lib/prepareImage";
+import { ImageCropper } from "./ImageCropper";
 
 export interface ShopProduct {
   id: string;
@@ -202,12 +203,19 @@ function ProductComposer({
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const onFilePicked = useCallback(async (file: File) => {
+  const [cropFile, setCropFile] = useState<File | null>(null);
+
+  const onFilePicked = useCallback((file: File) => {
     setError(null);
     if (!ALLOWED_MIME.includes(file.type as (typeof ALLOWED_MIME)[number])) {
       setError("Please choose a JPEG, PNG or WebP image.");
       return;
     }
+    setCropFile(file); // -> ImageCropper (square product shot) -> uploadCropped
+  }, []);
+
+  const uploadCropped = useCallback(async (file: File) => {
+    setCropFile(null);
     if (file.size > MAX_BYTES) {
       setError("That image is over 10 MB. Please choose a smaller file.");
       return;
@@ -308,8 +316,16 @@ function ProductComposer({
           type="file"
           accept={ALLOWED_MIME.join(",")}
           style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFilePicked(f); }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFilePicked(f); }}
         />
+        {cropFile ? (
+          <ImageCropper
+            file={cropFile}
+            spec={{ aspect: 1, outputWidth: 1200, title: "Frame your product photo" }}
+            onCancel={() => { setCropFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+            onCropped={(f) => void uploadCropped(f)}
+          />
+        ) : null}
       </div>
 
       {error ? <p role="alert" style={{ margin: 0, color: "var(--crimson-700)", fontSize: 13 }}>{error}</p> : null}
