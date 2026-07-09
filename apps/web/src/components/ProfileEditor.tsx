@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
+import { ImageCropper } from "./ImageCropper";
 
 /** The social platforms we offer as labelled URL fields. Stored as a flat label→url map. */
 const SOCIAL_FIELDS = ["Website", "Instagram", "X", "Facebook", "TikTok", "YouTube"] as const;
@@ -156,9 +157,19 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
     setState((s) => (s ? { ...s, ...p } : s));
   }, []);
 
-  const onPickImage = useCallback(
+  // Picked file -> the scale-into-place cropper -> upload. The cropper hands back a file
+  // already framed to the slot's aspect, so the rendered circle/banner shows exactly what
+  // the user framed.
+  const [pendingCrop, setPendingCrop] = useState<{ kind: "avatar" | "header"; file: File } | null>(null);
+
+  const onPickImage = useCallback((kind: "avatar" | "header", file: File) => {
+    setError(null);
+    setPendingCrop({ kind, file });
+  }, []);
+
+  const uploadCropped = useCallback(
     async (kind: "avatar" | "header", file: File) => {
-      setError(null);
+      setPendingCrop(null);
       setUploading(kind);
       try {
         const { url } = await uploadProfileImage(userId, file, kind);
@@ -219,7 +230,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
           kind="header"
           url={state.headerUrl}
           uploading={uploading === "header"}
-          onPick={(f) => void onPickImage("header", f)}
+          onPick={(f) => onPickImage("header", f)}
           style={{ height: 140, borderRadius: "var(--r-lg)" }}
         />
         <div style={{ position: "absolute", left: "var(--space-4)", bottom: -40 }}>
@@ -227,11 +238,24 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
             kind="avatar"
             url={state.avatarUrl}
             uploading={uploading === "avatar"}
-            onPick={(f) => void onPickImage("avatar", f)}
+            onPick={(f) => onPickImage("avatar", f)}
             style={{ width: 88, height: 88, borderRadius: "50%", border: "3px solid var(--card)" }}
           />
         </div>
       </div>
+
+      {pendingCrop ? (
+        <ImageCropper
+          file={pendingCrop.file}
+          spec={
+            pendingCrop.kind === "avatar"
+              ? { aspect: 1, outputWidth: 800, round: true, title: "Position your profile photo" }
+              : { aspect: 3, outputWidth: 2000, title: "Position your header image" }
+          }
+          onCancel={() => setPendingCrop(null)}
+          onCropped={(f) => void uploadCropped(pendingCrop.kind, f)}
+        />
+      ) : null}
 
       <div style={fieldWrap}>
         <label style={labelStyle} htmlFor="pf-name">Display name</label>

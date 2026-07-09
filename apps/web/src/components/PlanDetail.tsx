@@ -15,6 +15,7 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
 import { planDateLabel, planDateInput } from "../lib/planDate";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
+import { ImageCropper } from "./ImageCropper";
 
 /** A calm crimson gradient used when a plan has no custom header image. */
 const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
@@ -324,14 +325,26 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const [cropFile, setCropFile] = useState<File | null>(null);
+
   const onPickHeader = useCallback(
-    async (file: File | null) => {
-      const uid = session?.user?.id;
+    (file: File | null) => {
       if (!file) return;
-      if (!uid) {
+      if (!session?.user?.id) {
         setErr("You need to be signed in to add an image.");
         return;
       }
+      setErr(null);
+      setCropFile(file); // -> ImageCropper -> uploadCropped
+    },
+    [session],
+  );
+
+  const uploadCropped = useCallback(
+    async (file: File) => {
+      const uid = session?.user?.id;
+      setCropFile(null);
+      if (!uid) return;
       setUploading(true);
       setErr(null);
       try {
@@ -403,8 +416,16 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
           type="file"
           accept="image/jpeg,image/png,image/webp"
           style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0] ?? null; e.currentTarget.value = ""; void onPickHeader(f); }}
+          onChange={(e) => { const f = e.target.files?.[0] ?? null; e.currentTarget.value = ""; onPickHeader(f); }}
         />
+        {cropFile ? (
+          <ImageCropper
+            file={cropFile}
+            spec={{ aspect: 3, outputWidth: 2000, title: "Position your plan header" }}
+            onCancel={() => setCropFile(null)}
+            onCropped={(f) => void uploadCropped(f)}
+          />
+        ) : null}
         {headerUrl ? (
           <div style={{ marginTop: "var(--space-2)" }}>
             <button type="button" onClick={() => setHeaderUrl(null)} disabled={uploading} style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)", textDecoration: "underline" }}>
