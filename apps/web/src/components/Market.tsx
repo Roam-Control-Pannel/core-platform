@@ -27,6 +27,7 @@ import { timeAgo } from "../lib/townHall";
 import { MarketShops, HeartButton } from "./MarketShops";
 import { useWishlist } from "../lib/wishlist";
 import { prepareImage } from "../lib/prepareImage";
+import { imageFilesFrom, moveItem, thumbButtonStyle } from "../lib/composerMedia";
 
 const CATEGORIES = ["furniture", "electronics", "clothing", "kids", "home", "garden", "sports", "books", "vehicles", "other"] as const;
 
@@ -321,26 +322,38 @@ function ListingComposer({ localityName, lat, lng, onDone, onCancel }: { localit
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const addPhoto = useCallback(async (file: File) => {
+  const [progress, setProgress] = useState<string | null>(null);
+
+  const addPhotos = useCallback(async (files: FileList | File[]) => {
     const uid = session?.user?.id;
-    if (!uid || photos.length >= 4) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+    if (!uid) return;
+    const room = 4 - photos.length;
+    if (room <= 0) return;
+    const chosen = Array.from(files)
+      .filter((f) => ["image/jpeg", "image/png", "image/webp"].includes(f.type) && f.size <= 10 * 1024 * 1024)
+      .slice(0, room);
+    if (chosen.length === 0) {
       setError("Photos must be JPEG/PNG/WebP under 10 MB.");
       return;
     }
     setBusy(true);
+    setError(null);
     try {
-      // Downscale + re-encode in the browser first (lib/prepareImage).
-      const prepared = await prepareImage(file, "listing");
-      const ext = prepared.name.includes(".") ? prepared.name.split(".").pop() : "webp";
-      const path = `${uid}/listing-${crypto.randomUUID()}.${ext}`;
-      const supabase = getSupabaseBrowser();
-      const { error: upErr } = await supabase.storage.from("profile-media").upload(path, prepared, { contentType: prepared.type });
-      if (upErr) { setError(`Upload failed: ${upErr.message}`); return; }
-      const { data } = supabase.storage.from("profile-media").getPublicUrl(path);
-      setPhotos((p) => [...p, data.publicUrl]);
+      for (const [i, file] of chosen.entries()) {
+        if (chosen.length > 1) setProgress(`Uploading ${i + 1} of ${chosen.length}…`);
+        // Downscale + re-encode in the browser first (lib/prepareImage).
+        const prepared = await prepareImage(file, "listing");
+        const ext = prepared.name.includes(".") ? prepared.name.split(".").pop() : "webp";
+        const path = `${uid}/listing-${crypto.randomUUID()}.${ext}`;
+        const supabase = getSupabaseBrowser();
+        const { error: upErr } = await supabase.storage.from("profile-media").upload(path, prepared, { contentType: prepared.type });
+        if (upErr) { setError(`Upload failed: ${upErr.message}`); return; }
+        const { data } = supabase.storage.from("profile-media").getPublicUrl(path);
+        setPhotos((p) => [...p, data.publicUrl]);
+      }
     } finally {
       setBusy(false);
+      setProgress(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   }, [session, photos.length]);
@@ -382,16 +395,32 @@ function ListingComposer({ localityName, lat, lng, onDone, onCancel }: { localit
           ))}
         </select>
       </div>
-      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={2000} placeholder="Condition, size, pickup details…" aria-label="Description" style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} disabled={busy} />
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-        {photos.map((u) => (
-          // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-          <img key={u} src={u} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover" }} />
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} onPaste={(e) => { const fs = imageFilesFrom(e.clipboardData); if (fs.length > 0) { e.preventDefault(); void addPhotos(fs); } }} rows={2} maxLength={2000} placeholder="Condition, size, pickup details…" aria-label="Description" style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} disabled={busy} />
+      <div
+        style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}
+        onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+        onDrop={(e) => { const fs = imageFilesFrom(e.dataTransfer); if (fs.length > 0) { e.preventDefault(); void addPhotos(fs); } }}
+      >
+        {photos.map((u, i) => (
+          <div key={u} style={{ position: "relative" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- public bucket URL */}
+            <img src={u} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", display: "block" }} />
+            {i === 0 ? (
+              <span style={{ position: "absolute", top: 2, left: 2, fontFamily: "var(--mono)", fontSize: 8, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "#fff", background: "rgba(33,29,26,.72)", borderRadius: 4, padding: "1px 4px" }}>Cover</span>
+            ) : null}
+            <button type="button" aria-label="Remove photo" onClick={() => setPhotos((p) => p.filter((x) => x !== u))} style={{ position: "absolute", top: -6, right: -6, ...thumbButtonStyle }}>×</button>
+            {photos.length > 1 ? (
+              <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3 }}>
+                <button type="button" aria-label="Move earlier" disabled={i === 0} onClick={() => setPhotos((p) => moveItem(p, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
+                <button type="button" aria-label="Move later" disabled={i === photos.length - 1} onClick={() => setPhotos((p) => moveItem(p, i, 1))} style={{ ...thumbButtonStyle, opacity: i === photos.length - 1 ? 0.35 : 1 }}>›</button>
+              </div>
+            ) : null}
+          </div>
         ))}
         {photos.length < 4 ? (
-          <Button variant="neutral" size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>Add photo</Button>
+          <Button variant="neutral" size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>{busy ? (progress ?? "Uploading…") : "Add photos"}</Button>
         ) : null}
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void addPhoto(f); }} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: "none" }} onChange={(e) => { const fs = e.target.files; if (fs && fs.length > 0) void addPhotos(fs); }} />
       </div>
       {error ? <p role="alert" style={{ margin: 0, color: "var(--crimson-700)", fontSize: 13 }}>{error}</p> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>

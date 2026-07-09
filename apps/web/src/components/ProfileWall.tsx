@@ -24,6 +24,7 @@ import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import actions from "./inlineActions.module.css";
 import { linkifyHashtags } from "../lib/hashtags";
+import { imageFilesFrom, moveItem, thumbButtonStyle } from "../lib/composerMedia";
 
 export interface PublicProfile {
   id: string;
@@ -391,8 +392,10 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
   const fileRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
 
+  const [progress, setProgress] = useState<string | null>(null);
+
   const onPickFiles = useCallback(
-    async (files: FileList | null) => {
+    async (files: FileList | File[] | null) => {
       if (!files || files.length === 0) return;
       setErr(null);
       const room = MAX_MEDIA - media.length;
@@ -404,7 +407,8 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       setUploading(true);
       try {
         const uploaded: WallMedia[] = [];
-        for (const file of chosen) {
+        for (const [i, file] of chosen.entries()) {
+          if (chosen.length > 1) setProgress(`Uploading ${i + 1} of ${chosen.length}…`);
           const { url } = await uploadProfileImage(userId, file, "wall");
           uploaded.push({ type: "image", url });
         }
@@ -413,6 +417,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         setErr(e instanceof Error ? e.message : "Couldn't upload that image.");
       } finally {
         setUploading(false);
+        setProgress(null);
         if (fileRef.current) fileRef.current.value = "";
       }
     },
@@ -463,10 +468,15 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
   const canPost = (body.trim().length > 0 || media.length > 0) && !busy && !uploading;
 
   return (
-    <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+    <Card
+      style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+      onDrop={(e) => { const fs = imageFilesFrom(e.dataTransfer); if (fs.length > 0) { e.preventDefault(); void onPickFiles(fs); } }}
+    >
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        onPaste={(e) => { const fs = imageFilesFrom(e.clipboardData); if (fs.length > 0) { e.preventDefault(); void onPickFiles(fs); } }}
         placeholder="Share something with your locals…"
         aria-label="Write a post"
         rows={3}
@@ -488,8 +498,14 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
 
       {media.length > 0 ? (
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
-          {media.map((m) => (
+          {media.map((m, i) => (
             <div key={m.url} style={{ position: "relative" }}>
+              {media.length > 1 ? (
+                <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3, zIndex: 1 }}>
+                  <button type="button" aria-label="Move earlier" disabled={i === 0} onClick={() => setMedia((cur) => moveItem(cur, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
+                  <button type="button" aria-label="Move later" disabled={i === media.length - 1} onClick={() => setMedia((cur) => moveItem(cur, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
+                </div>
+              ) : null}
               {m.type === "video" ? (
                 <video src={m.url} muted playsInline style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--r-md)", display: "block", background: "#000" }} />
               ) : (
@@ -541,7 +557,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
           onClick={() => fileRef.current?.click()}
           disabled={uploading || media.length >= MAX_MEDIA}
         >
-          {uploading ? "Uploading…" : `＋ Photo${media.length > 0 ? ` (${media.length}/${MAX_MEDIA})` : ""}`}
+          {uploading ? (progress ?? "Uploading…") : `＋ Photo${media.length > 0 ? ` (${media.length}/${MAX_MEDIA})` : ""}`}
         </Button>
         <Button
           variant="neutral"
