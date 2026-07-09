@@ -20,6 +20,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import type { Place } from "./PlaceSwitcher";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { linkifyHashtags } from "../lib/hashtags";
 
 interface FeedPost {
   id: string;
@@ -249,7 +250,7 @@ function PostFeedCard({ post }: { post: FeedPost }) {
         ) : null}
         {post.body ? (
           <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {post.body}
+            {linkifyHashtags(post.body, { links: false })}
           </p>
         ) : null}
         {post.media && post.media.length > 0 ? (
@@ -302,7 +303,7 @@ function TopicFeedCard({ topic }: { topic: FeedTopic }) {
           </span>
           {topic.body ? (
             <span style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {topic.body}
+              {linkifyHashtags(topic.body, { links: false })}
             </span>
           ) : null}
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>

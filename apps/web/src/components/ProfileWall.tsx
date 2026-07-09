@@ -23,6 +23,7 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import actions from "./inlineActions.module.css";
+import { linkifyHashtags } from "../lib/hashtags";
 
 export interface PublicProfile {
   id: string;
@@ -248,7 +249,7 @@ function ProfileHeader({
           ) : null}
           {profile.bio ? (
             <p style={{ margin: "6px 0 0", color: "var(--ink-2)", lineHeight: 1.5, fontSize: 14, whiteSpace: "pre-wrap" }}>
-              {profile.bio}
+              {linkifyHashtags(profile.bio)}
             </p>
           ) : null}
         </div>
@@ -628,7 +629,7 @@ export function PostCard({
       ) : (
         <>
           {post.body ? (
-            <p style={{ margin: "0 0 var(--space-3)", color: "var(--ink)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{post.body}</p>
+            <p style={{ margin: "0 0 var(--space-3)", color: "var(--ink)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{linkifyHashtags(post.body)}</p>
           ) : null}
 
           {post.media.length > 0 ? <MediaGrid media={post.media} /> : null}
@@ -956,7 +957,7 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
           </div>
         ) : (
           <>
-            <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{comment.body}</p>
+            <p style={{ margin: "1px 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{linkifyHashtags(comment.body)}</p>
             {mine ? (
               confirming ? (
                 <div className={actions.row} style={{ marginTop: 4 }}>

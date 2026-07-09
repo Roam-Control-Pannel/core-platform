@@ -20,6 +20,7 @@ import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
+import { linkifyHashtags } from "../lib/hashtags";
 
 export interface FeedPost {
   id: string;
@@ -132,7 +133,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
           </h1>
         ) : null}
         {post.body ? (
-          <p style={{ margin: 0, lineHeight: 1.6, color: "var(--ink)", whiteSpace: "pre-wrap" }}>{post.body}</p>
+          <p style={{ margin: 0, lineHeight: 1.6, color: "var(--ink)", whiteSpace: "pre-wrap" }}>{linkifyHashtags(post.body)}</p>
         ) : null}
 
         {/* Offer hand-off: offers are claimed/shown at the venue. */}
