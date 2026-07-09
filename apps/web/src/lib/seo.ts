@@ -342,6 +342,64 @@ export function hubIndexable(hasTopics: boolean, venueCount: number, hasGuide = 
   return hasTopics || venueCount >= HUB_MIN_VENUES || hasGuide;
 }
 
+/* ── Marketplace listings (/market/{id}) ────────────────────────────────────────────────── */
+
+import type { ListingSeo } from "./serverApi";
+
+/** "£120" / "Free" / "Swap" — the price word search snippets and titles lead with. */
+function listingPriceLabel(l: Pick<ListingSeo, "mode" | "pricePence">): string {
+  if (l.mode === "free") return "Free";
+  if (l.mode === "swap") return "Swap";
+  return l.pricePence != null ? `£${(l.pricePence / 100).toFixed(l.pricePence % 100 === 0 ? 0 : 2)}` : "For sale";
+}
+
+/**
+ * Metadata for one C2C listing. Only LIVE listings are indexable — sold/removed pages flip
+ * to noindex,follow so search drops stale ads (the classifieds-site trap) while old links
+ * still resolve for humans.
+ */
+export function listingMetadata(listing: ListingSeo | null, id: string): Metadata {
+  if (!listing) return notFoundMeta(`/market/${id}`);
+  const price = listingPriceLabel(listing);
+  const where = listing.locality ? ` in ${listing.locality}` : "";
+  const title = `${listing.title} — ${price}${where}`;
+  const description = clamp(
+    (listing.description && listing.description.trim()) ||
+      `${listing.title}: ${price}${where}, from a local on Roam Marketplace. Buy, sell and swap with neighbours.`,
+  );
+  const url = absUrl(`/market/${listing.id}`);
+  const firstPhoto = listing.photoUrls[0];
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(listing.status === "live" ? {} : { robots: { index: false, follow: true } }),
+    ...social({ title, description, url, badge: "Roam Marketplace", ...(firstPhoto ? { image: firstPhoto } : {}) }),
+  };
+}
+
+/** schema.org Product + Offer for a listing — price-badge-eligible rich results. */
+export function listingJsonLd(listing: ListingSeo): Record<string, unknown> {
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    ...(listing.description ? { description: clamp(listing.description, 500) } : {}),
+    ...(listing.photoUrls.length > 0 ? { image: listing.photoUrls } : {}),
+    offers: compact({
+      "@type": "Offer",
+      url: absUrl(`/market/${listing.id}`),
+      priceCurrency: "GBP",
+      price: listing.mode === "free" ? "0" : listing.pricePence != null ? (listing.pricePence / 100).toFixed(2) : undefined,
+      availability: listing.status === "live" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+      ...(listing.locality ? { availableAtOrFrom: { "@type": "Place", name: listing.locality } } : {}),
+    }),
+    ...(listing.seller.displayName || listing.seller.handle
+      ? { seller: { "@type": "Person", name: listing.seller.displayName ?? `@${listing.seller.handle}` } }
+      : {}),
+  });
+}
+
 /** Metadata for a town hub. Thin towns (no topics/venues/guide) are noindex. */
 export function hubMetadata(
   localityLabel: string,
