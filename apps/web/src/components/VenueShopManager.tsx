@@ -19,6 +19,7 @@ import { Button, Pill, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { getSupabaseBrowser } from "../lib/supabase";
 import { formatPence, parsePriceToPence } from "../lib/money";
+import { prepareImage } from "../lib/prepareImage";
 
 export interface ShopProduct {
   id: string;
@@ -213,11 +214,13 @@ function ProductComposer({
     }
     setBusy(true);
     try {
+      // Downscale + re-encode in the browser first (lib/prepareImage).
+      const prepared = await prepareImage(file, "product");
       // Path starts with the venue id — the venue-media storage RLS authorises by that prefix.
-      const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+      const ext = prepared.name.includes(".") ? prepared.name.split(".").pop() : "webp";
       const path = `${venueId}/product-${crypto.randomUUID()}.${ext}`;
       const supabase = getSupabaseBrowser();
-      const { error: upErr } = await supabase.storage.from(VENUE_MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+      const { error: upErr } = await supabase.storage.from(VENUE_MEDIA_BUCKET).upload(path, prepared, { contentType: prepared.type, upsert: false });
       if (upErr) {
         setError(`Upload failed: ${upErr.message}`);
         return;

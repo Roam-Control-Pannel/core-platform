@@ -11,6 +11,7 @@
  * (the bucket's allowed_mime_types + file_size_limit), so this is UX, not the security gate.
  */
 import { getSupabaseBrowser } from "./supabase";
+import { prepareImage } from "./prepareImage";
 
 const PROFILE_MEDIA_BUCKET = "profile-media";
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -21,6 +22,9 @@ const EXT_BY_MIME: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+
+// NB: uploads usually land as WebP now regardless of the picked file's type — prepareImage
+// re-encodes. ALLOWED_MIME gates what the USER may pick; the bucket allows webp output.
 
 export interface UploadResult {
   /** The public URL to store in profiles.avatar_url / header_url. */
@@ -42,18 +46,22 @@ export async function uploadProfileImage(
   if (!(ALLOWED_MIME as readonly string[]).includes(file.type)) {
     throw new Error("Please pick a JPEG, PNG or WebP image.");
   }
-  if (file.size > MAX_BYTES) {
-    throw new Error("That image is over 5 MB. Please pick a smaller one.");
+
+  // Downscale + re-encode in the browser (lib/prepareImage) — a 6MB phone photo becomes a
+  // few hundred KB, so the size cap below almost never triggers any more.
+  const prepared = await prepareImage(file, kind);
+  if (prepared.size > MAX_BYTES) {
+    throw new Error("That image is over 5 MB even after compressing. Please pick a smaller one.");
   }
 
-  const ext = EXT_BY_MIME[file.type] ?? "jpg";
+  const ext = EXT_BY_MIME[prepared.type] ?? "webp";
   // First path segment MUST be the user id (0027 storage RLS reads it from the path).
   const path = `${userId}/${kind}-${crypto.randomUUID()}.${ext}`;
 
   const supabase = getSupabaseBrowser();
   const { error } = await supabase.storage
     .from(PROFILE_MEDIA_BUCKET)
-    .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+    .upload(path, prepared, { cacheControl: "3600", upsert: false, contentType: prepared.type });
   if (error) {
     throw new Error(`Upload failed: ${error.message}`);
   }

@@ -26,6 +26,7 @@ import { formatPence, parsePriceToPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 import { MarketShops, HeartButton } from "./MarketShops";
 import { useWishlist } from "../lib/wishlist";
+import { prepareImage } from "../lib/prepareImage";
 
 const CATEGORIES = ["furniture", "electronics", "clothing", "kids", "home", "garden", "sports", "books", "vehicles", "other"] as const;
 
@@ -329,10 +330,12 @@ function ListingComposer({ localityName, lat, lng, onDone, onCancel }: { localit
     }
     setBusy(true);
     try {
-      const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+      // Downscale + re-encode in the browser first (lib/prepareImage).
+      const prepared = await prepareImage(file, "listing");
+      const ext = prepared.name.includes(".") ? prepared.name.split(".").pop() : "webp";
       const path = `${uid}/listing-${crypto.randomUUID()}.${ext}`;
       const supabase = getSupabaseBrowser();
-      const { error: upErr } = await supabase.storage.from("profile-media").upload(path, file, { contentType: file.type });
+      const { error: upErr } = await supabase.storage.from("profile-media").upload(path, prepared, { contentType: prepared.type });
       if (upErr) { setError(`Upload failed: ${upErr.message}`); return; }
       const { data } = supabase.storage.from("profile-media").getPublicUrl(path);
       setPhotos((p) => [...p, data.publicUrl]);
