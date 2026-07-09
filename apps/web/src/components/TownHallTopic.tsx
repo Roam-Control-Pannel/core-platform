@@ -20,6 +20,7 @@ import { LinkPreviewCard } from "./LinkPreviewCard";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { AuthorLink } from "./AuthorLink";
 import actions from "./inlineActions.module.css";
+import { linkifyHashtags } from "../lib/hashtags";
 
 interface TopicView {
   id: string;
@@ -152,7 +153,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
                   {data.topic.title}
                 </h1>
                 <p style={{ marginTop: "var(--space-3)", marginBottom: 0, color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                  {data.topic.body}
+                  {linkifyHashtags(data.topic.body)}
                 </p>
 
                 {data.topic.linkUrl ? (
@@ -278,7 +279,7 @@ function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string |
         />
       ) : (
         <>
-          <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{reply.body}</p>
+          <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{linkifyHashtags(reply.body)}</p>
           <div style={{ marginTop: "var(--space-2)" }}>
             <ReplyUpvote replyId={reply.id} initialUpvoted={reply.viewerUpvoted} initialCount={reply.upvoteCount} canVote={!!myId} />
           </div>

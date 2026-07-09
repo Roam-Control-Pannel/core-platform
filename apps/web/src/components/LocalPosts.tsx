@@ -15,6 +15,7 @@ import { Card, Button, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import actions from "./inlineActions.module.css";
+import { linkifyHashtags } from "../lib/hashtags";
 
 type PostKind = "news" | "offer" | "event";
 interface PostMedia { type: "image"; url: string }
@@ -320,7 +321,7 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
       ) : (
         <div style={{ marginTop: 6 }}>
           {post.title ? <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-hi)" }}>{post.title}</div> : null}
-          {post.body ? <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, marginTop: 2, whiteSpace: "pre-wrap" }}>{post.body}</div> : null}
+          {post.body ? <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, marginTop: 2, whiteSpace: "pre-wrap" }}>{linkifyHashtags(post.body)}</div> : null}
           {post.media.length > 0 ? <div style={{ marginTop: "var(--space-2)" }}><MediaGrid media={post.media} /></div> : null}
         </div>
       )}

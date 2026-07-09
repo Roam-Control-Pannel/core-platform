@@ -27,6 +27,7 @@ import { LinkPreviewCard } from "./LinkPreviewCard";
 import { authorInitial, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { townHubPath, townSlug } from "../lib/routes";
 import styles from "./TownHall.module.css";
+import { linkifyHashtags } from "../lib/hashtags";
 
 interface TopicListItem {
   id: string;
@@ -312,7 +313,7 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
               overflow: "hidden",
             }}
           >
-            {topic.body}
+            {linkifyHashtags(topic.body, { links: false })}
           </p>
         </Link>
 

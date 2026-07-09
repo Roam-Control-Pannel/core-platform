@@ -16,6 +16,7 @@ import { timeAgo } from "../lib/townHall";
 import { categoryLabel } from "../lib/categories";
 import type { HubData, HubVenue, HubStats, HubNews } from "../lib/serverApi";
 import type { TownGuide } from "../lib/townGuides";
+import { linkifyHashtags } from "../lib/hashtags";
 
 const heroIntro = (label: string) =>
   `What locals in ${label} are talking about — discussion, news and recommendations, plus places worth your time.`;
@@ -105,7 +106,7 @@ export function TownHallHub({
                     <h3 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, lineHeight: 1.3, margin: 0 }}>{t.title}</h3>
                   </Link>
                   <p style={{ margin: "4px 0 0", color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {t.body}
+                    {linkifyHashtags(t.body)}
                   </p>
                   <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
                     <span>♥ {t.upvoteCount}</span>
