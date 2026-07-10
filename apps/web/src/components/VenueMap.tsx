@@ -14,6 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { venuePath } from "../lib/routes";
@@ -35,6 +36,7 @@ export function VenueMap({
   center: { lat: number; lng: number };
   className?: string | undefined;
 }) {
+  const t = useTranslations("venueMap");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
@@ -81,7 +83,7 @@ export function VenueMap({
       const map = L.map(containerRef.current).setView([center.lat, center.lng], 14);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        attribution: "© OpenStreetMap contributors",
+        attribution: t("attribution"),
       }).addTo(map);
       layerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
@@ -109,5 +111,5 @@ export function VenueMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues]);
 
-  return <div ref={containerRef} className={className} aria-label="Map of venues" role="img" />;
+  return <div ref={containerRef} className={className} aria-label={t("ariaLabel")} role="img" />;
 }

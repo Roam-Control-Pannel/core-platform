@@ -11,6 +11,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
@@ -43,16 +44,10 @@ interface CreateResult {
   postId?: string;
 }
 
-const KIND_OPTIONS = [
-  { value: "news", label: "News" },
-  { value: "offer", label: "Offer" },
-  { value: "event", label: "Event" },
-] as const;
-
-function postState(p: ManagedPost): { label: string; live: boolean } {
-  if (p.publishedAt) return { label: "Live", live: true };
-  if (p.publishAt) return { label: "Scheduled", live: false };
-  return { label: "Draft", live: false };
+function postState(t: ReturnType<typeof useTranslations>, p: ManagedPost): { label: string; live: boolean } {
+  if (p.publishedAt) return { label: t("state.live"), live: true };
+  if (p.publishAt) return { label: t("state.scheduled"), live: false };
+  return { label: t("state.draft"), live: false };
 }
 
 /** A small "where it went" chip on a post row (local feed / pushed to followers). */
@@ -91,6 +86,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 export function LocalPosts({ venueId }: { venueId: string }) {
+  const t = useTranslations("localPosts");
   const trpc = useTrpc();
   const [posts, setPosts] = useState<ManagedPost[] | undefined>(undefined);
   const [composing, setComposing] = useState(false);
@@ -121,7 +117,7 @@ export function LocalPosts({ venueId }: { venueId: string }) {
           onCancel={() => setComposing(false)}
         />
       ) : (
-        <Button variant="pri" onClick={() => setComposing(true)}>＋ New local post</Button>
+        <Button variant="pri" onClick={() => setComposing(true)}>＋ {t("newLocalPost")}</Button>
       )}
 
       {posts === undefined ? (
@@ -131,7 +127,7 @@ export function LocalPosts({ venueId }: { venueId: string }) {
         </div>
       ) : posts.length === 0 ? (
         <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, margin: "var(--space-3) 2px 0" }}>
-          No posts yet. Share news, an offer or an event — it appears on your venue page and in your town&apos;s local news feed.
+          {t("empty")}
         </p>
       ) : (
         <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
@@ -145,6 +141,7 @@ export function LocalPosts({ venueId }: { venueId: string }) {
 }
 
 function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPosted: () => void; onCancel: () => void }) {
+  const t = useTranslations("localPosts");
   const trpc = useTrpc();
   const session = useSession();
   const [kind, setKind] = useState<PostKind>("news");
@@ -159,11 +156,11 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
   const submit = useCallback(async () => {
     // Mirror core/validateComposition locally for fast feedback (server re-checks).
     if (kind === "offer" && title.trim().length === 0) {
-      setErr("An offer needs a title.");
+      setErr(t("composer.offerNeedsTitle"));
       return;
     }
     if (title.trim().length === 0 && body.trim().length === 0 && media.length === 0) {
-      setErr("Add a title, some text or a photo to post.");
+      setErr(t("composer.addSomething"));
       return;
     }
     setBusy(true);
@@ -187,35 +184,43 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
         return;
       }
       if (res.reason === "insufficient_credits") {
-        setErr("Not enough push credits to notify followers. Untick “Notify followers” to post without a push.");
+        setErr(t("composer.insufficientCredits"));
       } else if (res.validation && !res.validation.ok) {
-        setErr(res.validation.errors[0] ?? "Couldn't post that.");
+        setErr(res.validation.errors[0] ?? t("composer.postFailed"));
       } else {
-        setErr("Couldn't post that. Please try again.");
+        setErr(t("composer.postFailedRetry"));
       }
       setBusy(false);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't post that.");
+      setErr(e instanceof Error ? e.message : t("composer.postFailed"));
       setBusy(false);
     }
   }, [trpc, venueId, kind, title, body, media, notify, onPosted]);
 
   return (
     <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)" }}>
-      <Seg options={KIND_OPTIONS} value={kind} onChange={(v) => setKind(v as PostKind)} />
+      <Seg
+        options={[
+          { value: "news", label: t("kinds.news") },
+          { value: "offer", label: t("kinds.offer") },
+          { value: "event", label: t("kinds.event") },
+        ]}
+        value={kind}
+        onChange={(v) => setKind(v as PostKind)}
+      />
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder={kind === "offer" ? "Offer title — e.g. 2-for-1 cocktails" : "Title (optional)"}
-        aria-label="Post title"
+        placeholder={kind === "offer" ? t("composer.offerTitlePlaceholder") : t("composer.titlePlaceholder")}
+        aria-label={t("composer.titleAria")}
         maxLength={200}
         style={inputStyle}
       />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Tell locals what's happening…"
-        aria-label="Post body"
+        placeholder={t("composer.bodyPlaceholder")}
+        aria-label={t("composer.bodyAria")}
         rows={3}
         style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
       />
@@ -229,21 +234,22 @@ function PostComposer({ venueId, onPosted, onCancel }: { venueId: string; onPost
       />
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: "var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", cursor: "pointer" }}>
         <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-        Notify followers (uses 1 push credit)
+        {t("composer.notifyFollowers")}
       </label>
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
-        <Button variant="pri" onClick={() => void submit()} disabled={busy || uploading}>{busy ? "Posting…" : "Post"}</Button>
-        <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" onClick={() => void submit()} disabled={busy || uploading}>{busy ? t("composer.posting") : t("composer.post")}</Button>
+        <Button variant="neutral" onClick={onCancel} disabled={busy}>{t("composer.cancel")}</Button>
       </div>
       <p style={{ margin: "var(--space-3) 2px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-        Appears on your venue page and in your town&apos;s local news feed.
+        {t("composer.footer")}
       </p>
     </Card>
   );
 }
 
 function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () => void }) {
+  const t = useTranslations("localPosts");
   const trpc = useTrpc();
   const session = useSession();
   const [editing, setEditing] = useState(false);
@@ -254,7 +260,7 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [editErr, setEditErr] = useState<string | null>(null);
-  const state = postState(post);
+  const state = postState(t, post);
 
   const save = useCallback(async () => {
     setBusy(true);
@@ -289,20 +295,20 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
           {state.label}
         </span>
         <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--muted)" }}>{post.kind}</span>
-        {(post.destinations ?? []).includes("feed") ? <DestBadge>In feed</DestBadge> : null}
-        {(post.destinations ?? []).includes("follower_push") ? <DestBadge push>Pushed</DestBadge> : null}
+        {(post.destinations ?? []).includes("feed") ? <DestBadge>{t("inFeed")}</DestBadge> : null}
+        {(post.destinations ?? []).includes("follower_push") ? <DestBadge push>{t("pushed")}</DestBadge> : null}
         <span style={{ flex: 1 }} />
         {!editing ? (
           confirming ? (
             <div className={actions.row}>
-              <span className={actions.confirm}>Delete?</span>
-              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : "Yes"}</button>
-              <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>No</button>
+              <span className={actions.confirm}>{t("row.deleteConfirm")}</span>
+              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : t("row.yes")}</button>
+              <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>{t("row.no")}</button>
             </div>
           ) : (
             <div className={actions.row}>
-              <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button>
-              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
+              <button type="button" className={actions.action} onClick={() => setEditing(true)}>{t("row.edit")}</button>
+              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>{t("row.delete")}</button>
             </div>
           )
         ) : null}
@@ -310,13 +316,13 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
 
       {editing ? (
         <div style={{ marginTop: "var(--space-2)" }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" aria-label="Post title" style={inputStyle} />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Body" aria-label="Post body" rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("composer.titlePlaceholder")} aria-label={t("composer.titleAria")} style={inputStyle} />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t("row.bodyPlaceholder")} aria-label={t("composer.bodyAria")} rows={3} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
           <MediaPicker userId={session?.user?.id ?? null} media={media} onChange={setMedia} uploading={uploading} setUploading={setUploading} onError={setEditErr} />
           {editErr ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{editErr}</div> : null}
           <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-            <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || uploading || (title.trim().length === 0 && body.trim().length === 0 && media.length === 0)}>{busy ? "Saving…" : "Save"}</Button>
-            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setTitle(post.title ?? ""); setBody(post.body ?? ""); setMedia(post.media); setEditErr(null); }} disabled={busy}>Cancel</Button>
+            <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || uploading || (title.trim().length === 0 && body.trim().length === 0 && media.length === 0)}>{busy ? t("row.saving") : t("row.save")}</Button>
+            <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setTitle(post.title ?? ""); setBody(post.body ?? ""); setMedia(post.media); setEditErr(null); }} disabled={busy}>{t("composer.cancel")}</Button>
           </div>
         </div>
       ) : (
@@ -363,6 +369,7 @@ function MediaPicker({
   setUploading: (b: boolean) => void;
   onError: (e: string | null) => void;
 }) {
+  const t = useTranslations("localPosts");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [progress, setProgress] = useState<string | null>(null);
@@ -370,7 +377,7 @@ function MediaPicker({
   const pick = useCallback(
     async (files: FileList | File[] | null) => {
       if (!files || files.length === 0) return;
-      if (!userId) { onError("You need to be signed in to add images."); return; }
+      if (!userId) { onError(t("media.signInToAdd")); return; }
       const room = MAX_POST_IMAGES - media.length;
       if (room <= 0) return;
       setUploading(true);
@@ -379,13 +386,13 @@ function MediaPicker({
       try {
         const chosen = Array.from(files).slice(0, room);
         for (const [i, file] of chosen.entries()) {
-          if (chosen.length > 1) setProgress(`Uploading ${i + 1} of ${chosen.length}…`);
+          if (chosen.length > 1) setProgress(t("media.uploadingProgress", { current: i + 1, total: chosen.length }));
           const { url } = await uploadProfileImage(userId, file, "post");
           next.push({ type: "image", url });
         }
         onChange([...media, ...next]);
       } catch (e) {
-        onError(e instanceof Error ? e.message : "Couldn't upload that image.");
+        onError(e instanceof Error ? e.message : t("media.uploadFailed"));
       } finally {
         setUploading(false);
         setProgress(null);
@@ -408,7 +415,7 @@ function MediaPicker({
               <img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               <button
                 type="button"
-                aria-label="Remove image"
+                aria-label={t("media.removeImage")}
                 onClick={() => onChange(media.filter((_, j) => j !== i))}
                 style={{ position: "absolute", top: 3, right: 3, width: 20, height: 20, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(33,29,26,.72)", color: "#fff", fontSize: 13, lineHeight: 1, display: "grid", placeItems: "center" }}
               >
@@ -416,8 +423,8 @@ function MediaPicker({
               </button>
               {media.length > 1 ? (
                 <div style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3 }}>
-                  <button type="button" aria-label="Move earlier" disabled={i === 0} onClick={() => onChange(moveItem(media, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
-                  <button type="button" aria-label="Move later" disabled={i === media.length - 1} onClick={() => onChange(moveItem(media, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
+                  <button type="button" aria-label={t("media.moveEarlier")} disabled={i === 0} onClick={() => onChange(moveItem(media, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
+                  <button type="button" aria-label={t("media.moveLater")} disabled={i === media.length - 1} onClick={() => onChange(moveItem(media, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
                 </div>
               ) : null}
             </div>
@@ -432,7 +439,7 @@ function MediaPicker({
             disabled={uploading}
             style={{ all: "unset", cursor: uploading ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}
           >
-            {uploading ? (progress ?? "Uploading…") : `＋ Add photo${media.length > 0 ? ` (${media.length}/${MAX_POST_IMAGES})` : ""}`}
+            {uploading ? (progress ?? t("media.uploading")) : `＋ ${t("media.addPhoto")}${media.length > 0 ? ` (${media.length}/${MAX_POST_IMAGES})` : ""}`}
           </button>
           <input
             ref={fileRef}

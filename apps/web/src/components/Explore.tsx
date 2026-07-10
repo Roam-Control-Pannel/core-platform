@@ -29,6 +29,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Seg, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
@@ -37,7 +38,7 @@ import { AuthPanel } from "./AuthPanel";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { anonCanOpen, anonRecordOpen, ANON_SEARCH_LIMIT } from "../lib/anonDiscovery";
 import { FeedList } from "./FeedList";
-import { CATEGORY_GROUPS, categoryLabel } from "../lib/categories";
+import { CATEGORY_GROUPS, useCategoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
 import { VenueMap, type MapVenue } from "./VenueMap";
 import { NearbyDepartures } from "./NearbyDepartures";
@@ -110,6 +111,8 @@ function toCardData(v: {
 }
 
 export function Explore() {
+  const t = useTranslations("explore");
+  const categoryLabel = useCategoryLabel();
   const trpc = useTrpc();
   const session = useSession();
   const [mode, setMode] = useState<Mode>("browse");
@@ -194,7 +197,7 @@ export function Explore() {
       } catch (e: unknown) {
         if (loadGen.current !== gen) return;
         setDiscovering(false);
-        setError(e instanceof Error ? e.message : "Failed to load venues.");
+        setError(e instanceof Error ? e.message : t("errors.loadFailed"));
       }
     })();
   }, [trpc, place]);
@@ -245,7 +248,7 @@ export function Explore() {
           setVenues(result.venues.map(toCardData));
         } catch (e: unknown) {
           if (loadGen.current !== gen) return;
-          setError(e instanceof Error ? e.message : "Failed to load venues.");
+          setError(e instanceof Error ? e.message : t("errors.loadFailed"));
         }
       })();
     },
@@ -388,7 +391,7 @@ export function Explore() {
         className={`${styles.catBtn} ${activeCategory === null ? styles.catActive : ""}`}
         aria-pressed={activeCategory === null}
       >
-        <Icon name="widgets" size={16} /> All
+        <Icon name="widgets" size={16} /> {t("all")}
       </button>
       {CATEGORY_GROUPS.map((c) => (
         <button
@@ -402,7 +405,7 @@ export function Explore() {
       ))}
       {/* The Market — the once-dormant seam, now a live surface of its own. */}
       <Link href="/market" className={styles.catBtn} style={{ textDecoration: "none" }}>
-        <Icon name="shop" size={16} /> Market
+        <Icon name="shop" size={16} /> {t("market")}
       </Link>
     </>
   );
@@ -422,8 +425,8 @@ export function Explore() {
         <PlaceSwitcher value={place} onChange={setPlace} />
         <Seg
           options={[
-            { value: "browse", label: "Browse" },
-            { value: "feed", label: "Feed" },
+            { value: "browse", label: t("browse") },
+            { value: "feed", label: t("feed") },
           ]}
           value={mode}
           onChange={(v) => setMode(v as Mode)}
@@ -438,7 +441,7 @@ export function Explore() {
         <div className={styles.browse}>
           {/* desktop categories rail (hidden on phones — there the pills sit inline) */}
           <aside className={styles.rail}>
-            <span className={styles.railLabel}>Categories</span>
+            <span className={styles.railLabel}>{t("categoriesLabel")}</span>
             {categoryChips}
           </aside>
 
@@ -448,8 +451,8 @@ export function Explore() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search venues in ${place.name}…`}
-              aria-label="Search venues"
+              placeholder={t("searchPlaceholder", { placeName: place.name })}
+              aria-label={t("searchAria")}
               style={{
                 width: "100%",
                 boxSizing: "border-box",
@@ -497,7 +500,7 @@ export function Explore() {
                 }}
               >
                 <Icon name="place" size={16} style={{ color: "var(--crimson-700)" }} />
-                {showMobileMap ? "Hide map" : "Show map"}
+                {showMobileMap ? t("hideMap") : t("showMap")}
               </button>
               {showMobileMap ? (
                 <div style={{ marginTop: "var(--space-3)" }}>
@@ -522,7 +525,7 @@ export function Explore() {
               >
                 <button onClick={() => setActiveSub(null)} style={{ all: "unset", cursor: "pointer", flex: "0 0 auto" }}>
                   <Pill variant={activeSub === null ? "crim" : "neutral"} size="sm">
-                    All
+                    {t("all")}
                   </Pill>
                 </button>
                 {subCategories.map((t) => (
@@ -568,7 +571,7 @@ export function Explore() {
                       style={{ all: "unset", cursor: "pointer" }}
                     >
                       <Pill variant="neutral">
-                        Load more · {shown.length - visibleCount} more
+                        {t("loadMore", { count: shown.length - visibleCount })}
                       </Pill>
                     </button>
                   </div>
@@ -585,7 +588,7 @@ export function Explore() {
               <VenueMap venues={mapVenues} center={place} className={styles.mapEmbed} />
               <div className={styles.mapBar}>
                 <span className={styles.mapCount}>
-                  {mapVenues.length} venue{mapVenues.length === 1 ? "" : "s"} in view
+                  {t("venuesInView", { count: mapVenues.length })}
                 </span>
                 <OpenInMaps place={place} variant="bar" />
               </div>
@@ -605,6 +608,7 @@ export function Explore() {
  * client-only, so we render the web URL first and swap to the device-specific one on mount.
  */
 function OpenInMaps({ place, variant }: { place: Place; variant: "bar" | "pill" }) {
+  const t = useTranslations("explore");
   const [href, setHref] = useState(() => placeMapsUrl(place.lat, place.lng, place.name, "web"));
   useEffect(() => {
     const platform = detectMapsPlatform(
@@ -623,14 +627,14 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "bar" | "pill" 
     // The map panel's floating bar action — a quiet bordered pill on the translucent bar.
     return (
       <a href={href} {...anchorProps} style={{ textDecoration: "none", flexShrink: 0 }}>
-        <Pill variant="neutral">Open in Maps</Pill>
+        <Pill variant="neutral">{t("openInMaps")}</Pill>
       </a>
     );
   }
   return (
     <a href={href} {...anchorProps} style={{ textDecoration: "none" }}>
       <Pill variant="ghost-crim" size="sm">
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="place" size={14} /> Open {place.name} in Maps</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="place" size={14} /> {t("openPlaceInMaps", { placeName: place.name })}</span>
       </Pill>
     </a>
   );
@@ -644,17 +648,20 @@ function OpenInMaps({ place, variant }: { place: Place; variant: "bar" | "pill" 
  * place effect re-runs).
  */
 function SignupGate({ place, onAuthed }: { place: Place; onAuthed: () => void }) {
+  const t = useTranslations("explore");
   const redirectTo = typeof window !== "undefined" ? window.location.href : "";
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "var(--space-8) var(--space-4)" }}>
       <div style={{ textAlign: "center" }}>
         <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-          Create a free account to keep exploring
+          {t("gate.title")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
-          You&apos;ve explored {ANON_SEARCH_LIMIT} searched locations this session — the free limit.
-          Your own location stays free; sign up to open <strong>{place.name}</strong> and anywhere
-          else, save places, and follow the venues you love.
+          {t.rich("gate.body", {
+            limit: ANON_SEARCH_LIMIT,
+            placeName: place.name,
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
       </div>
       <AuthPanel emailRedirectTo={redirectTo} onAuthed={onAuthed} />
@@ -668,6 +675,7 @@ function SignupGate({ place, onAuthed }: { place: Place; onAuthed: () => void })
  * content-shaped skeleton sits below the line so the load reads as real, not a spinner.
  */
 function DiscoveringState({ placeName }: { placeName: string }) {
+  const t = useTranslations("explore");
   return (
     <div>
       <div
@@ -682,7 +690,7 @@ function DiscoveringState({ placeName }: { placeName: string }) {
         }}
       >
         <Icon name="place" size={16} style={{ color: "var(--crimson-700)" }} />
-        Discovering places in {placeName}…
+        {t("discovering", { placeName })}
       </div>
       <VenueGridSkeleton />
     </div>
@@ -714,23 +722,25 @@ function VenueGridSkeleton() {
 }
 
 function EmptyState() {
+  const t = useTranslations("explore");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", color: "var(--ink-2)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Nothing here yet
+        {t("empty.title")}
       </div>
       <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>
-        No venues match this view. Try another category or place, or check back as Roam grows in your area.
+        {t("empty.body")}
       </p>
     </div>
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const t = useTranslations("explore");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load venues
+        {t("errors.title")}
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>

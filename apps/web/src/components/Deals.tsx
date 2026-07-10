@@ -16,10 +16,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { buildAwinLink } from "../lib/awin";
+import { getFormatLocale } from "../lib/i18n/runtime";
 
 export interface Deal {
   id: string;
@@ -54,7 +56,7 @@ function useDeals(limit: number): { deals: Deal[] | undefined; error: boolean } 
 
 function shortDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(getFormatLocale(), { day: "numeric", month: "short" });
 }
 
 /** A category icon inferred from the advertiser + title, so image-less deals still read at a glance. */
@@ -101,6 +103,7 @@ function DealThumb({ deal, variant }: { deal: Deal; variant: "hero" | "tile" }) 
 
 /** One deal card. `clickRef` tags the affiliate link with the surface it was clicked from. */
 export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
+  const t = useTranslations("deals");
   const href = buildAwinLink({ advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef });
   return (
     <Card style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -108,10 +111,10 @@ export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
       <div style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {deal.advertiserName ?? "Featured"}
+            {deal.advertiserName ?? t("featured")}
           </span>
-          <span aria-label="Affiliate ad" title="Affiliate link — Roam may earn a commission" style={{ flexShrink: 0, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>
-            Ad
+          <span aria-label={t("affiliateAdAria")} title={t("affiliateAdTitle")} style={{ flexShrink: 0, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>
+            {t("ad")}
           </span>
         </div>
 
@@ -133,11 +136,11 @@ export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
               rel="sponsored nofollow noopener noreferrer"
               style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 15px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}
             >
-              {deal.kind === "voucher" ? "Get deal" : "Shop deal"} <Icon name="chevronRight" size={15} />
+              {deal.kind === "voucher" ? t("getDeal") : t("shopDeal")} <Icon name="chevronRight" size={15} />
             </a>
             <CopyLinkButton path={`/deals/${deal.id}`} title={deal.title} label="" />
           </span>
-          {deal.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>Ends {shortDate(deal.endsAt)}</span> : null}
+          {deal.endsAt ? <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{t("ends", { date: shortDate(deal.endsAt) })}</span> : null}
         </div>
       </div>
     </Card>
@@ -146,22 +149,23 @@ export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
 
 /** Full /deals page body. */
 export function Deals() {
+  const t = useTranslations("deals");
   const { deals, error } = useDeals(24);
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-3)" }}>
-        <span aria-hidden>←</span> Home
+        <span aria-hidden>←</span> {t("home")}
       </Link>
       <header style={{ marginBottom: "var(--space-4)" }}>
-        <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, letterSpacing: "-.02em", margin: 0 }}>Deals</h1>
+        <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 28, letterSpacing: "-.02em", margin: 0 }}>{t("title")}</h1>
         <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5 }}>
-          Handpicked offers and voucher codes from brands we partner with. Links marked <strong>Ad</strong> may earn Roam a commission — it never changes the price you pay.
+          {t.rich("intro", { strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
       </header>
 
       {error ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
-          <p style={{ color: "var(--muted)", margin: 0 }}>Couldn&apos;t load deals just now.</p>
+          <p style={{ color: "var(--muted)", margin: 0 }}>{t("loadFailed")}</p>
         </Card>
       ) : deals === undefined ? (
         <DealsGrid>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} style={{ height: 250, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />)}</DealsGrid>
@@ -170,8 +174,8 @@ export function Deals() {
           <div style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--crimson-tint)", color: "var(--crimson-700)" }}>
             <Icon name="ticket" size={22} />
           </div>
-          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>No deals just now</div>
-          <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>Fresh offers from our partner brands will appear here soon — check back shortly.</p>
+          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>{t("emptyTitle")}</div>
+          <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>{t("emptyBody")}</p>
         </Card>
       ) : (
         <DealsGrid>{deals.map((d) => <DealCard key={d.id} deal={d} clickRef="deals" />)}</DealsGrid>
@@ -191,6 +195,7 @@ function DealsGrid({ children }: { children: React.ReactNode }) {
  * advertiser. Ships loading / not-found / error states; the server passes an SSR seed.
  */
 export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDeal?: Deal | null }) {
+  const t = useTranslations("deals");
   const trpc = useTrpc();
   const [deal, setDeal] = useState<Deal | null | undefined>(initialDeal);
   const [error, setError] = useState(false);
@@ -215,21 +220,21 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link href="/deals" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}>
-        <span aria-hidden>←</span> Deals
+        <span aria-hidden>←</span> {t("title")}
       </Link>
 
       {error ? (
         <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
-          <p style={{ color: "var(--muted)", margin: 0 }}>Couldn&apos;t load this deal just now.</p>
+          <p style={{ color: "var(--muted)", margin: 0 }}>{t("detail.loadFailed")}</p>
         </Card>
       ) : deal === undefined ? (
         <div style={{ height: 300, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
       ) : deal === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-            Deal not found
+            {t("detail.notFoundTitle")}
           </div>
-          <p style={{ color: "var(--ink-2)", margin: 0 }}>This offer may have ended — fresh deals are on the deals page.</p>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("detail.notFoundBody")}</p>
         </Card>
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -237,10 +242,10 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
           <div style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--crimson-700)" }}>
-                {deal.advertiserName ?? "Featured"}
+                {deal.advertiserName ?? t("featured")}
               </span>
-              <span aria-label="Affiliate ad" title="Affiliate link — Roam may earn a commission" style={{ flexShrink: 0, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>
-                Ad
+              <span aria-label={t("affiliateAdAria")} title={t("affiliateAdTitle")} style={{ flexShrink: 0, fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>
+                {t("ad")}
               </span>
             </div>
 
@@ -265,10 +270,10 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
                 rel="sponsored nofollow noopener noreferrer"
                 style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "10px 20px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontWeight: 600, fontSize: 14.5, textDecoration: "none" }}
               >
-                {deal.kind === "voucher" ? "Get deal" : "Shop deal"} <Icon name="chevronRight" size={16} />
+                {deal.kind === "voucher" ? t("getDeal") : t("shopDeal")} <Icon name="chevronRight" size={16} />
               </a>
               <CopyLinkButton path={`/deals/${deal.id}`} title={deal.title} />
-              {deal.endsAt ? <span style={{ fontSize: 12.5, color: "var(--muted)", whiteSpace: "nowrap" }}>Ends {shortDate(deal.endsAt)}</span> : null}
+              {deal.endsAt ? <span style={{ fontSize: 12.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{t("ends", { date: shortDate(deal.endsAt) })}</span> : null}
             </div>
 
             {deal.terms ? (
@@ -287,6 +292,7 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
  * an empty Deals card (half-width widgets that return null leave no grid cell).
  */
 export function DealsHomeWidget() {
+  const t = useTranslations("deals");
   const { deals } = useDeals(3);
   if (!deals || deals.length === 0) return null;
   return (
@@ -294,11 +300,11 @@ export function DealsHomeWidget() {
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
           <span aria-hidden style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 9, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}><Icon name="ticket" size={15} /></span>
-          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Deals</h2>
-          <span aria-label="Affiliate" title="Affiliate links — Roam may earn a commission" style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>Ad</span>
+          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("title")}</h2>
+          <span aria-label={t("affiliateAria")} title={t("affiliateLinksTitle")} style={{ fontFamily: "var(--mono)", fontSize: 9, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 5px" }}>{t("ad")}</span>
         </div>
         <Link href="/deals" style={{ fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}>
-          All deals <span aria-hidden>→</span>
+          {t("widget.allDeals")} <span aria-hidden>→</span>
         </Link>
       </header>
       {/* minmax(0, 1fr), not the implicit auto column: a nowrap deal title's min-content would
@@ -319,8 +325,8 @@ export function DealsHomeWidget() {
                   ellipsise inside the rail card, never paint past its padding. */}
               <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span style={{ minWidth: 0, fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.advertiserName ?? "Featured"}</span>
-                  {d.voucherCode ? <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 4, padding: "0 5px", flexShrink: 0 }}>CODE</span> : null}
+                  <span style={{ minWidth: 0, fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.advertiserName ?? t("featured")}</span>
+                  {d.voucherCode ? <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 4, padding: "0 5px", flexShrink: 0 }}>{t("widget.code")}</span> : null}
                 </span>
                 <span style={{ maxWidth: "100%", fontFamily: "var(--display)", fontSize: 14, fontWeight: 600, color: "var(--ink)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
               </span>

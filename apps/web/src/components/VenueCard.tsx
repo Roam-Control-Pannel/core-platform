@@ -30,6 +30,7 @@
 "use client";
 
 import { memo, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import styles from "./VenueCard.module.css";
 import Link from "next/link";
 import { Card, Pill, Rate, Icon } from "@roam/design";
@@ -60,18 +61,24 @@ function formatRatingCount(n: number): string {
 
 /**
  * Google price-level enum → a £ run. Null/unspecified is filtered upstream (core
- * normalizePriceLevel), so this only ever sees a meaningful level.
+ * normalizePriceLevel), so this only ever sees a meaningful level. The £ runs are
+ * currency glyphs (not translated); "Free" is the one worded label, so it comes from
+ * the catalogue.
  */
 const PRICE_LEVEL_LABELS: Record<string, string> = {
-  PRICE_LEVEL_FREE: "Free",
   PRICE_LEVEL_INEXPENSIVE: "£",
   PRICE_LEVEL_MODERATE: "££",
   PRICE_LEVEL_EXPENSIVE: "£££",
   PRICE_LEVEL_VERY_EXPENSIVE: "££££",
 };
 
-function priceLevelLabel(level: string | null | undefined): string | null {
-  return level ? (PRICE_LEVEL_LABELS[level] ?? null) : null;
+function priceLevelLabel(
+  t: ReturnType<typeof useTranslations>,
+  level: string | null | undefined,
+): string | null {
+  if (!level) return null;
+  if (level === "PRICE_LEVEL_FREE") return t("priceFree");
+  return PRICE_LEVEL_LABELS[level] ?? null;
 }
 
 export interface VenueCardData {
@@ -300,7 +307,8 @@ function typeLabel(venue: VenueCardData): string | null {
  * on both). Renders nothing when the venue has none of these.
  */
 function CardMeta({ venue }: { venue: VenueCardData }) {
-  const price = priceLevelLabel(venue.priceLevel);
+  const t = useTranslations("venueCard");
+  const price = priceLevelLabel(t, venue.priceLevel);
   const label = typeLabel(venue);
   const hasRating = venue.rating != null;
   if (!hasRating && !label && price == null) return null;
@@ -339,12 +347,13 @@ function CoverWithBadge({
   venue: VenueCardData;
   coverUrl: string | undefined;
 }) {
+  const t = useTranslations("venueCard");
   const closed = venue.businessStatus === "CLOSED_TEMPORARILY";
   return (
     <div style={coverWrap}>
       <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
       {venue.distanceM != null ? <span style={distancePill}>{formatDistance(venue.distanceM)}</span> : null}
-      {closed ? <span style={closedBadge}>Temporarily closed</span> : null}
+      {closed ? <span style={closedBadge}>{t("temporarilyClosed")}</span> : null}
     </div>
   );
 }
@@ -428,6 +437,7 @@ function ClaimedCard({
   initialFollowing: boolean;
   coverUrl: string | undefined;
 }) {
+  const t = useTranslations("venueCard");
   return (
     <Card>
       <CoverWithBadge venue={venue} coverUrl={coverUrl} />
@@ -440,7 +450,7 @@ function ClaimedCard({
       {/* Footer strip: the trust chip + the follow action, split by a hairline. */}
       <div style={footerRow}>
         <span style={claimedChip}>
-          <Icon name="check" size={11} strokeWidth={2.5} /> Claimed
+          <Icon name="check" size={11} strokeWidth={2.5} /> {t("claimed")}
         </span>
         {/* Follow control. Wrapped in a click-isolating span: the card is a <Link>, so
             without stopPropagation/preventDefault a follow tap would navigate to the
@@ -458,6 +468,7 @@ function ClaimedCard({
 }
 
 function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: string | undefined }) {
+  const t = useTranslations("venueCard");
   return (
     <Card>
       {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
@@ -470,10 +481,10 @@ function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: st
       </div>
       {/* Footer strip: provenance on the left, the single unclaimed signal on the right. */}
       <div style={footerRow}>
-        <span style={provenance}>From public sources</span>
+        <span style={provenance}>{t("fromPublicSources")}</span>
         <span style={actionWrap}>
           <Pill variant="ghost-crim" size="sm">
-            Claim it free
+            {t("claimItFree")}
           </Pill>
         </span>
       </div>

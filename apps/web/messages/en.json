@@ -261,5 +261,512 @@
     "failedTitle": "Sign-in didn't complete",
     "failedBody": "We couldn't finish signing you in — you may have cancelled, or the link expired. Please try again.",
     "completing": "Completing sign-in…"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "movingIn": "Here's what's moving in",
+    "customise": "Customise",
+    "quick": {
+      "newPlan": "New plan",
+      "startTopic": "Start a topic",
+      "findVenues": "Find venues",
+      "messageFriend": "Message a friend",
+      "market": "Market",
+      "basecamp": "Basecamp"
+    },
+    "basecampLink": {
+      "title": "Basecamp",
+      "subtitle": "All your widgets, full size"
+    },
+    "widgets": {
+      "townForum": "Town forum",
+      "trendingNearby": "Trending nearby",
+      "recentChats": "Recent chats",
+      "deals": "Deals",
+      "nearbyTransit": "Nearby transit",
+      "yourPlans": "Your plans",
+      "followedVenues": "Followed venues",
+      "savedDeals": "Saved deals",
+      "marketplace": "Marketplace"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "You've hidden every section.",
+      "cta": "Customise home"
+    },
+    "signIn": "Sign in",
+    "chatKind": {
+      "plan": "Plan chat",
+      "group": "Group",
+      "direct": "Direct"
+    },
+    "recentChats": {
+      "title": "Recent chats",
+      "allChats": "All chats",
+      "nudge": "Sign in to see your conversations and plans with people nearby.",
+      "error": "Couldn't load your chats just now.",
+      "empty": "No chats yet. Message a friend or open a plan to start one — it'll show up here.",
+      "people": "{count, plural, one {# person} other {# people}}"
+    },
+    "trending": {
+      "title": "Trending nearby",
+      "explore": "Explore",
+      "error": "Couldn't load venues near you just now.",
+      "empty": "No venues found near {place} yet.",
+      "venueFallback": "Venue"
+    },
+    "townForum": {
+      "title": "Town forum",
+      "townHall": "Town Hall",
+      "error": "Couldn't load the forum just now.",
+      "empty": "No topics in {place} yet.",
+      "startOne": "Start one →",
+      "replies": "{count, plural, one {# reply} other {# replies}}"
+    },
+    "savedDeals": {
+      "title": "Saved deals",
+      "empty": "Deals you save will appear here, ready to redeem in-venue."
+    },
+    "followed": {
+      "title": "Followed venues",
+      "manage": "Manage",
+      "nudge": "Follow a business to unlock its exclusive loyalty deals — they'll appear here, just for followers.",
+      "error": "Couldn't load your followed venues just now.",
+      "empty": "You're not following any businesses yet. Follow one to get its exclusive loyalty deals here.",
+      "findCta": "Find businesses to follow",
+      "venueFallback": "Venue",
+      "exclusiveDeals": "Exclusive deals for you",
+      "noDeals": "No live deals from your venues right now — we'll show them here the moment one posts a loyalty offer."
+    },
+    "plans": {
+      "title": "Your plans",
+      "allPlans": "All plans",
+      "nudge": "Make plans — a night out, a weekend, a list to try — and save venues to them.",
+      "error": "Couldn't load your plans just now.",
+      "empty": "No plans yet — start one and add venues from anywhere on Roam.",
+      "newPlanCta": "＋ New plan",
+      "noDate": "No date yet",
+      "venues": "{count, plural, one {# venue} other {# venues}}"
+    },
+    "market": {
+      "title": "{place} market",
+      "body": "Buy, sell and swap with people in your town — list something in a minute, agree in chat, meet locally.",
+      "open": "Open the Market",
+      "browse": "Browse"
+    }
+  },
+  "homeFeed": {
+    "title": "Your local feed",
+    "tabs": {
+      "forYou": "For you",
+      "following": "Following",
+      "nearby": "Nearby"
+    },
+    "error": "Couldn't load your feed just now.",
+    "followingNudge": "Sign in and follow your favourite local businesses — their news, offers and events land here.",
+    "signIn": "Sign in",
+    "emptyFollowing": "No posts from venues you follow yet — follow a few on Explore and their updates will land here.",
+    "emptyLocal": "Nothing moving in {place} just yet — check back soon, or be the one who starts something in the Town Hall.",
+    "exploreVenues": "Explore venues",
+    "openTownHall": "Open Town Hall",
+    "caughtUp": "You're all caught up",
+    "exploreAround": "Explore what's around you",
+    "kind": {
+      "news": "News",
+      "offer": "Offer",
+      "event": "Event"
+    },
+    "aLocalBusiness": "A local business",
+    "viewPost": "View post",
+    "townHall": "Town Hall",
+    "asked": "{author} asked",
+    "replies": "{count, plural, one {# reply} other {# replies}}"
+  },
+  "homeCustomize": {
+    "title": "Customise home",
+    "subtitle": "Drag the handle to reorder, or hide the sections you see.",
+    "done": "Done",
+    "reorderItem": "Reorder {label}",
+    "showItem": "Show {label}",
+    "hideItem": "Hide {label}",
+    "reset": "Reset to default"
+  },
+  "basecamp": {
+    "title": "Basecamp",
+    "intro": "Your Roam, your way — everything in",
+    "customise": "Customise",
+    "nav": {
+      "explore": "Explore",
+      "townHall": "Town Hall",
+      "plans": "Plans",
+      "chat": "Chat",
+      "deals": "Deals",
+      "market": "Market",
+      "orders": "Orders",
+      "friends": "Friends"
+    },
+    "emptyHiddenAll": "You've hidden every widget.",
+    "customiseCta": "Customise Basecamp"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "Browsing {name} — change place",
+    "searchPlaceholder": "Search town or postcode…",
+    "searchAria": "Search for a place",
+    "searching": "Searching…",
+    "searchError": "Couldn't search just now. Try again.",
+    "noMatches": "No matches for “{query}”.",
+    "saveCurrent": "Save “{name}”",
+    "savedSection": "Saved",
+    "suggestedSection": "Suggested",
+    "savePlace": "Save {name}",
+    "unsavePlace": "Unsave {name}",
+    "savedTitle": "Saved",
+    "saveThisPlace": "Save this place",
+    "removePlace": "Remove {name}",
+    "removeTitle": "Remove",
+    "locating": "Locating…",
+    "useMyLocation": "Use my location",
+    "nearMe": "Near me",
+    "yourLocation": "Your location",
+    "geoError": "Couldn't get your location. Pick a place instead."
+  },
+  "suggested": {
+    "title": "Suggested for you",
+    "intro": "Tailored offer and post ideas — review and edit each one before it goes out.",
+    "published": "Published — find it in Offers above to tweak or add a code.",
+    "offerTitleAria": "Offer title",
+    "discountAria": "Discount percent",
+    "discountPlaceholder": "Discount %",
+    "offerDetailsAria": "Offer details",
+    "publishing": "Publishing…",
+    "publishOffer": "Publish offer",
+    "cancel": "Cancel",
+    "useThisOffer": "Use this offer",
+    "postCopyAria": "Post copy",
+    "copied": "Copied ✓",
+    "copyCta": "Copy — paste into Local posts"
+  },
+  "nearbyDepartures": {
+    "title": "Nearby departures",
+    "loading": "Loading nearby departures…",
+    "due": "Due",
+    "mins": "{mins} min",
+    "mAway": "{distance} m away",
+    "realtimeWhereAvailable": "Realtime where available",
+    "noDepartures": "No departures in the next while.",
+    "minLate": "{mins} min late",
+    "minEarly": "{mins} min early",
+    "onTime": "On time (live)",
+    "live": "Live",
+    "comingSoon": {
+      "title": "Local transit",
+      "badge": "Coming soon",
+      "body": "Live bus & train departures for {place} are on the way — powered by Translink, across Ireland."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "Set a treat and we'll deliver it automatically to followers on their birthday — the ones who've opted in. You never see whose birthday it is, only how many were sent.",
+    "sentThisMonth": "Sent this month",
+    "redeemedThisMonth": "Redeemed this month",
+    "sentAllTime": "Sent all time",
+    "redeemedAllTime": "Redeemed all time",
+    "redeemedPct": "{pct}% of birthday treats have been redeemed.",
+    "theTreat": "The treat",
+    "titlePlaceholder": "e.g. A free birthday coffee",
+    "titleAria": "Birthday treat title",
+    "detailsLabel": "Details (optional)",
+    "detailsPlaceholder": "Show this message in-venue on your birthday to claim.",
+    "detailsAria": "Birthday treat details",
+    "saving": "Saving…",
+    "save": "Save",
+    "turnOff": "Turn off",
+    "turnOn": "Turn on",
+    "live": "● Live",
+    "off": "Off",
+    "saved": "Saved ✓"
+  },
+  "explore": {
+    "browse": "Browse",
+    "feed": "Feed",
+    "all": "All",
+    "market": "Market",
+    "categoriesLabel": "Categories",
+    "searchPlaceholder": "Search venues in {placeName}…",
+    "searchAria": "Search venues",
+    "showMap": "Show map",
+    "hideMap": "Hide map",
+    "loadMore": "Load more · {count} more",
+    "venuesInView": "{count, plural, one {# venue in view} other {# venues in view}}",
+    "openInMaps": "Open in Maps",
+    "openPlaceInMaps": "Open {placeName} in Maps",
+    "discovering": "Discovering places in {placeName}…",
+    "gate": {
+      "title": "Create a free account to keep exploring",
+      "body": "You've explored {limit} searched locations this session — the free limit. Your own location stays free; sign up to open <strong>{placeName}</strong> and anywhere else, save places, and follow the venues you love."
+    },
+    "empty": {
+      "title": "Nothing here yet",
+      "body": "No venues match this view. Try another category or place, or check back as Roam grows in your area."
+    },
+    "errors": {
+      "loadFailed": "Failed to load venues.",
+      "title": "Couldn't load venues"
+    }
+  },
+  "venueDetail": {
+    "back": "Explore",
+    "manageVenue": "Manage this venue",
+    "tabsAria": "Venue sections",
+    "tabs": {
+      "posts": "Posts",
+      "offers": "Offers",
+      "gallery": "Gallery",
+      "details": "Details",
+      "shop": "Shop"
+    },
+    "posts": {
+      "empty": "No posts yet — when this venue posts news, offers or events they'll show here."
+    },
+    "offers": {
+      "empty": "No live offers right now — check back, or follow to be notified."
+    },
+    "gallery": {
+      "empty": "No photos yet."
+    },
+    "fromPublicSources": "From public sources",
+    "claim": {
+      "intro": "Claiming is free. Sign in or create an account and this venue is yours to manage right away.",
+      "ownerTitle": "Is this your business?",
+      "ownerBody": "Claim it free to add photos, opening times, your menu and links, and post offers and events to people nearby — about 90 seconds, and you can start editing straight away.",
+      "claiming": "Claiming…",
+      "tryAgain": "Try again",
+      "cta": "Claim this venue",
+      "knowTitle": "Know this place?",
+      "knowBody": "Help fellow locals — suggest a photo, the opening hours, or a fix.",
+      "suggestEditSoon": "Suggesting edits is coming soon",
+      "suggestEdit": "Suggest an edit",
+      "submittedTitle": "Claim submitted",
+      "submittedBody": "Thanks — your claim is now with us for verification. Once it's approved you'll be able to manage this venue, add photos and details, and post to people nearby.",
+      "underReviewTitle": "Claim under review",
+      "underReviewBody": "A claim for this venue has been submitted and is being verified. Check back soon — once it's approved the venue's owner can keep its details up to date."
+    },
+    "details": {
+      "title": "Details",
+      "address": "Address",
+      "locality": "Locality",
+      "region": "Region",
+      "phone": "Phone",
+      "website": "Website"
+    },
+    "goodToKnow": {
+      "title": "Good to know",
+      "perPerson": "per person",
+      "upTo": "Up to {price}",
+      "groups": {
+        "serviceOptions": "Service options",
+        "dining": "Dining",
+        "amenities": "Amenities",
+        "payments": "Payments",
+        "parking": "Parking",
+        "accessibility": "Accessibility"
+      },
+      "attrs": {
+        "dineIn": "Dine-in",
+        "takeout": "Takeaway",
+        "delivery": "Delivery",
+        "curbsidePickup": "Kerbside pickup",
+        "reservable": "Takes bookings",
+        "servesBreakfast": "Breakfast",
+        "servesBrunch": "Brunch",
+        "servesLunch": "Lunch",
+        "servesDinner": "Dinner",
+        "servesCoffee": "Coffee",
+        "servesDessert": "Dessert",
+        "servesBeer": "Beer",
+        "servesWine": "Wine",
+        "servesCocktails": "Cocktails",
+        "servesVegetarianFood": "Vegetarian options",
+        "outdoorSeating": "Outdoor seating",
+        "liveMusic": "Live music",
+        "goodForGroups": "Good for groups",
+        "goodForChildren": "Good for kids",
+        "menuForChildren": "Children's menu",
+        "goodForWatchingSports": "Good for watching sport",
+        "allowsDogs": "Dogs welcome",
+        "restroom": "Toilets",
+        "acceptsNfc": "Contactless",
+        "acceptsCreditCards": "Credit cards",
+        "acceptsDebitCards": "Debit cards",
+        "acceptsCashOnly": "Cash only",
+        "freeParkingLot": "Free car park",
+        "paidParkingLot": "Paid car park",
+        "freeStreetParking": "Free street parking",
+        "paidStreetParking": "Paid street parking",
+        "freeGarageParking": "Free garage",
+        "paidGarageParking": "Paid garage",
+        "valetParking": "Valet",
+        "wheelchairAccessibleEntrance": "Wheelchair entrance",
+        "wheelchairAccessibleParking": "Wheelchair parking",
+        "wheelchairAccessibleRestroom": "Wheelchair toilet",
+        "wheelchairAccessibleSeating": "Wheelchair seating"
+      }
+    },
+    "hours": {
+      "title": "Opening hours",
+      "openNow": "Open now",
+      "openNowCloses": "Open now · closes {time}",
+      "closed": "Closed",
+      "closedOpens": "Closed · opens {time}"
+    },
+    "getDirections": "Get Directions",
+    "notFound": {
+      "title": "Venue not found",
+      "body": "This venue may have been removed, or the link is wrong.",
+      "backToExplore": "Back to Explore"
+    },
+    "errors": {
+      "loadFailed": "Failed to load venue.",
+      "claimFailed": "Couldn't submit your claim.",
+      "title": "Couldn't load this venue"
+    }
+  },
+  "venueCard": {
+    "priceFree": "Free",
+    "temporarilyClosed": "Temporarily closed",
+    "claimed": "Claimed",
+    "fromPublicSources": "From public sources",
+    "claimItFree": "Claim it free"
+  },
+  "venueMap": {
+    "ariaLabel": "Map of venues",
+    "attribution": "© OpenStreetMap contributors"
+  },
+  "localPosts": {
+    "kinds": {
+      "news": "News",
+      "offer": "Offer",
+      "event": "Event"
+    },
+    "state": {
+      "live": "Live",
+      "scheduled": "Scheduled",
+      "draft": "Draft"
+    },
+    "inFeed": "In feed",
+    "pushed": "Pushed",
+    "newLocalPost": "New local post",
+    "empty": "No posts yet. Share news, an offer or an event — it appears on your venue page and in your town's local news feed.",
+    "composer": {
+      "offerNeedsTitle": "An offer needs a title.",
+      "addSomething": "Add a title, some text or a photo to post.",
+      "insufficientCredits": "Not enough push credits to notify followers. Untick “Notify followers” to post without a push.",
+      "postFailed": "Couldn't post that.",
+      "postFailedRetry": "Couldn't post that. Please try again.",
+      "offerTitlePlaceholder": "Offer title — e.g. 2-for-1 cocktails",
+      "titlePlaceholder": "Title (optional)",
+      "bodyPlaceholder": "Tell locals what's happening…",
+      "titleAria": "Post title",
+      "bodyAria": "Post body",
+      "notifyFollowers": "Notify followers (uses 1 push credit)",
+      "posting": "Posting…",
+      "post": "Post",
+      "cancel": "Cancel",
+      "footer": "Appears on your venue page and in your town's local news feed."
+    },
+    "row": {
+      "deleteConfirm": "Delete?",
+      "yes": "Yes",
+      "no": "No",
+      "edit": "Edit",
+      "delete": "Delete",
+      "bodyPlaceholder": "Body",
+      "saving": "Saving…",
+      "save": "Save"
+    },
+    "media": {
+      "signInToAdd": "You need to be signed in to add images.",
+      "uploadingProgress": "Uploading {current} of {total}…",
+      "uploadFailed": "Couldn't upload that image.",
+      "removeImage": "Remove image",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "uploading": "Uploading…",
+      "addPhoto": "Add photo"
+    }
+  },
+  "deals": {
+    "home": "Home",
+    "title": "Deals",
+    "intro": "Handpicked offers and voucher codes from brands we partner with. Links marked <strong>Ad</strong> may earn Roam a commission — it never changes the price you pay.",
+    "featured": "Featured",
+    "ad": "Ad",
+    "affiliateAdAria": "Affiliate ad",
+    "affiliateAdTitle": "Affiliate link — Roam may earn a commission",
+    "affiliateAria": "Affiliate",
+    "affiliateLinksTitle": "Affiliate links — Roam may earn a commission",
+    "getDeal": "Get deal",
+    "shopDeal": "Shop deal",
+    "ends": "Ends {date}",
+    "loadFailed": "Couldn't load deals just now.",
+    "emptyTitle": "No deals just now",
+    "emptyBody": "Fresh offers from our partner brands will appear here soon — check back shortly.",
+    "detail": {
+      "loadFailed": "Couldn't load this deal just now.",
+      "notFoundTitle": "Deal not found",
+      "notFoundBody": "This offer may have ended — fresh deals are on the deals page."
+    },
+    "widget": {
+      "allDeals": "All deals",
+      "code": "CODE"
+    }
+  },
+  "offerCard": {
+    "signInToSave": "Sign in to save deals.",
+    "signInToRedeem": "Sign in to redeem this offer.",
+    "soldOut": "This offer has been fully redeemed.",
+    "expired": "This offer has expired.",
+    "redeemFailed": "Couldn't redeem just now — please try again.",
+    "ends": "Ends {date}",
+    "redeemed": "Redeemed",
+    "showToStaff": "Show this to staff.",
+    "redeeming": "Redeeming…",
+    "redeem": "Redeem",
+    "saved": "Saved",
+    "save": "Save"
+  },
+  "venueOffers": {
+    "newOffer": "New offer",
+    "empty": "No offers yet. Publish an exclusive deal — your followers get notified, and anyone can save and redeem it in-venue.",
+    "ends": "Ends {date}",
+    "savedCount": "{count} saved",
+    "redeemedCount": "{count} redeemed",
+    "redeemedOfMax": "{count} / {max} redeemed",
+    "deleteOffer": "Delete offer",
+    "delete": "Delete",
+    "composer": {
+      "titlePlaceholder": "Offer — e.g. 20% off your first coffee",
+      "titleAria": "Offer title",
+      "typeLabel": "Type of deal",
+      "typeAria": "Offer type",
+      "discountLabel": "Discount %",
+      "discountPlaceholder": "e.g. 20",
+      "discountAria": "Discount percent",
+      "detailsPlaceholder": "The detail — terms, what's included…",
+      "detailsAria": "Offer details",
+      "codePlaceholder": "Redemption code (optional) — e.g. ROAM20",
+      "codeAria": "Redemption code",
+      "endsLabel": "Ends (optional)",
+      "endsAria": "Offer end date",
+      "maxLabel": "Max redemptions (optional)",
+      "maxPlaceholder": "Unlimited",
+      "maxAria": "Max redemptions",
+      "publishFailed": "Couldn't publish the offer.",
+      "publishing": "Publishing…",
+      "publish": "Publish offer",
+      "cancel": "Cancel"
+    }
   }
 }
