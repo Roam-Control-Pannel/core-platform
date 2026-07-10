@@ -32,7 +32,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { places as corePlaces } from "@roam/core";
 import { router, internalProcedure } from "../trpc.js";
-import { searchNearby as defaultSearchNearby, type FetchImpl } from "../places/client.js";
+import { searchNearby as defaultSearchNearby, searchText as defaultSearchText, type FetchImpl } from "../places/client.js";
 
 /**
  * The staleness window (30 days, the Places New ToS content-cache ceiling) lives INSIDE
@@ -273,6 +273,103 @@ export async function ingestCategoryCore(
 /** Seam for the production fetcher. */
 const productionSearchNearby: SearchNearbyFn = defaultSearchNearby;
 
+/* ── Text search (find a venue by name, then ingest it) ──────────────────────────────────── */
+
+/** A Places text-search fetcher with the searchText signature — injected so tests fake it. */
+export type SearchTextFn = (
+  params: Parameters<typeof defaultSearchText>[0],
+  apiKey: string,
+  fetchImpl?: FetchImpl,
+) => Promise<corePlaces.PlaceResult[]>;
+
+const productionSearchText: SearchTextFn = defaultSearchText;
+
+/** Bias radius for text search — wide, because the town-centre geocode is approximate and a
+ *  named venue a few miles off-centre must still be found (locationBias ranks nearby first). */
+const TEXT_SEARCH_BIAS_M = 25_000;
+
+export interface TextSearchArgs {
+  query: string;
+  lat: number;
+  lng: number;
+  clientKey: string | null;
+}
+
+type TextSearchResult = {
+  ingested: number;
+  skipped: boolean;
+  reason: "ingested" | "no-matching-places" | "budget-exhausted" | "rate-limited";
+};
+
+/**
+ * PURE orchestration for the text-search fall-through: claim budget, fetch Places Text Search
+ * for the typed query, classify + map each result to a venue row, upsert (+ photos). Same
+ * collaborators-injected, tRPC-free shape as ingestCategoryCore, so it unit-tests with fakes.
+ *
+ * NB: there is no freshness/grid cache here (a free-text query doesn't map to a spatial cell) —
+ * the DB-first check lives in the PROCEDURE (it reads venues_search_by_name and only calls this
+ * when the DB has no name match), so reaching this function already means an intended paid call.
+ * The budget + per-client rate claim is still enforced here as the hard wallet backstop.
+ */
+export async function ingestTextSearchCore(
+  rpc: LooseRpc,
+  searchText: SearchTextFn,
+  apiKey: string,
+  args: TextSearchArgs,
+): Promise<TextSearchResult> {
+  const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
+    p_client_key: args.clientKey,
+    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
+    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+  });
+  if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
+  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
+    | { allowed?: boolean; reason?: string }
+    | undefined;
+  if (!quota?.allowed) {
+    return { ingested: 0, skipped: true, reason: quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted" };
+  }
+
+  const results = await searchText(
+    { textQuery: args.query, lat: args.lat, lng: args.lng, radiusMetres: TEXT_SEARCH_BIAS_M, maxResultCount: MAX_RESULTS },
+    apiKey,
+  );
+
+  // Classify each result to a category (drop unclassifiable), then map to a venue row.
+  const matched: { place: corePlaces.PlaceResult; row: corePlaces.VenueRowFromPlace }[] = [];
+  for (const p of results) {
+    const category = corePlaces.classifyPlaceTypes(p.types ?? []);
+    if (category === null) continue;
+    const row = corePlaces.placeToVenueRow(p, category);
+    if (row === null) continue;
+    matched.push({ place: p, row });
+  }
+  if (matched.length === 0) return { ingested: 0, skipped: false, reason: "no-matching-places" };
+
+  const { data: upsertData, error: upsertErr } = await rpc("upsert_place_venues", {
+    places: matched.map((m) => m.row),
+  });
+  if (upsertErr) throw new Error(`Venue upsert failed: ${upsertErr.message}`);
+  const upserted = (upsertData ?? []) as UpsertRow[];
+
+  // Photos for the unclaimed upserts (claimed venues' photos stay frozen), same as category ingest.
+  const unclaimedVenueId = new Map<string, string>();
+  for (const u of upserted) if (!u.out_was_claimed) unclaimedVenueId.set(u.out_source_ref, u.out_id);
+  const photoPayload: PhotoPayloadEntry[] = [];
+  for (const m of matched) {
+    const venueId = unclaimedVenueId.get(m.place.id);
+    if (!venueId) continue;
+    photoPayload.push({ venue_id: venueId, photos: corePlaces.placePhotos(m.place).map((ph, i) => ({ ...ph, position: i })) });
+  }
+  if (photoPayload.length > 0) {
+    const { error: photoErr } = await rpc("upsert_venue_photos", { payload: photoPayload });
+    if (photoErr) throw new Error(`Photo upsert failed: ${photoErr.message}`);
+  }
+
+  return { ingested: upserted.length, skipped: false, reason: "ingested" };
+}
+
 export const placesRouter = router({
   /**
    * Internal: fill venues for a category near a point, on demand, deduped.
@@ -346,4 +443,95 @@ export const placesRouter = router({
       }
       return { inserted, budgetExhausted, rateLimited };
     }),
+
+  /**
+   * Internal: find a venue by NAME and make sure it exists in Roam. Powers the Explore search
+   * box's "we don't have it — find it on Google" fall-through.
+   *
+   * DB-FIRST, so a repeat search (or any venue already stored) costs NOTHING: read
+   * venues_search_by_name; if it returns rows, hand them straight back. Only when the DB has no
+   * name match do we pay for a Places Text Search (ingestTextSearchCore, budget-guarded), then
+   * re-read and return the freshly-ingested rows. Either way the client receives the same card
+   * shape as venues.near, so it renders identically.
+   */
+  searchText: internalProcedure
+    .input(
+      z.object({
+        q: z.string().trim().min(2).max(120),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      const readByName = async () => {
+        const { data, error } = await rpc("venues_search_by_name", {
+          q: input.q,
+          lat: input.lat,
+          lng: input.lng,
+          max_results: 20,
+        });
+        if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Name search failed: ${error.message}` });
+        return ((data ?? []) as VenuesNearRow[]).map(toVenueCard);
+      };
+
+      // 1. Already in the DB? Return it — no paid call.
+      const existing = await readByName();
+      if (existing.length > 0) return { venues: existing, source: "db" as const };
+
+      // 2. Ask Google, ingest, re-read.
+      let reason: TextSearchResult["reason"] = "no-matching-places";
+      try {
+        const result = await ingestTextSearchCore(rpc, productionSearchText, ctx.env.places.apiKey, {
+          query: input.q,
+          lat: input.lat,
+          lng: input.lng,
+          clientKey: ctx.clientKey,
+        });
+        reason = result.reason;
+      } catch (e) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e instanceof Error ? e.message : "Search failed." });
+      }
+      const found = reason === "ingested" ? await readByName() : [];
+      return { venues: found, source: "google" as const, reason };
+    }),
 });
+
+/** The venues_near / venues_search_by_name row shape, and its projection to a venue card. */
+interface VenuesNearRow {
+  id: string;
+  name: string;
+  owner_id: string | null;
+  status: string;
+  category: string | null;
+  categories: string[] | null;
+  rating: number | null;
+  rating_count: number | null;
+  price_level: string | null;
+  primary_type_label: string | null;
+  business_status: string | null;
+  distance_m: number | null;
+  lat_out: number | null;
+  lng_out: number | null;
+  cover_photo_id: string | null;
+}
+
+function toVenueCard(v: VenuesNearRow) {
+  return {
+    id: v.id,
+    name: v.name,
+    claimed: v.owner_id !== null,
+    status: v.status,
+    category: v.category,
+    categories: v.categories,
+    rating: v.rating,
+    ratingCount: v.rating_count,
+    priceLevel: v.price_level,
+    primaryTypeLabel: v.primary_type_label,
+    businessStatus: v.business_status,
+    distanceM: v.distance_m,
+    lat: v.lat_out,
+    lng: v.lng_out,
+    coverPhotoId: v.cover_photo_id,
+  };
+}

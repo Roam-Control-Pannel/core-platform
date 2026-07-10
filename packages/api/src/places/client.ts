@@ -22,6 +22,9 @@ import type { places } from "@roam/core";
 /** The Places (New) searchNearby endpoint. */
 const SEARCH_NEARBY_URL = "https://places.googleapis.com/v1/places:searchNearby";
 
+/** The Places (New) Text Search endpoint — finds a place by a free-text query (e.g. its name). */
+const SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText";
+
 /** The Places (New) Place Details endpoint base — GET …/v1/places/{PLACE_ID}. */
 const PLACE_DETAILS_BASE = "https://places.googleapis.com/v1/places/";
 
@@ -171,6 +174,71 @@ export async function searchNearby(
     }
     throw new Error(
       `Places searchNearby failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
+    );
+  }
+
+  const json = (await res.json()) as SearchNearbyResponse;
+  return json.places ?? [];
+}
+
+/** Inputs to one Text Search call. */
+export interface SearchTextParams {
+  /** The free-text query, e.g. a venue name the user typed. */
+  textQuery: string;
+  /** Bias centre — results near here rank first. A BIAS, not a restriction (see below). */
+  lat: number;
+  lng: number;
+  /** Bias radius in metres. Places caps this at 50_000. */
+  radiusMetres: number;
+  /** Max results to return (Places caps at 20 per call). */
+  maxResultCount: number;
+}
+
+/**
+ * Call Places (New) Text Search for a free-text query near a point. This is what lets Roam
+ * find a venue the user typed by NAME (searchNearby can only pull a whole category near a point).
+ *
+ * We use `locationBias` (prefer nearby) rather than `locationRestriction` (require inside) on
+ * purpose: the town centre we search from is only an approximate geocode, so a hotel a few miles
+ * off-centre must still be findable — bias ranks nearby first without excluding it. Same lean
+ * FIELD_MASK as searchNearby, so the per-call billing tier is identical. Throws on a
+ * transport/HTTP failure; an empty match set is NOT an error (returns []).
+ */
+export async function searchText(
+  params: SearchTextParams,
+  apiKey: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<places.PlaceResult[]> {
+  const body = {
+    textQuery: params.textQuery,
+    maxResultCount: params.maxResultCount,
+    locationBias: {
+      circle: {
+        center: { latitude: params.lat, longitude: params.lng },
+        radius: params.radiusMetres,
+      },
+    },
+  };
+
+  const res = await fetchImpl(SEARCH_TEXT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": FIELD_MASK,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      detail = "(no response body)";
+    }
+    throw new Error(
+      `Places searchText failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
     );
   }
 

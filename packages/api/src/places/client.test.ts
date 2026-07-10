@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { searchNearby, getPlaceDetails, type FetchImpl } from "./client.js";
+import { searchNearby, searchText, getPlaceDetails, type FetchImpl } from "./client.js";
 
 /** Build a fake fetch that records the call and returns a canned response. */
 function fakeFetch(
@@ -88,6 +88,41 @@ describe("searchNearby response parsing", () => {
       { ok: false, status: 429, statusText: "Too Many Requests" },
     );
     await expect(searchNearby(params, "test-key", impl)).rejects.toThrow(/429/);
+  });
+});
+
+const textParams = { textQuery: "Atlantic Tower Hotel", lat: 53.4084, lng: -2.9916, radiusMetres: 25_000, maxResultCount: 20 };
+
+describe("searchText", () => {
+  it("POSTs to the Places New Text Search endpoint with the field mask and a location BIAS", async () => {
+    const { impl, calls } = fakeFetch({ places: [] });
+    await searchText(textParams, "test-key", impl);
+
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places:searchText");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe("test-key");
+    expect(headers["X-Goog-FieldMask"]).toContain("places.id");
+
+    const body = JSON.parse(calls[0]!.init.body as string);
+    expect(body.textQuery).toBe("Atlantic Tower Hotel");
+    expect(body.maxResultCount).toBe(20);
+    // BIAS, not restriction — a slightly-off centre must still find the venue.
+    expect(body.locationBias.circle.center).toEqual({ latitude: 53.4084, longitude: -2.9916 });
+    expect(body.locationBias.circle.radius).toBe(25_000);
+    expect(body.locationRestriction).toBeUndefined();
+  });
+
+  it("parses the places array and treats a no-match response as []", async () => {
+    const { impl } = fakeFetch({ places: [{ id: "ChIJ_hotel", displayName: { text: "Atlantic Tower" }, types: ["lodging"] }] });
+    expect((await searchText(textParams, "test-key", impl))[0]!.id).toBe("ChIJ_hotel");
+    const { impl: empty } = fakeFetch({});
+    expect(await searchText(textParams, "test-key", empty)).toEqual([]);
+  });
+
+  it("throws on a non-ok HTTP response", async () => {
+    const { impl } = fakeFetch({ error: { message: "quota" } }, { ok: false, status: 429, statusText: "Too Many Requests" });
+    await expect(searchText(textParams, "test-key", impl)).rejects.toThrow(/429/);
   });
 });
 
