@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
@@ -84,18 +84,36 @@ function broadcastLocale(locale: Locale, messages: Messages) {
   setRuntimeLocale(locale, { ...messages.common.time, someone: messages.common.someone, roamMember: messages.common.roamMember });
 }
 
+function writeCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<{ locale: Locale; messages: Messages }>({
     locale: DEFAULT_LOCALE,
     messages: en,
   });
+  // Monotonic switch counter: English applies instantly while a translated catalogue is an
+  // async import, so rapid picks can resolve out of order — only the LATEST switch may apply.
+  const switchSeq = useRef(0);
 
   const activate = useCallback(async (locale: Locale) => {
+    const token = ++switchSeq.current;
     const load = CATALOGUES[locale];
-    // English (or a locale whose catalogue hasn't shipped) → the bundled English messages.
-    const messages = load ? deepMerge(en, (await load()).default) : en;
-    broadcastLocale(locale, messages);
-    setActive({ locale, messages });
+    try {
+      // English (or a locale whose catalogue hasn't shipped) → the bundled English messages.
+      const messages = load ? deepMerge(en, (await load()).default) : en;
+      if (switchSeq.current !== token) return; // a newer switch won while we were loading
+      broadcastLocale(locale, messages);
+      setActive({ locale, messages });
+    } catch {
+      // Catalogue chunk failed to load (offline / stale deploy). Fall back to English AND
+      // rewrite the cookie so the saved preference never disagrees with what's on screen.
+      if (switchSeq.current !== token) return;
+      writeCookie(DEFAULT_LOCALE);
+      broadcastLocale(DEFAULT_LOCALE, en);
+      setActive({ locale: DEFAULT_LOCALE, messages: en });
+    }
   }, []);
 
   // After hydration, adopt the saved preference (first render stayed English on purpose).
@@ -106,7 +124,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback(
     (locale: Locale) => {
-      document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+      writeCookie(locale);
       void activate(locale);
     },
     [activate],
