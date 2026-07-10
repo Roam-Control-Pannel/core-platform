@@ -55,6 +55,7 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   "Food & Drink": "dining",
   Shopping: "bag",
   "Entertainment & Recreation": "star",
+  Stadiums: "ticket",
   "Automotive & Transport": "bus",
   "Finance & Business": "briefcase",
   "Health & Wellness": "person",
