@@ -141,6 +141,12 @@ export function Explore() {
   // Free-text filter over the loaded set (client-side, by name). Sign-in now lives in the
   // global TopBar, so Explore's header is just the place switcher + Browse/Feed segment.
   const [query, setQuery] = useState("");
+  // Server name-search fall-through: when the loaded set has no match for the typed name, we ask
+  // the server (DB-first, then Google Places text search) so a venue Roam hasn't ingested yet can
+  // still be found. Cached by the exact query so re-typing the same thing doesn't re-search.
+  const [webResults, setWebResults] = useState<{ q: string; venues: VenueCardData[] } | null>(null);
+  const [webSearching, setWebSearching] = useState(false);
+  const webSearchGen = useRef(0);
   // How many venues the grid currently reveals (paged in PAGE_SIZE steps via "Load more").
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -315,13 +321,54 @@ export function Explore() {
     return ordered;
   }, [venues, activeCategory]);
 
-  const shown = useMemo(() => {
+  // Local matches over the already-loaded set (instant, client-side by name).
+  const localMatches = useMemo(() => {
     if (!venues) return [];
     const q = query.trim().toLowerCase();
     let list = activeSub === null ? venues : venues.filter((v) => (v.categories ?? []).includes(activeSub));
     if (q) list = list.filter((v) => v.name.toLowerCase().includes(q));
     return list;
   }, [venues, activeSub, query]);
+
+  // When the local set has nothing for a typed name, we fall through to a server name search that
+  // also asks Google for venues Roam hasn't ingested yet (see the debounced effect below).
+  const shown = useMemo(() => {
+    if (localMatches.length > 0) return localMatches;
+    const q = query.trim();
+    if (q && webResults && webResults.q === q) return webResults.venues;
+    return [];
+  }, [localMatches, query, webResults]);
+
+  // Debounced server name search. Fires only when the loaded set has NO local match for a typed
+  // name (≥3 chars) — so a venue Roam already shows never triggers a call — and never re-searches
+  // the same query. The server is DB-first + budget-capped, so this stays cheap. A generation id
+  // discards a stale response if the query changed while it was in flight.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 3 || localMatches.length > 0) {
+      setWebSearching(false);
+      return;
+    }
+    if (webResults && webResults.q === q) return; // already have this result
+    const gen = ++webSearchGen.current;
+    const timer = setTimeout(async () => {
+      setWebSearching(true);
+      try {
+        const res = await fetch("/api/ingest-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q, lat: place.lat, lng: place.lng }),
+        });
+        const data = res.ok ? ((await res.json()) as { venues?: VenueCardData[] }) : { venues: [] };
+        if (gen === webSearchGen.current) setWebResults({ q, venues: data.venues ?? [] });
+      } catch {
+        if (gen === webSearchGen.current) setWebResults({ q, venues: [] });
+      } finally {
+        if (gen === webSearchGen.current) setWebSearching(false);
+      }
+    }, 650);
+    return () => clearTimeout(timer);
+  }, [query, localMatches.length, place.lat, place.lng, webResults]);
 
   // Reset to the first page whenever the underlying set changes (a new load, category,
   // place, sub-filter, or search) so "Load more" always starts from page 1.
@@ -549,7 +596,7 @@ export function Explore() {
             ) : venues === null ? (
               discovering ? <DiscoveringState placeName={place.name} /> : <VenueGridSkeleton />
             ) : shown.length === 0 ? (
-              <EmptyState />
+              webSearching ? <SearchingWebState query={query.trim()} /> : <EmptyState searched={query.trim().length >= 3} />
             ) : (
               <>
                 <div className={styles.grid}>
@@ -721,16 +768,29 @@ function VenueGridSkeleton() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ searched }: { searched?: boolean }) {
   const t = useTranslations("explore");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", color: "var(--ink-2)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        {t("empty.title")}
+        {searched ? t("empty.searchTitle") : t("empty.title")}
       </div>
       <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>
-        {t("empty.body")}
+        {searched ? t("empty.searchBody") : t("empty.body")}
       </p>
+    </div>
+  );
+}
+
+/** Shown while the server name search (DB + Google) is running for a query with no local match. */
+function SearchingWebState({ query }: { query: string }) {
+  const t = useTranslations("explore");
+  return (
+    <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", color: "var(--ink-2)" }}>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
+        {t("searchingWeb", { query })}
+      </div>
+      <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>{t("searchingWebBody")}</p>
     </div>
   );
 }

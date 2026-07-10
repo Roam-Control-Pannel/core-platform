@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ingestCategoryCore, type LooseRpc, type SearchNearbyFn } from "./places.js";
+import { ingestCategoryCore, ingestTextSearchCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn } from "./places.js";
 import { places as corePlaces } from "@roam/core";
 
 /**
@@ -327,5 +327,57 @@ describe("ingestCategoryCore — cost control (budget + per-client limit + snapp
     await expect(
       ingestCategoryCore(rpc, searchNearby, API_KEY, baseArgs),
     ).rejects.toThrow(/Fetch-quota check failed/);
+  });
+});
+
+/* ── text search fall-through (ingestTextSearchCore) ──────────────────────────────────────── */
+
+const hotelPlace: corePlaces.PlaceResult = {
+  id: "ChIJ_hotel",
+  displayName: { text: "Atlantic Tower Hotel Liverpool" },
+  location: { latitude: 53.4084, longitude: -2.9916 },
+  types: ["lodging", "point_of_interest"],
+  formattedAddress: "Chapel St, Liverpool L3 9AG",
+  rating: 4.1,
+};
+
+const textArgs = { query: "Atlantic Tower Hotel", lat: 53.4084, lng: -2.9916, clientKey: "203.0.113.9" };
+
+describe("ingestTextSearchCore", () => {
+  it("claims budget, fetches by text, classifies + upserts the venue", async () => {
+    const { rpc, calls } = fakeRpc({
+      upsert_place_venues: { data: [{ out_id: "v-hotel", out_source_ref: "ChIJ_hotel", out_was_claimed: false }], error: null },
+    });
+    const searchText: SearchTextFn = async () => [hotelPlace];
+    const out = await ingestTextSearchCore(rpc, searchText, API_KEY, textArgs);
+
+    expect(out.reason).toBe("ingested");
+    expect(out.ingested).toBe(1);
+    // The paid call was guarded by a budget claim.
+    expect(calls.some((c) => c.fn === "claim_places_fetch_quota")).toBe(true);
+    const upsert = calls.find((c) => c.fn === "upsert_place_venues");
+    expect((upsert!.args.places as unknown[]).length).toBe(1);
+  });
+
+  it("does not fetch or upsert when the budget is exhausted", async () => {
+    const { rpc, calls } = fakeRpc({
+      claim_places_fetch_quota: { data: [{ allowed: false, reason: "budget" }], error: null },
+    });
+    let fetched = false;
+    const searchText: SearchTextFn = async () => { fetched = true; return [hotelPlace]; };
+    const out = await ingestTextSearchCore(rpc, searchText, API_KEY, textArgs);
+
+    expect(fetched).toBe(false);
+    expect(out.skipped).toBe(true);
+    expect(out.reason).toBe("budget-exhausted");
+    expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
+  });
+
+  it("returns no-matching-places when the text results classify to nothing", async () => {
+    const { rpc } = fakeRpc({});
+    const searchText: SearchTextFn = async () => [{ id: "x", displayName: { text: "?" }, types: ["route"] }];
+    const out = await ingestTextSearchCore(rpc, searchText, API_KEY, textArgs);
+    expect(out.reason).toBe("no-matching-places");
+    expect(out.ingested).toBe(0);
   });
 });

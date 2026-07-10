@@ -511,12 +511,16 @@
     },
     "empty": {
       "title": "Nothing here yet",
-      "body": "No venues match this view. Try another category or place, or check back as Roam grows in your area."
+      "body": "No venues match this view. Try another category or place, or check back as Roam grows in your area.",
+      "searchTitle": "No match found",
+      "searchBody": "We couldn't find that place on Roam or the web. Check the spelling, or try a shorter name."
     },
     "errors": {
       "loadFailed": "Failed to load venues.",
       "title": "Couldn't load venues"
-    }
+    },
+    "searchingWeb": "Searching for “{query}”…",
+    "searchingWebBody": "Checking Roam and the wider web for this place."
   },
   "venueDetail": {
     "back": "Explore",
