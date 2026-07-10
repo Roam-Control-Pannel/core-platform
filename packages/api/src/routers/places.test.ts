@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ingestCategoryCore, ingestTextSearchCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn } from "./places.js";
+import { ingestCategoryCore, ingestTextSearchCore, enrichVenueCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn, type GetDetailsFn } from "./places.js";
 import { places as corePlaces } from "@roam/core";
 
 /**
@@ -20,9 +20,9 @@ function fakeRpc(
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const rpc: LooseRpc = async (fn, args) => {
     calls.push({ fn, args });
-    // Default: the fetch-quota check ALLOWS, so tests not about cost control are unaffected.
-    // The dedicated cost-control tests pass their own claim_places_fetch_quota result.
-    if (fn === "claim_places_fetch_quota" && !(fn in results)) {
+    // Default: the quota checks ALLOW, so tests not about cost control are unaffected.
+    // The dedicated cost-control tests pass their own claim_places_*_quota result.
+    if ((fn === "claim_places_fetch_quota" || fn === "claim_places_detail_quota") && !(fn in results)) {
       return { data: [{ allowed: true, reason: "allowed" }], error: null };
     }
     return results[fn] ?? { data: null, error: null };
@@ -379,5 +379,105 @@ describe("ingestTextSearchCore", () => {
     const out = await ingestTextSearchCore(rpc, searchText, API_KEY, textArgs);
     expect(out.reason).toBe("no-matching-places");
     expect(out.ingested).toBe(0);
+  });
+});
+
+/* ── on-demand enrichment (enrichVenueCore) ──────────────────────────────────────────────── */
+
+/** A fake Place Details fetcher: records the place ids asked for, returns a canned result. */
+function fakeGetDetails(place: corePlaces.PlaceResult) {
+  const calls: string[] = [];
+  const fn: GetDetailsFn = async (placeId) => {
+    calls.push(placeId);
+    return place;
+  };
+  return { fn, calls };
+}
+
+const richDetailsPlace: corePlaces.PlaceResult = {
+  id: "ChIJ_hotel",
+  displayName: { text: "Atlantic Tower Hotel" },
+  nationalPhoneNumber: " 0151 227 4444 ",
+  websiteUri: "https://atlantictower.example/",
+  priceRange: {
+    startPrice: { currencyCode: "GBP", units: "80" },
+    endPrice: { currencyCode: "GBP", units: "150" },
+  },
+  outdoorSeating: true,
+  goodForChildren: true,
+  paymentOptions: { acceptsCreditCards: true },
+};
+
+const barePlace: corePlaces.PlaceResult = { id: "ChIJ_bare", displayName: { text: "No Facts" } };
+
+const enrichArgs = {
+  venueId: "11111111-1111-1111-1111-111111111111",
+  placeId: "ChIJ_hotel",
+  clientKey: "203.0.113.9",
+};
+
+describe("enrichVenueCore — on-demand venue enrichment", () => {
+  it("claims the detail budget, fetches Place Details, and writes the rich facts", async () => {
+    const { rpc, calls } = fakeRpc({ apply_venue_details: { data: null, error: null } });
+    const { fn: getDetails, calls: detailCalls } = fakeGetDetails(richDetailsPlace);
+
+    const out = await enrichVenueCore(rpc, getDetails, API_KEY, enrichArgs);
+
+    expect(out.enriched).toBe(true);
+    expect(out.reason).toBe("enriched");
+    // Exactly one paid Details call, for the venue's place id.
+    expect(detailCalls).toEqual(["ChIJ_hotel"]);
+    // The budget claimed is the SEPARATE detail budget, not the searchNearby one.
+    const quota = calls.find((c) => c.fn === "claim_places_detail_quota");
+    expect(quota).toBeTruthy();
+    expect(quota!.args.p_daily_cap).toBe(corePlaces.PLACES_DETAILS_DAILY_BUDGET);
+    expect(quota!.args.p_client_key).toBe("203.0.113.9");
+    expect(calls.some((c) => c.fn === "claim_places_fetch_quota")).toBe(false);
+    // The rich facts are written to the right venue, normalized by core.
+    const write = calls.find((c) => c.fn === "apply_venue_details");
+    expect(write!.args.p_venue_id).toBe(enrichArgs.venueId);
+    expect(write!.args.p_phone).toBe("0151 227 4444"); // trimmed
+    expect(write!.args.p_website).toBe("https://atlantictower.example/");
+    expect(write!.args.p_price_range).toEqual({ start: 80, end: 150, currency: "GBP" });
+    expect((write!.args.p_attributes as Record<string, unknown>).outdoorSeating).toBe(true);
+    // And handed back to the caller for immediate render.
+    expect(out.fields?.phone).toBe("0151 227 4444");
+  });
+
+  it("does NOT fetch or write when the detail budget is exhausted", async () => {
+    const { rpc, calls } = fakeRpc({
+      claim_places_detail_quota: { data: [{ allowed: false, reason: "daily-budget" }], error: null },
+    });
+    const { fn: getDetails, calls: detailCalls } = fakeGetDetails(richDetailsPlace);
+
+    const out = await enrichVenueCore(rpc, getDetails, API_KEY, enrichArgs);
+
+    expect(out).toEqual({ enriched: false, reason: "budget-exhausted", fields: null });
+    expect(detailCalls).toEqual([]); // no paid Details call
+    expect(calls.some((c) => c.fn === "apply_venue_details")).toBe(false);
+  });
+
+  it("maps a per-client-rate denial to rate-limited (no fetch)", async () => {
+    const { rpc } = fakeRpc({
+      claim_places_detail_quota: { data: [{ allowed: false, reason: "client-rate" }], error: null },
+    });
+    const { fn: getDetails, calls: detailCalls } = fakeGetDetails(richDetailsPlace);
+    const out = await enrichVenueCore(rpc, getDetails, API_KEY, enrichArgs);
+    expect(out.reason).toBe("rate-limited");
+    expect(detailCalls).toEqual([]);
+  });
+
+  it("still writes (stamping details_fetched_at via the RPC) when Places has no rich facts, so we never re-pay", async () => {
+    const { rpc, calls } = fakeRpc({ apply_venue_details: { data: null, error: null } });
+    const { fn: getDetails } = fakeGetDetails(barePlace);
+
+    const out = await enrichVenueCore(rpc, getDetails, API_KEY, { ...enrichArgs, placeId: "ChIJ_bare" });
+
+    expect(out.enriched).toBe(true);
+    const write = calls.find((c) => c.fn === "apply_venue_details");
+    expect(write).toBeTruthy(); // the write still happens (its now() stamp is the "don't re-ask" marker)
+    expect(write!.args.p_phone).toBeNull();
+    expect(write!.args.p_attributes).toBeNull();
+    expect(out.fields).toEqual({ phone: null, website_url: null, price_range: null, attributes: null });
   });
 });

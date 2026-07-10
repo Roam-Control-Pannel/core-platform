@@ -76,12 +76,18 @@ export interface VenueDetailData {
   } | null;
   links: Record<string, unknown> | null;
   source_attribution: string | null;
+  /** Provenance: "google_places" for a Places-sourced venue, "owner" once claimed, etc.
+   *  Gates on-demand enrichment (only unclaimed Places venues are enriched). */
+  source?: string | null;
   /* Rich Places facts (0065) — absent until the migration + enrichment have run, so every
      read below is defensive: missing/undefined just hides the section. */
   phone?: string | null;
   website_url?: string | null;
   price_range?: { start: number | null; end: number | null; currency: string | null } | null;
   attributes?: Record<string, boolean | Record<string, boolean>> | null;
+  /** When the on-demand Places Details enrichment last ran (0080). null/undefined => never
+   *  enriched, so the client fires one /api/enrich-venue call to fill the rich facts in. */
+  details_fetched_at?: string | null;
 }
 
 /** Where the claim CTA currently stands, locally. Drives which affordance shows. */
@@ -94,6 +100,10 @@ type ClaimUiState =
 
 /** Venue ids already counted as viewed this page lifetime (guards SPA re-mount recounts). */
 const viewedVenues = new Set<string>();
+
+/** Venue ids we've already fired an on-demand enrichment for this page lifetime (one attempt
+ *  each — the server is idempotent via details_fetched_at, this just avoids redundant POSTs). */
+const enrichAttempted = new Set<string>();
 
 export function VenueDetail({ venueId, initialVenue }: { venueId: string; initialVenue?: VenueDetailData | null }) {
   const t = useTranslations("venueDetail");
@@ -160,6 +170,50 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       /* an uncounted view, nothing more */
     });
   }, [trpc, venueId]);
+
+  // On-demand ENRICHMENT: the first time an unclaimed, Places-sourced venue that has never been
+  // enriched is opened, pull its rich Places Details facts (phone/website/price range/amenities)
+  // once and merge them in so the "Good to know" + contact rows appear without a reload. One
+  // attempt per venue per page lifetime; the server is idempotent (details_fetched_at) and the
+  // Details call is budget-capped. Best-effort — a failure just leaves the lean profile.
+  useEffect(() => {
+    if (!venue || venue.source !== "google_places" || venue.owner_id !== null || venue.details_fetched_at) return;
+    if (enrichAttempted.has(venue.id)) return;
+    enrichAttempted.add(venue.id);
+    const targetId = venue.id;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/enrich-venue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ venueId: targetId }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          enriched?: boolean;
+          fields?: {
+            phone: string | null;
+            website_url: string | null;
+            price_range: { start: number | null; end: number | null; currency: string | null } | null;
+            attributes: Record<string, boolean | Record<string, boolean>> | null;
+          } | null;
+        };
+        if (cancelled || !data.enriched || !data.fields) return;
+        const fields = data.fields;
+        setVenue((cur) =>
+          cur && cur.id === targetId
+            ? { ...cur, ...fields, details_fetched_at: new Date().toISOString() }
+            : cur,
+        );
+      } catch {
+        /* enrichment is best-effort; a failure leaves the lean profile untouched */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [venue]);
 
   // Read whether the caller already follows this venue. Signed-out → not following.
   // We load the full myFollows set and check membership: one extra query on a detail

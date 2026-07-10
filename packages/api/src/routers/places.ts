@@ -32,7 +32,12 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { places as corePlaces } from "@roam/core";
 import { router, internalProcedure } from "../trpc.js";
-import { searchNearby as defaultSearchNearby, searchText as defaultSearchText, type FetchImpl } from "../places/client.js";
+import {
+  searchNearby as defaultSearchNearby,
+  searchText as defaultSearchText,
+  getPlaceDetails as defaultGetPlaceDetails,
+  type FetchImpl,
+} from "../places/client.js";
 
 /**
  * The staleness window (30 days, the Places New ToS content-cache ceiling) lives INSIDE
@@ -370,6 +375,92 @@ export async function ingestTextSearchCore(
   return { ingested: upserted.length, skipped: false, reason: "ingested" };
 }
 
+/* ── On-demand venue enrichment (fetch the rich Place Details facts) ──────────────────────── */
+
+/** A Place Details fetcher with getPlaceDetails' signature — injected so tests fake it. */
+export type GetDetailsFn = (
+  placeId: string,
+  apiKey: string,
+  fetchImpl?: FetchImpl,
+) => Promise<corePlaces.PlaceResult>;
+
+const productionGetDetails: GetDetailsFn = defaultGetPlaceDetails;
+
+export interface EnrichArgs {
+  /** The venue row's id — the write target. */
+  venueId: string;
+  /** The venue's Places id (venues.source_ref) — the Details lookup key. */
+  placeId: string;
+  clientKey: string | null;
+}
+
+type EnrichResult = {
+  enriched: boolean;
+  reason: "enriched" | "budget-exhausted" | "rate-limited";
+  /** The rich facts written (so the caller can hand them straight back to the client), or null. */
+  fields:
+    | {
+        phone: string | null;
+        website_url: string | null;
+        price_range: corePlaces.PlaceRichFields["price_range"];
+        attributes: corePlaces.PlaceRichFields["attributes"];
+      }
+    | null;
+};
+
+/**
+ * PURE orchestration for on-demand enrichment: claim the DETAILS budget, pull one Place Details
+ * for the venue's place id, extract the rich facts (phone/website/price range/attributes), and
+ * write them via apply_venue_details (which no-ops if the venue got claimed or was enriched in
+ * the meantime). Same collaborators-injected, tRPC-free shape as the ingest cores, so it
+ * unit-tests with fakes. The ELIGIBILITY check (google_places, unclaimed, never enriched) lives
+ * in the PROCEDURE — reaching this function already means an intended paid Details call, so the
+ * budget claim here is the hard wallet backstop.
+ */
+export async function enrichVenueCore(
+  rpc: LooseRpc,
+  getDetails: GetDetailsFn,
+  apiKey: string,
+  args: EnrichArgs,
+): Promise<EnrichResult> {
+  const { data: quotaData, error: quotaErr } = await rpc("claim_places_detail_quota", {
+    p_client_key: args.clientKey,
+    p_daily_cap: corePlaces.PLACES_DETAILS_DAILY_BUDGET,
+    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+  });
+  if (quotaErr) throw new Error(`Detail-quota check failed: ${quotaErr.message}`);
+  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
+    | { allowed?: boolean; reason?: string }
+    | undefined;
+  if (!quota?.allowed) {
+    return { enriched: false, reason: quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted", fields: null };
+  }
+
+  const place = await getDetails(args.placeId, apiKey);
+  const rich = corePlaces.placeRichFields(place);
+
+  const { error: writeErr } = await rpc("apply_venue_details", {
+    p_venue_id: args.venueId,
+    p_phone: rich.phone,
+    p_website: rich.website_url,
+    p_price_range: rich.price_range,
+    p_attributes: rich.attributes,
+  });
+  if (writeErr) throw new Error(`Venue detail write failed: ${writeErr.message}`);
+
+  return {
+    enriched: true,
+    reason: "enriched",
+    fields: {
+      phone: rich.phone,
+      website_url: rich.website_url,
+      price_range: rich.price_range,
+      attributes: rich.attributes,
+    },
+  };
+}
+
 export const placesRouter = router({
   /**
    * Internal: fill venues for a category near a point, on demand, deduped.
@@ -495,7 +586,65 @@ export const placesRouter = router({
       const found = reason === "ingested" ? await readByName() : [];
       return { venues: found, source: "google" as const, reason };
     }),
+
+  /**
+   * Internal: enrich ONE venue with the rich Places Details facts (phone, website, price range,
+   * amenity attributes), on demand when its profile is opened. Powers the /api/enrich-venue hop.
+   *
+   * ELIGIBILITY gate here (no paid call unless all hold): the venue is google_places (has a
+   * place id), still UNCLAIMED (owner-authored data is never overwritten), and has NEVER been
+   * enriched (details_fetched_at is null — so we ask Google exactly once per venue, even if it
+   * turns out to have no Atmosphere facts). An ineligible venue returns immediately, no fetch.
+   * Only a genuinely-eligible venue reaches enrichVenueCore, which claims the Details budget
+   * before paying. Returns the written fields so the client can show them without a re-read.
+   */
+  enrichVenue: internalProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      // Loose read: details_fetched_at (0080) isn't in the generated DB types yet.
+      const svc = ctx.service as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, v: string) => {
+              maybeSingle: () => Promise<{ data: VenueEligibilityRow | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const { data: v, error } = await svc
+        .from("venues")
+        .select("source, source_ref, owner_id, details_fetched_at")
+        .eq("id", input.venueId)
+        .maybeSingle();
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Venue read failed: ${error.message}` });
+
+      if (!v || v.source !== "google_places" || v.owner_id !== null || !v.source_ref || v.details_fetched_at !== null) {
+        return { enriched: false as const, reason: "not-eligible" as const, fields: null };
+      }
+
+      try {
+        return await enrichVenueCore(rpc, productionGetDetails, ctx.env.places.apiKey, {
+          venueId: input.venueId,
+          placeId: v.source_ref,
+          clientKey: ctx.clientKey,
+        });
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Enrichment failed.",
+        });
+      }
+    }),
 });
+
+/** The eligibility columns read before an enrichment (loose — details_fetched_at is new). */
+interface VenueEligibilityRow {
+  source: string | null;
+  source_ref: string | null;
+  owner_id: string | null;
+  details_fetched_at: string | null;
+}
 
 /** The venues_near / venues_search_by_name row shape, and its projection to a venue card. */
 interface VenuesNearRow {
