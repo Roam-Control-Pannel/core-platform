@@ -9,9 +9,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon} from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { offerTypeLabel } from "../lib/offerTypes";
+import { useOfferTypeLabel } from "../lib/offerTypes";
 
 interface Suggestion {
   id: string;
@@ -24,6 +25,7 @@ interface Suggestion {
 }
 
 export function SuggestedForYou({ venueId }: { venueId: string }) {
+  const t = useTranslations("suggested");
   const trpc = useTrpc();
   const [state, setState] = useState<{ enabled: boolean; suggestions: Suggestion[] } | undefined>(undefined);
 
@@ -46,9 +48,9 @@ export function SuggestedForYou({ venueId }: { venueId: string }) {
       <header style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
         <span aria-hidden style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}><Icon name="idea" size={16} /></span>
         <div style={{ minWidth: 0 }}>
-          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Suggested for you</h2>
+          <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("title")}</h2>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>
-            Tailored offer and post ideas — review and edit each one before it goes out.
+            {t("intro")}
           </p>
         </div>
       </header>
@@ -90,6 +92,8 @@ function Rationale({ text }: { text: string }) {
 }
 
 function OfferSuggestion({ venueId, s }: { venueId: string; s: Suggestion }) {
+  const t = useTranslations("suggested");
+  const offerTypeLabel = useOfferTypeLabel();
   const trpc = useTrpc();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(s.title);
@@ -130,20 +134,20 @@ function OfferSuggestion({ venueId, s }: { venueId: string; s: Suggestion }) {
       <Rationale text={s.rationale} />
 
       {done ? (
-        <p style={{ margin: "var(--space-2) 0 0", fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>Published — find it in Offers above to tweak or add a code.</p>
+        <p style={{ margin: "var(--space-2) 0 0", fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>{t("published")}</p>
       ) : open ? (
         <div style={{ marginTop: "var(--space-3)" }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Offer title" maxLength={120} style={fieldStyle} />
-          {usesPct ? <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} aria-label="Discount percent" placeholder="Discount %" style={fieldStyle} /> : null}
-          <textarea value={details} onChange={(e) => setDetails(e.target.value)} aria-label="Offer details" rows={2} maxLength={1000} style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label={t("offerTitleAria")} maxLength={120} style={fieldStyle} />
+          {usesPct ? <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} aria-label={t("discountAria")} placeholder={t("discountPlaceholder")} style={fieldStyle} /> : null}
+          <textarea value={details} onChange={(e) => setDetails(e.target.value)} aria-label={t("offerDetailsAria")} rows={2} maxLength={1000} style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} />
           <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 8 }}>
-            <Button variant="pri" size="sm" onClick={() => void publish()} disabled={busy || !title.trim()}>{busy ? "Publishing…" : "Publish offer"}</Button>
-            <Button variant="neutral" size="sm" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+            <Button variant="pri" size="sm" onClick={() => void publish()} disabled={busy || !title.trim()}>{busy ? t("publishing") : t("publishOffer")}</Button>
+            <Button variant="neutral" size="sm" onClick={() => setOpen(false)} disabled={busy}>{t("cancel")}</Button>
           </div>
         </div>
       ) : (
         <div style={{ marginTop: "var(--space-2)" }}>
-          <Button variant="neutral" size="sm" onClick={() => setOpen(true)}>Use this offer</Button>
+          <Button variant="neutral" size="sm" onClick={() => setOpen(true)}>{t("useThisOffer")}</Button>
         </div>
       )}
     </div>
@@ -151,6 +155,7 @@ function OfferSuggestion({ venueId, s }: { venueId: string; s: Suggestion }) {
 }
 
 function PostSuggestion({ s }: { s: Suggestion }) {
+  const t = useTranslations("suggested");
   const [text, setText] = useState(s.body);
   const [copied, setCopied] = useState(false);
 
@@ -168,9 +173,9 @@ function PostSuggestion({ s }: { s: Suggestion }) {
     <div style={cardStyle}>
       <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 14.5, color: "var(--ink)" }}>{s.title}</div>
       <Rationale text={s.rationale} />
-      <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label="Post copy" rows={2} maxLength={1000} style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label={t("postCopyAria")} rows={2} maxLength={1000} style={{ ...fieldStyle, resize: "vertical", minHeight: 56 }} />
       <div style={{ marginTop: 8 }}>
-        <Button variant="neutral" size="sm" onClick={() => void copy()}>{copied ? "Copied ✓" : "Copy — paste into Local posts"}</Button>
+        <Button variant="neutral" size="sm" onClick={() => void copy()}>{copied ? t("copied") : t("copyCta")}</Button>
       </div>
     </div>
   );

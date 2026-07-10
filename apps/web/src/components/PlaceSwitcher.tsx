@@ -14,6 +14,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { useSavedPlaces } from "../lib/savedPlaces";
@@ -144,6 +145,7 @@ function PlaceRow({
 }
 
 export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
+  const t = useTranslations("placeSwitcher");
   const trpc = useTrpc();
   const { saved, isSaved, toggle, remove } = useSavedPlaces();
   const [open, setOpen] = useState(false);
@@ -205,7 +207,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
     const search = trpc.geo.search as unknown as {
       query: (input: { q: string }) => Promise<Place[]>;
     };
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       search
         .query({ q })
         .then((res) => {
@@ -215,11 +217,11 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
         })
         .catch(() => {
           if (!mountedRef.current || reqIdRef.current !== id) return;
-          setSearchError("Couldn't search just now. Try again.");
+          setSearchError(t("searchError"));
           setSearching(false);
         });
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [query, trpc]);
 
   function pick(place: Place, source: PlaceSource = "search") {
@@ -242,8 +244,8 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
         pick(
           {
             id: "my-location",
-            name: "Near me",
-            hint: "Your location",
+            name: t("nearMe"),
+            hint: t("yourLocation"),
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
           },
@@ -253,7 +255,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
       () => {
         if (!mountedRef.current) return;
         setLocating(false);
-        setGeoError("Couldn't get your location. Pick a place instead.");
+        setGeoError(t("geoError"));
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
@@ -262,8 +264,8 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
   const star = (place: Place) => (
     <button
       type="button"
-      aria-label={isSaved(place.id) ? `Unsave ${place.name}` : `Save ${place.name}`}
-      title={isSaved(place.id) ? "Saved" : "Save this place"}
+      aria-label={isSaved(place.id) ? t("unsavePlace", { name: place.name }) : t("savePlace", { name: place.name })}
+      title={isSaved(place.id) ? t("savedTitle") : t("saveThisPlace")}
       onClick={(e) => {
         e.stopPropagation();
         toggle(place);
@@ -284,7 +286,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Browsing ${value.name} — change place`}
+        aria-label={t("triggerLabel", { name: value.name })}
         className={styles.trigger}
       >
         <PinIcon />
@@ -314,8 +316,8 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search town or postcode…"
-            aria-label="Search for a place"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchAria")}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -334,7 +336,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
           {searchMode ? (
             /* ── search results ── */
             searching ? (
-              <div style={{ ...sectionLabel, textTransform: "none", padding: "8px 11px" }}>Searching…</div>
+              <div style={{ ...sectionLabel, textTransform: "none", padding: "8px 11px" }}>{t("searching")}</div>
             ) : searchError ? (
               <div style={{ ...hintText, color: "var(--crimson-700)", padding: "6px 11px" }} role="alert">
                 {searchError}
@@ -344,7 +346,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                 <PlaceRow key={p.id} place={p} active={false} onSelect={() => pick(p)} trailing={star(p)} />
               ))
             ) : (
-              <div style={{ ...hintText, padding: "8px 11px" }}>No matches for “{query.trim()}”.</div>
+              <div style={{ ...hintText, padding: "8px 11px" }}>{t("noMatches", { query: query.trim() })}</div>
             )
           ) : (
             /* ── saved · suggested · locate ── */
@@ -371,13 +373,13 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                   }}
                 >
                   <span aria-hidden style={{ color: "var(--faint)", fontSize: 15 }}>☆</span>
-                  Save “{value.name}”
+                  {t("saveCurrent", { name: value.name })}
                 </button>
               ) : null}
 
               {saved.length > 0 ? (
                 <>
-                  <div style={sectionLabel}>Saved</div>
+                  <div style={sectionLabel}>{t("savedSection")}</div>
                   {saved.map((p) => (
                     <PlaceRow
                       key={p.id}
@@ -387,15 +389,15 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                       trailing={
                         <button
                           type="button"
-                          aria-label={`Remove ${p.name}`}
-                          title="Remove"
+                          aria-label={t("removePlace", { name: p.name })}
+                          title={t("removeTitle")}
                           onClick={(e) => {
                             e.stopPropagation();
                             remove(p.id);
                           }}
                           style={{ ...iconBtn, color: "var(--faint)" }}
                         >
-                          <Icon name="close" size={15} aria-label={`Remove ${p.name}`} />
+                          <Icon name="close" size={15} aria-label={t("removePlace", { name: p.name })} />
                         </button>
                       }
                     />
@@ -405,7 +407,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
 
               {suggested.length > 0 ? (
                 <>
-                  <div style={sectionLabel}>Suggested</div>
+                  <div style={sectionLabel}>{t("suggestedSection")}</div>
                   {suggested.map((p) => (
                     <PlaceRow
                       key={p.id}
@@ -441,7 +443,7 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                     }}
                   >
                     <Icon name="locate" size={15} style={{ color: "var(--crimson)" }} />
-                    {locating ? "Locating…" : "Use my location"}
+                    {locating ? t("locating") : t("useMyLocation")}
                   </button>
                   {geoError ? (
                     <div

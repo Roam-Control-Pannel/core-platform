@@ -1,0 +1,228 @@
+{
+  "home": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "movingIn": "Here's what's moving in",
+    "customise": "Customise",
+    "quick": {
+      "newPlan": "New plan",
+      "startTopic": "Start a topic",
+      "findVenues": "Find venues",
+      "messageFriend": "Message a friend",
+      "market": "Market",
+      "basecamp": "Basecamp"
+    },
+    "basecampLink": {
+      "title": "Basecamp",
+      "subtitle": "All your widgets, full size"
+    },
+    "widgets": {
+      "townForum": "Town forum",
+      "trendingNearby": "Trending nearby",
+      "recentChats": "Recent chats",
+      "deals": "Deals",
+      "nearbyTransit": "Nearby transit",
+      "yourPlans": "Your plans",
+      "followedVenues": "Followed venues",
+      "savedDeals": "Saved deals",
+      "marketplace": "Marketplace"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "You've hidden every section.",
+      "cta": "Customise home"
+    },
+    "signIn": "Sign in",
+    "chatKind": {
+      "plan": "Plan chat",
+      "group": "Group",
+      "direct": "Direct"
+    },
+    "recentChats": {
+      "title": "Recent chats",
+      "allChats": "All chats",
+      "nudge": "Sign in to see your conversations and plans with people nearby.",
+      "error": "Couldn't load your chats just now.",
+      "empty": "No chats yet. Message a friend or open a plan to start one — it'll show up here.",
+      "people": "{count, plural, one {# person} other {# people}}"
+    },
+    "trending": {
+      "title": "Trending nearby",
+      "explore": "Explore",
+      "error": "Couldn't load venues near you just now.",
+      "empty": "No venues found near {place} yet.",
+      "venueFallback": "Venue"
+    },
+    "townForum": {
+      "title": "Town forum",
+      "townHall": "Town Hall",
+      "error": "Couldn't load the forum just now.",
+      "empty": "No topics in {place} yet.",
+      "startOne": "Start one →",
+      "replies": "{count, plural, one {# reply} other {# replies}}"
+    },
+    "savedDeals": {
+      "title": "Saved deals",
+      "empty": "Deals you save will appear here, ready to redeem in-venue."
+    },
+    "followed": {
+      "title": "Followed venues",
+      "manage": "Manage",
+      "nudge": "Follow a business to unlock its exclusive loyalty deals — they'll appear here, just for followers.",
+      "error": "Couldn't load your followed venues just now.",
+      "empty": "You're not following any businesses yet. Follow one to get its exclusive loyalty deals here.",
+      "findCta": "Find businesses to follow",
+      "venueFallback": "Venue",
+      "exclusiveDeals": "Exclusive deals for you",
+      "noDeals": "No live deals from your venues right now — we'll show them here the moment one posts a loyalty offer."
+    },
+    "plans": {
+      "title": "Your plans",
+      "allPlans": "All plans",
+      "nudge": "Make plans — a night out, a weekend, a list to try — and save venues to them.",
+      "error": "Couldn't load your plans just now.",
+      "empty": "No plans yet — start one and add venues from anywhere on Roam.",
+      "newPlanCta": "＋ New plan",
+      "noDate": "No date yet",
+      "venues": "{count, plural, one {# venue} other {# venues}}"
+    },
+    "market": {
+      "title": "{place} market",
+      "body": "Buy, sell and swap with people in your town — list something in a minute, agree in chat, meet locally.",
+      "open": "Open the Market",
+      "browse": "Browse"
+    }
+  },
+  "homeFeed": {
+    "title": "Your local feed",
+    "tabs": {
+      "forYou": "For you",
+      "following": "Following",
+      "nearby": "Nearby"
+    },
+    "error": "Couldn't load your feed just now.",
+    "followingNudge": "Sign in and follow your favourite local businesses — their news, offers and events land here.",
+    "signIn": "Sign in",
+    "emptyFollowing": "No posts from venues you follow yet — follow a few on Explore and their updates will land here.",
+    "emptyLocal": "Nothing moving in {place} just yet — check back soon, or be the one who starts something in the Town Hall.",
+    "exploreVenues": "Explore venues",
+    "openTownHall": "Open Town Hall",
+    "caughtUp": "You're all caught up",
+    "exploreAround": "Explore what's around you",
+    "kind": {
+      "news": "News",
+      "offer": "Offer",
+      "event": "Event"
+    },
+    "aLocalBusiness": "A local business",
+    "viewPost": "View post",
+    "townHall": "Town Hall",
+    "asked": "{author} asked",
+    "replies": "{count, plural, one {# reply} other {# replies}}"
+  },
+  "homeCustomize": {
+    "title": "Customise home",
+    "subtitle": "Drag the handle to reorder, or hide the sections you see.",
+    "done": "Done",
+    "reorderItem": "Reorder {label}",
+    "showItem": "Show {label}",
+    "hideItem": "Hide {label}",
+    "reset": "Reset to default"
+  },
+  "basecamp": {
+    "title": "Basecamp",
+    "intro": "Your Roam, your way — everything in",
+    "customise": "Customise",
+    "nav": {
+      "explore": "Explore",
+      "townHall": "Town Hall",
+      "plans": "Plans",
+      "chat": "Chat",
+      "deals": "Deals",
+      "market": "Market",
+      "orders": "Orders",
+      "friends": "Friends"
+    },
+    "emptyHiddenAll": "You've hidden every widget.",
+    "customiseCta": "Customise Basecamp"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "Browsing {name} — change place",
+    "searchPlaceholder": "Search town or postcode…",
+    "searchAria": "Search for a place",
+    "searching": "Searching…",
+    "searchError": "Couldn't search just now. Try again.",
+    "noMatches": "No matches for “{query}”.",
+    "saveCurrent": "Save “{name}”",
+    "savedSection": "Saved",
+    "suggestedSection": "Suggested",
+    "savePlace": "Save {name}",
+    "unsavePlace": "Unsave {name}",
+    "savedTitle": "Saved",
+    "saveThisPlace": "Save this place",
+    "removePlace": "Remove {name}",
+    "removeTitle": "Remove",
+    "locating": "Locating…",
+    "useMyLocation": "Use my location",
+    "nearMe": "Near me",
+    "yourLocation": "Your location",
+    "geoError": "Couldn't get your location. Pick a place instead."
+  },
+  "suggested": {
+    "title": "Suggested for you",
+    "intro": "Tailored offer and post ideas — review and edit each one before it goes out.",
+    "published": "Published — find it in Offers above to tweak or add a code.",
+    "offerTitleAria": "Offer title",
+    "discountAria": "Discount percent",
+    "discountPlaceholder": "Discount %",
+    "offerDetailsAria": "Offer details",
+    "publishing": "Publishing…",
+    "publishOffer": "Publish offer",
+    "cancel": "Cancel",
+    "useThisOffer": "Use this offer",
+    "postCopyAria": "Post copy",
+    "copied": "Copied ✓",
+    "copyCta": "Copy — paste into Local posts"
+  },
+  "nearbyDepartures": {
+    "title": "Nearby departures",
+    "loading": "Loading nearby departures…",
+    "due": "Due",
+    "mins": "{mins} min",
+    "mAway": "{distance} m away",
+    "realtimeWhereAvailable": "Realtime where available",
+    "noDepartures": "No departures in the next while.",
+    "minLate": "{mins} min late",
+    "minEarly": "{mins} min early",
+    "onTime": "On time (live)",
+    "live": "Live",
+    "comingSoon": {
+      "title": "Local transit",
+      "badge": "Coming soon",
+      "body": "Live bus & train departures for {place} are on the way — powered by Translink, across Ireland."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "Set a treat and we'll deliver it automatically to followers on their birthday — the ones who've opted in. You never see whose birthday it is, only how many were sent.",
+    "sentThisMonth": "Sent this month",
+    "redeemedThisMonth": "Redeemed this month",
+    "sentAllTime": "Sent all time",
+    "redeemedAllTime": "Redeemed all time",
+    "redeemedPct": "{pct}% of birthday treats have been redeemed.",
+    "theTreat": "The treat",
+    "titlePlaceholder": "e.g. A free birthday coffee",
+    "titleAria": "Birthday treat title",
+    "detailsLabel": "Details (optional)",
+    "detailsPlaceholder": "Show this message in-venue on your birthday to claim.",
+    "detailsAria": "Birthday treat details",
+    "saving": "Saving…",
+    "save": "Save",
+    "turnOff": "Turn off",
+    "turnOn": "Turn on",
+    "live": "● Live",
+    "off": "Off",
+    "saved": "Saved ✓"
+  }
+}

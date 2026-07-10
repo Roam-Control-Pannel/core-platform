@@ -14,8 +14,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
 import { isWithinNI, isWithinIreland, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
+import { getFormatLocale } from "../lib/i18n/runtime";
 
 type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
 
@@ -74,13 +76,13 @@ function parseEfaTime(iso: string): number {
  * Format a departure time relative to now: "Due" within a minute, "N min" under an hour, else a
  * local HH:MM. Uses the realtime estimate when present, otherwise the scheduled time.
  */
-function formatWhen(dep: BoardDeparture): string {
-  const t = parseEfaTime(dep.expectedTime ?? dep.plannedTime);
-  if (Number.isNaN(t)) return "";
-  const mins = Math.round((t - Date.now()) / 60_000);
-  if (mins <= 0) return "Due";
-  if (mins < 60) return `${mins} min`;
-  return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatWhen(t: ReturnType<typeof useTranslations>, dep: BoardDeparture): string {
+  const at = parseEfaTime(dep.expectedTime ?? dep.plannedTime);
+  if (Number.isNaN(at)) return "";
+  const mins = Math.round((at - Date.now()) / 60_000);
+  if (mins <= 0) return t("due");
+  if (mins < 60) return t("mins", { mins });
+  return new Date(at).toLocaleTimeString(getFormatLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 export function NearbyDepartures({
@@ -92,6 +94,7 @@ export function NearbyDepartures({
   lng: number;
   placeName: string;
 }) {
+  const t = useTranslations("nearbyDepartures");
   // Live departures exist only in NI; the "coming soon" placeholder reaches across the whole
   // island of Ireland (Translink is Ireland-only, so nothing shows outside it).
   const inNI = isWithinNI(lat, lng);
@@ -138,7 +141,7 @@ export function NearbyDepartures({
       <div style={cardStyle}>
         <div style={{ ...rowStyle, color: "var(--ink-2)" }}>
           <Icon name="bus" size={16} />
-          <span style={{ fontSize: 13 }}>Loading nearby departures…</span>
+          <span style={{ fontSize: 13 }}>{t("loading")}</span>
         </div>
       </div>
     );
@@ -163,16 +166,16 @@ export function NearbyDepartures({
             className="t-h4"
             style={{ fontFamily: "var(--display)", color: "var(--ink)", lineHeight: 1.2 }}
           >
-            Nearby departures
+            {t("title")}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 2 }}>
             {stop.name}
-            {typeof stop.distanceM === "number" ? ` · ${stop.distanceM} m away` : ""}
+            {typeof stop.distanceM === "number" ? ` · ${t("mAway", { distance: stop.distanceM })}` : ""}
           </div>
         </div>
         <span
           aria-hidden
-          title="Realtime where available"
+          title={t("realtimeWhereAvailable")}
           style={{ fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap" }}
         >
           {placeName}
@@ -181,12 +184,12 @@ export function NearbyDepartures({
 
       {departures.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--muted)", paddingBottom: 2 }}>
-          No departures in the next while.
+          {t("noDepartures")}
         </div>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
           {departures.map((d, i) => {
-            const when = formatWhen(d);
+            const when = formatWhen(t, d);
             const late = typeof d.delayMin === "number" && d.delayMin > 0;
             const early = typeof d.delayMin === "number" && d.delayMin < 0;
             return (
@@ -231,12 +234,12 @@ export function NearbyDepartures({
                   <span
                     title={
                       late
-                        ? `${d.delayMin} min late`
+                        ? t("minLate", { mins: d.delayMin as number })
                         : early
-                          ? `${Math.abs(d.delayMin as number)} min early`
-                          : "On time (live)"
+                          ? t("minEarly", { mins: Math.abs(d.delayMin as number) })
+                          : t("onTime")
                     }
-                    aria-label="Live"
+                    aria-label={t("live")}
                     style={{
                       width: 7,
                       height: 7,
@@ -281,6 +284,7 @@ export function NearbyDepartures({
  * placeholder for the rest of the island.
  */
 function TransitComingSoon({ placeName }: { placeName: string }) {
+  const t = useTranslations("nearbyDepartures");
   return (
     <div
       style={{
@@ -295,7 +299,7 @@ function TransitComingSoon({ placeName }: { placeName: string }) {
           className="t-h4"
           style={{ fontFamily: "var(--display)", color: "var(--ink)", lineHeight: 1.2, flex: 1 }}
         >
-          Local transit
+          {t("comingSoon.title")}
         </div>
         <span
           style={{
@@ -309,12 +313,11 @@ function TransitComingSoon({ placeName }: { placeName: string }) {
             padding: "2px 8px",
           }}
         >
-          Coming soon
+          {t("comingSoon.badge")}
         </span>
       </div>
       <p style={{ color: "var(--ink-2)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-        Live bus &amp; train departures for {placeName} are on the way — powered by Translink,
-        across Ireland.
+        {t("comingSoon.body", { place: placeName })}
       </p>
       <div
         style={{

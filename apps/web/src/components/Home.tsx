@@ -17,6 +17,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
@@ -25,6 +26,7 @@ import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import { NearbyDepartures } from "./NearbyDepartures";
 import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
+import { getFormatLocale } from "../lib/i18n/runtime";
 import { planDateLabel } from "../lib/planDate";
 import { useHomeLayoutSync } from "./useHomeLayoutSync";
 import { HomeCustomize, type CustomizeItem } from "./HomeCustomize";
@@ -35,7 +37,8 @@ import styles from "./Home.module.css";
 
 /**
  * The Home widget registry. Each dashboard section is a descriptor — id (stable, used to persist
- * the user's order), a friendly label for the Customise sheet, a grid span (full width or a
+ * the user's order), a label (a catalogue key under the "home" namespace, translated where the
+ * Customise sheet lists it), a grid span (full width or a
  * pairable half), an optional `condition` (the transit widget only exists inside Ireland), and a
  * `render` given the live context. The user's saved layout reorders / hides these; anything not
  * in their saved order is appended in this order (see reconcile), so new widgets always surface.
@@ -58,21 +61,21 @@ export interface HomeWidget {
  * "local-news" widget is gone: the main-column feed (HomeFeed) IS the local news now.
  */
 export const HOME_WIDGETS: HomeWidget[] = [
-  { id: "town-forum", label: "Town forum", span: "half", render: ({ place }) => <TownForum place={place} /> },
-  { id: "your-town", label: "Trending nearby", span: "full", render: ({ place }) => <TrendingNearby place={place} /> },
-  { id: "recent-chats", label: "Recent chats", span: "half", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
-  { id: "affiliate-deals", label: "Deals", span: "half", render: () => <DealsHomeWidget /> },
+  { id: "town-forum", label: "widgets.townForum", span: "half", render: ({ place }) => <TownForum place={place} /> },
+  { id: "your-town", label: "widgets.trendingNearby", span: "full", render: ({ place }) => <TrendingNearby place={place} /> },
+  { id: "recent-chats", label: "widgets.recentChats", span: "half", render: ({ hasSession }) => <RecentChats hasSession={hasSession} /> },
+  { id: "affiliate-deals", label: "widgets.deals", span: "half", render: () => <DealsHomeWidget /> },
   {
     id: "transit",
-    label: "Nearby transit",
+    label: "widgets.nearbyTransit",
     span: "full",
     condition: (p) => isWithinIreland(p.lat, p.lng),
     render: ({ place }) => <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />,
   },
-  { id: "upcoming-plans", label: "Your plans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
-  { id: "followed-venues", label: "Followed venues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
-  { id: "saved-deals", label: "Saved deals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
-  { id: "market", label: "Marketplace", span: "full", render: ({ place }) => <MarketSeam place={place} /> },
+  { id: "upcoming-plans", label: "widgets.yourPlans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
+  { id: "followed-venues", label: "widgets.followedVenues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
+  { id: "saved-deals", label: "widgets.savedDeals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },
+  { id: "market", label: "widgets.marketplace", span: "full", render: ({ place }) => <MarketSeam place={place} /> },
 ];
 export const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
 
@@ -80,14 +83,15 @@ export const HOME_WIDGET_IDS: readonly string[] = HOME_WIDGETS.map((w) => w.id);
 const RAIL_LIMIT = 5;
 
 /** Time-aware greeting — a warmer header than a flat "Home". */
-function greeting(): string {
+function greeting(t: ReturnType<typeof useTranslations>): string {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return t("greeting.morning");
+  if (h < 18) return t("greeting.afternoon");
+  return t("greeting.evening");
 }
 
 export function Home() {
+  const t = useTranslations("home");
   const session = useSession();
   const trpc = useTrpc();
   const { place, setPlace } = useCurrentPlace();
@@ -100,9 +104,9 @@ export function Home() {
   useEffect(() => {
     const tick = () => {
       const d = new Date();
-      const wd = d.toLocaleDateString("en-GB", { weekday: "long" });
-      const dm = d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
-      const hm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      const wd = d.toLocaleDateString(getFormatLocale(), { weekday: "long" });
+      const dm = d.toLocaleDateString(getFormatLocale(), { day: "numeric", month: "long" });
+      const hm = d.toLocaleTimeString(getFormatLocale(), { hour: "2-digit", minute: "2-digit" });
       setKicker(`${wd} · ${dm} · ${hm}`.toUpperCase());
     };
     tick();
@@ -156,7 +160,7 @@ export function Home() {
   const railWidgets = visible.slice(0, RAIL_LIMIT);
   const customizeItems: CustomizeItem[] = applicable.map((w) => ({
     id: w.id,
-    label: w.label,
+    label: t(w.label),
     hidden: layout.hidden.includes(w.id),
   }));
 
@@ -167,11 +171,11 @@ export function Home() {
           <div style={{ minWidth: 0 }}>
             <div className={styles.kicker}>{kicker}</div>
             <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 32, letterSpacing: "-.02em", margin: 0 }}>
-              {greeting()}
+              {greeting(t)}
               {firstName ? `, ${firstName}` : ""}
             </h1>
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.5 }}>
-              <span>Here&apos;s what&apos;s moving in</span>
+              <span>{t("movingIn")}</span>
               <PlaceSwitcher value={place} onChange={setPlace} />
               <button
                 type="button"
@@ -179,19 +183,19 @@ export function Home() {
                 className={styles.customize}
                 aria-haspopup="dialog"
               >
-                <Icon name="settings" size={14} /> Customise
+                <Icon name="settings" size={14} /> {t("customise")}
               </button>
             </div>
           </div>
         </div>
 
         <div className={styles.qgrid}>
-          <QuickAction href="/plans" glyph="plus" label="New plan" />
-          <QuickAction href="/town-hall" glyph="forum" label="Start a topic" />
-          <QuickAction href="/explore" glyph="search" label="Find venues" />
-          <QuickAction href="/friends" glyph="chat" label="Message a friend" />
-          <QuickAction href="/market" glyph="shop" label="Market" />
-          <QuickAction href="/basecamp" glyph="widgets" label="Basecamp" />
+          <QuickAction href="/plans" glyph="plus" label={t("quick.newPlan")} />
+          <QuickAction href="/town-hall" glyph="forum" label={t("quick.startTopic")} />
+          <QuickAction href="/explore" glyph="search" label={t("quick.findVenues")} />
+          <QuickAction href="/friends" glyph="chat" label={t("quick.messageFriend")} />
+          <QuickAction href="/market" glyph="shop" label={t("quick.market")} />
+          <QuickAction href="/basecamp" glyph="widgets" label={t("quick.basecamp")} />
         </div>
       </header>
 
@@ -214,8 +218,8 @@ export function Home() {
           <Link href="/basecamp" className={styles.basecampLink}>
             <span className={styles.qtile} aria-hidden><Icon name="grip" size={16} /></span>
             <span style={{ minWidth: 0, flex: 1 }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Basecamp</span>
-              <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>All your widgets, full size</span>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{t("basecampLink.title")}</span>
+              <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{t("basecampLink.subtitle")}</span>
             </span>
             <Icon name="chevronRight" size={16} style={{ color: "var(--faint)", flexShrink: 0 }} />
           </Link>
@@ -237,13 +241,14 @@ export function Home() {
 
 /** Shown when the user has hidden every section — a gentle way back to the Customise sheet. */
 function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
+  const t = useTranslations("home");
   return (
     <Card style={{ padding: "var(--space-6)", textAlign: "center" }}>
       <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.5 }}>
-        You&apos;ve hidden every section.
+        {t("emptyDashboard.hiddenAll")}
       </p>
       <div style={{ marginTop: "var(--space-3)" }}>
-        <Button onClick={onCustomise}>Customise home</Button>
+        <Button onClick={onCustomise}>{t("emptyDashboard.cta")}</Button>
       </div>
     </Card>
   );
@@ -317,13 +322,15 @@ interface ChatRow {
   participantCount: number;
 }
 
+/** Chat-kind glyph + catalogue key (under the "home" namespace) for the row's meta line. */
 const CHAT_KIND: Record<ChatKind, { glyph: IconName; label: string; crim: boolean }> = {
-  plan: { glyph: "plan", label: "Plan chat", crim: true },
-  group: { glyph: "users", label: "Group", crim: false },
-  direct: { glyph: "chat", label: "Direct", crim: false },
+  plan: { glyph: "plan", label: "chatKind.plan", crim: true },
+  group: { glyph: "users", label: "chatKind.group", crim: false },
+  direct: { glyph: "chat", label: "chatKind.direct", crim: false },
 };
 
 function RecentChats({ hasSession }: { hasSession: boolean }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [rows, setRows] = useState<ChatRow[] | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -346,27 +353,27 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Recent chats" icon="chat" {...(hasSession ? { action: { label: "All chats", href: "/threads" } } : {})}>
+    <Section title={t("recentChats.title")} icon="chat" {...(hasSession ? { action: { label: t("recentChats.allChats"), href: "/threads" } } : {})}>
       {!hasSession ? (
-        <SignInNudge note="Sign in to see your conversations and plans with people nearby." />
+        <SignInNudge note={t("recentChats.nudge")} />
       ) : error ? (
-        <p style={mutedNote}>Couldn&apos;t load your chats just now.</p>
+        <p style={mutedNote}>{t("recentChats.error")}</p>
       ) : rows === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
           <div style={rowSkeleton} />
         </div>
       ) : rows.length === 0 ? (
-        <p style={mutedNote}>No chats yet. Message a friend or open a plan to start one — it&apos;ll show up here.</p>
+        <p style={mutedNote}>{t("recentChats.empty")}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-1)" }}>
-          {rows.map((t) => {
-            const meta = CHAT_KIND[t.kind] ?? CHAT_KIND.group;
-            const name = t.name?.trim() || t.title?.trim() || meta.label;
+          {rows.map((row) => {
+            const meta = CHAT_KIND[row.kind] ?? CHAT_KIND.group;
+            const name = row.name?.trim() || row.title?.trim() || t(meta.label);
             return (
               <Link
-                key={t.id}
-                href={`/threads/${t.id}`}
+                key={row.id}
+                href={`/threads/${row.id}`}
                 className={styles.row}
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", padding: "6px 8px", borderRadius: "var(--r-md)", textDecoration: "none", color: "inherit" }}
               >
@@ -387,11 +394,11 @@ function RecentChats({ hasSession }: { hasSession: boolean }) {
                       {name}
                     </span>
                     <span style={{ fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                      {meta.label}{t.kind !== "direct" ? ` · ${t.participantCount} ${t.participantCount === 1 ? "person" : "people"}` : ""}
+                      {t(meta.label)}{row.kind !== "direct" ? ` · ${t("recentChats.people", { count: row.participantCount })}` : ""}
                     </span>
                   </span>
                 </span>
-                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgo(t.updatedAt)}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgo(row.updatedAt)}</span>
               </Link>
             );
           })}
@@ -414,6 +421,7 @@ interface NearRow {
 }
 
 function TrendingNearby({ place }: { place: Place }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [venues, setVenues] = useState<NearRow[] | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -442,9 +450,9 @@ function TrendingNearby({ place }: { place: Place }) {
   }, [trpc, place.lat, place.lng]);
 
   return (
-    <Section title="Trending nearby" icon="sparkle" action={{ label: "Explore", href: "/explore" }}>
+    <Section title={t("trending.title")} icon="sparkle" action={{ label: t("trending.explore"), href: "/explore" }}>
       {error ? (
-        <p style={mutedNote}>Couldn&apos;t load venues near you just now.</p>
+        <p style={mutedNote}>{t("trending.error")}</p>
       ) : venues === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
@@ -452,7 +460,7 @@ function TrendingNearby({ place }: { place: Place }) {
           <div style={rowSkeleton} />
         </div>
       ) : venues.length === 0 ? (
-        <p style={mutedNote}>No venues found near {place.name} yet.</p>
+        <p style={mutedNote}>{t("trending.empty", { place: place.name })}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 2 }}>
           {venues.map((v, i) => (
@@ -473,7 +481,7 @@ function TrendingNearby({ place }: { place: Place }) {
                   {v.name}
                 </span>
                 <span style={{ fontSize: 11.5, color: "var(--muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {v.primaryTypeLabel ?? v.category ?? "Venue"}
+                  {v.primaryTypeLabel ?? v.category ?? t("trending.venueFallback")}
                 </span>
               </span>
               {v.rating != null ? (
@@ -504,6 +512,7 @@ interface ForumTopic {
 }
 
 function TownForum({ place }: { place: Place }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [topics, setTopics] = useState<ForumTopic[] | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -529,9 +538,9 @@ function TownForum({ place }: { place: Place }) {
   }, [trpc, place.name]);
 
   return (
-    <Section title="Town forum" icon="forum" action={{ label: "Town Hall", href: "/town-hall" }}>
+    <Section title={t("townForum.title")} icon="forum" action={{ label: t("townForum.townHall"), href: "/town-hall" }}>
       {error ? (
-        <p style={mutedNote}>Couldn&apos;t load the forum just now.</p>
+        <p style={mutedNote}>{t("townForum.error")}</p>
       ) : topics === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
@@ -539,17 +548,17 @@ function TownForum({ place }: { place: Place }) {
         </div>
       ) : topics.length === 0 ? (
         <p style={mutedNote}>
-          No topics in {place.name} yet.{" "}
+          {t("townForum.empty", { place: place.name })}{" "}
           <Link href="/town-hall" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
-            Start one →
+            {t("townForum.startOne")}
           </Link>
         </p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
-          {topics.map((t) => (
+          {topics.map((topic) => (
             <Link
-              key={t.id}
-              href={t.slug ? `/town-hall/${t.locality}/${t.slug}` : `/town-hall/${t.id}`}
+              key={topic.id}
+              href={topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`}
               className={`${styles.newsCard} ${styles.lift}`}
               style={{ flexDirection: "row", alignItems: "center", gap: "var(--space-3)" }}
             >
@@ -558,14 +567,14 @@ function TownForum({ place }: { place: Place }) {
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 38, height: 38, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}
               >
                 <Icon name="upvote" size={12} />
-                <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{t.upvoteCount}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.1 }}>{topic.upvoteCount}</span>
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {t.title}
+                  {topic.title}
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                  {townHallAuthor(t.author)} · {t.replyCount === 1 ? "1 reply" : `${t.replyCount} replies`}
+                  {townHallAuthor(topic.author)} · {t("townForum.replies", { count: topic.replyCount })}
                 </span>
               </span>
             </Link>
@@ -579,6 +588,7 @@ function TownForum({ place }: { place: Place }) {
 /* ── Saved deals (live, auth-gated) ─────────────────────────────────────────────────────── */
 
 function SavedDeals({ hasSession }: { hasSession: boolean }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [offers, setOffers] = useState<ConsumerOffer[] | undefined>(undefined);
 
@@ -594,13 +604,13 @@ function SavedDeals({ hasSession }: { hasSession: boolean }) {
   if (!hasSession) return null;
 
   return (
-    <Section title="Saved deals" icon="ticket">
+    <Section title={t("savedDeals.title")} icon="ticket">
       {offers === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
         </div>
       ) : offers.length === 0 ? (
-        <p style={mutedNote}>Deals you save will appear here, ready to redeem in-venue.</p>
+        <p style={mutedNote}>{t("savedDeals.empty")}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
           {offers.map((o) => (
@@ -631,6 +641,7 @@ interface Deal {
 }
 
 function FollowedVenues({ hasSession }: { hasSession: boolean }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [follows, setFollows] = useState<FollowVenue[] | undefined>(undefined);
   const [deals, setDeals] = useState<Deal[] | undefined>(undefined);
@@ -658,11 +669,11 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Followed venues" icon="heart" {...(hasSession ? { action: { label: "Manage", href: "/following" } } : {})}>
+    <Section title={t("followed.title")} icon="heart" {...(hasSession ? { action: { label: t("followed.manage"), href: "/following" } } : {})}>
       {!hasSession ? (
-        <SignInNudge note="Follow a business to unlock its exclusive loyalty deals — they'll appear here, just for followers." />
+        <SignInNudge note={t("followed.nudge")} />
       ) : error ? (
-        <p style={mutedNote}>Couldn&apos;t load your followed venues just now.</p>
+        <p style={mutedNote}>{t("followed.error")}</p>
       ) : follows === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
@@ -671,11 +682,11 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
       ) : follows.length === 0 ? (
         <div>
           <p style={mutedNote}>
-            You&apos;re not following any businesses yet. Follow one to get its exclusive loyalty deals here.
+            {t("followed.empty")}
           </p>
           <div style={{ marginTop: "var(--space-3)" }}>
             <Link href="/explore" style={{ textDecoration: "none" }}>
-              <Button variant="neutral" size="sm">Find businesses to follow</Button>
+              <Button variant="neutral" size="sm">{t("followed.findCta")}</Button>
             </Link>
           </div>
         </div>
@@ -684,7 +695,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
           {/* The businesses you follow — chips with an initial avatar. */}
           <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
             {follows.map((f) => {
-              const name = f.venues?.name ?? "Venue";
+              const name = f.venues?.name ?? t("followed.venueFallback");
               return (
                 <Link key={f.venue_id} href={`/venue/${f.venues?.id ?? f.venue_id}`} className={styles.venueChip}>
                   <span aria-hidden style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>
@@ -708,7 +719,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
                 marginBottom: "var(--space-2)",
               }}
             >
-              Exclusive deals for you
+              {t("followed.exclusiveDeals")}
             </div>
             {deals && deals.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-2)" }}>
@@ -718,7 +729,7 @@ function FollowedVenues({ hasSession }: { hasSession: boolean }) {
               </div>
             ) : (
               <p style={mutedNote}>
-                No live deals from your venues right now — we&apos;ll show them here the moment one posts a loyalty offer.
+                {t("followed.noDeals")}
               </p>
             )}
           </div>
@@ -742,6 +753,7 @@ interface PlanRow {
 const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
 
 function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
+  const t = useTranslations("home");
   const trpc = useTrpc();
   const [plans, setPlans] = useState<PlanRow[] | undefined>(undefined);
   const [error, setError] = useState(false);
@@ -764,11 +776,11 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
   }, [trpc, hasSession]);
 
   return (
-    <Section title="Your plans" icon="plan" {...(hasSession ? { action: { label: "All plans", href: "/plans" } } : {})}>
+    <Section title={t("plans.title")} icon="plan" {...(hasSession ? { action: { label: t("plans.allPlans"), href: "/plans" } } : {})}>
       {!hasSession ? (
-        <SignInNudge note="Make plans — a night out, a weekend, a list to try — and save venues to them." />
+        <SignInNudge note={t("plans.nudge")} />
       ) : error ? (
-        <p style={mutedNote}>Couldn&apos;t load your plans just now.</p>
+        <p style={mutedNote}>{t("plans.error")}</p>
       ) : plans === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           <div style={rowSkeleton} />
@@ -776,10 +788,10 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
         </div>
       ) : plans.length === 0 ? (
         <div>
-          <p style={mutedNote}>No plans yet — start one and add venues from anywhere on Roam.</p>
+          <p style={mutedNote}>{t("plans.empty")}</p>
           <div style={{ marginTop: "var(--space-3)" }}>
             <Link href="/plans" style={{ textDecoration: "none" }}>
-              <Button variant="pri" size="sm">＋ New plan</Button>
+              <Button variant="pri" size="sm">{t("plans.newPlanCta")}</Button>
             </Link>
           </div>
         </div>
@@ -810,13 +822,13 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
                     color: "#fff", background: "rgba(255,255,255,.18)", borderRadius: 999, padding: "2px 9px",
                   }}
                 >
-                  {p.plannedFor ? planDateLabel(p.plannedFor) : "No date yet"}
+                  {p.plannedFor ? planDateLabel(p.plannedFor) : t("plans.noDate")}
                 </span>
                 <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, lineHeight: 1.3, textShadow: "0 1px 12px rgba(0,0,0,.4)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {p.title}
                 </span>
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,.85)" }}>
-                  {p.venueCount === 1 ? "1 venue" : `${p.venueCount} venues`}
+                  {t("plans.venues", { count: p.venueCount })}
                 </span>
               </span>
             </Link>
@@ -829,15 +841,15 @@ function UpcomingPlans({ hasSession }: { hasSession: boolean }) {
 
 /** The Market widget — the old dormant seam, LIVE now the C2C marketplace exists. */
 function MarketSeam({ place }: { place: Place }) {
+  const t = useTranslations("home");
   return (
-    <Section title={`${place.name} market`} icon="shop" action={{ label: "Browse", href: "/market" }}>
+    <Section title={t("market.title", { place: place.name })} icon="shop" action={{ label: t("market.browse"), href: "/market" }}>
       <p style={mutedNote}>
-        Buy, sell and swap with people in your town — list something in a minute, agree in chat,
-        meet locally.
+        {t("market.body")}
       </p>
       <div style={{ marginTop: "var(--space-3)" }}>
         <Link href="/market" style={{ textDecoration: "none" }}>
-          <Button variant="pri" size="sm">Open the Market</Button>
+          <Button variant="pri" size="sm">{t("market.open")}</Button>
         </Link>
       </div>
     </Section>
@@ -848,12 +860,13 @@ function MarketSeam({ place }: { place: Place }) {
 
 /** A consistent sign-in nudge for the auth-gated sections. */
 function SignInNudge({ note }: { note: string }) {
+  const t = useTranslations("home");
   return (
     <div>
       <p style={mutedNote}>{note}</p>
       <div style={{ marginTop: "var(--space-3)" }}>
         <Link href="/account" style={{ textDecoration: "none" }}>
-          <Button variant="pri" size="sm">Sign in</Button>
+          <Button variant="pri" size="sm">{t("signIn")}</Button>
         </Link>
       </div>
     </div>

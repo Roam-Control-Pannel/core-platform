@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Seg, Icon, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import type { Place } from "./PlaceSwitcher";
@@ -51,7 +52,8 @@ type FeedItem = { key: string; at: number; node: React.ReactNode };
 
 type Tab = "foryou" | "following" | "nearby";
 
-const KIND_LABEL: Record<FeedPost["kind"], string> = { news: "News", offer: "Offer", event: "Event" };
+/** Post-kind chip: catalogue keys under the "homeFeed" namespace. */
+const KIND_LABEL: Record<FeedPost["kind"], string> = { news: "kind.news", offer: "kind.offer", event: "kind.event" };
 
 function ts(iso: string | null | undefined): number {
   const t = iso ? new Date(iso).getTime() : NaN;
@@ -59,6 +61,7 @@ function ts(iso: string | null | undefined): number {
 }
 
 export function HomeFeed({ place }: { place: Place }) {
+  const t = useTranslations("homeFeed");
   const trpc = useTrpc();
   const session = useSession();
   const signedIn = !!session;
@@ -146,13 +149,13 @@ export function HomeFeed({ place }: { place: Place }) {
     <section>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
         <h2 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, letterSpacing: "-.015em", margin: 0 }}>
-          Your local feed
+          {t("title")}
         </h2>
         <Seg
           options={[
-            { value: "foryou", label: "For you" },
-            { value: "following", label: "Following" },
-            { value: "nearby", label: "Nearby" },
+            { value: "foryou", label: t("tabs.forYou") },
+            { value: "following", label: t("tabs.following") },
+            { value: "nearby", label: t("tabs.nearby") },
           ]}
           value={tab}
           onChange={setTab}
@@ -161,7 +164,7 @@ export function HomeFeed({ place }: { place: Place }) {
 
       {error && (posts === undefined || posts.length === 0) ? (
         <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
-          <p style={{ color: "var(--muted)", margin: 0 }}>Couldn&apos;t load your feed just now.</p>
+          <p style={{ color: "var(--muted)", margin: 0 }}>{t("error")}</p>
         </Card>
       ) : items === undefined ? (
         <div style={{ display: "grid", gap: "var(--space-4)" }}>
@@ -172,11 +175,11 @@ export function HomeFeed({ place }: { place: Place }) {
       ) : tab === "following" && !signedIn ? (
         <Card style={{ padding: "var(--space-5)" }}>
           <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
-            Sign in and follow your favourite local businesses — their news, offers and events land here.
+            {t("followingNudge")}
           </p>
           <div style={{ marginTop: "var(--space-3)" }}>
             <Link href="/account" style={{ textDecoration: "none" }}>
-              <Button variant="pri" size="sm">Sign in</Button>
+              <Button variant="pri" size="sm">{t("signIn")}</Button>
             </Link>
           </div>
         </Card>
@@ -184,12 +187,12 @@ export function HomeFeed({ place }: { place: Place }) {
         <Card flat style={{ padding: "var(--space-5)" }}>
           <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
             {tab === "following"
-              ? "No posts from venues you follow yet — follow a few on Explore and their updates will land here."
-              : `Nothing moving in ${place.name} just yet — check back soon, or be the one who starts something in the Town Hall.`}
+              ? t("emptyFollowing")
+              : t("emptyLocal", { place: place.name })}
           </p>
           <div style={{ marginTop: "var(--space-3)", display: "flex", gap: "var(--space-2)" }}>
             <Link href={tab === "following" ? "/explore" : "/town-hall"} style={{ textDecoration: "none" }}>
-              <Button variant="neutral" size="sm">{tab === "following" ? "Explore venues" : "Open Town Hall"}</Button>
+              <Button variant="neutral" size="sm">{tab === "following" ? t("exploreVenues") : t("openTownHall")}</Button>
             </Link>
           </div>
         </Card>
@@ -202,10 +205,10 @@ export function HomeFeed({ place }: { place: Place }) {
               closes the column deliberately and hands the reader somewhere to go next. */}
           <div style={{ textAlign: "center", padding: "var(--space-4) 0 var(--space-2)" }}>
             <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>
-              You&apos;re all caught up
+              {t("caughtUp")}
             </div>
             <Link href="/explore" style={{ display: "inline-block", marginTop: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none" }}>
-              Explore what&apos;s around you <span aria-hidden>→</span>
+              {t("exploreAround")} <span aria-hidden>→</span>
             </Link>
           </div>
         </div>
@@ -218,9 +221,10 @@ export function HomeFeed({ place }: { place: Place }) {
 
 /** A business post as a full wall card: venue header, kind chip, title/body, image, actions. */
 function PostFeedCard({ post }: { post: FeedPost }) {
+  const t = useTranslations("homeFeed");
   const permalink = `/feed/${post.id}`;
   const venueHref = `/venue/${post.venueId}`;
-  const venueName = post.venueName ?? "A local business";
+  const venueName = post.venueName ?? t("aLocalBusiness");
   return (
     <Card style={{ padding: "var(--space-4)" }}>
       {/* Venue header */}
@@ -238,7 +242,7 @@ function PostFeedCard({ post }: { post: FeedPost }) {
             {[post.venueLocality, post.publishedAt ? timeAgo(post.publishedAt) : null].filter(Boolean).join(" · ")}
           </div>
         </div>
-        <Pill variant="ghost-crim" size="sm">{KIND_LABEL[post.kind] ?? "News"}</Pill>
+        <Pill variant="ghost-crim" size="sm">{t(KIND_LABEL[post.kind] ?? "kind.news")}</Pill>
       </div>
 
       {/* Content — links through to the post permalink */}
@@ -271,7 +275,7 @@ function PostFeedCard({ post }: { post: FeedPost }) {
           href={permalink}
           style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}
         >
-          View post <Icon name="chevronRight" size={14} />
+          {t("viewPost")} <Icon name="chevronRight" size={14} />
         </Link>
       </div>
     </Card>
@@ -280,6 +284,7 @@ function PostFeedCard({ post }: { post: FeedPost }) {
 
 /** A Town Hall topic as a wall card: upvote tile, chip, title, replies. Whole card links in. */
 function TopicFeedCard({ topic }: { topic: FeedTopic }) {
+  const t = useTranslations("homeFeed");
   const href = topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`;
   return (
     <Link href={href} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
@@ -293,9 +298,9 @@ function TopicFeedCard({ topic }: { topic: FeedTopic }) {
         </span>
         <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <Pill variant="ghost-crim" size="sm">Town Hall</Pill>
+            <Pill variant="ghost-crim" size="sm">{t("townHall")}</Pill>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>
-              {townHallAuthor(topic.author)} asked · {timeAgo(topic.createdAt)}
+              {t("asked", { author: townHallAuthor(topic.author) })} · {timeAgo(topic.createdAt)}
             </span>
           </span>
           <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16.5, lineHeight: 1.3, letterSpacing: "-.01em", color: "var(--ink-hi)" }}>
@@ -308,7 +313,7 @@ function TopicFeedCard({ topic }: { topic: FeedTopic }) {
           ) : null}
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
             <Icon name="chat" size={14} />
-            {topic.replyCount === 1 ? "1 reply" : `${topic.replyCount} replies`}
+            {t("replies", { count: topic.replyCount })}
           </span>
         </span>
       </Card>
