@@ -290,9 +290,17 @@ export const plansRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = ctx.db as unknown as LooseDb;
       const added_by = await callerId(db);
+      // ON CONFLICT DO NOTHING (ignoreDuplicates), NOT the default DO UPDATE: re-adding a venue
+      // already in the plan must be a no-op. plan_venues has no UPDATE RLS policy (0037 grants
+      // read/insert/delete only), so a DO UPDATE conflict path is refused by RLS ("new row
+      // violates row-level security policy (USING expression)") — which broke every idempotent
+      // re-add. DO NOTHING never takes the update path, so the intended idempotency just works.
       const { error } = (await db
         .from("plan_venues")
-        .upsert({ plan_id: input.planId, venue_id: input.venueId, added_by }, { onConflict: "plan_id,venue_id" })) as {
+        .upsert(
+          { plan_id: input.planId, venue_id: input.venueId, added_by },
+          { onConflict: "plan_id,venue_id", ignoreDuplicates: true },
+        )) as {
         error: { message: string } | null;
       };
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't add that to the plan." });
@@ -373,11 +381,15 @@ export const plansRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = ctx.db as unknown as LooseDb;
       await callerId(db);
+      // ON CONFLICT DO NOTHING (ignoreDuplicates), same as addVenue: plan_members has no UPDATE
+      // RLS policy (0037 grants read/insert/delete only), so a default DO UPDATE conflict path is
+      // refused by RLS. Under the auto-accept model (invite writes accepted:true immediately)
+      // re-inviting an existing member is a no-op, so DO NOTHING is exactly right.
       const { error } = (await db
         .from("plan_members")
         .upsert(
           { plan_id: input.planId, profile_id: input.profileId, accepted: true },
-          { onConflict: "plan_id,profile_id" },
+          { onConflict: "plan_id,profile_id", ignoreDuplicates: true },
         )) as { error: { message: string } | null };
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't add them to the plan." });
       return { ok: true as const };
