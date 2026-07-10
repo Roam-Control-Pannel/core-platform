@@ -16,12 +16,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card } from "@roam/design";
 import { getSupabaseBrowser } from "../lib/supabase";
 
 type Phase = "checking" | "ready" | "invalid" | "done";
 
 export function ResetPassword() {
+  const t = useTranslations("resetPassword");
+  const tAuth = useTranslations("auth");
   const [phase, setPhase] = useState<Phase>("checking");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -57,11 +60,11 @@ export function ResetPassword() {
   async function submit() {
     setError(null);
     if (password.length < 8) {
-      setError("Use a password of at least 8 characters.");
+      setError(tAuth("errors.passwordMin"));
       return;
     }
     if (password !== confirm) {
-      setError("Those passwords don't match.");
+      setError(t("passwordsMismatch"));
       return;
     }
     setBusy(true);
@@ -74,7 +77,7 @@ export function ResetPassword() {
       }
       setPhase("done");
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(tAuth("errors.generic"));
     } finally {
       setBusy(false);
     }
@@ -86,12 +89,12 @@ export function ResetPassword() {
         className="t-h2"
         style={{ fontFamily: "var(--display)", textAlign: "center", marginBottom: "var(--space-2)" }}
       >
-        Reset your password
+        {tAuth("resetTitle")}
       </h1>
 
       {phase === "checking" ? (
         <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)", textAlign: "center" }}>
-          <p style={{ color: "var(--ink-2)" }}>Verifying your reset link…</p>
+          <p style={{ color: "var(--ink-2)" }}>{t("verifying")}</p>
         </Card>
       ) : phase === "invalid" ? (
         <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
@@ -99,15 +102,14 @@ export function ResetPassword() {
             className="t-h3"
             style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
           >
-            This link has expired
+            {t("expiredTitle")}
           </div>
           <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-            Your reset link is invalid or has already been used. Request a new one from the sign-in
-            screen.
+            {t("expiredBody")}
           </p>
           <a href="/account" style={{ textDecoration: "none" }}>
             <Button variant="pri" block>
-              Back to sign in
+              {tAuth("backToSignIn")}
             </Button>
           </a>
         </Card>
@@ -117,37 +119,36 @@ export function ResetPassword() {
             className="t-h3"
             style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
           >
-            Password updated
+            {t("doneTitle")}
           </div>
           <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-            Your password has been changed and you&apos;re signed in. You can head back to your
-            account now.
+            {t("doneBody")}
           </p>
           <a href="/account" style={{ textDecoration: "none" }}>
             <Button variant="pri" block>
-              Go to your account
+              {t("goToAccount")}
             </Button>
           </a>
         </Card>
       ) : (
         <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
           <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-            Choose a new password for your account.
+            {t("chooseBody")}
           </p>
           <div style={{ display: "grid", gap: "var(--space-3)" }}>
             <Field
-              label="New password"
+              label={t("newPassword")}
               value={password}
               onChange={setPassword}
               autoComplete="new-password"
-              placeholder="At least 8 characters"
+              placeholder={tAuth("passwordPlaceholder")}
             />
             <Field
-              label="Confirm password"
+              label={t("confirmPassword")}
               value={confirm}
               onChange={setConfirm}
               autoComplete="new-password"
-              placeholder="Re-enter your new password"
+              placeholder={t("confirmPlaceholder")}
             />
             {error ? (
               <div style={{ color: "var(--crimson-700)", fontSize: 13 }} role="alert">
@@ -155,7 +156,7 @@ export function ResetPassword() {
               </div>
             ) : null}
             <Button variant="pri" onClick={submit} disabled={busy} block>
-              {busy ? "Please wait…" : "Set new password"}
+              {busy ? tAuth("pleaseWait") : t("setNewPassword")}
             </Button>
           </div>
         </Card>

@@ -118,5 +118,124 @@
       "label": "App language",
       "hint": "More languages are on the way. Posts and community content stay in the language they were written in — your browser can translate those."
     }
+  },
+  "profileEditor": {
+    "displayName": "Display name",
+    "displayNamePlaceholder": "Your name",
+    "handle": {
+      "label": "Handle",
+      "placeholder": "handle",
+      "empty": "Choose a handle — it's your profile's web address.",
+      "notAvailable": "That handle isn't available.",
+      "checking": "Checking availability…",
+      "available": "@{handle} is available ✓",
+      "hint": "Lowercase letters, numbers and underscores. This is your profile's web address."
+    },
+    "bio": "Bio",
+    "bioPlaceholder": "A line about you and the places you love.",
+    "links": "Links",
+    "linkUrlPlaceholder": "{label} URL",
+    "cropAvatarTitle": "Position your profile photo",
+    "cropHeaderTitle": "Position your header image",
+    "saving": "Saving…",
+    "saveProfile": "Save profile",
+    "saved": "Saved ✓",
+    "changeAvatarImage": "Change avatar image",
+    "changeHeaderImage": "Change header image",
+    "addHeaderImage": "Add a header image",
+    "uploading": "Uploading…",
+    "change": "Change",
+    "errors": {
+      "loadFailed": "Couldn't load your profile.",
+      "uploadFailed": "Upload failed.",
+      "saveFailedRetry": "Couldn't save your profile. Please try again.",
+      "saveFailed": "Couldn't save your profile."
+    }
+  },
+  "accountHub": {
+    "explore": "Explore",
+    "title": "Your account",
+    "signedOutIntro": "Sign in to set up your profile and post to your wall.",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…"
+  },
+  "notificationCenter": {
+    "home": "Home",
+    "title": "Notifications",
+    "signedOutIntro": "Sign in to see your notifications.",
+    "loadFailed": "Couldn't load notifications.",
+    "empty": "Nothing yet. When people reply to you, comment on your posts, or follow a venue you own, it'll show up here.",
+    "bellLabel": "{count, plural, =0 {Notifications} other {Notifications (# unread)}}"
+  },
+  "enableNotifications": {
+    "signedOutIntro": "Sign in to turn on notifications on this device.",
+    "title": "Notifications",
+    "on": "On",
+    "body": "Get a heads-up on this device when venues you follow post something new.",
+    "unsupported": "This browser doesn't support web notifications.",
+    "registered": "This device is registered. You can manage delivery per venue by following them.",
+    "enabling": "Enabling…",
+    "enable": "Enable notifications",
+    "errors": {
+      "registerFailed": "Could not register this device.",
+      "generic": "Something went wrong."
+    }
+  },
+  "resetPassword": {
+    "passwordsMismatch": "Those passwords don't match.",
+    "verifying": "Verifying your reset link…",
+    "expiredTitle": "This link has expired",
+    "expiredBody": "Your reset link is invalid or has already been used. Request a new one from the sign-in screen.",
+    "doneTitle": "Password updated",
+    "doneBody": "Your password has been changed and you're signed in. You can head back to your account now.",
+    "goToAccount": "Go to your account",
+    "chooseBody": "Choose a new password for your account.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "confirmPlaceholder": "Re-enter your new password",
+    "setNewPassword": "Set new password"
+  },
+  "firstRun": {
+    "title": "Welcome to Roam",
+    "intro": "Two quick things so friends recognise you — and so the places you follow can send you a birthday treat.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "e.g. Andrew M.",
+    "nameAria": "Display name",
+    "dobLabel": "Date of birth",
+    "treatsOptIn": "Send me birthday treats from places I follow",
+    "privacyNote": "Your birthday is private — businesses never see the date. It's only used to send the treats you've opted into. You can change any of this later in Settings.",
+    "dobInvalid": "That date of birth doesn't look right — please check it and try again.",
+    "saving": "Saving…",
+    "save": "Save",
+    "skip": "Skip for now"
+  },
+  "birthdaySettings": {
+    "title": "Birthday & offers",
+    "yourBirthday": "Your birthday",
+    "dobAria": "Date of birth",
+    "treatsOptIn": "Send me birthday treats from places I follow",
+    "privacyNote": "Your birthday is private. Businesses never see it — it's only used to send you the birthday offers you've opted into, from places you already follow. You can clear it or turn this off anytime.",
+    "saving": "Saving…",
+    "save": "Save",
+    "saved": "Saved ✓",
+    "saveFailed": "Couldn't save — try again."
+  },
+  "birthdayTreats": {
+    "title": "Happy birthday! Treats for you",
+    "fallbackTitle": "A birthday treat",
+    "fallbackVenue": "A place you follow",
+    "untilDate": "until {date}",
+    "redeemed": "Redeemed",
+    "redeem": "Redeem"
+  },
+  "pushHistory": {
+    "loadFailed": "Couldn't load push history just now.",
+    "empty": "No pushes sent yet. When you post an update and tick “Notify followers”, it'll appear here.",
+    "untitledUpdate": "Update"
+  },
+  "authCallback": {
+    "failedTitle": "Sign-in didn't complete",
+    "failedBody": "We couldn't finish signing you in — you may have cancelled, or the link expired. Please try again.",
+    "completing": "Completing sign-in…"
   }
 }

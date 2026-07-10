@@ -12,6 +12,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -19,6 +20,7 @@ import { ProfileWall } from "./ProfileWall";
 import { getSupabaseBrowser } from "../lib/supabase";
 
 export function AccountHub() {
+  const t = useTranslations("accountHub");
   const session = useSession();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -50,16 +52,16 @@ export function AccountHub() {
             href="/explore"
             style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
           >
-            <span aria-hidden>←</span> Explore
+            <span aria-hidden>←</span> {t("explore")}
           </Link>
           <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
-            Your account
+            {t("title")}
           </h1>
           <span style={{ width: 1 }} />
         </header>
 
         <AuthPanel
-          intro="Sign in to set up your profile and post to your wall."
+          intro={t("signedOutIntro")}
           emailRedirectTo={returnUrl()}
           onAuthed={() => {
             /* session change re-renders this hub signed-in */
@@ -86,10 +88,10 @@ export function AccountHub() {
           href="/explore"
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
         >
-          <span aria-hidden>←</span> Explore
+          <span aria-hidden>←</span> {t("explore")}
         </Link>
         <Button variant="neutral" size="sm" onClick={() => void signOut()} disabled={signingOut}>
-          {signingOut ? "Signing out…" : "Sign out"}
+          {signingOut ? t("signingOut") : t("signOut")}
         </Button>
       </div>
 

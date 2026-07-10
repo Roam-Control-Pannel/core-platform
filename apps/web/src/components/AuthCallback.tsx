@@ -13,6 +13,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card } from "@roam/design";
 import { getSupabaseBrowser } from "../lib/supabase";
 
@@ -29,6 +30,8 @@ function safeNext(raw: string | null): string {
 }
 
 export function AuthCallback() {
+  const t = useTranslations("authCallback");
+  const tAuth = useTranslations("auth");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -78,21 +81,20 @@ export function AuthCallback() {
             className="t-h3"
             style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
           >
-            Sign-in didn&apos;t complete
+            {t("failedTitle")}
           </div>
           <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-            We couldn&apos;t finish signing you in — you may have cancelled, or the link expired.
-            Please try again.
+            {t("failedBody")}
           </p>
           <a href="/account" style={{ textDecoration: "none" }}>
             <Button variant="pri" block>
-              Back to sign in
+              {tAuth("backToSignIn")}
             </Button>
           </a>
         </Card>
       ) : (
         <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)", textAlign: "center" }}>
-          <p style={{ color: "var(--ink-2)" }}>Completing sign-in…</p>
+          <p style={{ color: "var(--ink-2)" }}>{t("completing")}</p>
         </Card>
       )}
     </main>

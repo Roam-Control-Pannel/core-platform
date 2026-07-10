@@ -13,6 +13,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
@@ -81,6 +82,7 @@ type CheckHandleQuery = {
 type HandleCheck = { status: "idle" | "checking" | "ok" | "bad"; reason?: string };
 
 export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: () => void }) {
+  const t = useTranslations("profileEditor");
   const trpc = useTrpc();
   const [state, setState] = useState<ProfileState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -113,7 +115,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
         });
       })
       .catch((e: unknown) => {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Couldn't load your profile.");
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : t("errors.loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -130,17 +132,17 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       return;
     }
     if (h === "") {
-      setHandleCheck({ status: "bad", reason: "Choose a handle — it's your profile's web address." });
+      setHandleCheck({ status: "bad", reason: t("handle.empty") });
       return;
     }
     setHandleCheck({ status: "checking" });
     let cancelled = false;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       (trpc.profiles.checkHandle as unknown as CheckHandleQuery)
         .query({ handle: h })
         .then((r) => {
           if (cancelled) return;
-          setHandleCheck(r.available ? { status: "ok" } : { status: "bad", reason: r.reason ?? "That handle isn't available." });
+          setHandleCheck(r.available ? { status: "ok" } : { status: "bad", reason: r.reason ?? t("handle.notAvailable") });
         })
         .catch(() => {
           if (!cancelled) setHandleCheck({ status: "idle" });
@@ -148,7 +150,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
     }, 400);
     return () => {
       cancelled = true;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [trpc, handleValue]);
 
@@ -175,7 +177,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
         const { url } = await uploadProfileImage(userId, file, kind);
         patch(kind === "avatar" ? { avatarUrl: url } : { headerUrl: url });
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Upload failed.");
+        setError(e instanceof Error ? e.message : t("errors.uploadFailed"));
       } finally {
         setUploading(null);
       }
@@ -203,13 +205,13 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
         socialLinks: Object.keys(links).length > 0 ? links : null,
       });
       if (!res.ok) {
-        setError("Couldn't save your profile. Please try again.");
+        setError(t("errors.saveFailedRetry"));
         return;
       }
       setSaved(true);
       onSaved?.();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't save your profile.");
+      setError(e instanceof Error ? e.message : t("errors.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -249,8 +251,8 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
           file={pendingCrop.file}
           spec={
             pendingCrop.kind === "avatar"
-              ? { aspect: 1, outputWidth: 800, round: true, title: "Position your profile photo" }
-              : { aspect: 3, outputWidth: 2000, title: "Position your header image" }
+              ? { aspect: 1, outputWidth: 800, round: true, title: t("cropAvatarTitle") }
+              : { aspect: 3, outputWidth: 2000, title: t("cropHeaderTitle") }
           }
           onCancel={() => setPendingCrop(null)}
           onCropped={(f) => void uploadCropped(pendingCrop.kind, f)}
@@ -258,19 +260,19 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
       ) : null}
 
       <div style={fieldWrap}>
-        <label style={labelStyle} htmlFor="pf-name">Display name</label>
+        <label style={labelStyle} htmlFor="pf-name">{t("displayName")}</label>
         <input
           id="pf-name"
           style={fieldStyle}
           value={state.displayName}
           maxLength={80}
-          placeholder="Your name"
+          placeholder={t("displayNamePlaceholder")}
           onChange={(e) => patch({ displayName: e.target.value })}
         />
       </div>
 
       <div style={fieldWrap}>
-        <label style={labelStyle} htmlFor="pf-handle">Handle</label>
+        <label style={labelStyle} htmlFor="pf-handle">{t("handle.label")}</label>
         <div style={{ position: "relative" }}>
           <span style={{ position: "absolute", left: 12, top: 11, color: "var(--muted)", fontSize: 16 }}>@</span>
           <input
@@ -278,7 +280,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
             style={{ ...fieldStyle, paddingLeft: 26 }}
             value={state.handle}
             maxLength={30}
-            placeholder="handle"
+            placeholder={t("handle.placeholder")}
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
@@ -286,39 +288,39 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
           />
         </div>
         {handleCheck.status === "checking" ? (
-          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>Checking availability…</p>
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>{t("handle.checking")}</p>
         ) : handleCheck.status === "ok" && state.handle.trim().toLowerCase() !== loadedHandleRef.current ? (
-          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--success)" }}>@{state.handle.trim().toLowerCase()} is available ✓</p>
+          <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--success)" }}>{t("handle.available", { handle: state.handle.trim().toLowerCase() })}</p>
         ) : handleCheck.status === "bad" ? (
           <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--crimson-700)" }} role="alert">{handleCheck.reason}</p>
         ) : (
           <p style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--muted)" }}>
-            Lowercase letters, numbers and underscores. This is your profile&apos;s web address.
+            {t("handle.hint")}
           </p>
         )}
       </div>
 
       <div style={fieldWrap}>
-        <label style={labelStyle} htmlFor="pf-bio">Bio</label>
+        <label style={labelStyle} htmlFor="pf-bio">{t("bio")}</label>
         <textarea
           id="pf-bio"
           style={{ ...fieldStyle, minHeight: 96, resize: "vertical", lineHeight: 1.5 }}
           value={state.bio}
           maxLength={600}
-          placeholder="A line about you and the places you love."
+          placeholder={t("bioPlaceholder")}
           onChange={(e) => patch({ bio: e.target.value })}
         />
       </div>
 
       <div style={fieldWrap}>
-        <span style={labelStyle}>Links</span>
+        <span style={labelStyle}>{t("links")}</span>
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
           {SOCIAL_FIELDS.map((label) => (
             <input
               key={label}
               style={fieldStyle}
               value={state.links[label] ?? ""}
-              placeholder={`${label} URL`}
+              placeholder={t("linkUrlPlaceholder", { label })}
               inputMode="url"
               autoCapitalize="none"
               spellCheck={false}
@@ -330,9 +332,9 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-2)" }}>
         <Button variant="pri" onClick={() => void save()} disabled={busy || uploading !== null || handleCheck.status === "checking" || handleCheck.status === "bad"}>
-          {busy ? "Saving…" : "Save profile"}
+          {busy ? t("saving") : t("saveProfile")}
         </Button>
-        {saved ? <span style={{ fontSize: 13, color: "var(--success)" }}>Saved ✓</span> : null}
+        {saved ? <span style={{ fontSize: 13, color: "var(--success)" }}>{t("saved")}</span> : null}
         {error ? <span role="alert" style={{ fontSize: 13, color: "var(--crimson-700)" }}>{error}</span> : null}
       </div>
     </div>
@@ -353,6 +355,7 @@ function ImageSlot({
   onPick: (file: File) => void;
   style: CSSProperties;
 }) {
+  const t = useTranslations("profileEditor");
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
     <div
@@ -367,7 +370,7 @@ function ImageSlot({
       }}
       onClick={() => inputRef.current?.click()}
       role="button"
-      aria-label={`Change ${kind} image`}
+      aria-label={kind === "avatar" ? t("changeAvatarImage") : t("changeHeaderImage")}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
@@ -378,7 +381,7 @@ function ImageSlot({
         <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       ) : (
         <span style={{ fontSize: 13, color: "var(--faint)", display: "inline-flex", alignItems: "center" }}>
-          {kind === "avatar" ? <Icon name="person" size={26} /> : "Add a header image"}
+          {kind === "avatar" ? <Icon name="person" size={26} /> : t("addHeaderImage")}
         </span>
       )}
       <span
@@ -394,7 +397,7 @@ function ImageSlot({
           background: "rgba(33,29,26,.72)",
         }}
       >
-        {uploading ? "Uploading…" : "Change"}
+        {uploading ? t("uploading") : t("change")}
       </span>
       <input
         ref={inputRef}

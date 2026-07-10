@@ -21,6 +21,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card, Pill } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { subscribeWebPush, pushSupported } from "../lib/push";
@@ -33,6 +34,7 @@ type RegisterResult =
   | { ok: false; errors: string[] };
 
 export function EnableNotifications() {
+  const t = useTranslations("enableNotifications");
   const trpc = useTrpc();
   const session = useSession();
   const [status, setStatus] = useState<Status>("idle");
@@ -46,7 +48,7 @@ export function EnableNotifications() {
   if (!session) {
     return (
       <AuthPanel
-        intro="Sign in to turn on notifications on this device."
+        intro={t("signedOutIntro")}
         emailRedirectTo={signedOutReturnUrl()}
         onAuthed={() => {
           // The session change re-renders this component into the enable state.
@@ -67,14 +69,14 @@ export function EnableNotifications() {
 
       if (!result.ok) {
         setStatus("error");
-        setMessage(result.errors[0] ?? "Could not register this device.");
+        setMessage(result.errors[0] ?? t("errors.registerFailed"));
         return;
       }
       setStatus("done");
       setMessage(null);
     } catch (err) {
       setStatus("error");
-      setMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setMessage(err instanceof Error ? err.message : t("errors.generic"));
     }
   }
 
@@ -84,20 +86,20 @@ export function EnableNotifications() {
     <Card>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <strong>Notifications</strong>
-          {status === "done" ? <Pill>On</Pill> : null}
+          <strong>{t("title")}</strong>
+          {status === "done" ? <Pill>{t("on")}</Pill> : null}
         </div>
         <p style={{ margin: 0, color: "var(--ink-lo)", fontSize: 13.5 }}>
-          Get a heads-up on this device when venues you follow post something new.
+          {t("body")}
         </p>
 
         {!supported ? (
           <p style={{ margin: 0, color: "var(--ink-lo)", fontSize: 13 }}>
-            This browser doesn&apos;t support web notifications.
+            {t("unsupported")}
           </p>
         ) : status === "done" ? (
           <p style={{ margin: 0, color: "var(--ink-lo)", fontSize: 13 }}>
-            This device is registered. You can manage delivery per venue by following them.
+            {t("registered")}
           </p>
         ) : (
           <div>
@@ -106,7 +108,7 @@ export function EnableNotifications() {
               onClick={() => void enable()}
               disabled={status === "working"}
             >
-              {status === "working" ? "Enabling…" : "Enable notifications"}
+              {status === "working" ? t("enabling") : t("enable")}
             </Button>
           </div>
         )}

@@ -19,6 +19,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
@@ -32,6 +33,7 @@ function todayIso(): string {
 }
 
 export function FirstRunProfilePrompt() {
+  const t = useTranslations("firstRun");
   const trpc = useTrpc();
   const session = useSession();
   const userId = session?.user?.id ?? null;
@@ -131,7 +133,7 @@ export function FirstRunProfilePrompt() {
       setShow(false);
     } catch {
       // setPersonal rejects a DOB outside age 13–120 (server-side); surface a gentle nudge.
-      setError("That date of birth doesn't look right — please check it and try again.");
+      setError(t("dobInvalid"));
     } finally {
       setBusy(false);
     }
@@ -170,17 +172,16 @@ export function FirstRunProfilePrompt() {
               className="t-h4"
               style={{ fontFamily: "var(--display)", fontWeight: 600, color: "var(--ink)", margin: 0 }}
             >
-              Welcome to Roam
+              {t("title")}
             </h2>
           </div>
           <p style={{ margin: "0 0 var(--space-4)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            Two quick things so friends recognise you — and so the places you follow can send you a
-            birthday treat.
+            {t("intro")}
           </p>
 
           <label style={{ display: "block", marginBottom: "var(--space-3)" }}>
             <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
-              Your name
+              {t("nameLabel")}
             </span>
             <input
               type="text"
@@ -188,15 +189,15 @@ export function FirstRunProfilePrompt() {
               onChange={(e) => setDisplayName(e.target.value)}
               disabled={busy}
               maxLength={200}
-              placeholder="e.g. Andrew M."
-              aria-label="Display name"
+              placeholder={t("namePlaceholder")}
+              aria-label={t("nameAria")}
               style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)" }}
             />
           </label>
 
           <label style={{ display: "block", marginBottom: "var(--space-3)" }}>
             <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
-              Date of birth
+              {t("dobLabel")}
             </span>
             <input
               type="date"
@@ -204,7 +205,7 @@ export function FirstRunProfilePrompt() {
               max={todayIso()}
               onChange={(e) => setBirthDate(e.target.value)}
               disabled={busy}
-              aria-label="Date of birth"
+              aria-label={t("dobLabel")}
               style={{ width: "100%", maxWidth: 220, boxSizing: "border-box", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)" }}
             />
           </label>
@@ -218,15 +219,14 @@ export function FirstRunProfilePrompt() {
               style={{ marginTop: 3, width: 18, height: 18, accentColor: "var(--crimson)" }}
             />
             <span style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.45 }}>
-              Send me birthday treats from places I follow
+              {t("treatsOptIn")}
             </span>
           </label>
 
           <p style={{ margin: "0 0 var(--space-4)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, display: "flex", gap: 6 }}>
             <Icon name="lock" size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             <span>
-              Your birthday is private — businesses never see the date. It&apos;s only used to send the
-              treats you&apos;ve opted into. You can change any of this later in Settings.
+              {t("privacyNote")}
             </span>
           </p>
 
@@ -236,10 +236,10 @@ export function FirstRunProfilePrompt() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
             <Button variant="pri" block onClick={() => void save()} disabled={busy || !birthDate}>
-              {busy ? "Saving…" : "Save"}
+              {busy ? t("saving") : t("save")}
             </Button>
             <Button variant="neutral" block onClick={dismiss} disabled={busy}>
-              Skip for now
+              {t("skip")}
             </Button>
           </div>
         </Card>
