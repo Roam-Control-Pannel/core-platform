@@ -1101,6 +1101,14 @@
       "emptyMessage": "Type a message to send.",
       "send": "Couldn't send your message.",
       "share": "Couldn't share that."
+    },
+    "photo": {
+      "add": "Add photo",
+      "change": "Change photo",
+      "remove": "Remove",
+      "saving": "Saving…",
+      "failed": "Couldn't update the chat photo. Please try again.",
+      "cropTitle": "Position the group photo"
     }
   },
   "threadList": {
