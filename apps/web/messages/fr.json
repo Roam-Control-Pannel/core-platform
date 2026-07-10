@@ -1,0 +1,2033 @@
+{
+  "common": {
+    "time": {
+      "justNow": "à l'instant",
+      "minutes": "{n}min",
+      "hours": "{n}h",
+      "days": "{n}j"
+    },
+    "someone": "Quelqu'un",
+    "roamMember": "Membre Roam"
+  },
+  "categories": {
+    "foodDrink": "Restos",
+    "shopping": "Shopping",
+    "entertainment": "Attractions",
+    "transport": "Transports",
+    "business": "Entreprises",
+    "health": "Santé & beauté",
+    "lodging": "Hôtels",
+    "civic": "Services publics",
+    "worship": "Lieux de culte"
+  },
+  "offerTypes": {
+    "percent_off": "% de réduction",
+    "amount_off": "Réduction fixe",
+    "two_for_one": "2 pour 1",
+    "bogof": "Un acheté, un offert",
+    "free_item": "Article offert",
+    "bundle": "Offre groupée",
+    "happy_hour": "Happy hour",
+    "loyalty": "Récompense fidélité",
+    "first_time": "Offre première visite",
+    "seasonal": "Saisonnier / événement",
+    "other": "Autre"
+  },
+  "chrome": {
+    "brandHome": "Accueil Roam",
+    "primaryNav": "Principal",
+    "nav": {
+      "home": "Accueil",
+      "explore": "Explorer",
+      "townHall": "Place du village",
+      "plans": "Sorties",
+      "chat": "Discussions",
+      "you": "Toi"
+    },
+    "forBusinesses": "Pour les pros",
+    "create": "Créer",
+    "sell": "Vendre",
+    "sellOnRoam": "Vendre sur Roam",
+    "yourOrders": "Tes commandes",
+    "yourAccount": "Ton compte",
+    "signIn": "Se connecter",
+    "signInIntro": "Connecte-toi pour suivre des lieux et gérer tes notifications.",
+    "close": "Fermer",
+    "createMenu": {
+      "open": "Créer",
+      "close": "Fermer le menu de création",
+      "newPlan": "Nouvelle sortie",
+      "postToWall": "Publier sur ton mur"
+    }
+  },
+  "auth": {
+    "checkEmail": "Vérifie tes e-mails",
+    "resetSentBody": "Si un compte existe pour <strong>{email}</strong>, on t'a envoyé un lien pour réinitialiser ton mot de passe. Ouvre-le pour en choisir un nouveau.",
+    "backToSignIn": "Retour à la connexion",
+    "resetTitle": "Réinitialiser ton mot de passe",
+    "resetBody": "Entre l'e-mail de ton compte et on t'enverra un lien pour définir un nouveau mot de passe.",
+    "email": "E-mail",
+    "emailPlaceholder": "you@business.com",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Au moins 8 caractères",
+    "sendResetLink": "Envoyer le lien",
+    "pleaseWait": "Un instant…",
+    "confirmSentBody": "On a envoyé un lien de confirmation à <strong>{email}</strong>. Ouvre-le pour confirmer ton compte — tu reviendras directement ici, connecté.",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "forgotPassword": "Mot de passe oublié ?",
+    "continueWith": "Continuer avec {provider}",
+    "or": "ou",
+    "errors": {
+      "enterEmailPassword": "Entre ton e-mail et un mot de passe.",
+      "passwordMin": "Utilise un mot de passe d'au moins 8 caractères.",
+      "signInFailed": "Connexion impossible. Réessaie.",
+      "generic": "Un problème est survenu. Réessaie.",
+      "startSignInFailed": "Impossible de lancer la connexion. Réessaie.",
+      "enterEmailForReset": "Entre ton e-mail et on t'enverra un lien de réinitialisation.",
+      "invalidLogin": "Cet e-mail ou ce mot de passe ne correspond pas.",
+      "alreadyRegistered": "Cet e-mail a déjà un compte — essaie plutôt de te connecter.",
+      "rateLimit": "Trop de tentatives. Patiente un instant et réessaie.",
+      "fallback": "Impossible de finaliser. Vérifie tes infos et réessaie."
+    }
+  },
+  "settings": {
+    "back": "Compte",
+    "title": "Paramètres",
+    "account": {
+      "title": "Compte",
+      "email": "E-mail",
+      "signInMethod": "Méthode de connexion",
+      "emailPassword": "E-mail et mot de passe",
+      "changePassword": "Changer le mot de passe",
+      "checkInbox": "Vérifie ta boîte mail",
+      "sending": "Envoi…",
+      "tryAgain": "Réessayer",
+      "emailMeALink": "M'envoyer un lien",
+      "editProfile": "Modifier le profil"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "followedVenues": "Lieux suivis & push",
+      "manage": "Gérer",
+      "yourNotifications": "Tes notifications"
+    },
+    "legal": {
+      "title": "Légal",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "subscription": "Conditions d'abonnement",
+      "guidelines": "Règles de la communauté",
+      "attributions": "Attributions"
+    },
+    "support": {
+      "title": "Aide",
+      "contact": "Contacter le support",
+      "appVersion": "Version de l'app"
+    },
+    "signOut": "Se déconnecter",
+    "signingOut": "Déconnexion…",
+    "signedOutIntro": "Connecte-toi pour gérer les paramètres de ton compte.",
+    "danger": {
+      "title": "Zone de danger",
+      "deleteAccount": "Supprimer le compte",
+      "deleteBody": "Supprime définitivement ton profil, tes publications, tes sorties, tes discussions et tes abonnements. Irréversible.",
+      "modalTitle": "Supprimer ton compte ?",
+      "modalBody": "Cela supprime définitivement ton profil, tes publications, tes sorties, tes discussions, tes abonnements et tes offres enregistrées. C'est irréversible. Les commentaires laissés sur les murs des autres restent, mais n'affichent plus ton nom.",
+      "typeToConfirm": "Tape <strong>{word}</strong> pour confirmer",
+      "deleteFailed": "Impossible de supprimer ton compte. Réessaie.",
+      "cancel": "Annuler",
+      "deleting": "Suppression…"
+    },
+    "language": {
+      "title": "Langue",
+      "label": "Langue de l'app",
+      "hint": "D'autres langues arrivent bientôt. Les publications et le contenu de la communauté restent dans leur langue d'origine — ton navigateur peut les traduire."
+    }
+  },
+  "profileEditor": {
+    "displayName": "Nom affiché",
+    "displayNamePlaceholder": "Ton nom",
+    "handle": {
+      "label": "Pseudo",
+      "placeholder": "pseudo",
+      "empty": "Choisis un pseudo — c'est l'adresse web de ton profil.",
+      "notAvailable": "Ce pseudo n'est pas disponible.",
+      "checking": "Vérification de la disponibilité…",
+      "available": "@{handle} est disponible ✓",
+      "hint": "Lettres minuscules, chiffres et tirets bas. C'est l'adresse web de ton profil."
+    },
+    "bio": "Bio",
+    "bioPlaceholder": "Une ligne sur toi et les endroits que tu aimes.",
+    "links": "Liens",
+    "linkUrlPlaceholder": "URL {label}",
+    "cropAvatarTitle": "Positionne ta photo de profil",
+    "cropHeaderTitle": "Positionne ton image de couverture",
+    "saving": "Enregistrement…",
+    "saveProfile": "Enregistrer le profil",
+    "saved": "Enregistré ✓",
+    "changeAvatarImage": "Changer l'avatar",
+    "changeHeaderImage": "Changer l'image de couverture",
+    "addHeaderImage": "Ajouter une image de couverture",
+    "uploading": "Envoi…",
+    "change": "Changer",
+    "errors": {
+      "loadFailed": "Impossible de charger ton profil.",
+      "uploadFailed": "Échec de l'envoi.",
+      "saveFailedRetry": "Impossible d'enregistrer ton profil. Réessaie.",
+      "saveFailed": "Impossible d'enregistrer ton profil."
+    }
+  },
+  "accountHub": {
+    "explore": "Explorer",
+    "title": "Ton compte",
+    "signedOutIntro": "Connecte-toi pour configurer ton profil et publier sur ton mur.",
+    "signOut": "Se déconnecter",
+    "signingOut": "Déconnexion…"
+  },
+  "notificationCenter": {
+    "home": "Accueil",
+    "title": "Notifications",
+    "signedOutIntro": "Connecte-toi pour voir tes notifications.",
+    "loadFailed": "Impossible de charger les notifications.",
+    "empty": "Rien pour l'instant. Quand quelqu'un te répond, commente tes publications ou s'abonne à un lieu que tu gères, ça s'affichera ici.",
+    "bellLabel": "{count, plural, =0 {Notifications} one {Notifications (# non lue)} other {Notifications (# non lues)}}"
+  },
+  "enableNotifications": {
+    "signedOutIntro": "Connecte-toi pour activer les notifications sur cet appareil.",
+    "title": "Notifications",
+    "on": "Activées",
+    "body": "Reçois une alerte sur cet appareil quand les lieux que tu suis publient du nouveau.",
+    "unsupported": "Ce navigateur ne prend pas en charge les notifications web.",
+    "registered": "Cet appareil est enregistré. Tu peux gérer l'envoi lieu par lieu en t'y abonnant.",
+    "enabling": "Activation…",
+    "enable": "Activer les notifications",
+    "errors": {
+      "registerFailed": "Impossible d'enregistrer cet appareil.",
+      "generic": "Un problème est survenu."
+    }
+  },
+  "resetPassword": {
+    "passwordsMismatch": "Ces mots de passe ne correspondent pas.",
+    "verifying": "Vérification de ton lien…",
+    "expiredTitle": "Ce lien a expiré",
+    "expiredBody": "Ton lien de réinitialisation est invalide ou a déjà été utilisé. Demandes-en un nouveau depuis l'écran de connexion.",
+    "doneTitle": "Mot de passe mis à jour",
+    "doneBody": "Ton mot de passe a été changé et tu es connecté. Tu peux retourner à ton compte.",
+    "goToAccount": "Aller à ton compte",
+    "chooseBody": "Choisis un nouveau mot de passe pour ton compte.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmPlaceholder": "Saisis à nouveau ton nouveau mot de passe",
+    "setNewPassword": "Définir le mot de passe"
+  },
+  "firstRun": {
+    "title": "Bienvenue sur Roam",
+    "intro": "Deux petites choses pour que tes amis te reconnaissent — et pour que les lieux que tu suis puissent t'offrir un petit cadeau d'anniversaire.",
+    "nameLabel": "Ton nom",
+    "namePlaceholder": "ex. Andrew M.",
+    "nameAria": "Nom affiché",
+    "dobLabel": "Date de naissance",
+    "treatsOptIn": "M'envoyer des cadeaux d'anniversaire des lieux que je suis",
+    "privacyNote": "Ta date de naissance reste privée — les commerces ne la voient jamais. Elle sert uniquement à envoyer les cadeaux que tu as acceptés. Tu peux changer tout ça plus tard dans Paramètres.",
+    "dobInvalid": "Cette date de naissance semble incorrecte — vérifie-la et réessaie.",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "skip": "Passer pour l'instant"
+  },
+  "birthdaySettings": {
+    "title": "Anniversaire & offres",
+    "yourBirthday": "Ton anniversaire",
+    "dobAria": "Date de naissance",
+    "treatsOptIn": "M'envoyer des cadeaux d'anniversaire des lieux que je suis",
+    "privacyNote": "Ta date de naissance est privée. Les commerces ne la voient jamais — elle sert uniquement à t'envoyer les offres d'anniversaire que tu as acceptées, de lieux que tu suis déjà. Tu peux l'effacer ou désactiver ça à tout moment.",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "saved": "Enregistré ✓",
+    "saveFailed": "Impossible d'enregistrer — réessaie."
+  },
+  "birthdayTreats": {
+    "title": "Joyeux anniversaire ! Des cadeaux pour toi",
+    "fallbackTitle": "Un cadeau d'anniversaire",
+    "fallbackVenue": "Un lieu que tu suis",
+    "untilDate": "jusqu'au {date}",
+    "redeemed": "Utilisé",
+    "redeem": "Utiliser"
+  },
+  "pushHistory": {
+    "loadFailed": "Impossible de charger l'historique des push pour le moment.",
+    "empty": "Aucun push envoyé pour l'instant. Quand tu publies une actu en cochant “Notifier les abonnés”, elle apparaîtra ici.",
+    "untitledUpdate": "Actu"
+  },
+  "authCallback": {
+    "failedTitle": "La connexion n'a pas abouti",
+    "failedBody": "On n'a pas pu finaliser ta connexion — tu as peut-être annulé, ou le lien a expiré. Réessaie.",
+    "completing": "Finalisation de la connexion…"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Bon après-midi",
+      "evening": "Bonsoir"
+    },
+    "movingIn": "Voici ce qui bouge en ce moment",
+    "customise": "Personnaliser",
+    "quick": {
+      "newPlan": "Nouvelle sortie",
+      "startTopic": "Lancer un sujet",
+      "findVenues": "Trouver des lieux",
+      "messageFriend": "Écrire à un ami",
+      "market": "Marché",
+      "basecamp": "Basecamp"
+    },
+    "basecampLink": {
+      "title": "Basecamp",
+      "subtitle": "Tous tes widgets, en grand"
+    },
+    "widgets": {
+      "townForum": "Forum de la ville",
+      "trendingNearby": "Tendances à côté",
+      "recentChats": "Discussions récentes",
+      "deals": "Bons plans",
+      "nearbyTransit": "Transports à proximité",
+      "yourPlans": "Tes sorties",
+      "followedVenues": "Lieux suivis",
+      "savedDeals": "Bons plans enregistrés",
+      "marketplace": "Marketplace"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "Tu as masqué toutes les sections.",
+      "cta": "Personnaliser l'accueil"
+    },
+    "signIn": "Se connecter",
+    "chatKind": {
+      "plan": "Discussion de sortie",
+      "group": "Groupe",
+      "direct": "Privée"
+    },
+    "recentChats": {
+      "title": "Discussions récentes",
+      "allChats": "Toutes les discussions",
+      "nudge": "Connecte-toi pour voir tes conversations et tes sorties avec les gens du coin.",
+      "error": "Impossible de charger tes discussions pour le moment.",
+      "empty": "Aucune discussion pour l'instant. Écris à un ami ou ouvre une sortie pour en lancer une — elle s'affichera ici.",
+      "people": "{count, plural, one {# personne} other {# personnes}}"
+    },
+    "trending": {
+      "title": "Tendances à côté",
+      "explore": "Explorer",
+      "error": "Impossible de charger les lieux près de toi pour le moment.",
+      "empty": "Aucun lieu trouvé près de {place} pour l'instant.",
+      "venueFallback": "Lieu"
+    },
+    "townForum": {
+      "title": "Forum de la ville",
+      "townHall": "Place du village",
+      "error": "Impossible de charger le forum pour le moment.",
+      "empty": "Aucun sujet à {place} pour l'instant.",
+      "startOne": "Lance le premier →",
+      "replies": "{count, plural, one {# réponse} other {# réponses}}"
+    },
+    "savedDeals": {
+      "title": "Bons plans enregistrés",
+      "empty": "Les bons plans que tu enregistres apparaîtront ici, prêts à utiliser sur place."
+    },
+    "followed": {
+      "title": "Lieux suivis",
+      "manage": "Gérer",
+      "nudge": "Abonne-toi à un commerce pour débloquer ses offres fidélité exclusives — elles apparaîtront ici, rien que pour les abonnés.",
+      "error": "Impossible de charger tes lieux suivis pour le moment.",
+      "empty": "Tu ne suis encore aucun commerce. Abonne-toi pour recevoir ici ses offres fidélité exclusives.",
+      "findCta": "Trouver des commerces à suivre",
+      "venueFallback": "Lieu",
+      "exclusiveDeals": "Offres exclusives pour toi",
+      "noDeals": "Aucune offre en cours de tes lieux pour le moment — elles s'afficheront ici dès qu'une offre fidélité est publiée."
+    },
+    "plans": {
+      "title": "Tes sorties",
+      "allPlans": "Toutes les sorties",
+      "nudge": "Prévois des sorties — une soirée, un week-end, une liste à tester — et ajoutes-y des lieux.",
+      "error": "Impossible de charger tes sorties pour le moment.",
+      "empty": "Aucune sortie pour l'instant — lances-en une et ajoute des lieux depuis n'importe où sur Roam.",
+      "newPlanCta": "＋ Nouvelle sortie",
+      "noDate": "Pas encore de date",
+      "venues": "{count, plural, one {# lieu} other {# lieux}}"
+    },
+    "market": {
+      "title": "Marché de {place}",
+      "body": "Achète, vends et échange avec les gens de ta ville — publie une annonce en une minute, arrange-toi en discussion, retrouvez-vous sur place.",
+      "open": "Ouvrir le Marché",
+      "browse": "Parcourir"
+    }
+  },
+  "homeFeed": {
+    "title": "Ton fil local",
+    "tabs": {
+      "forYou": "Pour toi",
+      "following": "Abonnements",
+      "nearby": "À proximité"
+    },
+    "error": "Impossible de charger ton fil pour le moment.",
+    "followingNudge": "Connecte-toi et abonne-toi à tes commerces locaux préférés — leurs actus, offres et événements arrivent ici.",
+    "signIn": "Se connecter",
+    "emptyFollowing": "Aucune publication des lieux que tu suis pour l'instant — abonne-toi à quelques-uns depuis Explorer et leurs actus arriveront ici.",
+    "emptyLocal": "Rien ne bouge à {place} pour l'instant — repasse bientôt, ou sois la première personne à lancer quelque chose sur la Place du village.",
+    "exploreVenues": "Explorer les lieux",
+    "openTownHall": "Ouvrir la Place du village",
+    "caughtUp": "Tu as tout vu",
+    "exploreAround": "Explore ce qui t'entoure",
+    "kind": {
+      "news": "Actu",
+      "offer": "Offre",
+      "event": "Événement"
+    },
+    "aLocalBusiness": "Un commerce local",
+    "viewPost": "Voir la publication",
+    "townHall": "Place du village",
+    "asked": "{author} a demandé",
+    "replies": "{count, plural, one {# réponse} other {# réponses}}"
+  },
+  "homeCustomize": {
+    "title": "Personnaliser l'accueil",
+    "subtitle": "Fais glisser la poignée pour réorganiser, ou masque les sections affichées.",
+    "done": "Terminé",
+    "reorderItem": "Réorganiser {label}",
+    "showItem": "Afficher {label}",
+    "hideItem": "Masquer {label}",
+    "reset": "Réinitialiser"
+  },
+  "basecamp": {
+    "title": "Basecamp",
+    "intro": "Ton Roam, à ta façon — tout ce qui bouge à",
+    "customise": "Personnaliser",
+    "nav": {
+      "explore": "Explorer",
+      "townHall": "Place du village",
+      "plans": "Sorties",
+      "chat": "Discussions",
+      "deals": "Bons plans",
+      "market": "Marché",
+      "orders": "Commandes",
+      "friends": "Amis"
+    },
+    "emptyHiddenAll": "Tu as masqué tous les widgets.",
+    "customiseCta": "Personnaliser Basecamp"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "Tu explores {name} — changer d'endroit",
+    "searchPlaceholder": "Cherche une ville ou un code postal…",
+    "searchAria": "Chercher un endroit",
+    "searching": "Recherche…",
+    "searchError": "Recherche impossible pour le moment. Réessaie.",
+    "noMatches": "Aucun résultat pour “{query}”.",
+    "saveCurrent": "Enregistrer “{name}”",
+    "savedSection": "Enregistrés",
+    "suggestedSection": "Suggestions",
+    "savePlace": "Enregistrer {name}",
+    "unsavePlace": "Retirer {name} des enregistrés",
+    "savedTitle": "Enregistrés",
+    "saveThisPlace": "Enregistrer cet endroit",
+    "removePlace": "Supprimer {name}",
+    "removeTitle": "Supprimer",
+    "locating": "Localisation…",
+    "useMyLocation": "Utiliser ma position",
+    "nearMe": "Autour de moi",
+    "yourLocation": "Ta position",
+    "geoError": "Impossible d'obtenir ta position. Choisis plutôt un endroit."
+  },
+  "suggested": {
+    "title": "Suggestions pour toi",
+    "intro": "Des idées d'offres et de publications sur mesure — relis et modifie chacune avant qu'elle parte.",
+    "published": "Publiée — retrouve-la dans Offres ci-dessus pour la peaufiner ou ajouter un code.",
+    "offerTitleAria": "Titre de l'offre",
+    "discountAria": "Pourcentage de réduction",
+    "discountPlaceholder": "% de réduction",
+    "offerDetailsAria": "Détails de l'offre",
+    "publishing": "Publication…",
+    "publishOffer": "Publier l'offre",
+    "cancel": "Annuler",
+    "useThisOffer": "Utiliser cette offre",
+    "postCopyAria": "Texte de la publication",
+    "copied": "Copié ✓",
+    "copyCta": "Copier — à coller dans Publications locales"
+  },
+  "nearbyDepartures": {
+    "title": "Départs à proximité",
+    "loading": "Chargement des départs à proximité…",
+    "due": "Imminent",
+    "mins": "{mins} min",
+    "mAway": "à {distance} m",
+    "realtimeWhereAvailable": "Temps réel si disponible",
+    "noDepartures": "Aucun départ prochainement.",
+    "minLate": "{mins} min de retard",
+    "minEarly": "{mins} min d'avance",
+    "onTime": "À l'heure (en direct)",
+    "live": "En direct",
+    "comingSoon": {
+      "title": "Transports locaux",
+      "badge": "Bientôt",
+      "body": "Les départs de bus et de trains en direct pour {place} arrivent — propulsés par Translink, dans toute l'Irlande."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "Prépare un cadeau et on le livrera automatiquement aux abonnés le jour de leur anniversaire — ceux qui ont accepté. Tu ne vois jamais qui fête son anniversaire, seulement combien de cadeaux sont partis.",
+    "sentThisMonth": "Envoyés ce mois-ci",
+    "redeemedThisMonth": "Utilisés ce mois-ci",
+    "sentAllTime": "Envoyés au total",
+    "redeemedAllTime": "Utilisés au total",
+    "redeemedPct": "{pct}% des cadeaux d'anniversaire ont été utilisés.",
+    "theTreat": "Le cadeau",
+    "titlePlaceholder": "ex. Un café d'anniversaire offert",
+    "titleAria": "Titre du cadeau d'anniversaire",
+    "detailsLabel": "Détails (facultatif)",
+    "detailsPlaceholder": "Montre ce message sur place le jour de ton anniversaire pour en profiter.",
+    "detailsAria": "Détails du cadeau d'anniversaire",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "turnOff": "Désactiver",
+    "turnOn": "Activer",
+    "live": "● Actif",
+    "off": "Désactivé",
+    "saved": "Enregistré ✓"
+  },
+  "explore": {
+    "browse": "Parcourir",
+    "feed": "Fil",
+    "all": "Tous",
+    "market": "Marché",
+    "categoriesLabel": "Catégories",
+    "searchPlaceholder": "Cherche des lieux à {placeName}…",
+    "searchAria": "Chercher des lieux",
+    "showMap": "Afficher la carte",
+    "hideMap": "Masquer la carte",
+    "loadMore": "Voir plus · {count} de plus",
+    "venuesInView": "{count, plural, one {# lieu affiché} other {# lieux affichés}}",
+    "openInMaps": "Ouvrir dans Maps",
+    "openPlaceInMaps": "Ouvrir {placeName} dans Maps",
+    "discovering": "Découverte des lieux à {placeName}…",
+    "gate": {
+      "title": "Crée un compte gratuit pour continuer à explorer",
+      "body": "Tu as exploré {limit} lieux recherchés cette session — la limite gratuite. Ta propre position reste gratuite ; inscris-toi pour ouvrir <strong>{placeName}</strong> et partout ailleurs, enregistrer des endroits et suivre les lieux que tu aimes."
+    },
+    "empty": {
+      "title": "Rien ici pour l'instant",
+      "body": "Aucun lieu ne correspond à cette vue. Essaie une autre catégorie ou un autre endroit, ou repasse quand Roam aura grandi dans ton coin."
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger les lieux.",
+      "title": "Impossible de charger les lieux"
+    }
+  },
+  "venueDetail": {
+    "back": "Explorer",
+    "manageVenue": "Gérer ce lieu",
+    "tabsAria": "Sections du lieu",
+    "tabs": {
+      "posts": "Publications",
+      "offers": "Offres",
+      "gallery": "Galerie",
+      "details": "Infos",
+      "shop": "Boutique"
+    },
+    "posts": {
+      "empty": "Aucune publication pour l'instant — les actus, offres et événements de ce lieu s'afficheront ici."
+    },
+    "offers": {
+      "empty": "Aucune offre en cours — repasse plus tard, ou abonne-toi pour être prévenu."
+    },
+    "gallery": {
+      "empty": "Pas encore de photos."
+    },
+    "fromPublicSources": "Issu de sources publiques",
+    "claim": {
+      "intro": "Revendiquer est gratuit. Connecte-toi ou crée un compte et ce lieu est à toi, à gérer tout de suite.",
+      "ownerTitle": "C'est ton commerce ?",
+      "ownerBody": "Revendique-le gratuitement pour ajouter photos, horaires, menu et liens, et publier offres et événements aux gens du coin — environ 90 secondes, et tu peux commencer à modifier direct.",
+      "claiming": "Revendication…",
+      "tryAgain": "Réessayer",
+      "cta": "Revendiquer ce lieu",
+      "knowTitle": "Tu connais cet endroit ?",
+      "knowBody": "Aide les gens du coin — propose une photo, les horaires ou une correction.",
+      "suggestEditSoon": "Les suggestions de modification arrivent bientôt",
+      "suggestEdit": "Suggérer une modification",
+      "submittedTitle": "Demande envoyée",
+      "submittedBody": "Merci — ta demande est en cours de vérification. Une fois approuvée, tu pourras gérer ce lieu, ajouter photos et infos, et publier pour les gens du coin.",
+      "underReviewTitle": "Demande en cours d'examen",
+      "underReviewBody": "Une demande de revendication pour ce lieu a été envoyée et est en cours de vérification. Repasse bientôt — une fois approuvée, le propriétaire du lieu pourra tenir ses infos à jour."
+    },
+    "details": {
+      "title": "Infos",
+      "address": "Adresse",
+      "locality": "Localité",
+      "region": "Région",
+      "phone": "Téléphone",
+      "website": "Site web"
+    },
+    "goodToKnow": {
+      "title": "Bon à savoir",
+      "perPerson": "par personne",
+      "upTo": "Jusqu'à {price}",
+      "groups": {
+        "serviceOptions": "Options de service",
+        "dining": "Restauration",
+        "amenities": "Équipements",
+        "payments": "Paiements",
+        "parking": "Parking",
+        "accessibility": "Accessibilité"
+      },
+      "attrs": {
+        "dineIn": "Sur place",
+        "takeout": "À emporter",
+        "delivery": "Livraison",
+        "curbsidePickup": "Retrait en extérieur",
+        "reservable": "Réservations acceptées",
+        "servesBreakfast": "Petit-déj",
+        "servesBrunch": "Brunch",
+        "servesLunch": "Déjeuner",
+        "servesDinner": "Dîner",
+        "servesCoffee": "Café",
+        "servesDessert": "Desserts",
+        "servesBeer": "Bière",
+        "servesWine": "Vin",
+        "servesCocktails": "Cocktails",
+        "servesVegetarianFood": "Options végétariennes",
+        "outdoorSeating": "Terrasse",
+        "liveMusic": "Musique live",
+        "goodForGroups": "Idéal en groupe",
+        "goodForChildren": "Adapté aux enfants",
+        "menuForChildren": "Menu enfant",
+        "goodForWatchingSports": "Retransmissions sportives",
+        "allowsDogs": "Chiens bienvenus",
+        "restroom": "Toilettes",
+        "acceptsNfc": "Sans contact",
+        "acceptsCreditCards": "Cartes de crédit",
+        "acceptsDebitCards": "Cartes de débit",
+        "acceptsCashOnly": "Espèces uniquement",
+        "freeParkingLot": "Parking gratuit",
+        "paidParkingLot": "Parking payant",
+        "freeStreetParking": "Stationnement gratuit dans la rue",
+        "paidStreetParking": "Stationnement payant dans la rue",
+        "freeGarageParking": "Garage gratuit",
+        "paidGarageParking": "Garage payant",
+        "valetParking": "Voiturier",
+        "wheelchairAccessibleEntrance": "Entrée accessible",
+        "wheelchairAccessibleParking": "Parking accessible",
+        "wheelchairAccessibleRestroom": "Toilettes accessibles",
+        "wheelchairAccessibleSeating": "Places assises accessibles"
+      }
+    },
+    "hours": {
+      "title": "Horaires d'ouverture",
+      "openNow": "Ouvert",
+      "openNowCloses": "Ouvert · ferme à {time}",
+      "closed": "Fermé",
+      "closedOpens": "Fermé · ouvre à {time}"
+    },
+    "getDirections": "Itinéraire",
+    "notFound": {
+      "title": "Lieu introuvable",
+      "body": "Ce lieu a peut-être été supprimé, ou le lien est erroné.",
+      "backToExplore": "Retour à Explorer"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger le lieu.",
+      "claimFailed": "Impossible d'envoyer ta demande.",
+      "title": "Impossible de charger ce lieu"
+    }
+  },
+  "venueCard": {
+    "priceFree": "Gratuit",
+    "temporarilyClosed": "Fermé temporairement",
+    "claimed": "Revendiqué",
+    "fromPublicSources": "Issu de sources publiques",
+    "claimItFree": "Revendique-le gratuitement"
+  },
+  "venueMap": {
+    "ariaLabel": "Carte des lieux",
+    "attribution": "© contributeurs OpenStreetMap"
+  },
+  "localPosts": {
+    "kinds": {
+      "news": "Actu",
+      "offer": "Offre",
+      "event": "Événement"
+    },
+    "state": {
+      "live": "En ligne",
+      "scheduled": "Programmé",
+      "draft": "Brouillon"
+    },
+    "inFeed": "Dans le fil",
+    "pushed": "Push envoyé",
+    "newLocalPost": "Nouvelle publication locale",
+    "empty": "Aucune publication pour l'instant. Partage une actu, une offre ou un événement — ça apparaît sur ta page et dans le fil d'actus local de ta ville.",
+    "composer": {
+      "offerNeedsTitle": "Une offre a besoin d'un titre.",
+      "addSomething": "Ajoute un titre, du texte ou une photo pour publier.",
+      "insufficientCredits": "Pas assez de crédits push pour notifier les abonnés. Décoche “Notifier les abonnés” pour publier sans push.",
+      "postFailed": "Impossible de publier.",
+      "postFailedRetry": "Impossible de publier. Réessaie.",
+      "offerTitlePlaceholder": "Titre de l'offre — ex. Cocktails 2 pour 1",
+      "titlePlaceholder": "Titre (facultatif)",
+      "bodyPlaceholder": "Raconte aux gens du coin ce qui se passe…",
+      "titleAria": "Titre de la publication",
+      "bodyAria": "Texte de la publication",
+      "notifyFollowers": "Notifier les abonnés (utilise 1 crédit push)",
+      "posting": "Publication…",
+      "post": "Publier",
+      "cancel": "Annuler",
+      "footer": "Apparaît sur ta page et dans le fil d'actus local de ta ville."
+    },
+    "row": {
+      "deleteConfirm": "Supprimer ?",
+      "yes": "Oui",
+      "no": "Non",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "bodyPlaceholder": "Texte",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer"
+    },
+    "media": {
+      "signInToAdd": "Tu dois être connecté pour ajouter des images.",
+      "uploadingProgress": "Envoi de {current} sur {total}…",
+      "uploadFailed": "Impossible d'envoyer cette image.",
+      "removeImage": "Retirer l'image",
+      "moveEarlier": "Avancer",
+      "moveLater": "Reculer",
+      "uploading": "Envoi…",
+      "addPhoto": "Ajouter une photo"
+    }
+  },
+  "deals": {
+    "home": "Accueil",
+    "title": "Bons plans",
+    "intro": "Des offres et codes promo triés sur le volet, de marques partenaires. Les liens marqués <strong>Pub</strong> peuvent rapporter une commission à Roam — ça ne change jamais le prix que tu paies.",
+    "featured": "À la une",
+    "ad": "Pub",
+    "affiliateAdAria": "Publicité affiliée",
+    "affiliateAdTitle": "Lien affilié — Roam peut toucher une commission",
+    "affiliateAria": "Affilié",
+    "affiliateLinksTitle": "Liens affiliés — Roam peut toucher une commission",
+    "getDeal": "Profiter de l'offre",
+    "shopDeal": "Voir l'offre",
+    "ends": "Se termine le {date}",
+    "loadFailed": "Impossible de charger les bons plans pour le moment.",
+    "emptyTitle": "Aucun bon plan pour le moment",
+    "emptyBody": "Les nouvelles offres de nos marques partenaires arriveront bientôt ici — repasse d'ici peu.",
+    "detail": {
+      "loadFailed": "Impossible de charger ce bon plan pour le moment.",
+      "notFoundTitle": "Bon plan introuvable",
+      "notFoundBody": "Cette offre est peut-être terminée — retrouve les nouveaux bons plans sur la page dédiée."
+    },
+    "widget": {
+      "allDeals": "Tous les bons plans",
+      "code": "CODE"
+    }
+  },
+  "offerCard": {
+    "signInToSave": "Connecte-toi pour enregistrer des bons plans.",
+    "signInToRedeem": "Connecte-toi pour utiliser cette offre.",
+    "soldOut": "Cette offre a été entièrement utilisée.",
+    "expired": "Cette offre a expiré.",
+    "redeemFailed": "Utilisation impossible pour le moment — réessaie.",
+    "ends": "Se termine le {date}",
+    "redeemed": "Utilisée",
+    "showToStaff": "Montre ceci au personnel.",
+    "redeeming": "Utilisation…",
+    "redeem": "Utiliser",
+    "saved": "Enregistrée",
+    "save": "Enregistrer"
+  },
+  "venueOffers": {
+    "newOffer": "Nouvelle offre",
+    "empty": "Aucune offre pour l'instant. Publie une offre exclusive — tes abonnés sont notifiés, et tout le monde peut l'enregistrer et l'utiliser sur place.",
+    "ends": "Se termine le {date}",
+    "savedCount": "{count, plural, one {# enregistrement} other {# enregistrements}}",
+    "redeemedCount": "{count, plural, one {# utilisation} other {# utilisations}}",
+    "redeemedOfMax": "{count} / {max} utilisées",
+    "deleteOffer": "Supprimer l'offre",
+    "delete": "Supprimer",
+    "composer": {
+      "titlePlaceholder": "Offre — ex. 20% de réduction sur ton premier café",
+      "titleAria": "Titre de l'offre",
+      "typeLabel": "Type d'offre",
+      "typeAria": "Type d'offre",
+      "discountLabel": "% de réduction",
+      "discountPlaceholder": "ex. 20",
+      "discountAria": "Pourcentage de réduction",
+      "detailsPlaceholder": "Le détail — conditions, ce qui est inclus…",
+      "detailsAria": "Détails de l'offre",
+      "codePlaceholder": "Code d'utilisation (facultatif) — ex. ROAM20",
+      "codeAria": "Code d'utilisation",
+      "endsLabel": "Fin (facultatif)",
+      "endsAria": "Date de fin de l'offre",
+      "maxLabel": "Utilisations max (facultatif)",
+      "maxPlaceholder": "Illimité",
+      "maxAria": "Utilisations max",
+      "publishFailed": "Impossible de publier l'offre.",
+      "publishing": "Publication…",
+      "publish": "Publier l'offre",
+      "cancel": "Annuler"
+    }
+  },
+  "townHall": {
+    "loadFailed": "Impossible de charger la Place du village.",
+    "hero": {
+      "kicker": "Le forum local",
+      "title": "Place du village",
+      "body": "Ce dont les gens du coin parlent en ce moment. Pose une question, partage un tuyau, ou vote pour ce qui compte là où tu es.",
+      "startTopic": "Lancer un sujet"
+    },
+    "sort": {
+      "hot": "Populaire",
+      "new": "Récent",
+      "top": "Top"
+    },
+    "placeHub": "Le hub de {place}",
+    "filterByCategory": "Filtrer par catégorie",
+    "categories": {
+      "all": "Tous",
+      "foodDrink": "Boire & manger",
+      "thingsToDo": "À faire",
+      "recommendations": "Recos",
+      "events": "Événements",
+      "neighbourhood": "Quartier"
+    },
+    "signInToStart": "Connecte-toi pour lancer un sujet à {place}.",
+    "empty": {
+      "titleCategory": "Aucun sujet {category} à {place} pour l'instant",
+      "title": "Aucun sujet à {place} pour l'instant",
+      "body": "Lance la première conversation — pose une question, partage une reco ou propose une idée."
+    },
+    "activeNow": "actifs en ce moment",
+    "replies": "{count, plural, one {# réponse} other {# réponses}}",
+    "trendingTags": "Tags en tendance",
+    "activeLocals": "Locaux actifs",
+    "helpfulVotes": "{count, plural, one {# vote utile} other {# votes utiles}}",
+    "composer": {
+      "title": "Nouveau sujet à {place}",
+      "titlePlaceholder": "Titre — ex. Meilleur rôti du dimanche dans le coin ?",
+      "titleAria": "Titre du sujet",
+      "bodyPlaceholder": "Donne les détails…",
+      "bodyAria": "Détail du sujet",
+      "linkPlaceholder": "Ajoute un lien (facultatif) — https://…",
+      "linkAria": "URL du lien",
+      "fetchingPreview": "Récupération de l'aperçu du lien…",
+      "postFailed": "Impossible de publier ton sujet.",
+      "posting": "Publication…",
+      "post": "Publier le sujet",
+      "cancel": "Annuler"
+    }
+  },
+  "townHallTopic": {
+    "townHall": "Place du village",
+    "loadFailed": "Impossible de charger ce sujet.",
+    "notFoundTitle": "Sujet introuvable",
+    "notFoundBody": "Il a peut-être été supprimé, ou le lien est erroné.",
+    "deleteTopicConfirm": "Supprimer ce sujet ?",
+    "deleteReplyConfirm": "Supprimer cette réponse ?",
+    "replies": "{count, plural, =0 {Aucune réponse pour l'instant} one {# réponse} other {# réponses}}",
+    "signInToReply": "Connecte-toi pour rejoindre la conversation.",
+    "owner": {
+      "deleting": "Suppression…",
+      "yesDelete": "Oui, supprimer",
+      "cancel": "Annuler",
+      "edit": "Modifier",
+      "delete": "Supprimer"
+    },
+    "editor": {
+      "titleAria": "Titre du sujet",
+      "bodyAria": "Détail du sujet",
+      "replyAria": "Modifier la réponse",
+      "saveFailed": "Impossible d'enregistrer tes modifications.",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "composer": {
+      "placeholder": "Ajoute une réponse…",
+      "aria": "Ta réponse",
+      "postFailed": "Impossible de publier ta réponse.",
+      "posting": "Publication…",
+      "post": "Publier la réponse"
+    },
+    "report": {
+      "thanks": "Merci — un modérateur va y jeter un œil.",
+      "reporting": "Signalement…",
+      "cta": "Signaler ce sujet"
+    }
+  },
+  "tagFeed": {
+    "kicker": "Hashtag",
+    "postCount": "{count, plural, one {# publication} other {# publications}} sur tout Roam",
+    "loadFailed": "Impossible de charger #{tag} pour le moment.",
+    "emptyTitle": "Rien avec #{tag} pour l'instant",
+    "emptyBody": "Utilise #{tag} dans un sujet de la Place du village ou une publication de mur et ça s'affichera ici.",
+    "sections": {
+      "townHall": "Discussion sur la Place du village",
+      "businesses": "Des commerces locaux",
+      "locals": "Des gens du coin"
+    },
+    "replies": "{count, plural, one {# réponse} other {# réponses}}",
+    "venueUpdate": "{venue} — actu",
+    "localUpdate": "Actu locale",
+    "aLocal": "Quelqu'un du coin",
+    "viewPost": "Voir la publication →"
+  },
+  "topicUpvote": {
+    "upvote": "Voter",
+    "removeUpvote": "Retirer le vote",
+    "signInToUpvote": "Connecte-toi pour voter"
+  },
+  "linkPreviewCard": {
+    "link": "lien",
+    "removeLink": "Retirer le lien"
+  },
+  "profileWall": {
+    "loadFailed": "Impossible de charger ce profil.",
+    "notFoundTitle": "Profil introuvable",
+    "notFoundBody": "Ce compte a peut-être été supprimé, ou le lien est erroné.",
+    "done": "Terminé",
+    "empty": {
+      "ownerTitle": "Ton mur est calme",
+      "visitorTitle": "Un mur bien calme",
+      "ownerBody": "Partage ta première publication, ou abonne-toi à quelques lieux et amis pour remplir ton fil.",
+      "visitorBody": "{name} n'a encore rien publié.",
+      "thisUser": "Cette personne"
+    },
+    "header": {
+      "yourCoverPhoto": "Ta photo de couverture",
+      "roamMember": "Membre Roam",
+      "aRoamMember": "Un membre Roam",
+      "close": "Fermer",
+      "editProfile": "Modifier le profil",
+      "tabs": {
+        "wall": "Mur",
+        "friends": "Amis",
+        "following": "Abonnements",
+        "plans": "Sorties",
+        "orders": "Commandes",
+        "notifications": "Notifications",
+        "businessDashboard": "Espace pro",
+        "settings": "Paramètres"
+      }
+    },
+    "stats": {
+      "friends": "Amis",
+      "following": "Abonnements",
+      "plans": "Sorties"
+    },
+    "composer": {
+      "maxItems": "Tu peux ajouter jusqu'à {max} éléments.",
+      "uploadingProgress": "Envoi de {current} sur {total}…",
+      "uploadImageFailed": "Impossible d'envoyer cette image.",
+      "uploadVideoFailed": "Impossible d'envoyer cette vidéo.",
+      "postFailed": "Impossible de publier.",
+      "placeholder": "Partage un truc avec les gens du coin…",
+      "writeAria": "Écrire une publication",
+      "moveEarlier": "Avancer",
+      "moveLater": "Reculer",
+      "removeMedia": "Retirer le média",
+      "removeImage": "Retirer l'image",
+      "uploading": "Envoi…",
+      "addPhoto": "＋ Photo",
+      "addPhotoCount": "＋ Photo ({count}/{max})",
+      "addVideo": "＋ Vidéo",
+      "posting": "Publication…",
+      "post": "Publier"
+    },
+    "post": {
+      "deleteConfirm": "Supprimer ?",
+      "deleting": "Suppression…",
+      "yes": "Oui",
+      "no": "Non",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "editPost": "Modifier la publication",
+      "deletePost": "Supprimer la publication",
+      "comments": "{count, plural, one {# commentaire} other {# commentaires}}",
+      "shareTitle": "{name} sur Roam"
+    },
+    "editor": {
+      "saveFailed": "Impossible d'enregistrer tes modifications.",
+      "editPostAria": "Modifier la publication",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "like": {
+      "unlike": "Je n'aime plus",
+      "like": "J'aime",
+      "signInToLike": "Connecte-toi pour aimer"
+    },
+    "comments": {
+      "placeholder": "Ajoute un commentaire…",
+      "addAria": "Ajouter un commentaire",
+      "send": "Envoyer",
+      "signInToInteract": "<link>Connecte-toi</link> pour aimer et commenter."
+    },
+    "comment": {
+      "editAria": "Modifier le commentaire",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "deleteConfirm": "Supprimer ?",
+      "yes": "Oui",
+      "no": "Non",
+      "edit": "Modifier",
+      "delete": "Supprimer"
+    }
+  },
+  "feedList": {
+    "filters": {
+      "all": "Tout",
+      "offer": "Offres",
+      "event": "Événements",
+      "news": "Actus"
+    },
+    "loadFailed": "Impossible de charger le fil.",
+    "noFilteredPosts": {
+      "all": "Aucune publication ici pour l'instant.",
+      "offer": "Aucune offre ici pour l'instant.",
+      "event": "Aucun événement ici pour l'instant.",
+      "news": "Aucune actu ici pour l'instant."
+    },
+    "empty": {
+      "title": "Le fil de {placeName} démarre tout juste",
+      "body": "Quand les lieux d'ici publieront actus, offres et événements, ça apparaîtra dans ce fil. En attendant, explore les alentours — et si tu gères un endroit à {placeName}, le revendiquer te permet de publier pour les gens tout près."
+    },
+    "errorTitle": "Impossible de charger le fil"
+  },
+  "postDetail": {
+    "kind": {
+      "news": "actu",
+      "offer": "offre",
+      "event": "événement"
+    },
+    "when": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "daysAgo": "{count, plural, one {Il y a # jour} other {Il y a # jours}}"
+    },
+    "postedWhen": "Publié · {when}",
+    "posted": "Publié",
+    "redeemOffer": "Utiliser l'offre",
+    "shareTitleFallback": "Une publication sur Roam",
+    "viewVenue": "Voir le lieu",
+    "screen": {
+      "back": "Fil",
+      "loadFailed": "Impossible de charger cette publication.",
+      "notFoundTitle": "Publication introuvable",
+      "notFoundBody": "Elle a peut-être été supprimée, ou le lien est erroné."
+    }
+  },
+  "wallPostScreen": {
+    "loadFailed": "Impossible de charger cette publication.",
+    "profile": "Profil",
+    "notFoundTitle": "Publication introuvable",
+    "notFoundBody": "Elle a peut-être été supprimée, ou le lien est erroné."
+  },
+  "threadDetail": {
+    "roamMember": "Membre Roam",
+    "directChat": "Discussion privée",
+    "untitledGroup": "Groupe sans nom",
+    "someone": "Quelqu'un",
+    "youLower": "toi",
+    "you": "Toi",
+    "planChat": "Discussion de sortie",
+    "people": "{count, plural, one {# personne} other {# personnes}}",
+    "chats": "Discussions",
+    "openChatInfo": "Ouvrir les infos de la discussion",
+    "kind": {
+      "plan": "Sortie",
+      "group": "Groupe",
+      "direct": "Privée"
+    },
+    "meetupBar": {
+      "voting": "Rendez-vous · vote ouvert",
+      "winner": "Rendez-vous · lieu choisi",
+      "open": "Ouvrir"
+    },
+    "backToChat": "Retour à la discussion",
+    "createdWhen": "Créée {when}",
+    "viewThePlan": "Voir la sortie",
+    "addFriend": "Ajouter un ami",
+    "done": "Terminé",
+    "noFriendsToAdd": "Pas encore d'amis à ajouter. Ajoute des amis depuis leur mur, puis invite-les ici.",
+    "allFriendsHere": "Tous tes amis sont déjà dans cette discussion.",
+    "add": "Ajouter",
+    "addSomeone": "Ajouter quelqu'un",
+    "groupNameAria": "Nom du groupe",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "renameChat": "Renommer la discussion",
+    "leaveConfirm": "Quitter cette discussion ?",
+    "leaving": "Départ…",
+    "yesLeave": "Oui, quitter",
+    "leaveChat": "Quitter la discussion",
+    "noMessages": "Aucun message pour l'instant — dis un truc pour lancer la discussion.",
+    "composerPlaceholder": "Écris un message…",
+    "sending": "Envoi…",
+    "send": "Envoyer",
+    "editMessageAria": "Modifier le message",
+    "deleteConfirm": "Supprimer ?",
+    "yes": "Oui",
+    "no": "Non",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "day": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier"
+    },
+    "when": {
+      "today": "aujourd'hui",
+      "yesterday": "hier",
+      "daysAgo": "{count, plural, one {il y a # jour} other {il y a # jours}}"
+    },
+    "signedOut": {
+      "title": "Connecte-toi pour voir cette discussion",
+      "body": "Les discussions sont privées, réservées à leurs membres."
+    },
+    "backToChats": "Retour aux Discussions",
+    "notFound": {
+      "title": "Discussion introuvable",
+      "body": "Cette discussion a peut-être été supprimée, ou tu n'y as pas accès."
+    },
+    "errorTitle": "Impossible de charger cette discussion",
+    "errors": {
+      "loadChat": "Impossible de charger cette discussion.",
+      "addPerson": "Impossible d'ajouter cette personne.",
+      "loadMessages": "Impossible de charger les messages.",
+      "emptyMessage": "Écris un message à envoyer.",
+      "send": "Impossible d'envoyer ton message.",
+      "share": "Impossible de partager."
+    }
+  },
+  "threadList": {
+    "title": "Discussions",
+    "cancel": "Annuler",
+    "new": "＋ Nouvelle",
+    "removePerson": "Retirer {name}",
+    "groupNamePlaceholder": "Nom du groupe — ex. Sortie du vendredi soir",
+    "groupNameAria": "Nom du groupe",
+    "starting": "Lancement…",
+    "messagePerson": "Écrire à {name}",
+    "createGroup": "Créer le groupe · {count}",
+    "pickHint": "Choisis une personne pour une discussion privée, ou plusieurs pour un groupe.",
+    "kindLabel": {
+      "plan": "Discussion de sortie",
+      "group": "Groupe",
+      "direct": "Privée"
+    },
+    "fallback": {
+      "plan": "Discussion de sortie",
+      "group": "Groupe sans nom",
+      "direct": "Discussion privée"
+    },
+    "preview": {
+      "noMessages": "Aucun message pour l'instant",
+      "you": "Toi : {text}",
+      "message": "Message",
+      "sharedPlace": "A partagé un lieu",
+      "sharedPlan": "A partagé une sortie",
+      "sharedContact": "A partagé un contact",
+      "photo": "Photo",
+      "poll": "Sondage"
+    },
+    "unreadAria": "{count} non lus",
+    "when": {
+      "today": "aujourd'hui",
+      "yesterday": "hier",
+      "daysAgo": "{count, plural, one {il y a # jour} other {il y a # jours}}"
+    },
+    "signedOutIntro": "Tes discussions sont privées. Connecte-toi pour les voir et en lancer de nouvelles.",
+    "empty": {
+      "title": "Aucune discussion pour l'instant",
+      "body": "Appuie sur “Nouvelle discussion”, puis cherche quelqu'un — choisis une personne pour un message privé, ou plusieurs pour un groupe. Tu peux aussi écrire à un ami depuis son profil, ou ouvrir une sortie pour discuter avec tout le monde."
+    },
+    "errorTitle": "Impossible de charger tes discussions",
+    "errors": {
+      "load": "Impossible de charger tes discussions.",
+      "groupName": "Donne un nom à ton groupe.",
+      "start": "Impossible de lancer cette discussion."
+    }
+  },
+  "chatShareMenu": {
+    "shareSomethingAria": "Partager quelque chose",
+    "shareTitle": "Partage un lieu, une sortie, une personne ou une photo",
+    "sharePlace": "Partager un lieu",
+    "sharePlan": "Partager une sortie",
+    "sharePerson": "Partager une personne",
+    "poll": "Sondage",
+    "photo": "Photo",
+    "createPollTitle": "Créer un sondage",
+    "close": "Fermer",
+    "venuesLoading": "Chargement des lieux près de {place}…",
+    "venuesLoadFailed": "Impossible de charger les lieux.",
+    "venuesEmpty": "Aucun lieu près de {place} pour l'instant.",
+    "plansLoading": "Chargement de tes sorties…",
+    "plansLoadFailed": "Impossible de charger tes sorties.",
+    "plansEmpty": "Tu n'as pas encore de sorties. Crées-en une depuis l'onglet Sorties, puis partage-la ici.",
+    "roamMember": "Membre Roam",
+    "friendsLoading": "Chargement des amis…",
+    "friendsLoadFailed": "Impossible de charger tes amis.",
+    "friendsEmpty": "Pas encore d'amis. Ajoute des amis depuis leur mur, puis partage-les ici.",
+    "questionPlaceholder": "Pose une question…",
+    "questionAria": "Question du sondage",
+    "optionN": "Option {n}",
+    "removeOption": "Retirer l'option",
+    "addOption": "+ Ajouter une option",
+    "allowMultiple": "Autoriser plusieurs réponses",
+    "createPoll": "Créer le sondage",
+    "errors": {
+      "uploadPhoto": "Impossible d'envoyer cette photo."
+    }
+  },
+  "chatCards": {
+    "aPlace": "Un lieu",
+    "viewVenue": "Voir le lieu",
+    "aPlan": "Une sortie",
+    "viewPlan": "Voir la sortie",
+    "someone": "Quelqu'un",
+    "viewProfile": "Voir le profil",
+    "photoUnavailable": "Photo indisponible",
+    "sharedPhotoAlt": "Photo partagée",
+    "unsupportedMessage": "Message non pris en charge"
+  },
+  "chatPoll": {
+    "closed": "Sondage clos",
+    "selectMulti": "Choisis une ou plusieurs réponses",
+    "selectOne": "Choisis une réponse",
+    "votes": "{count, plural, one {# vote} other {# votes}}",
+    "closePoll": "Clore le sondage",
+    "roamMember": "Membre Roam"
+  },
+  "chatShell": {
+    "emptyTitle": "Choisis une conversation",
+    "emptyBody": "Choisis une discussion à gauche, ou lances-en une nouvelle."
+  },
+  "messageButton": {
+    "message": "Message",
+    "opening": "Ouverture…"
+  },
+  "planDetail": {
+    "roamMember": "Membre Roam",
+    "back": "Sorties",
+    "signedOutIntro": "Connecte-toi pour voir la sortie complète et participer.",
+    "notMemberBody": "Tu ne fais pas encore partie de cette sortie — demande à la personne qui l'a partagée de t'inviter, et elle apparaîtra dans tes <plansLink>Sorties</plansLink>.",
+    "notFound": {
+      "title": "Sortie introuvable",
+      "body": "Elle a peut-être été supprimée, ou tu n'y as pas accès."
+    },
+    "opening": "Ouverture…",
+    "groupChat": "Discussion de groupe",
+    "edit": "Modifier",
+    "venues": "{count, plural, one {# lieu} other {# lieux}}",
+    "emptyVenues": "Aucun lieu pour l'instant. Ouvre n'importe quel lieu et appuie sur <strong>＋ Ajouter à une sortie</strong> pour l'ajouter ici.",
+    "findVenues": "Trouver des lieux",
+    "removeFromPlanTitle": "Retirer de la sortie",
+    "remove": "Retirer",
+    "places": "{count, plural, one {# endroit} other {# endroits}}",
+    "going": "{count, plural, one {# partant} other {# partants}}",
+    "uploading": "Envoi…",
+    "change": "Changer",
+    "addImage": "＋ Ajouter une image",
+    "tapToAddHeader": "Appuie pour ajouter une image de couverture",
+    "changeHeaderAria": "Changer l'image de couverture",
+    "addHeaderAria": "Ajouter une image de couverture",
+    "cropTitle": "Positionne la couverture de ta sortie",
+    "removeImage": "Retirer l'image",
+    "planTitleAria": "Titre de la sortie",
+    "plannedDateAria": "Date prévue",
+    "notesAria": "Notes",
+    "notesPlaceholder": "Notes (facultatif)",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "deletePlan": "Supprimer la sortie",
+    "members": "{count, plural, one {Juste toi} other {# personnes}}",
+    "done": "Terminé",
+    "inviteFriends": "＋ Inviter des amis",
+    "host": "hôte",
+    "removeMemberAria": "Retirer {name} de la sortie",
+    "noFriendsToInvite": "Pas encore d'amis à inviter. Ajoute des amis depuis leur mur, puis invite-les ici.",
+    "allFriendsOnPlan": "Tous tes amis sont déjà sur cette sortie.",
+    "add": "Ajouter",
+    "errors": {
+      "load": "Impossible de charger cette sortie.",
+      "signInImage": "Tu dois être connecté pour ajouter une image.",
+      "upload": "Impossible d'envoyer cette image.",
+      "save": "Impossible d'enregistrer la sortie."
+    }
+  },
+  "plansList": {
+    "kicker": "Ensemble à {place}",
+    "title": "Sorties",
+    "subtitle": "Prépare une sortie, ajoute des lieux, et laisse le groupe décider où se retrouver.",
+    "newPlan": "＋ Nouvelle sortie",
+    "signedOutIntro": "Connecte-toi pour créer des sorties et y enregistrer des lieux.",
+    "noDate": "Pas encore de date",
+    "going": "{count, plural, one {# partant} other {# partants}}",
+    "venues": "{count, plural, one {# lieu} other {# lieux}}",
+    "startNewPlan": "Lancer une nouvelle sortie",
+    "startNewPlanHint": "Choisis une date, invite des amis",
+    "titlePlaceholder": "Titre de la sortie — ex. Vendredi soir entre amis",
+    "titleAria": "Titre de la sortie",
+    "dateAria": "Date prévue",
+    "notesPlaceholder": "Notes (facultatif)",
+    "notesAria": "Notes",
+    "creating": "Création…",
+    "create": "Créer la sortie",
+    "cancel": "Annuler",
+    "errors": {
+      "load": "Impossible de charger tes sorties.",
+      "create": "Impossible de créer la sortie."
+    }
+  },
+  "meetupPanel": {
+    "title": "Rendez-vous",
+    "unknownVenue": "Lieu inconnu",
+    "loading": "Chargement…",
+    "stateVoting": "Vote en cours",
+    "stateResolved": "Décidé",
+    "stateEnded": "Terminé",
+    "tie": "Égalité — change un vote pour départager.",
+    "noVenuesVoting": "Aucun lieu pour l'instant — ajoutes-en un pour lancer le vote.",
+    "noVenues": "Aucun lieu pour l'instant.",
+    "voteFor": "Voter · {venue}",
+    "meetingAt": "Rendez-vous à <strong>{venueName}</strong>.",
+    "winningVenue": "le lieu gagnant",
+    "working": "Un instant…",
+    "resolve": "Désigner un gagnant",
+    "endMeetup": "Terminer le rendez-vous",
+    "ended": "Ce rendez-vous est terminé.",
+    "addVenue": "Ajouter un lieu",
+    "venuesLoading": "Chargement des lieux près de {place}…",
+    "venuesLoadFailed": "Impossible de charger les lieux.",
+    "venuesEmpty": "Aucun lieu près de {place} pour l'instant.",
+    "done": "Terminé",
+    "startBody": "Mets quelques lieux au vote et laisse le groupe décider où se retrouver.",
+    "starting": "Lancement…",
+    "start": "Lancer un rendez-vous",
+    "errors": {
+      "load": "Impossible de charger le rendez-vous.",
+      "poll": "Impossible de charger le vote.",
+      "start": "Impossible de lancer le rendez-vous.",
+      "addVenue": "Impossible d'ajouter ce lieu.",
+      "vote": "Impossible d'enregistrer ton vote.",
+      "resolve": "Impossible de départager le rendez-vous.",
+      "end": "Impossible de terminer le rendez-vous."
+    }
+  },
+  "addToPlan": {
+    "signInTitle": "Connecte-toi pour enregistrer dans une sortie",
+    "addToPlan": "＋ Ajouter à une sortie",
+    "addToAPlan": "Ajouter à une sortie",
+    "empty": "Aucune sortie pour l'instant — crée la première ci-dessous.",
+    "added": "Ajouté ✓",
+    "add": "Ajouter",
+    "newPlanPlaceholder": "Nouvelle sortie…",
+    "newPlanAria": "Titre de la nouvelle sortie",
+    "errors": {
+      "add": "Impossible d'ajouter à cette sortie.",
+      "create": "Impossible de créer la sortie."
+    }
+  },
+  "market": {
+    "toggle": {
+      "shops": "Boutiques",
+      "marketplace": "Marketplace",
+      "aria": "Mode du marché"
+    },
+    "kicker": {
+      "shops": "Marché Roam",
+      "marketplace": "Marketplace Roam"
+    },
+    "headline": {
+      "shops": "Achète chez tes commerçants",
+      "marketplace": "Achète, vends & échange entre voisins"
+    },
+    "sub": {
+      "shops": "Produits, bons cadeaux & expériences des commerces locaux de <strong>{place}</strong>.",
+      "marketplace": "Seconde main et fait main, par de vrais gens du coin près de <strong>{place}</strong>."
+    },
+    "searchPlaceholder": {
+      "shops": "Cherche produits & boutiques locales…",
+      "marketplace": "Cherche vélos, meubles, vêtements…"
+    },
+    "searchAria": "Chercher dans le marché",
+    "sellOnRoam": "＋ Vendre sur Roam",
+    "view": {
+      "browse": "Parcourir",
+      "mine": "Tes annonces"
+    },
+    "listAnItem": "＋ Publier une annonce",
+    "signInToPost": "<link>Connecte-toi</link> pour publier une annonce — ça prend une minute.",
+    "filter": {
+      "all": "Tout",
+      "forSale": "À vendre",
+      "swap": "Échange possible",
+      "free": "Gratuit"
+    },
+    "allCategories": "Toutes les catégories",
+    "categories": {
+      "furniture": "Meubles",
+      "electronics": "Électronique",
+      "clothing": "Vêtements",
+      "kids": "Enfants",
+      "home": "Maison",
+      "garden": "Jardin",
+      "sports": "Sport",
+      "books": "Livres",
+      "vehicles": "Véhicules",
+      "other": "Autre"
+    },
+    "saved": "Enregistrés",
+    "badge": {
+      "sold": "Vendu",
+      "removed": "Retiré",
+      "free": "Gratuit",
+      "swapOk": "Échange ok",
+      "newIn": "Nouveau",
+      "forSale": "À vendre"
+    },
+    "price": {
+      "free": "Gratuit",
+      "swap": "Échange"
+    },
+    "miles": "{miles} mi",
+    "nearby": "À proximité",
+    "views": "{count, plural, one {# vue} other {# vues}}",
+    "emptyMine": "Tu n'as encore rien mis en ligne.",
+    "emptyBrowse": "Rien en vente à {place} pour l'instant — lance-toi.",
+    "markSold": "Marquer vendu",
+    "remove": "Retirer",
+    "relist": "Remettre en ligne",
+    "composer": {
+      "title": "Nouvelle annonce à {place}",
+      "modeSell": "Vendre",
+      "modeSwap": "Échange possible",
+      "modeFree": "Gratuit",
+      "titlePlaceholder": "Qu'est-ce que tu proposes ?",
+      "titleAria": "Titre",
+      "pricePlaceholder": "Prix (£)",
+      "priceAria": "Prix",
+      "categoryAria": "Catégorie",
+      "descriptionPlaceholder": "État, taille, modalités de remise en main propre…",
+      "descriptionAria": "Description",
+      "photoRules": "Les photos doivent être en JPEG/PNG/WebP et faire moins de 10 Mo.",
+      "uploadingProgress": "Envoi de {current} sur {total}…",
+      "uploadFailed": "Échec de l'envoi : {message}",
+      "titleMin": "Donne-lui un titre (au moins 3 caractères).",
+      "priceInvalid": "Entre un prix comme 25 ou 12.50.",
+      "postFailedRetry": "Impossible de publier — réessaie.",
+      "postFailed": "Impossible de publier.",
+      "cover": "Couverture",
+      "removePhoto": "Retirer la photo",
+      "moveEarlier": "Avancer",
+      "moveLater": "Reculer",
+      "uploading": "Envoi…",
+      "addPhotos": "Ajouter des photos",
+      "posting": "Publication…",
+      "post": "Publier l'annonce",
+      "cancel": "Annuler"
+    }
+  },
+  "marketShops": {
+    "empty": "Aucune boutique de {place} n'a encore rempli ses rayons — les commerces ajoutent leurs produits depuis leur espace pro, et ils apparaîtront ici dès que c'est fait.",
+    "all": "Tout",
+    "saved": "Enregistrés",
+    "noMatches": "Aucun résultat — essaie une autre catégorie ou recherche.",
+    "badge": {
+      "soldOut": "Épuisé",
+      "giftCard": "Carte cadeau",
+      "collect": "À retirer"
+    },
+    "claimedVenue": "Lieu revendiqué",
+    "removeFromSaved": "Retirer {title} des enregistrés",
+    "saveItem": "Enregistrer {title}"
+  },
+  "listingDetail": {
+    "gone": "Cette annonce n'existe plus — elle a peut-être été vendue ou retirée. <link>Retour au Marché</link>",
+    "back": "Marché",
+    "sellerFallback": "Quelqu'un du coin",
+    "nearby": "À proximité",
+    "price": {
+      "free": "Gratuit",
+      "swap": "Échange"
+    },
+    "seller": "Vendeur",
+    "meetsIn": "remise en main propre à {place}",
+    "yourTown": "ta ville",
+    "yourListing": "Ton annonce",
+    "signInToMessage": "Connecte-toi pour envoyer un message",
+    "safetyNote": "Roam ne gère pas le paiement des annonces locales — mettez-vous d'accord en discussion et retrouvez-vous dans un lieu public. N'envoie jamais d'argent à quelqu'un que tu n'as pas rencontré.",
+    "enquiryMessage": "À propos de ton annonce “{title}” — c'est toujours dispo ? {url}",
+    "openingChat": "Ouverture de la discussion…",
+    "messageSeller": "Contacter le vendeur",
+    "reported": "Signalé — merci, on va regarder ça.",
+    "reportPrompt": "Qu'est-ce qui ne va pas avec cette annonce ? (facultatif)",
+    "reportListing": "Signaler cette annonce"
+  },
+  "venueShop": {
+    "checkoutFailed": "Impossible de lancer le paiement.",
+    "empty": "Ce lieu n'a pas encore rempli sa boutique Roam — repasse bientôt.",
+    "kind": {
+      "voucher": "Bon / service",
+      "soldOut": "Épuisé",
+      "collect": "À retirer sur place"
+    },
+    "quantityAria": "Quantité",
+    "openingCheckout": "Ouverture du paiement…",
+    "buy": "Acheter",
+    "signInToBuy": "Connecte-toi pour acheter",
+    "payoutPending": "L'achat via Roam ouvrira dès que ce lieu aura terminé la configuration de ses virements — en attendant, passe sur place ou contacte le lieu pour acheter.",
+    "paymentsNote": "Les paiements sont gérés en toute sécurité par Stripe. Les produits se retirent sur place ; les bons viennent avec un code à utiliser dans <link>tes commandes</link>."
+  },
+  "myOrders": {
+    "signedOutIntro": "Connecte-toi pour voir tes commandes.",
+    "title": "Tes commandes",
+    "placedNote": "Commande passée — elle s'affichera comme Payée ici quelques secondes après la confirmation de Stripe.",
+    "empty": "Rien pour l'instant — les boutiques des lieux se remplissent sur tout Roam. Trouve ton bonheur dans <link>Explorer</link>.",
+    "status": {
+      "pending": "En attente de paiement",
+      "paid": "Payée",
+      "collected": "Retirée",
+      "redeemed": "Utilisée",
+      "refunded": "Remboursée",
+      "canceled": "Annulée"
+    },
+    "showCode": "Montre ce code sur place pour l'utiliser :"
+  },
+  "friendsList": {
+    "fallbackName": "Quelqu'un",
+    "home": "Accueil",
+    "title": "Amis",
+    "signedOutIntro": "Connecte-toi pour voir tes amis et tes demandes.",
+    "findPeople": "Trouver des gens",
+    "searchPlaceholder": "Cherche par nom ou @pseudo",
+    "requests": "Demandes",
+    "accept": "Accepter",
+    "decline": "Refuser",
+    "empty": "Pas encore d'amis. Ouvre le mur de quelqu'un et appuie sur <strong>＋ Ajouter en ami</strong> pour vous connecter.",
+    "friendCount": "{count, plural, one {# ami} other {# amis}}"
+  },
+  "userSearch": {
+    "placeholderFriends": "Cherche parmi tes amis",
+    "placeholderEveryone": "Cherche tout le monde par nom ou @pseudo",
+    "modeFriends": "Amis",
+    "modeEveryone": "Tout le monde",
+    "noFriendsYet": "Tu n'as pas encore ajouté d'amis.",
+    "noFriendMatches": "Aucun de tes amis ne correspond à “{query}”.",
+    "searchEveryone": "Chercher tout le monde →",
+    "noResults": "Personne trouvé pour “{query}”. Essaie un autre nom ou @pseudo.",
+    "hint": "Cherche n'importe qui sur Roam par nom ou @pseudo."
+  },
+  "addFriendButton": {
+    "friends": "Amis ✓",
+    "requested": "Demande envoyée",
+    "acceptRequest": "Accepter la demande",
+    "addFriend": "＋ Ajouter en ami"
+  },
+  "following": {
+    "back": "Explorer",
+    "title": "Abonnements",
+    "intro": "T'abonner à un commerce t'inscrit à ses offres & promos exclusives. Mets-en en sourdine ci-dessous sans te désabonner — tu restes abonné, tu coupes juste les notifications.",
+    "loadFailed": "Impossible de charger tes abonnements.",
+    "signedOutIntro": "Tes abonnements sont privés. Connecte-toi pour voir les lieux que tu suis et gérer leurs notifications.",
+    "unknownVenue": "Lieu inconnu",
+    "pushUpdateFailed": "Impossible de mettre à jour les notifications.",
+    "offersPromotions": "Offres & promos",
+    "pushOnHint": "Tu seras notifié des nouvelles offres",
+    "pushOffHint": "Notifications coupées — tu restes abonné",
+    "on": "Activé",
+    "off": "Coupé",
+    "empty": {
+      "title": "Aucun abonnement pour l'instant",
+      "body": "Abonne-toi à un lieu depuis Explorer pour être prévenu quand il publie. Les lieux que tu suis s'affichent ici."
+    },
+    "errorTitle": "Impossible de charger tes abonnements"
+  },
+  "reportVenue": {
+    "cta": "Signaler ce lieu",
+    "signInToReport": "Connecte-toi pour signaler ce lieu.",
+    "detailLabel": "Qu'est-ce qui ne va pas avec ce lieu ?",
+    "detailPlaceholder": "ex. revendiqué à tort, fermé, contenu incorrect ou abusif…",
+    "sending": "Envoi…",
+    "send": "Envoyer le signalement",
+    "cancel": "Annuler",
+    "thanks": "Merci — ton signalement a été envoyé pour vérification.",
+    "submitFailed": "Impossible d'envoyer ton signalement."
+  },
+  "copyLinkButton": {
+    "share": "Partager",
+    "copied": "Copié !"
+  },
+  "venueOwnerEditor": {
+    "backToRoam": "Retour à Roam",
+    "loadFailed": "Impossible de charger ce lieu.",
+    "notFound": {
+      "title": "Lieu introuvable",
+      "body": "Ce lieu n'existe pas ou n'est plus disponible."
+    },
+    "notOwner": {
+      "title": "Tu ne gères pas ce lieu",
+      "body": "Seul le propriétaire du lieu peut le modifier. Si tu l'as revendiqué, ta demande est peut-être encore en cours d'examen."
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "audience": "Audience",
+      "posts": "Publications",
+      "offers": "Offres",
+      "shop": "Boutique",
+      "notifications": "Notifications",
+      "venue": "Lieu"
+    },
+    "header": {
+      "openNow": "Ouvert",
+      "openNowTill": "Ouvert · jusqu'à {time}",
+      "closed": "Fermé",
+      "closedOpens": "Fermé · ouvre à {time}",
+      "claimed": "Revendiqué",
+      "viewPublicPage": "Voir la page publique →"
+    },
+    "stats": {
+      "followers": "Abonnés",
+      "profileViews": "Vues du profil",
+      "offerRedemptions": "Offres utilisées",
+      "shopRevenue": "Revenus boutique",
+      "rating": "Note",
+      "newThisMonth": "+{count} ce mois-ci",
+      "noChangeThisMonth": "aucun changement ce mois-ci",
+      "viewsDelta": "{delta}% · 30 jours",
+      "viewsTrackingNew": "30 jours · suivi tout neuf",
+      "savesAllTime": "{count} enregistrements · au total",
+      "ordersAllTime": "{count, plural, one {# commande} other {# commandes}} · au total",
+      "reviews": "{count} avis",
+      "noReviews": "Pas encore d'avis"
+    },
+    "quickActions": {
+      "title": "Actions rapides",
+      "post": "Publier",
+      "offer": "Offre",
+      "push": "Push"
+    },
+    "activityCard": {
+      "title": "Activité",
+      "subtitle": "Ce que les gens du coin font avec ton commerce."
+    },
+    "paymentsCard": {
+      "title": "Paiements",
+      "subtitle": "Les virements pour tes ventes sur Roam — propulsés par Stripe."
+    },
+    "marketingCard": {
+      "title": "Assistant marketing",
+      "subtitle": "Laisse Roam rédiger des offres & publications sur mesure — tu valides tout."
+    },
+    "postsCard": {
+      "title": "Publications locales",
+      "subtitle": "Publie actus, offres et événements au nom de ton commerce. Chacune apparaît sur ta page et dans le fil d'actus local de ta ville — c'est aussi ton historique de publication."
+    },
+    "offersCard": {
+      "title": "Offres",
+      "subtitle": "Publie des offres exclusives. Les abonnés sont notifiés ; tout le monde peut les enregistrer et les utiliser sur place."
+    },
+    "offerInsightsCard": {
+      "title": "Stats des offres",
+      "subtitle": "Quelles offres plaisent le plus aux gens du coin."
+    },
+    "shopCard": {
+      "title": "Ta boutique",
+      "subtitle": "Les produits, services et bons que tu vends sur Roam. Tout ce qui est ici s'affiche dans l'onglet Boutique de ta page publique."
+    },
+    "ordersCard": {
+      "title": "Commandes",
+      "subtitle": "Les ventes arrivent ici — marque-les retirées ou utilisées sur place, ou rembourse."
+    },
+    "notifyCard": {
+      "title": "Envoyer une notification",
+      "subtitle": "Écris dans la boîte de tes abonnés — tout le monde, ou une seule personne."
+    },
+    "pushHistoryCard": {
+      "title": "Historique des push",
+      "subtitle": "Toutes les actus envoyées, de la plus récente à la plus ancienne."
+    },
+    "photosCard": {
+      "title": "Photos",
+      "subtitle": "Ajoute les tiennes — elles passent avant les photos de sources publiques. Choisis une couverture et réorganise."
+    },
+    "detailsCard": {
+      "title": "Infos",
+      "subtitle": "Une description et les liens utiles — menu, réservation, site web."
+    },
+    "hoursCard": {
+      "title": "Horaires d'ouverture",
+      "subtitle": "Indique quand tu es ouvert — ça alimente le statut “Ouvert” en direct sur ta page."
+    },
+    "nextBestAction": {
+      "kicker": "Prochaine étape",
+      "titleNoFollowers": "Gagne tes premiers abonnés — publie une actu locale",
+      "titleFollowers": "Tes abonnés t'écoutent — partage l'offre de la semaine",
+      "subNoFollowers": "Les publications apparaissent dans le fil de ta ville, là où les gens du coin découvrent des commerces comme le tien.",
+      "subFollowers": "{followers} locaux te suivent.",
+      "subFollowersCredits": "{followers} locaux te suivent — et tu as {credits, plural, one {# crédit push} other {# crédits push}} pour les notifier.",
+      "writePost": "Écrire une publication",
+      "createOffer": "Créer une offre"
+    },
+    "performance": {
+      "title": "Performance",
+      "subtitle": "Vues du profil et nouveaux abonnés, sur les {days} derniers jours.",
+      "seg30": "30j",
+      "seg90": "90j",
+      "emptyChart": "Le suivi des vues est actif — dès que les gens du coin ouvriront ta page, la courbe se dessinera ici.",
+      "chartAria": "Vues quotidiennes du profil, avec un pic à {peak}",
+      "viewsLegend": "Vues du profil · {count}",
+      "followersLegend": "Nouveaux abonnés · {count} (6 semaines)"
+    },
+    "recentPosts": {
+      "title": "Publications récentes",
+      "subtitle": "Les performances de tes dernières actus.",
+      "allPosts": "Toutes les publications",
+      "empty": "Rien de publié pour l'instant — ta première actu locale s'affichera ici et dans le fil de ta ville.",
+      "untitled": "Actu"
+    },
+    "audience": {
+      "yourAudienceTitle": "Ton audience",
+      "yourAudienceSubtitle": "Qui te suit, en agrégé — jamais des personnes individuelles.",
+      "followers": "Abonnés",
+      "newSub": "▲ {count} (30j)",
+      "engaged30": "Engagés (30j)",
+      "pushReach": "Portée push",
+      "avgWeeklyViews": "Vues hebdo moy.",
+      "growthTitle": "Croissance des abonnés",
+      "growthSubtitle": "Nouveaux abonnés nets par semaine.",
+      "newFollowersTitle": "{count, plural, one {# nouvel abonné} other {# nouveaux abonnés}}",
+      "week": "S{n}",
+      "growthEmpty": "Les barres apparaîtront quand les gens commenceront à te suivre.",
+      "ageTitle": "Âge des abonnés",
+      "ageSubtitle": "Agrégé & anonymisé — affiché seulement quand le groupe est assez grand.",
+      "ageBands": {
+        "under_18": "Moins de 18 ans",
+        "age_18_24": "18–24",
+        "age_25_34": "25–34",
+        "age_35_44": "35–44",
+        "age_45_54": "45–54",
+        "age_55_64": "55–64",
+        "age_65_plus": "65+"
+      },
+      "ageEmpty": "Pas encore assez d'abonnés ont partagé leur date de naissance pour afficher la répartition par âge (elle reste privée tant que le groupe n'est pas assez grand pour rester anonyme).",
+      "birthdayTitle": "Offre d'anniversaire",
+      "birthdaySubtitle": "Un cadeau permanent, livré automatiquement le jour J aux abonnés qui l'ont accepté. Tu vois des chiffres, jamais des noms.",
+      "birthdaysThisMonth": "{count, plural, one {<strong>#</strong> abonné inscrit fête son anniversaire ce mois-ci.} other {<strong>#</strong> abonnés inscrits fêtent leur anniversaire ce mois-ci.}}"
+    }
+  },
+  "ownerHoursEditor": {
+    "days": {
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    },
+    "copyMondayToWeekdays": "Copier lundi sur mar–ven",
+    "closed": "Fermé",
+    "sameAs": "Comme {day}",
+    "openingTimeAria": "{day} — heure d'ouverture",
+    "closingTimeAria": "{day} — heure de fermeture",
+    "to": "à",
+    "remove": "Supprimer",
+    "overnightNote": "Ferme après minuit (le lendemain).",
+    "addBreak": "+ Ajouter une pause",
+    "saving": "Enregistrement…",
+    "saveHours": "Enregistrer les horaires",
+    "reset": "Réinitialiser",
+    "clearAll": "Tout effacer",
+    "saved": "Enregistré.",
+    "errors": {
+      "addBothTimes": "Ajoute une heure d'ouverture et une heure de fermeture.",
+      "sameTimes": "L'ouverture et la fermeture ne peuvent pas être identiques.",
+      "clearFailedRetry": "Impossible d'effacer tes horaires. Réessaie.",
+      "clearFailed": "Impossible d'effacer tes horaires.",
+      "saveFailedRetry": "Impossible d'enregistrer tes horaires. Réessaie.",
+      "saveFailed": "Impossible d'enregistrer tes horaires."
+    }
+  },
+  "ownerMediaManager": {
+    "working": "Un instant…",
+    "uploadPhoto": "Ajouter une photo",
+    "noPhotos": "Aucune photo ajoutée pour l'instant.",
+    "fromPublicSources": "Issues de sources publiques ({count})",
+    "publicSourcesNote": "Celles-ci viennent d'annuaires publics et ne peuvent pas être modifiées ici. Ajoute tes propres photos ci-dessus pour les afficher en premier.",
+    "row": {
+      "cover": "Couverture",
+      "photo": "Photo",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "unsetCover": "Retirer la couverture",
+      "setCover": "Définir en couverture",
+      "remove": "Supprimer"
+    },
+    "errors": {
+      "imageType": "Choisis une image JPEG, PNG ou WebP.",
+      "imageTooLarge": "Cette image dépasse 10 Mo. Choisis un fichier plus léger.",
+      "uploadFailedWithMessage": "Échec de l'envoi : {message}",
+      "uploadedNotSaved": "Envoyée, mais impossible d'enregistrer la photo. Réessaie.",
+      "uploadFailed": "Échec de l'envoi.",
+      "reorderFailedRetry": "Impossible d'enregistrer le nouvel ordre. Réessaie.",
+      "reorderFailed": "Impossible de réorganiser.",
+      "setCoverFailedRetry": "Impossible de définir la couverture. Réessaie.",
+      "setCoverFailed": "Impossible de définir la couverture.",
+      "removeFailedRetry": "Impossible de supprimer cette photo. Réessaie.",
+      "removeFailed": "Impossible de supprimer."
+    }
+  },
+  "ownerDetailsEditor": {
+    "description": "Description",
+    "descriptionPlaceholder": "Dis aux gens ce qui rend cet endroit incontournable.",
+    "links": "Liens",
+    "linkLabelPlaceholder": "Libellé (ex. Menu)",
+    "linkLabelAria": "Libellé du lien",
+    "linkUrlPlaceholder": "https://…",
+    "linkUrlAria": "URL du lien",
+    "remove": "Supprimer",
+    "addLink": "+ Ajouter un lien",
+    "maxLinks": "C'est le maximum de {max}.",
+    "saving": "Enregistrement…",
+    "saveDetails": "Enregistrer les infos",
+    "reset": "Réinitialiser",
+    "saved": "Enregistré.",
+    "errors": {
+      "addLabel": "Ajoute un libellé.",
+      "addUrl": "Ajoute une URL.",
+      "labelTooLong": "Libellé trop long (max {max}).",
+      "urlTooLong": "URL trop longue.",
+      "httpOnly": "Utilise un lien http(s).",
+      "invalidUrl": "Ça ne ressemble pas à une URL valide.",
+      "saveFailedRetry": "Impossible d'enregistrer tes modifications. Réessaie.",
+      "saveFailed": "Impossible d'enregistrer tes modifications."
+    }
+  },
+  "venueShopManager": {
+    "addCta": "＋ Ajouter un produit ou service",
+    "removeConfirm": "Retirer “{title}” de ta boutique ?",
+    "empty": "Rien dans ta boutique pour l'instant. Ajoute ce que tu vends — bons repas, cartes cadeaux, produits, expériences à réserver — et ça s'affiche sur ta page publique. L'achat en ligne arrive bientôt.",
+    "kindService": "Service",
+    "kindProduct": "Produit",
+    "soldOut": "épuisé",
+    "inStock": "{count} en stock",
+    "statusLive": "En ligne",
+    "statusHidden": "Masqué",
+    "editAria": "Modifier {title}",
+    "hideAria": "Masquer {title}",
+    "showAria": "Afficher {title}",
+    "removeAria": "Retirer {title}",
+    "composer": {
+      "editTitle": "Modifier",
+      "newTitle": "Nouveau produit ou service",
+      "kindProduct": "Produit",
+      "kindService": "Service / bon",
+      "titlePlaceholderService": "ex. Bon dîner de 25 £",
+      "titlePlaceholderProduct": "ex. Café en grains maison, 250 g",
+      "titleAria": "Titre",
+      "descriptionPlaceholder": "Une ligne ou deux — c'est quoi, comment le retirer ou l'utiliser ?",
+      "descriptionAria": "Description",
+      "priceLabel": "Prix (£)",
+      "pricePlaceholder": "12.50",
+      "priceAria": "Prix en livres",
+      "stockLabel": "Stock (facultatif)",
+      "stockPlaceholderService": "En général vide",
+      "stockPlaceholderProduct": "ex. 20",
+      "stockAria": "Quantité en stock",
+      "changePhoto": "Changer la photo",
+      "addPhoto": "Ajouter une photo",
+      "cropTitle": "Cadre la photo de ton produit",
+      "saving": "Enregistrement…",
+      "saveChanges": "Enregistrer",
+      "addToShop": "Ajouter à la boutique",
+      "cancel": "Annuler",
+      "errors": {
+        "badImageType": "Choisis une image JPEG, PNG ou WebP.",
+        "imageTooLarge": "Cette image dépasse 10 Mo. Choisis un fichier plus léger.",
+        "uploadFailed": "Échec de l'envoi : {message}",
+        "titleMin": "Donne-lui un nom (au moins 3 caractères).",
+        "priceInvalid": "Entre un prix comme 12.50.",
+        "priceMin": "Le prix minimum est 0,50 £ (exigé pour le paiement par carte).",
+        "stockInvalid": "Le stock doit être un nombre entier (ou laisse vide).",
+        "saveFailedRetry": "Impossible d'enregistrer — réessaie.",
+        "addFailedRetry": "Impossible d'ajouter — réessaie.",
+        "saveFailed": "Impossible d'enregistrer."
+      }
+    }
+  },
+  "venueOrders": {
+    "refundConfirm": "Rembourser intégralement cette commande ? L'acheteur récupère tout.",
+    "actionFailed": "Ça n'a pas fonctionné — réessaie.",
+    "empty": "Aucune commande pour l'instant — elles arrivent ici dès que quelqu'un achète dans ta boutique.",
+    "emptyFiltered": "Rien dans cette vue.",
+    "filters": {
+      "all": "Tout",
+      "paid": "À traiter",
+      "fulfilled": "Traitées",
+      "refunded": "Remboursées"
+    },
+    "status": {
+      "pending": "en attente",
+      "paid": "payée",
+      "collected": "retirée",
+      "redeemed": "utilisée",
+      "refunded": "remboursée",
+      "canceled": "annulée"
+    },
+    "code": {
+      "placeholder": "Utiliser un code…",
+      "aria": "Code à utiliser",
+      "verify": "Vérifier & utiliser",
+      "noMatch": "Aucune commande avec ce code.",
+      "alreadyStatus": "La commande de ce code est déjà {status}.",
+      "redeemedNote": "✓ Utilisé — {title}"
+    },
+    "roamFee": "Frais Roam {fee}",
+    "codeWord": "code",
+    "markRedeemed": "Marquer utilisée",
+    "markCollected": "Marquer retirée",
+    "refund": "Rembourser"
+  },
+  "businessDashboard": {
+    "back": "Compte",
+    "title": "Pro",
+    "signedOutIntro": "Connecte-toi pour gérer les lieux que tu as revendiqués.",
+    "loadFailed": "Impossible de charger tes lieux.",
+    "statusClaimed": "Revendiqué",
+    "empty": {
+      "title": "Aucun lieu revendiqué pour l'instant",
+      "body": "Trouve ton commerce dans <link>Explorer</link>, ouvre sa page et appuie sur “Revendique-le gratuitement”. Une fois la demande approuvée, il apparaît ici, prêt à modifier.",
+      "howItWorks": "Comment ça marche →"
+    }
+  },
+  "businessLanding": {
+    "back": "Explorer",
+    "kicker": "Pour les pros",
+    "title": "Tu gères un commerce local ? Revendique-le sur Roam.",
+    "heroBody": "Les gens découvrent les lieux du coin sur Roam, gratuitement. Revendiquer ton lieu te permet de le garder exact — tes photos, horaires, description et liens — et de maîtriser ton image.",
+    "findYourBusiness": "Trouve ton commerce",
+    "yourDashboard": "Ton espace pro",
+    "alreadyClaimed": "Déjà revendiqué ? Connecte-toi",
+    "howItWorks": "Comment ça marche",
+    "steps": {
+      "find": {
+        "title": "Trouve ton lieu",
+        "body": "Il est sûrement déjà sur Roam, répertorié à partir de sources publiques. Cherche-le dans Explorer et ouvre sa page."
+      },
+      "claim": {
+        "title": "Revendique-le gratuitement",
+        "body": "Appuie sur “Revendique-le gratuitement” sur le lieu. Connecte-toi (ou crée un compte) — le même compte que pour explorer."
+      },
+      "verify": {
+        "title": "Vérifie & gère",
+        "body": "On vérifie automatiquement quand ton e-mail correspond au site web du commerce ; sinon, une rapide vérification manuelle. Ensuite, ajoute photos, horaires, description et liens."
+      }
+    },
+    "onceClaimed": "Une fois revendiqué",
+    "perks": {
+      "photos": "Ajoute et réorganise de vraies photos, choisis ta couverture",
+      "hours": "Garde tes horaires exacts (statut “ouvert” en direct)",
+      "description": "Rédige ta description et ajoute tes liens",
+      "followers": "Les abonnés sont notifiés quand tu publies (bientôt)"
+    },
+    "publicSourcesNote": "Roam répertorie les lieux à partir de sources publiques pour que les gens du coin te trouvent, revendiqué ou non — la revendication est gratuite et te donne simplement les clés de ta page."
+  },
+  "marketingSuggestions": {
+    "loadFailed": "Impossible de charger tes préférences pour le moment.",
+    "suggestionsOn": "Suggestions activées",
+    "suggestionsOff": "Suggestions désactivées",
+    "summaryOn": "On te proposera des offres et publications sur mesure — jamais publiées automatiquement, toujours à toi de les modifier d'abord.",
+    "summaryOff": "Les suggestions automatiques sont désactivées. Active-les pour recevoir des idées d'offres et de publications sur mesure.",
+    "discountCap": "Plafond de réduction {pct}%.",
+    "editPreferences": "Modifier les préférences",
+    "turnOff": "Désactiver",
+    "turnOn": "Activer",
+    "intro": "Un coup de main pour ton marketing ? Active les suggestions automatiques et on te proposera des offres et publications sur mesure — toujours à relire et modifier avant que quoi que ce soit parte. Réponds à quelques questions rapides pour les rendre pertinentes.",
+    "capLabel": "Réduction maximale que tu acceptes d'offrir : <pct>{cap}%</pct>",
+    "capAria": "Pourcentage de plafond de réduction",
+    "typesLabel": "Quels types d'offres tu ferais ? (choisis-en autant que tu veux)",
+    "notesLabel": "Quels produits ou services tu remises d'habitude ?",
+    "notesPlaceholder": "ex. plats du midi en semaine, premier café des nouveaux clients, coupes des après-midis calmes…",
+    "saving": "Enregistrement…",
+    "turnOnSuggestions": "Activer les suggestions",
+    "savePreferences": "Enregistrer les préférences",
+    "notNow": "Pas maintenant",
+    "cancel": "Annuler"
+  },
+  "offerInsights": {
+    "loadFailed": "Impossible de charger les stats pour le moment.",
+    "empty": "Pas encore de données d'offres. Publie quelques offres en indiquant leur type — dès que les gens les enregistrent et les utilisent, tu verras ici ce qui marche le mieux.",
+    "topTheme": "Tes offres <strong>{label}</strong> attirent le plus d'intérêt pour l'instant — {saves} enregistrements et {redemptions} utilisations.",
+    "offerCount": "{count, plural, one {# offre} other {# offres}}"
+  },
+  "venueNotify": {
+    "roamMember": "Membre Roam",
+    "noFollowers": "Pas encore d'abonnés — dès que des gens te suivront, tu pourras leur envoyer une notification ici (à tous ou un par un).",
+    "allFollowers": "Tous les abonnés",
+    "allFollowersCount": "Tous les abonnés ({count})",
+    "onePerson": "Une personne",
+    "to": "À",
+    "showingRecent": "Affichage de tes {count} abonnés les plus récents.",
+    "placeholderOne": "Écris un message à cet abonné…",
+    "placeholderAll": "Écris un message pour tes abonnés…",
+    "messageAria": "Message de notification",
+    "sending": "Envoi…",
+    "send": "Envoyer",
+    "sendToAll": "Envoyer à tous",
+    "sendToAllCount": "Envoyer à tous ({count})",
+    "noneNotified": "Personne n'a été notifié (aucun abonné correspondant).",
+    "sentTo": "{count, plural, one {Envoyé à # abonné.} other {Envoyé à # abonnés.}}",
+    "footer": "Arrive dans leurs notifications (la cloche). Les abonnés qui ont coupé tes offres reçoivent quand même les messages directs envoyés ici.",
+    "errors": {
+      "emptyMessage": "Écris un message à envoyer.",
+      "noRecipient": "Choisis un abonné destinataire.",
+      "sendFailed": "Impossible d'envoyer la notification."
+    }
+  },
+  "venueActivity": {
+    "someone": "Quelqu'un",
+    "yourOffer": "ton offre",
+    "quotedTitle": "“{title}”",
+    "phrase": {
+      "follow": "{who} a commencé à te suivre",
+      "offerSave": "{who} a enregistré {what}",
+      "offerRedeem": "{who} a utilisé {what}",
+      "sale": "{who} a acheté {what}",
+      "other": "{who} a interagi avec ton lieu"
+    },
+    "loadFailed": "Impossible de charger l'activité pour le moment.",
+    "unreadNew": "{count, plural, one {# nouveauté} other {# nouveautés}}",
+    "allCaughtUp": "Tout est à jour",
+    "markAllRead": "Tout marquer lu",
+    "empty": "Aucune activité pour l'instant. Dès que des gens te suivent et enregistrent tes offres, tu le verras ici."
+  },
+  "venuePayments": {
+    "notConfigured": "La vente sur Roam arrive très bientôt — le traitement des paiements n'est pas encore activé sur cet environnement.",
+    "chips": {
+      "payoutsActive": "Virements actifs",
+      "chargesEnabled": "Encaissements activés",
+      "detailsSubmitted": "Infos transmises",
+      "detailsNeeded": "Infos requises",
+      "payoutsPending": "Virements en attente"
+    },
+    "activeBody": "Tu es prêt à être payé — tout ce que tu vends est viré sur le compte bancaire connecté. L'historique des virements et tes coordonnées bancaires sont dans ton tableau de bord Stripe :",
+    "opening": "Ouverture…",
+    "manageOnStripe": "Gérer les virements sur Stripe ↗",
+    "reviewingBody": "Stripe vérifie tes informations — les virements s'activent généralement sous un jour ou deux. Repasse voir, ou termine ce qui reste :",
+    "unfinishedBody": "Ta configuration des virements n'est pas terminée. Reprends là où tu t'étais arrêté — ça prend quelques minutes :",
+    "openingStripe": "Ouverture de Stripe…",
+    "continueSetup": "Continuer la configuration",
+    "connectBody": "Connecte un compte de virement pour vendre produits, services et bons sur Roam. La configuration est gérée en toute sécurité par Stripe — Roam ne voit jamais ta pièce d'identité ni tes coordonnées bancaires.",
+    "setUp": "Configurer les virements",
+    "errors": {
+      "startFailed": "Impossible de lancer la configuration des virements.",
+      "openStripeFailed": "Impossible d'ouvrir Stripe."
+    }
+  }
+}

@@ -1,0 +1,2033 @@
+{
+  "common": {
+    "time": {
+      "justNow": "chiar acum",
+      "minutes": "{n}min",
+      "hours": "{n}h",
+      "days": "{n}z"
+    },
+    "someone": "Cineva",
+    "roamMember": "Membru Roam"
+  },
+  "categories": {
+    "foodDrink": "Mâncare și băutură",
+    "shopping": "Cumpărături",
+    "entertainment": "Atracții",
+    "transport": "Transport",
+    "business": "Afaceri",
+    "health": "Sănătate și frumusețe",
+    "lodging": "Hoteluri",
+    "civic": "Instituții",
+    "worship": "Lăcașuri de cult"
+  },
+  "offerTypes": {
+    "percent_off": "% reducere",
+    "amount_off": "Reducere fixă",
+    "two_for_one": "2 la preț de 1",
+    "bogof": "Unul cumpărat, unul gratis",
+    "free_item": "Produs gratuit",
+    "bundle": "Ofertă pachet",
+    "happy_hour": "Happy hour",
+    "loyalty": "Recompensă de fidelitate",
+    "first_time": "Ofertă pentru prima vizită",
+    "seasonal": "Sezonier / eveniment",
+    "other": "Altele"
+  },
+  "chrome": {
+    "brandHome": "Pagina principală Roam",
+    "primaryNav": "Principal",
+    "nav": {
+      "home": "Acasă",
+      "explore": "Explorează",
+      "townHall": "Piața orașului",
+      "plans": "Planuri",
+      "chat": "Chat",
+      "you": "Tu"
+    },
+    "forBusinesses": "Pentru afaceri",
+    "create": "Creează",
+    "sell": "Vinde",
+    "sellOnRoam": "Vinde pe Roam",
+    "yourOrders": "Comenzile tale",
+    "yourAccount": "Contul tău",
+    "signIn": "Conectează-te",
+    "signInIntro": "Conectează-te ca să urmărești localuri și să-ți gestionezi notificările.",
+    "close": "Închide",
+    "createMenu": {
+      "open": "Creează",
+      "close": "Închide meniul de creare",
+      "newPlan": "Plan nou",
+      "postToWall": "Postează pe peretele tău"
+    }
+  },
+  "auth": {
+    "checkEmail": "Verifică-ți emailul",
+    "resetSentBody": "Dacă există un cont pentru <strong>{email}</strong>, ți-am trimis un link de resetare a parolei. Deschide-l ca să alegi una nouă.",
+    "backToSignIn": "Înapoi la conectare",
+    "resetTitle": "Resetează-ți parola",
+    "resetBody": "Introdu emailul contului și îți trimitem un link ca să setezi o parolă nouă.",
+    "email": "Email",
+    "emailPlaceholder": "you@business.com",
+    "password": "Parolă",
+    "passwordPlaceholder": "Cel puțin 8 caractere",
+    "sendResetLink": "Trimite linkul de resetare",
+    "pleaseWait": "Te rugăm să aștepți…",
+    "confirmSentBody": "Ți-am trimis un link de confirmare la <strong>{email}</strong>. Deschide-l ca să-ți confirmi contul — revii direct aici, deja conectat.",
+    "signIn": "Conectează-te",
+    "createAccount": "Creează cont",
+    "forgotPassword": "Ți-ai uitat parola?",
+    "continueWith": "Continuă cu {provider}",
+    "or": "sau",
+    "errors": {
+      "enterEmailPassword": "Introdu emailul și o parolă.",
+      "passwordMin": "Folosește o parolă de cel puțin 8 caractere.",
+      "signInFailed": "Nu te-am putut conecta. Încearcă din nou.",
+      "generic": "Ceva n-a mers. Încearcă din nou.",
+      "startSignInFailed": "Nu am putut porni conectarea. Încearcă din nou.",
+      "enterEmailForReset": "Introdu emailul și îți trimitem un link de resetare.",
+      "invalidLogin": "Emailul sau parola nu se potrivesc.",
+      "alreadyRegistered": "Există deja un cont cu acest email — încearcă să te conectezi.",
+      "rateLimit": "Prea multe încercări. Așteaptă puțin și încearcă din nou.",
+      "fallback": "Nu am putut finaliza. Verifică datele și încearcă din nou."
+    }
+  },
+  "settings": {
+    "back": "Cont",
+    "title": "Setări",
+    "account": {
+      "title": "Cont",
+      "email": "Email",
+      "signInMethod": "Metodă de conectare",
+      "emailPassword": "Email și parolă",
+      "changePassword": "Schimbă parola",
+      "checkInbox": "Verifică-ți inboxul",
+      "sending": "Se trimite…",
+      "tryAgain": "Încearcă din nou",
+      "emailMeALink": "Trimite-mi un link pe email",
+      "editProfile": "Editează profilul"
+    },
+    "notifications": {
+      "title": "Notificări",
+      "followedVenues": "Localuri urmărite și push",
+      "manage": "Gestionează",
+      "yourNotifications": "Notificările tale"
+    },
+    "legal": {
+      "title": "Legal",
+      "terms": "Termeni și condiții",
+      "privacy": "Politica de confidențialitate",
+      "subscription": "Termenii abonamentului",
+      "guidelines": "Regulile comunității",
+      "attributions": "Atribuiri"
+    },
+    "support": {
+      "title": "Asistență",
+      "contact": "Contactează asistența",
+      "appVersion": "Versiunea aplicației"
+    },
+    "signOut": "Deconectează-te",
+    "signingOut": "Se deconectează…",
+    "signedOutIntro": "Conectează-te ca să-ți gestionezi setările contului.",
+    "danger": {
+      "title": "Zonă periculoasă",
+      "deleteAccount": "Șterge contul",
+      "deleteBody": "Îți șterge definitiv profilul, postările, planurile, chaturile și urmăririle. Nu se poate anula.",
+      "modalTitle": "Îți ștergi contul?",
+      "modalBody": "Îți elimină definitiv profilul, postările, planurile, chaturile, urmăririle și ofertele salvate. Nu se poate anula. Comentariile lăsate pe pereții altora rămân, dar fără numele tău.",
+      "typeToConfirm": "Scrie <strong>{word}</strong> pentru a confirma",
+      "deleteFailed": "Nu am putut șterge contul. Încearcă din nou.",
+      "cancel": "Anulează",
+      "deleting": "Se șterge…"
+    },
+    "language": {
+      "title": "Limbă",
+      "label": "Limba aplicației",
+      "hint": "Mai multe limbi sunt pe drum. Postările și conținutul comunității rămân în limba în care au fost scrise — browserul tău le poate traduce."
+    }
+  },
+  "profileEditor": {
+    "displayName": "Nume afișat",
+    "displayNamePlaceholder": "Numele tău",
+    "handle": {
+      "label": "Handle",
+      "placeholder": "handle",
+      "empty": "Alege un handle — e adresa web a profilului tău.",
+      "notAvailable": "Acest handle nu e disponibil.",
+      "checking": "Se verifică disponibilitatea…",
+      "available": "@{handle} e disponibil ✓",
+      "hint": "Litere mici, cifre și liniuțe de subliniere. Aceasta e adresa web a profilului tău."
+    },
+    "bio": "Bio",
+    "bioPlaceholder": "Un rând despre tine și locurile pe care le iubești.",
+    "links": "Linkuri",
+    "linkUrlPlaceholder": "URL {label}",
+    "cropAvatarTitle": "Poziționează-ți fotografia de profil",
+    "cropHeaderTitle": "Poziționează imaginea de antet",
+    "saving": "Se salvează…",
+    "saveProfile": "Salvează profilul",
+    "saved": "Salvat ✓",
+    "changeAvatarImage": "Schimbă avatarul",
+    "changeHeaderImage": "Schimbă imaginea de antet",
+    "addHeaderImage": "Adaugă o imagine de antet",
+    "uploading": "Se încarcă…",
+    "change": "Schimbă",
+    "errors": {
+      "loadFailed": "Nu am putut încărca profilul tău.",
+      "uploadFailed": "Încărcarea a eșuat.",
+      "saveFailedRetry": "Nu am putut salva profilul. Încearcă din nou.",
+      "saveFailed": "Nu am putut salva profilul."
+    }
+  },
+  "accountHub": {
+    "explore": "Explorează",
+    "title": "Contul tău",
+    "signedOutIntro": "Conectează-te ca să-ți configurezi profilul și să postezi pe peretele tău.",
+    "signOut": "Deconectează-te",
+    "signingOut": "Se deconectează…"
+  },
+  "notificationCenter": {
+    "home": "Acasă",
+    "title": "Notificări",
+    "signedOutIntro": "Conectează-te ca să-ți vezi notificările.",
+    "loadFailed": "Nu am putut încărca notificările.",
+    "empty": "Nimic încă. Când cineva îți răspunde, comentează la postările tale sau urmărește un local pe care îl deții, va apărea aici.",
+    "bellLabel": "{count, plural, =0 {Notificări} one {Notificări (# necitită)} few {Notificări (# necitite)} other {Notificări (# de necitite)}}"
+  },
+  "enableNotifications": {
+    "signedOutIntro": "Conectează-te ca să activezi notificările pe acest dispozitiv.",
+    "title": "Notificări",
+    "on": "Activat",
+    "body": "Primești o alertă pe acest dispozitiv când localurile pe care le urmărești postează ceva nou.",
+    "unsupported": "Acest browser nu acceptă notificări web.",
+    "registered": "Acest dispozitiv e înregistrat. Poți gestiona livrarea per local urmărindu-le.",
+    "enabling": "Se activează…",
+    "enable": "Activează notificările",
+    "errors": {
+      "registerFailed": "Nu am putut înregistra acest dispozitiv.",
+      "generic": "Ceva n-a mers."
+    }
+  },
+  "resetPassword": {
+    "passwordsMismatch": "Parolele nu se potrivesc.",
+    "verifying": "Se verifică linkul de resetare…",
+    "expiredTitle": "Acest link a expirat",
+    "expiredBody": "Linkul de resetare e invalid sau a fost deja folosit. Cere unul nou din ecranul de conectare.",
+    "doneTitle": "Parolă actualizată",
+    "doneBody": "Parola ta a fost schimbată și ești conectat. Poți reveni la contul tău acum.",
+    "goToAccount": "Mergi la contul tău",
+    "chooseBody": "Alege o parolă nouă pentru contul tău.",
+    "newPassword": "Parolă nouă",
+    "confirmPassword": "Confirmă parola",
+    "confirmPlaceholder": "Reintrodu parola nouă",
+    "setNewPassword": "Setează parola nouă"
+  },
+  "firstRun": {
+    "title": "Bine ai venit pe Roam",
+    "intro": "Două lucruri rapide, ca prietenii să te recunoască — și ca locurile pe care le urmărești să-ți poată trimite un cadou de ziua ta.",
+    "nameLabel": "Numele tău",
+    "namePlaceholder": "ex. Andrei M.",
+    "nameAria": "Nume afișat",
+    "dobLabel": "Data nașterii",
+    "treatsOptIn": "Trimite-mi cadouri de ziua mea de la locurile pe care le urmăresc",
+    "privacyNote": "Ziua ta de naștere e privată — afacerile nu văd niciodată data. E folosită doar pentru cadourile la care te-ai abonat. Poți schimba oricând totul din Setări.",
+    "dobInvalid": "Data nașterii nu pare corectă — verific-o și încearcă din nou.",
+    "saving": "Se salvează…",
+    "save": "Salvează",
+    "skip": "Sari peste deocamdată"
+  },
+  "birthdaySettings": {
+    "title": "Zi de naștere și oferte",
+    "yourBirthday": "Ziua ta de naștere",
+    "dobAria": "Data nașterii",
+    "treatsOptIn": "Trimite-mi cadouri de ziua mea de la locurile pe care le urmăresc",
+    "privacyNote": "Ziua ta de naștere e privată. Afacerile nu o văd niciodată — e folosită doar pentru a-ți trimite ofertele aniversare la care te-ai abonat, de la locuri pe care deja le urmărești. O poți șterge sau dezactiva oricând.",
+    "saving": "Se salvează…",
+    "save": "Salvează",
+    "saved": "Salvat ✓",
+    "saveFailed": "Nu s-a putut salva — încearcă din nou."
+  },
+  "birthdayTreats": {
+    "title": "La mulți ani! Cadouri pentru tine",
+    "fallbackTitle": "Un cadou aniversar",
+    "fallbackVenue": "Un loc pe care îl urmărești",
+    "untilDate": "până la {date}",
+    "redeemed": "Revendicat",
+    "redeem": "Revendică"
+  },
+  "pushHistory": {
+    "loadFailed": "Nu am putut încărca istoricul push acum.",
+    "empty": "Niciun push trimis încă. Când postezi o noutate și bifezi „Notifică urmăritorii”, va apărea aici.",
+    "untitledUpdate": "Noutate"
+  },
+  "authCallback": {
+    "failedTitle": "Conectarea nu s-a finalizat",
+    "failedBody": "Nu am putut termina conectarea — poate ai anulat, sau linkul a expirat. Încearcă din nou.",
+    "completing": "Se finalizează conectarea…"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Bună dimineața",
+      "afternoon": "Bună ziua",
+      "evening": "Bună seara"
+    },
+    "movingIn": "Iată ce se întâmplă în",
+    "customise": "Personalizează",
+    "quick": {
+      "newPlan": "Plan nou",
+      "startTopic": "Deschide un subiect",
+      "findVenues": "Găsește localuri",
+      "messageFriend": "Scrie unui prieten",
+      "market": "Piață",
+      "basecamp": "Basecamp"
+    },
+    "basecampLink": {
+      "title": "Basecamp",
+      "subtitle": "Toate widgeturile tale, pe mărime întreagă"
+    },
+    "widgets": {
+      "townForum": "Forumul orașului",
+      "trendingNearby": "În trend prin zonă",
+      "recentChats": "Chaturi recente",
+      "deals": "Reduceri",
+      "nearbyTransit": "Transport în apropiere",
+      "yourPlans": "Planurile tale",
+      "followedVenues": "Localuri urmărite",
+      "savedDeals": "Reduceri salvate",
+      "marketplace": "Marketplace"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "Ai ascuns toate secțiunile.",
+      "cta": "Personalizează Acasă"
+    },
+    "signIn": "Conectează-te",
+    "chatKind": {
+      "plan": "Chat de plan",
+      "group": "Grup",
+      "direct": "Direct"
+    },
+    "recentChats": {
+      "title": "Chaturi recente",
+      "allChats": "Toate chaturile",
+      "nudge": "Conectează-te ca să-ți vezi conversațiile și planurile cu oameni din apropiere.",
+      "error": "Nu am putut încărca chaturile acum.",
+      "empty": "Niciun chat încă. Scrie-i unui prieten sau deschide un plan ca să pornești unul — va apărea aici.",
+      "people": "{count, plural, one {# persoană} few {# persoane} other {# de persoane}}"
+    },
+    "trending": {
+      "title": "În trend prin zonă",
+      "explore": "Explorează",
+      "error": "Nu am putut încărca localurile din apropiere acum.",
+      "empty": "Niciun local găsit lângă {place} încă.",
+      "venueFallback": "Local"
+    },
+    "townForum": {
+      "title": "Forumul orașului",
+      "townHall": "Piața orașului",
+      "error": "Nu am putut încărca forumul acum.",
+      "empty": "Niciun subiect în {place} încă.",
+      "startOne": "Deschide unul →",
+      "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}"
+    },
+    "savedDeals": {
+      "title": "Reduceri salvate",
+      "empty": "Reducerile pe care le salvezi vor apărea aici, gata de revendicat în local."
+    },
+    "followed": {
+      "title": "Localuri urmărite",
+      "manage": "Gestionează",
+      "nudge": "Urmărește o afacere ca să-i deblochezi ofertele exclusive de fidelitate — vor apărea aici, doar pentru urmăritori.",
+      "error": "Nu am putut încărca localurile urmărite acum.",
+      "empty": "Nu urmărești nicio afacere încă. Urmărește una ca să-i primești aici ofertele exclusive de fidelitate.",
+      "findCta": "Găsește afaceri de urmărit",
+      "venueFallback": "Local",
+      "exclusiveDeals": "Oferte exclusive pentru tine",
+      "noDeals": "Nicio ofertă activă de la localurile tale acum — o afișăm aici imediat ce unul publică o ofertă de fidelitate."
+    },
+    "plans": {
+      "title": "Planurile tale",
+      "allPlans": "Toate planurile",
+      "nudge": "Fă-ți planuri — o seară în oraș, un weekend, o listă de încercat — și salvează localuri în ele.",
+      "error": "Nu am putut încărca planurile acum.",
+      "empty": "Niciun plan încă — pornește unul și adaugă localuri de oriunde din Roam.",
+      "newPlanCta": "＋ Plan nou",
+      "noDate": "Fără dată încă",
+      "venues": "{count, plural, one {# local} few {# localuri} other {# de localuri}}"
+    },
+    "market": {
+      "title": "Piața {place}",
+      "body": "Cumpără, vinde și fă schimb cu oameni din orașul tău — listează ceva într-un minut, stabilește în chat, întâlnește-te local.",
+      "open": "Deschide Piața",
+      "browse": "Răsfoiește"
+    }
+  },
+  "homeFeed": {
+    "title": "Feedul tău local",
+    "tabs": {
+      "forYou": "Pentru tine",
+      "following": "Urmărești",
+      "nearby": "În apropiere"
+    },
+    "error": "Nu am putut încărca feedul acum.",
+    "followingNudge": "Conectează-te și urmărește-ți afacerile locale preferate — noutățile, ofertele și evenimentele lor ajung aici.",
+    "signIn": "Conectează-te",
+    "emptyFollowing": "Nicio postare de la localurile urmărite încă — urmărește câteva din Explorează și noutățile lor vor ajunge aici.",
+    "emptyLocal": "Nu se întâmplă nimic în {place} deocamdată — revino curând, sau fii tu cel care pornește ceva în Piața orașului.",
+    "exploreVenues": "Explorează localuri",
+    "openTownHall": "Deschide Piața orașului",
+    "caughtUp": "Ești la zi",
+    "exploreAround": "Explorează ce e în jurul tău",
+    "kind": {
+      "news": "Noutăți",
+      "offer": "Ofertă",
+      "event": "Eveniment"
+    },
+    "aLocalBusiness": "O afacere locală",
+    "viewPost": "Vezi postarea",
+    "townHall": "Piața orașului",
+    "asked": "{author} a întrebat",
+    "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}"
+  },
+  "homeCustomize": {
+    "title": "Personalizează Acasă",
+    "subtitle": "Trage de mâner ca să reordonezi, sau ascunde secțiunile afișate.",
+    "done": "Gata",
+    "reorderItem": "Reordonează {label}",
+    "showItem": "Arată {label}",
+    "hideItem": "Ascunde {label}",
+    "reset": "Revino la setările implicite"
+  },
+  "basecamp": {
+    "title": "Basecamp",
+    "intro": "Roam-ul tău, cum vrei tu — totul în",
+    "customise": "Personalizează",
+    "nav": {
+      "explore": "Explorează",
+      "townHall": "Piața orașului",
+      "plans": "Planuri",
+      "chat": "Chat",
+      "deals": "Reduceri",
+      "market": "Piață",
+      "orders": "Comenzi",
+      "friends": "Prieteni"
+    },
+    "emptyHiddenAll": "Ai ascuns toate widgeturile.",
+    "customiseCta": "Personalizează Basecamp"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "Răsfoiești {name} — schimbă locul",
+    "searchPlaceholder": "Caută oraș sau cod poștal…",
+    "searchAria": "Caută un loc",
+    "searching": "Se caută…",
+    "searchError": "Nu am putut căuta acum. Încearcă din nou.",
+    "noMatches": "Niciun rezultat pentru „{query}”.",
+    "saveCurrent": "Salvează „{name}”",
+    "savedSection": "Salvate",
+    "suggestedSection": "Sugerate",
+    "savePlace": "Salvează {name}",
+    "unsavePlace": "Elimină {name} din salvate",
+    "savedTitle": "Salvate",
+    "saveThisPlace": "Salvează acest loc",
+    "removePlace": "Elimină {name}",
+    "removeTitle": "Elimină",
+    "locating": "Se localizează…",
+    "useMyLocation": "Folosește locația mea",
+    "nearMe": "Lângă mine",
+    "yourLocation": "Locația ta",
+    "geoError": "Nu ți-am putut afla locația. Alege un loc în schimb."
+  },
+  "suggested": {
+    "title": "Sugerate pentru tine",
+    "intro": "Idei de oferte și postări personalizate — revizuiește și editează fiecare înainte să fie publicată.",
+    "published": "Publicată — o găsești în Oferte mai sus, ca s-o ajustezi sau să-i adaugi un cod.",
+    "offerTitleAria": "Titlul ofertei",
+    "discountAria": "Procent de reducere",
+    "discountPlaceholder": "Reducere %",
+    "offerDetailsAria": "Detaliile ofertei",
+    "publishing": "Se publică…",
+    "publishOffer": "Publică oferta",
+    "cancel": "Anulează",
+    "useThisOffer": "Folosește această ofertă",
+    "postCopyAria": "Textul postării",
+    "copied": "Copiat ✓",
+    "copyCta": "Copiază — lipește în Postări locale"
+  },
+  "nearbyDepartures": {
+    "title": "Plecări în apropiere",
+    "loading": "Se încarcă plecările din apropiere…",
+    "due": "Sosește",
+    "mins": "{mins} min",
+    "mAway": "la {distance} m",
+    "realtimeWhereAvailable": "În timp real unde e disponibil",
+    "noDepartures": "Nicio plecare în perioada următoare.",
+    "minLate": "{mins} min întârziere",
+    "minEarly": "{mins} min mai devreme",
+    "onTime": "La timp (live)",
+    "live": "Live",
+    "comingSoon": {
+      "title": "Transport local",
+      "badge": "În curând",
+      "body": "Plecările live de autobuz și tren pentru {place} sunt pe drum — cu date de la Translink, în toată Irlanda."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "Setează un cadou și îl livrăm automat urmăritorilor de ziua lor — celor care s-au abonat. Nu vezi niciodată a cui zi e, doar câte au fost trimise.",
+    "sentThisMonth": "Trimise luna aceasta",
+    "redeemedThisMonth": "Revendicate luna aceasta",
+    "sentAllTime": "Trimise în total",
+    "redeemedAllTime": "Revendicate în total",
+    "redeemedPct": "{pct}% dintre cadourile aniversare au fost revendicate.",
+    "theTreat": "Cadoul",
+    "titlePlaceholder": "ex. O cafea gratuită de ziua ta",
+    "titleAria": "Titlul cadoului aniversar",
+    "detailsLabel": "Detalii (opțional)",
+    "detailsPlaceholder": "Arată acest mesaj în local de ziua ta pentru a-l revendica.",
+    "detailsAria": "Detaliile cadoului aniversar",
+    "saving": "Se salvează…",
+    "save": "Salvează",
+    "turnOff": "Dezactivează",
+    "turnOn": "Activează",
+    "live": "● Activ",
+    "off": "Oprit",
+    "saved": "Salvat ✓"
+  },
+  "explore": {
+    "browse": "Răsfoiește",
+    "feed": "Feed",
+    "all": "Toate",
+    "market": "Piață",
+    "categoriesLabel": "Categorii",
+    "searchPlaceholder": "Caută localuri în {placeName}…",
+    "searchAria": "Caută localuri",
+    "showMap": "Arată harta",
+    "hideMap": "Ascunde harta",
+    "loadMore": "Încarcă mai multe · încă {count}",
+    "venuesInView": "{count, plural, one {# local afișat} few {# localuri afișate} other {# de localuri afișate}}",
+    "openInMaps": "Deschide în Maps",
+    "openPlaceInMaps": "Deschide {placeName} în Maps",
+    "discovering": "Descoperim locuri în {placeName}…",
+    "gate": {
+      "title": "Creează un cont gratuit ca să explorezi în continuare",
+      "body": "Ai explorat {limit} locații căutate în această sesiune — limita gratuită. Locația ta rămâne gratuită; înscrie-te ca să deblochezi <strong>{placeName}</strong> și orice alt loc, să salvezi locuri și să urmărești localurile care îți plac."
+    },
+    "empty": {
+      "title": "Nimic aici încă",
+      "body": "Niciun local nu se potrivește. Încearcă altă categorie sau alt loc, sau revino pe măsură ce Roam crește în zona ta."
+    },
+    "errors": {
+      "loadFailed": "Localurile nu s-au putut încărca.",
+      "title": "Nu am putut încărca localurile"
+    }
+  },
+  "venueDetail": {
+    "back": "Explorează",
+    "manageVenue": "Gestionează acest local",
+    "tabsAria": "Secțiunile localului",
+    "tabs": {
+      "posts": "Postări",
+      "offers": "Oferte",
+      "gallery": "Galerie",
+      "details": "Detalii",
+      "shop": "Magazin"
+    },
+    "posts": {
+      "empty": "Nicio postare încă — când acest local publică noutăți, oferte sau evenimente, vor apărea aici."
+    },
+    "offers": {
+      "empty": "Nicio ofertă activă acum — revino, sau urmărește-l ca să fii anunțat."
+    },
+    "gallery": {
+      "empty": "Nicio fotografie încă."
+    },
+    "fromPublicSources": "Din surse publice",
+    "claim": {
+      "intro": "Revendicarea e gratuită. Conectează-te sau creează un cont și acest local e al tău de gestionat imediat.",
+      "ownerTitle": "E afacerea ta?",
+      "ownerBody": "Revendic-o gratuit ca să adaugi fotografii, program, meniul și linkurile tale, și să publici oferte și evenimente pentru oamenii din apropiere — durează cam 90 de secunde și poți începe editarea imediat.",
+      "claiming": "Se revendică…",
+      "tryAgain": "Încearcă din nou",
+      "cta": "Revendică acest local",
+      "knowTitle": "Cunoști acest loc?",
+      "knowBody": "Ajută-i pe ceilalți localnici — sugerează o fotografie, programul, sau o corectură.",
+      "suggestEditSoon": "Sugerarea de modificări vine în curând",
+      "suggestEdit": "Sugerează o modificare",
+      "submittedTitle": "Revendicare trimisă",
+      "submittedBody": "Mulțumim — revendicarea ta e acum la noi pentru verificare. Odată aprobată, vei putea gestiona acest local, adăuga fotografii și detalii, și posta pentru oamenii din apropiere.",
+      "underReviewTitle": "Revendicare în verificare",
+      "underReviewBody": "O revendicare pentru acest local a fost trimisă și e în curs de verificare. Revino curând — odată aprobată, proprietarul localului îi poate ține detaliile la zi."
+    },
+    "details": {
+      "title": "Detalii",
+      "address": "Adresă",
+      "locality": "Localitate",
+      "region": "Regiune",
+      "phone": "Telefon",
+      "website": "Site web"
+    },
+    "goodToKnow": {
+      "title": "Bine de știut",
+      "perPerson": "de persoană",
+      "upTo": "Până la {price}",
+      "groups": {
+        "serviceOptions": "Opțiuni de servire",
+        "dining": "Masă",
+        "amenities": "Facilități",
+        "payments": "Plăți",
+        "parking": "Parcare",
+        "accessibility": "Accesibilitate"
+      },
+      "attrs": {
+        "dineIn": "Servire în local",
+        "takeout": "La pachet",
+        "delivery": "Livrare",
+        "curbsidePickup": "Ridicare la bordură",
+        "reservable": "Acceptă rezervări",
+        "servesBreakfast": "Mic dejun",
+        "servesBrunch": "Brunch",
+        "servesLunch": "Prânz",
+        "servesDinner": "Cină",
+        "servesCoffee": "Cafea",
+        "servesDessert": "Desert",
+        "servesBeer": "Bere",
+        "servesWine": "Vin",
+        "servesCocktails": "Cocktailuri",
+        "servesVegetarianFood": "Opțiuni vegetariene",
+        "outdoorSeating": "Terasă",
+        "liveMusic": "Muzică live",
+        "goodForGroups": "Bun pentru grupuri",
+        "goodForChildren": "Bun pentru copii",
+        "menuForChildren": "Meniu pentru copii",
+        "goodForWatchingSports": "Bun pentru vizionat sport",
+        "allowsDogs": "Câinii sunt bineveniți",
+        "restroom": "Toalete",
+        "acceptsNfc": "Contactless",
+        "acceptsCreditCards": "Carduri de credit",
+        "acceptsDebitCards": "Carduri de debit",
+        "acceptsCashOnly": "Doar numerar",
+        "freeParkingLot": "Parcare gratuită",
+        "paidParkingLot": "Parcare cu plată",
+        "freeStreetParking": "Parcare stradală gratuită",
+        "paidStreetParking": "Parcare stradală cu plată",
+        "freeGarageParking": "Garaj gratuit",
+        "paidGarageParking": "Garaj cu plată",
+        "valetParking": "Valet",
+        "wheelchairAccessibleEntrance": "Intrare accesibilă cu scaun rulant",
+        "wheelchairAccessibleParking": "Parcare accesibilă cu scaun rulant",
+        "wheelchairAccessibleRestroom": "Toaletă accesibilă cu scaun rulant",
+        "wheelchairAccessibleSeating": "Locuri accesibile cu scaun rulant"
+      }
+    },
+    "hours": {
+      "title": "Program",
+      "openNow": "Deschis acum",
+      "openNowCloses": "Deschis acum · închide la {time}",
+      "closed": "Închis",
+      "closedOpens": "Închis · deschide la {time}"
+    },
+    "getDirections": "Indicații rutiere",
+    "notFound": {
+      "title": "Localul nu a fost găsit",
+      "body": "Acest local poate a fost eliminat, sau linkul e greșit.",
+      "backToExplore": "Înapoi la Explorează"
+    },
+    "errors": {
+      "loadFailed": "Localul nu s-a putut încărca.",
+      "claimFailed": "Nu am putut trimite revendicarea.",
+      "title": "Nu am putut încărca acest local"
+    }
+  },
+  "venueCard": {
+    "priceFree": "Gratuit",
+    "temporarilyClosed": "Închis temporar",
+    "claimed": "Revendicat",
+    "fromPublicSources": "Din surse publice",
+    "claimItFree": "Revendică-l gratuit"
+  },
+  "venueMap": {
+    "ariaLabel": "Harta localurilor",
+    "attribution": "© Contribuitorii OpenStreetMap"
+  },
+  "localPosts": {
+    "kinds": {
+      "news": "Noutăți",
+      "offer": "Ofertă",
+      "event": "Eveniment"
+    },
+    "state": {
+      "live": "Activ",
+      "scheduled": "Programat",
+      "draft": "Ciornă"
+    },
+    "inFeed": "În feed",
+    "pushed": "Trimis push",
+    "newLocalPost": "Postare locală nouă",
+    "empty": "Nicio postare încă. Împărtășește o noutate, o ofertă sau un eveniment — apare pe pagina localului tău și în feedul de știri locale al orașului.",
+    "composer": {
+      "offerNeedsTitle": "O ofertă are nevoie de un titlu.",
+      "addSomething": "Adaugă un titlu, un text sau o fotografie ca să postezi.",
+      "insufficientCredits": "Nu ai destule credite push ca să notifici urmăritorii. Debifează „Notifică urmăritorii” ca să postezi fără push.",
+      "postFailed": "Nu am putut posta.",
+      "postFailedRetry": "Nu am putut posta. Încearcă din nou.",
+      "offerTitlePlaceholder": "Titlul ofertei — ex. Cocktailuri 2 la preț de 1",
+      "titlePlaceholder": "Titlu (opțional)",
+      "bodyPlaceholder": "Spune-le localnicilor ce se întâmplă…",
+      "titleAria": "Titlul postării",
+      "bodyAria": "Textul postării",
+      "notifyFollowers": "Notifică urmăritorii (folosește 1 credit push)",
+      "posting": "Se postează…",
+      "post": "Postează",
+      "cancel": "Anulează",
+      "footer": "Apare pe pagina localului tău și în feedul de știri locale al orașului."
+    },
+    "row": {
+      "deleteConfirm": "Ștergi?",
+      "yes": "Da",
+      "no": "Nu",
+      "edit": "Editează",
+      "delete": "Șterge",
+      "bodyPlaceholder": "Text",
+      "saving": "Se salvează…",
+      "save": "Salvează"
+    },
+    "media": {
+      "signInToAdd": "Trebuie să fii conectat ca să adaugi imagini.",
+      "uploadingProgress": "Se încarcă {current} din {total}…",
+      "uploadFailed": "Nu am putut încărca acea imagine.",
+      "removeImage": "Elimină imaginea",
+      "moveEarlier": "Mută mai în față",
+      "moveLater": "Mută mai în spate",
+      "uploading": "Se încarcă…",
+      "addPhoto": "Adaugă fotografie"
+    }
+  },
+  "deals": {
+    "home": "Acasă",
+    "title": "Reduceri",
+    "intro": "Oferte alese pe sprânceană și coduri de reducere de la branduri partenere. Linkurile marcate <strong>Ad</strong> pot aduce Roam un comision — nu schimbă niciodată prețul pe care îl plătești.",
+    "featured": "Recomandate",
+    "ad": "Ad",
+    "affiliateAdAria": "Reclamă afiliată",
+    "affiliateAdTitle": "Link afiliat — Roam poate primi un comision",
+    "affiliateAria": "Afiliat",
+    "affiliateLinksTitle": "Linkuri afiliate — Roam poate primi un comision",
+    "getDeal": "Ia reducerea",
+    "shopDeal": "Vezi oferta",
+    "ends": "Se încheie la {date}",
+    "loadFailed": "Nu am putut încărca reducerile acum.",
+    "emptyTitle": "Nicio reducere momentan",
+    "emptyBody": "Oferte proaspete de la brandurile partenere vor apărea aici curând — revino în scurt timp.",
+    "detail": {
+      "loadFailed": "Nu am putut încărca această reducere acum.",
+      "notFoundTitle": "Reducerea nu a fost găsită",
+      "notFoundBody": "Această ofertă poate s-a încheiat — reduceri noi găsești pe pagina de reduceri."
+    },
+    "widget": {
+      "allDeals": "Toate reducerile",
+      "code": "CODE"
+    }
+  },
+  "offerCard": {
+    "signInToSave": "Conectează-te ca să salvezi reduceri.",
+    "signInToRedeem": "Conectează-te ca să revendici această ofertă.",
+    "soldOut": "Această ofertă a fost revendicată integral.",
+    "expired": "Această ofertă a expirat.",
+    "redeemFailed": "Nu s-a putut revendica acum — încearcă din nou.",
+    "ends": "Se încheie la {date}",
+    "redeemed": "Revendicată",
+    "showToStaff": "Arată asta personalului.",
+    "redeeming": "Se revendică…",
+    "redeem": "Revendică",
+    "saved": "Salvată",
+    "save": "Salvează"
+  },
+  "venueOffers": {
+    "newOffer": "Ofertă nouă",
+    "empty": "Nicio ofertă încă. Publică o ofertă exclusivă — urmăritorii tăi sunt notificați și oricine o poate salva și revendica în local.",
+    "ends": "Se încheie la {date}",
+    "savedCount": "{count} salvări",
+    "redeemedCount": "{count} revendicări",
+    "redeemedOfMax": "{count} / {max} revendicate",
+    "deleteOffer": "Șterge oferta",
+    "delete": "Șterge",
+    "composer": {
+      "titlePlaceholder": "Ofertă — ex. 20% reducere la prima cafea",
+      "titleAria": "Titlul ofertei",
+      "typeLabel": "Tipul ofertei",
+      "typeAria": "Tipul ofertei",
+      "discountLabel": "Reducere %",
+      "discountPlaceholder": "ex. 20",
+      "discountAria": "Procent de reducere",
+      "detailsPlaceholder": "Detaliile — condiții, ce include…",
+      "detailsAria": "Detaliile ofertei",
+      "codePlaceholder": "Cod de revendicare (opțional) — ex. ROAM20",
+      "codeAria": "Cod de revendicare",
+      "endsLabel": "Se încheie (opțional)",
+      "endsAria": "Data de încheiere a ofertei",
+      "maxLabel": "Revendicări maxime (opțional)",
+      "maxPlaceholder": "Nelimitat",
+      "maxAria": "Revendicări maxime",
+      "publishFailed": "Nu am putut publica oferta.",
+      "publishing": "Se publică…",
+      "publish": "Publică oferta",
+      "cancel": "Anulează"
+    }
+  },
+  "townHall": {
+    "loadFailed": "Nu am putut încărca Piața orașului.",
+    "hero": {
+      "kicker": "Forumul local",
+      "title": "Piața orașului",
+      "body": "Despre ce vorbesc localnicii chiar acum. Pune o întrebare, împărtășește un pont, sau votează ce contează acolo unde ești.",
+      "startTopic": "Deschide un subiect"
+    },
+    "sort": {
+      "hot": "Hot",
+      "new": "Recente",
+      "top": "Top"
+    },
+    "placeHub": "Hubul {place}",
+    "filterByCategory": "Filtrează după categorie",
+    "categories": {
+      "all": "Toate",
+      "foodDrink": "Mâncare și băutură",
+      "thingsToDo": "De făcut",
+      "recommendations": "Recomandări",
+      "events": "Evenimente",
+      "neighbourhood": "Cartier"
+    },
+    "signInToStart": "Conectează-te ca să deschizi un subiect în {place}.",
+    "empty": {
+      "titleCategory": "Niciun subiect din categoria {category} în {place} încă",
+      "title": "Niciun subiect în {place} încă",
+      "body": "Fii primul care pornește o conversație — pune o întrebare, dă o recomandare sau propune ceva."
+    },
+    "activeNow": "activi acum",
+    "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}",
+    "trendingTags": "Taguri în trend",
+    "activeLocals": "Localnici activi",
+    "helpfulVotes": "{count, plural, one {# vot util} few {# voturi utile} other {# de voturi utile}}",
+    "composer": {
+      "title": "Subiect nou în {place}",
+      "titlePlaceholder": "Titlu — ex. Cel mai bun Sunday roast prin zonă?",
+      "titleAria": "Titlul subiectului",
+      "bodyPlaceholder": "Împărtășește detaliile…",
+      "bodyAria": "Detaliile subiectului",
+      "linkPlaceholder": "Adaugă un link (opțional) — https://…",
+      "linkAria": "URL link",
+      "fetchingPreview": "Se încarcă previzualizarea linkului…",
+      "postFailed": "Nu am putut posta subiectul.",
+      "posting": "Se postează…",
+      "post": "Postează subiectul",
+      "cancel": "Anulează"
+    }
+  },
+  "townHallTopic": {
+    "townHall": "Piața orașului",
+    "loadFailed": "Nu am putut încărca acest subiect.",
+    "notFoundTitle": "Subiectul nu a fost găsit",
+    "notFoundBody": "Poate a fost eliminat, sau linkul e greșit.",
+    "deleteTopicConfirm": "Ștergi acest subiect?",
+    "deleteReplyConfirm": "Ștergi acest răspuns?",
+    "replies": "{count, plural, =0 {Niciun răspuns încă} one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}",
+    "signInToReply": "Conectează-te ca să intri în conversație.",
+    "owner": {
+      "deleting": "Se șterge…",
+      "yesDelete": "Da, șterge",
+      "cancel": "Anulează",
+      "edit": "Editează",
+      "delete": "Șterge"
+    },
+    "editor": {
+      "titleAria": "Titlul subiectului",
+      "bodyAria": "Detaliile subiectului",
+      "replyAria": "Editează răspunsul",
+      "saveFailed": "Nu am putut salva modificările.",
+      "saving": "Se salvează…",
+      "save": "Salvează",
+      "cancel": "Anulează"
+    },
+    "composer": {
+      "placeholder": "Adaugă un răspuns…",
+      "aria": "Răspunsul tău",
+      "postFailed": "Nu am putut posta răspunsul.",
+      "posting": "Se postează…",
+      "post": "Postează răspunsul"
+    },
+    "report": {
+      "thanks": "Mulțumim — un moderator va arunca o privire.",
+      "reporting": "Se raportează…",
+      "cta": "Raportează acest subiect"
+    }
+  },
+  "tagFeed": {
+    "kicker": "Hashtag",
+    "postCount": "{count, plural, one {# postare} few {# postări} other {# de postări}} pe Roam",
+    "loadFailed": "Nu am putut încărca #{tag} acum.",
+    "emptyTitle": "Nimic etichetat cu #{tag} încă",
+    "emptyBody": "Folosește #{tag} într-un subiect din Piața orașului sau într-o postare pe perete și va apărea aici.",
+    "sections": {
+      "townHall": "Discuție din Piața orașului",
+      "businesses": "De la afaceri locale",
+      "locals": "De la localnici"
+    },
+    "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}",
+    "venueUpdate": "{venue} — noutate",
+    "localUpdate": "Noutate locală",
+    "aLocal": "Un localnic",
+    "viewPost": "Vezi postarea →"
+  },
+  "topicUpvote": {
+    "upvote": "Votează",
+    "removeUpvote": "Retrage votul",
+    "signInToUpvote": "Conectează-te ca să votezi"
+  },
+  "linkPreviewCard": {
+    "link": "link",
+    "removeLink": "Elimină linkul"
+  },
+  "profileWall": {
+    "loadFailed": "Nu am putut încărca acest profil.",
+    "notFoundTitle": "Profilul nu a fost găsit",
+    "notFoundBody": "Acest cont poate a fost eliminat, sau linkul e greșit.",
+    "done": "Gata",
+    "empty": {
+      "ownerTitle": "Peretele tău e liniștit",
+      "visitorTitle": "Un perete liniștit",
+      "ownerBody": "Publică prima ta postare, sau urmărește câteva localuri și câțiva prieteni ca să-ți umpli feedul.",
+      "visitorBody": "{name} nu a postat încă.",
+      "thisUser": "Acest utilizator"
+    },
+    "header": {
+      "yourCoverPhoto": "Fotografia ta de copertă",
+      "roamMember": "Membru Roam",
+      "aRoamMember": "Un membru Roam",
+      "close": "Închide",
+      "editProfile": "Editează profilul",
+      "tabs": {
+        "wall": "Perete",
+        "friends": "Prieteni",
+        "following": "Urmărești",
+        "plans": "Planuri",
+        "orders": "Comenzi",
+        "notifications": "Notificări",
+        "businessDashboard": "Panou de afaceri",
+        "settings": "Setări"
+      }
+    },
+    "stats": {
+      "friends": "Prieteni",
+      "following": "Urmărești",
+      "plans": "Planuri"
+    },
+    "composer": {
+      "maxItems": "Poți adăuga cel mult {max} elemente.",
+      "uploadingProgress": "Se încarcă {current} din {total}…",
+      "uploadImageFailed": "Nu am putut încărca acea imagine.",
+      "uploadVideoFailed": "Nu am putut încărca acel videoclip.",
+      "postFailed": "Nu am putut posta.",
+      "placeholder": "Împărtășește ceva cu localnicii tăi…",
+      "writeAria": "Scrie o postare",
+      "moveEarlier": "Mută mai în față",
+      "moveLater": "Mută mai în spate",
+      "removeMedia": "Elimină media",
+      "removeImage": "Elimină imaginea",
+      "uploading": "Se încarcă…",
+      "addPhoto": "＋ Fotografie",
+      "addPhotoCount": "＋ Fotografie ({count}/{max})",
+      "addVideo": "＋ Video",
+      "posting": "Se postează…",
+      "post": "Postează"
+    },
+    "post": {
+      "deleteConfirm": "Ștergi?",
+      "deleting": "Se șterge…",
+      "yes": "Da",
+      "no": "Nu",
+      "edit": "Editează",
+      "delete": "Șterge",
+      "editPost": "Editează postarea",
+      "deletePost": "Șterge postarea",
+      "comments": "{count, plural, one {# comentariu} few {# comentarii} other {# de comentarii}}",
+      "shareTitle": "{name} pe Roam"
+    },
+    "editor": {
+      "saveFailed": "Nu am putut salva modificările.",
+      "editPostAria": "Editează postarea",
+      "saving": "Se salvează…",
+      "save": "Salvează",
+      "cancel": "Anulează"
+    },
+    "like": {
+      "unlike": "Nu-mi mai place",
+      "like": "Îmi place",
+      "signInToLike": "Conectează-te ca să apreciezi"
+    },
+    "comments": {
+      "placeholder": "Adaugă un comentariu…",
+      "addAria": "Adaugă un comentariu",
+      "send": "Trimite",
+      "signInToInteract": "<link>Conectează-te</link> ca să apreciezi și să comentezi."
+    },
+    "comment": {
+      "editAria": "Editează comentariul",
+      "save": "Salvează",
+      "cancel": "Anulează",
+      "deleteConfirm": "Ștergi?",
+      "yes": "Da",
+      "no": "Nu",
+      "edit": "Editează",
+      "delete": "Șterge"
+    }
+  },
+  "feedList": {
+    "filters": {
+      "all": "Toate",
+      "offer": "Oferte",
+      "event": "Evenimente",
+      "news": "Noutăți"
+    },
+    "loadFailed": "Feedul nu s-a putut încărca.",
+    "noFilteredPosts": {
+      "all": "Nicio postare aici încă.",
+      "offer": "Nicio postare cu oferte aici încă.",
+      "event": "Nicio postare cu evenimente aici încă.",
+      "news": "Nicio postare cu noutăți aici încă."
+    },
+    "empty": {
+      "title": "Feedul pentru {placeName} abia începe",
+      "body": "Când localurile de aici publică noutăți, oferte și evenimente, vor apărea în acest feed. Răsfoiește între timp ce e în apropiere — iar dacă administrezi un loc în {placeName}, revendicarea îți permite să postezi pentru oamenii din jur."
+    },
+    "errorTitle": "Nu am putut încărca feedul"
+  },
+  "postDetail": {
+    "kind": {
+      "news": "noutăți",
+      "offer": "ofertă",
+      "event": "eveniment"
+    },
+    "when": {
+      "today": "Azi",
+      "yesterday": "Ieri",
+      "daysAgo": "{count, plural, one {acum # zi} few {acum # zile} other {acum # de zile}}"
+    },
+    "postedWhen": "Postat {when}",
+    "posted": "Postat",
+    "redeemOffer": "Revendică oferta",
+    "shareTitleFallback": "O postare pe Roam",
+    "viewVenue": "Vezi localul",
+    "screen": {
+      "back": "Feed",
+      "loadFailed": "Nu am putut încărca această postare.",
+      "notFoundTitle": "Postarea nu a fost găsită",
+      "notFoundBody": "Poate a fost eliminată, sau linkul e greșit."
+    }
+  },
+  "wallPostScreen": {
+    "loadFailed": "Nu am putut încărca această postare.",
+    "profile": "Profil",
+    "notFoundTitle": "Postarea nu a fost găsită",
+    "notFoundBody": "Poate a fost eliminată, sau linkul e greșit."
+  },
+  "threadDetail": {
+    "roamMember": "Membru Roam",
+    "directChat": "Chat direct",
+    "untitledGroup": "Grup fără nume",
+    "someone": "Cineva",
+    "youLower": "tu",
+    "you": "Tu",
+    "planChat": "Chat de plan",
+    "people": "{count, plural, one {# persoană} few {# persoane} other {# de persoane}}",
+    "chats": "Chaturi",
+    "openChatInfo": "Deschide detaliile chatului",
+    "kind": {
+      "plan": "Plan",
+      "group": "Grup",
+      "direct": "Direct"
+    },
+    "meetupBar": {
+      "voting": "Întâlnire · vot deschis",
+      "winner": "Întâlnire · câștigător decis",
+      "open": "Deschide"
+    },
+    "backToChat": "Înapoi la chat",
+    "createdWhen": "Creat {when}",
+    "viewThePlan": "Vezi planul",
+    "addFriend": "Adaugă un prieten",
+    "done": "Gata",
+    "noFriendsToAdd": "Niciun prieten de adăugat încă. Adaugă prieteni de pe pereții lor de profil, apoi adu-i aici.",
+    "allFriendsHere": "Toți prietenii tăi sunt deja în acest chat.",
+    "add": "Adaugă",
+    "addSomeone": "Adaugă pe cineva",
+    "groupNameAria": "Numele grupului",
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "renameChat": "Redenumește chatul",
+    "leaveConfirm": "Părăsești acest chat?",
+    "leaving": "Se părăsește…",
+    "yesLeave": "Da, ies",
+    "leaveChat": "Părăsește chatul",
+    "noMessages": "Niciun mesaj încă — spune ceva ca să pornești discuția.",
+    "composerPlaceholder": "Scrie un mesaj…",
+    "sending": "Se trimite…",
+    "send": "Trimite",
+    "editMessageAria": "Editează mesajul",
+    "deleteConfirm": "Ștergi?",
+    "yes": "Da",
+    "no": "Nu",
+    "edit": "Editează",
+    "delete": "Șterge",
+    "day": {
+      "today": "Azi",
+      "yesterday": "Ieri"
+    },
+    "when": {
+      "today": "azi",
+      "yesterday": "ieri",
+      "daysAgo": "{count, plural, one {acum # zi} few {acum # zile} other {acum # de zile}}"
+    },
+    "signedOut": {
+      "title": "Conectează-te ca să vezi acest chat",
+      "body": "Chaturile sunt private, doar pentru membrii lor."
+    },
+    "backToChats": "Înapoi la Chaturi",
+    "notFound": {
+      "title": "Chatul nu a fost găsit",
+      "body": "Acest chat poate a fost eliminat, sau nu ai acces la el."
+    },
+    "errorTitle": "Nu am putut încărca acest chat",
+    "errors": {
+      "loadChat": "Chatul nu s-a putut încărca.",
+      "addPerson": "Nu am putut adăuga acea persoană.",
+      "loadMessages": "Mesajele nu s-au putut încărca.",
+      "emptyMessage": "Scrie un mesaj ca să-l trimiți.",
+      "send": "Nu am putut trimite mesajul.",
+      "share": "Nu am putut distribui."
+    }
+  },
+  "threadList": {
+    "title": "Chaturi",
+    "cancel": "Anulează",
+    "new": "＋ Nou",
+    "removePerson": "Elimină pe {name}",
+    "groupNamePlaceholder": "Numele grupului — ex. Ieșire de vineri seara",
+    "groupNameAria": "Numele grupului",
+    "starting": "Se pornește…",
+    "messagePerson": "Scrie-i lui {name}",
+    "createGroup": "Creează grupul · {count}",
+    "pickHint": "Alege o persoană pentru un chat direct, sau mai multe pentru un grup.",
+    "kindLabel": {
+      "plan": "Chat de plan",
+      "group": "Grup",
+      "direct": "Direct"
+    },
+    "fallback": {
+      "plan": "Chat de plan",
+      "group": "Grup fără nume",
+      "direct": "Chat direct"
+    },
+    "preview": {
+      "noMessages": "Niciun mesaj încă",
+      "you": "Tu: {text}",
+      "message": "Mesaj",
+      "sharedPlace": "A distribuit un loc",
+      "sharedPlan": "A distribuit un plan",
+      "sharedContact": "A distribuit un contact",
+      "photo": "Fotografie",
+      "poll": "Sondaj"
+    },
+    "unreadAria": "{count} necitite",
+    "when": {
+      "today": "azi",
+      "yesterday": "ieri",
+      "daysAgo": "{count, plural, one {acum # zi} few {acum # zile} other {acum # de zile}}"
+    },
+    "signedOutIntro": "Chaturile tale sunt private. Conectează-te ca să le vezi și să pornești altele noi.",
+    "empty": {
+      "title": "Niciun chat încă",
+      "body": "Apasă „Chat nou”, apoi caută pe cineva — alege o persoană pentru un mesaj direct, sau mai multe pentru un grup. Poți și să-i scrii unui prieten din profilul lui, sau să deschizi un plan ca să vorbești cu toți cei din el."
+    },
+    "errorTitle": "Nu am putut încărca chaturile tale",
+    "errors": {
+      "load": "Chaturile tale nu s-au putut încărca.",
+      "groupName": "Dă-i grupului un nume.",
+      "start": "Nu am putut porni acel chat."
+    }
+  },
+  "chatShareMenu": {
+    "shareSomethingAria": "Distribuie ceva",
+    "shareTitle": "Distribuie un loc, un plan, o persoană sau o fotografie",
+    "sharePlace": "Distribuie un loc",
+    "sharePlan": "Distribuie un plan",
+    "sharePerson": "Distribuie o persoană",
+    "poll": "Sondaj",
+    "photo": "Fotografie",
+    "createPollTitle": "Creează un sondaj",
+    "close": "Închide",
+    "venuesLoading": "Se încarcă localurile de lângă {place}…",
+    "venuesLoadFailed": "Nu am putut încărca localurile.",
+    "venuesEmpty": "Niciun local lângă {place} încă.",
+    "plansLoading": "Se încarcă planurile tale…",
+    "plansLoadFailed": "Nu am putut încărca planurile tale.",
+    "plansEmpty": "Nu ai niciun plan încă. Creează unul din fila Planuri, apoi distribuie-l aici.",
+    "roamMember": "Membru Roam",
+    "friendsLoading": "Se încarcă prietenii…",
+    "friendsLoadFailed": "Nu am putut încărca prietenii tăi.",
+    "friendsEmpty": "Niciun prieten încă. Adaugă prieteni de pe pereții lor de profil, apoi distribuie-i aici.",
+    "questionPlaceholder": "Pune o întrebare…",
+    "questionAria": "Întrebarea sondajului",
+    "optionN": "Opțiunea {n}",
+    "removeOption": "Elimină opțiunea",
+    "addOption": "+ Adaugă opțiune",
+    "allowMultiple": "Permite mai multe răspunsuri",
+    "createPoll": "Creează sondajul",
+    "errors": {
+      "uploadPhoto": "Nu am putut încărca acea fotografie."
+    }
+  },
+  "chatCards": {
+    "aPlace": "Un loc",
+    "viewVenue": "Vezi localul",
+    "aPlan": "Un plan",
+    "viewPlan": "Vezi planul",
+    "someone": "Cineva",
+    "viewProfile": "Vezi profilul",
+    "photoUnavailable": "Fotografie indisponibilă",
+    "sharedPhotoAlt": "Fotografie distribuită",
+    "unsupportedMessage": "Mesaj neacceptat"
+  },
+  "chatPoll": {
+    "closed": "Sondaj închis",
+    "selectMulti": "Alege una sau mai multe",
+    "selectOne": "Alege una",
+    "votes": "{count, plural, one {# vot} few {# voturi} other {# de voturi}}",
+    "closePoll": "Închide sondajul",
+    "roamMember": "Membru Roam"
+  },
+  "chatShell": {
+    "emptyTitle": "Alege o conversație",
+    "emptyBody": "Alege un chat din stânga, sau pornește unul nou."
+  },
+  "messageButton": {
+    "message": "Mesaj",
+    "opening": "Se deschide…"
+  },
+  "planDetail": {
+    "roamMember": "Membru Roam",
+    "back": "Planuri",
+    "signedOutIntro": "Conectează-te ca să vezi tot planul și să te alături.",
+    "notMemberBody": "Nu ești încă în acest plan — roagă-l pe cel care ți l-a trimis să te invite, și va apărea în <plansLink>Planurile</plansLink> tale.",
+    "notFound": {
+      "title": "Planul nu a fost găsit",
+      "body": "Poate a fost eliminat, sau nu ai acces."
+    },
+    "opening": "Se deschide…",
+    "groupChat": "Chat de grup",
+    "edit": "Editează",
+    "venues": "{count, plural, one {# local} few {# localuri} other {# de localuri}}",
+    "emptyVenues": "Niciun local încă. Deschide orice local și apasă <strong>＋ Adaugă la plan</strong> ca să-l pui aici.",
+    "findVenues": "Găsește localuri",
+    "removeFromPlanTitle": "Elimină din plan",
+    "remove": "Elimină",
+    "places": "{count, plural, one {# loc} few {# locuri} other {# de locuri}}",
+    "going": "{count} participă",
+    "uploading": "Se încarcă…",
+    "change": "Schimbă",
+    "addImage": "＋ Adaugă imagine",
+    "tapToAddHeader": "Apasă ca să adaugi o imagine de antet",
+    "changeHeaderAria": "Schimbă imaginea de antet",
+    "addHeaderAria": "Adaugă imagine de antet",
+    "cropTitle": "Poziționează antetul planului",
+    "removeImage": "Elimină imaginea",
+    "planTitleAria": "Titlul planului",
+    "plannedDateAria": "Data planificată",
+    "notesAria": "Notițe",
+    "notesPlaceholder": "Notițe (opțional)",
+    "saving": "Se salvează…",
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "deletePlan": "Șterge planul",
+    "members": "{count, plural, one {Doar tu} few {# persoane} other {# de persoane}}",
+    "done": "Gata",
+    "inviteFriends": "＋ Invită prieteni",
+    "host": "gazdă",
+    "removeMemberAria": "Elimină pe {name} din plan",
+    "noFriendsToInvite": "Niciun prieten de invitat încă. Adaugă prieteni de pe pereții lor de profil, apoi invită-i aici.",
+    "allFriendsOnPlan": "Toți prietenii tăi sunt deja în acest plan.",
+    "add": "Adaugă",
+    "errors": {
+      "load": "Nu am putut încărca acest plan.",
+      "signInImage": "Trebuie să fii conectat ca să adaugi o imagine.",
+      "upload": "Nu am putut încărca acea imagine.",
+      "save": "Nu am putut salva planul."
+    }
+  },
+  "plansList": {
+    "kicker": "Împreună în {place}",
+    "title": "Planuri",
+    "subtitle": "Pune la cale o ieșire, adaugă localuri și lasă grupul să decidă unde vă întâlniți.",
+    "newPlan": "＋ Plan nou",
+    "signedOutIntro": "Conectează-te ca să faci planuri și să salvezi localuri în ele.",
+    "noDate": "Fără dată încă",
+    "going": "{count} participă",
+    "venues": "{count, plural, one {# local} few {# localuri} other {# de localuri}}",
+    "startNewPlan": "Pornește un plan nou",
+    "startNewPlanHint": "Alege o dată, invită prieteni",
+    "titlePlaceholder": "Titlul planului — ex. Ieșire de vineri seara",
+    "titleAria": "Titlul planului",
+    "dateAria": "Data planificată",
+    "notesPlaceholder": "Notițe (opțional)",
+    "notesAria": "Notițe",
+    "creating": "Se creează…",
+    "create": "Creează planul",
+    "cancel": "Anulează",
+    "errors": {
+      "load": "Nu am putut încărca planurile tale.",
+      "create": "Nu am putut crea planul."
+    }
+  },
+  "meetupPanel": {
+    "title": "Întâlnire",
+    "unknownVenue": "Local necunoscut",
+    "loading": "Se încarcă…",
+    "stateVoting": "Vot în curs",
+    "stateResolved": "Decis",
+    "stateEnded": "Încheiat",
+    "tie": "E egalitate — mută un vot ca să o rupi.",
+    "noVenuesVoting": "Niciun local încă — adaugă unul ca să pornești sondajul.",
+    "noVenues": "Niciun local încă.",
+    "voteFor": "Votează · {venue}",
+    "meetingAt": "Vă întâlniți la <strong>{venueName}</strong>.",
+    "winningVenue": "localul câștigător",
+    "working": "Se lucrează…",
+    "resolve": "Decide câștigătorul",
+    "endMeetup": "Încheie întâlnirea",
+    "ended": "Această întâlnire s-a încheiat.",
+    "addVenue": "Adaugă un local",
+    "venuesLoading": "Se încarcă localurile de lângă {place}…",
+    "venuesLoadFailed": "Nu am putut încărca localurile.",
+    "venuesEmpty": "Niciun local lângă {place} încă.",
+    "done": "Gata",
+    "startBody": "Pune câteva localuri la vot și lasă grupul să decidă unde vă întâlniți.",
+    "starting": "Se pornește…",
+    "start": "Pornește o întâlnire",
+    "errors": {
+      "load": "Nu am putut încărca întâlnirea.",
+      "poll": "Nu am putut încărca sondajul.",
+      "start": "Nu am putut porni întâlnirea.",
+      "addVenue": "Nu am putut adăuga acel local.",
+      "vote": "Nu am putut înregistra votul.",
+      "resolve": "Nu am putut decide întâlnirea.",
+      "end": "Nu am putut încheia întâlnirea."
+    }
+  },
+  "addToPlan": {
+    "signInTitle": "Conectează-te ca să salvezi într-un plan",
+    "addToPlan": "＋ Adaugă la plan",
+    "addToAPlan": "Adaugă la un plan",
+    "empty": "Niciun plan încă — fă-l pe primul mai jos.",
+    "added": "Adăugat ✓",
+    "add": "Adaugă",
+    "newPlanPlaceholder": "Plan nou…",
+    "newPlanAria": "Titlul planului nou",
+    "errors": {
+      "add": "Nu am putut adăuga la acel plan.",
+      "create": "Nu am putut crea planul."
+    }
+  },
+  "market": {
+    "toggle": {
+      "shops": "Magazine",
+      "marketplace": "Marketplace",
+      "aria": "Modul pieței"
+    },
+    "kicker": {
+      "shops": "Piața Roam",
+      "marketplace": "Marketplace-ul Roam"
+    },
+    "headline": {
+      "shops": "Cumpără de pe strada ta principală",
+      "marketplace": "Cumpără, vinde și fă schimb cu vecinii"
+    },
+    "sub": {
+      "shops": "Produse, vouchere și experiențe de la afaceri locale din <strong>{place}</strong>.",
+      "marketplace": "Lucruri second-hand și handmade de la localnici adevărați de lângă <strong>{place}</strong>."
+    },
+    "searchPlaceholder": {
+      "shops": "Caută produse și magazine locale…",
+      "marketplace": "Caută biciclete, mobilă, haine…"
+    },
+    "searchAria": "Caută în piață",
+    "sellOnRoam": "＋ Vinde pe Roam",
+    "view": {
+      "browse": "Răsfoiește",
+      "mine": "Anunțurile tale"
+    },
+    "listAnItem": "＋ Listează un articol",
+    "signInToPost": "<link>Conectează-te</link> ca să publici un anunț — durează un minut.",
+    "filter": {
+      "all": "Toate",
+      "forSale": "De vânzare",
+      "swap": "Deschis la schimb",
+      "free": "Gratuit"
+    },
+    "allCategories": "Toate categoriile",
+    "categories": {
+      "furniture": "Mobilă",
+      "electronics": "Electronice",
+      "clothing": "Îmbrăcăminte",
+      "kids": "Copii",
+      "home": "Casă",
+      "garden": "Grădină",
+      "sports": "Sport",
+      "books": "Cărți",
+      "vehicles": "Vehicule",
+      "other": "Altele"
+    },
+    "saved": "Salvate",
+    "badge": {
+      "sold": "Vândut",
+      "removed": "Eliminat",
+      "free": "Gratuit",
+      "swapOk": "Accept schimb",
+      "newIn": "Nou",
+      "forSale": "De vânzare"
+    },
+    "price": {
+      "free": "Gratuit",
+      "swap": "Schimb"
+    },
+    "miles": "{miles} mi",
+    "nearby": "În apropiere",
+    "views": "{count, plural, one {# vizualizare} few {# vizualizări} other {# de vizualizări}}",
+    "emptyMine": "Nu ai listat nimic încă.",
+    "emptyBrowse": "Nimic listat în {place} încă — fii primul.",
+    "markSold": "Marchează vândut",
+    "remove": "Elimină",
+    "relist": "Relistează",
+    "composer": {
+      "title": "Anunț nou în {place}",
+      "modeSell": "Vinde",
+      "modeSwap": "Deschis la schimb",
+      "modeFree": "Gratuit",
+      "titlePlaceholder": "Ce listezi?",
+      "titleAria": "Titlu",
+      "pricePlaceholder": "Preț (£)",
+      "priceAria": "Preț",
+      "categoryAria": "Categorie",
+      "descriptionPlaceholder": "Stare, mărime, detalii de ridicare…",
+      "descriptionAria": "Descriere",
+      "photoRules": "Fotografiile trebuie să fie JPEG/PNG/WebP sub 10 MB.",
+      "uploadingProgress": "Se încarcă {current} din {total}…",
+      "uploadFailed": "Încărcarea a eșuat: {message}",
+      "titleMin": "Dă-i un titlu (cel puțin 3 caractere).",
+      "priceInvalid": "Introdu un preț de forma 25 sau 12.50.",
+      "postFailedRetry": "Nu am putut posta — încearcă din nou.",
+      "postFailed": "Nu am putut posta.",
+      "cover": "Copertă",
+      "removePhoto": "Elimină fotografia",
+      "moveEarlier": "Mută mai în față",
+      "moveLater": "Mută mai în spate",
+      "uploading": "Se încarcă…",
+      "addPhotos": "Adaugă fotografii",
+      "posting": "Se postează…",
+      "post": "Publică anunțul",
+      "cancel": "Anulează"
+    }
+  },
+  "marketShops": {
+    "empty": "Niciun magazin din {place} nu și-a pus încă marfa — afacerile adaugă produse din panoul lor, și apar aici imediat ce o fac.",
+    "all": "Toate",
+    "saved": "Salvate",
+    "noMatches": "Nimic nu se potrivește — încearcă altă categorie sau altă căutare.",
+    "badge": {
+      "soldOut": "Stoc epuizat",
+      "giftCard": "Card cadou",
+      "collect": "Ridicare"
+    },
+    "claimedVenue": "Local revendicat",
+    "removeFromSaved": "Elimină {title} din salvate",
+    "saveItem": "Salvează {title}"
+  },
+  "listingDetail": {
+    "gone": "Acest anunț nu mai există — poate a fost vândut sau eliminat. <link>Înapoi la Piață</link>",
+    "back": "Piață",
+    "sellerFallback": "Un localnic",
+    "nearby": "În apropiere",
+    "price": {
+      "free": "Gratuit",
+      "swap": "Schimb"
+    },
+    "seller": "Vânzător",
+    "meetsIn": "se întâlnește în {place}",
+    "yourTown": "orașul tău",
+    "yourListing": "Anunțul tău",
+    "signInToMessage": "Conectează-te ca să trimiți mesaj",
+    "safetyNote": "Roam nu gestionează plata pentru anunțurile locale — stabiliți detaliile în chat și întâlniți-vă într-un loc public. Nu trimite niciodată bani cuiva pe care nu l-ai întâlnit.",
+    "enquiryMessage": "Despre anunțul tău „{title}” — mai e disponibil? {url}",
+    "openingChat": "Se deschide chatul…",
+    "messageSeller": "Scrie-i vânzătorului",
+    "reported": "Raportat — mulțumim, vom arunca o privire.",
+    "reportPrompt": "Ce e în neregulă cu acest anunț? (opțional)",
+    "reportListing": "Raportează acest anunț"
+  },
+  "venueShop": {
+    "checkoutFailed": "Nu am putut porni plata.",
+    "empty": "Acest local nu și-a pus încă marfa în magazinul Roam — revino curând.",
+    "kind": {
+      "voucher": "Voucher / serviciu",
+      "soldOut": "Stoc epuizat",
+      "collect": "Ridicare din local"
+    },
+    "quantityAria": "Cantitate",
+    "openingCheckout": "Se deschide plata…",
+    "buy": "Cumpără",
+    "signInToBuy": "Conectează-te ca să cumperi",
+    "payoutPending": "Cumpărarea prin Roam se activează după ce acest local își finalizează configurarea plăților — deocamdată, vizitează sau scrie-i localului pentru a cumpăra.",
+    "paymentsNote": "Plățile sunt procesate în siguranță de Stripe. Produsele se ridică din local; voucherele vin cu un cod de revendicare în <link>comenzile tale</link>."
+  },
+  "myOrders": {
+    "signedOutIntro": "Conectează-te ca să-ți vezi comenzile.",
+    "title": "Comenzile tale",
+    "placedNote": "Comandă plasată — va apărea ca Plătită aici în câteva secunde după confirmarea Stripe.",
+    "empty": "Nimic încă — magazinele localurilor de pe Roam se aprovizionează. Găsește ceva în <link>Explorează</link>.",
+    "status": {
+      "pending": "Așteaptă plata",
+      "paid": "Plătită",
+      "collected": "Ridicată",
+      "redeemed": "Revendicată",
+      "refunded": "Rambursată",
+      "canceled": "Anulată"
+    },
+    "showCode": "Arată acest cod în local pentru revendicare:"
+  },
+  "friendsList": {
+    "fallbackName": "Cineva",
+    "home": "Acasă",
+    "title": "Prieteni",
+    "signedOutIntro": "Conectează-te ca să-ți vezi prietenii și cererile.",
+    "findPeople": "Găsește oameni",
+    "searchPlaceholder": "Caută după nume sau @handle",
+    "requests": "Cereri",
+    "accept": "Acceptă",
+    "decline": "Refuză",
+    "empty": "Niciun prieten încă. Deschide peretele cuiva și apasă <strong>＋ Adaugă prieten</strong> ca să vă conectați.",
+    "friendCount": "{count, plural, one {# prieten} few {# prieteni} other {# de prieteni}}"
+  },
+  "userSearch": {
+    "placeholderFriends": "Caută printre prietenii tăi",
+    "placeholderEveryone": "Caută pe oricine după nume sau @handle",
+    "modeFriends": "Prieteni",
+    "modeEveryone": "Toată lumea",
+    "noFriendsYet": "Nu ai adăugat niciun prieten încă.",
+    "noFriendMatches": "Niciun prieten nu se potrivește cu „{query}”.",
+    "searchEveryone": "Caută pe toată lumea →",
+    "noResults": "Nimeni găsit pentru „{query}”. Încearcă alt nume sau alt @handle.",
+    "hint": "Caută pe oricine de pe Roam după nume sau @handle."
+  },
+  "addFriendButton": {
+    "friends": "Prieteni ✓",
+    "requested": "Cerere trimisă",
+    "acceptRequest": "Acceptă cererea",
+    "addFriend": "＋ Adaugă prieten"
+  },
+  "following": {
+    "back": "Explorează",
+    "title": "Urmărești",
+    "intro": "Urmărind o afacere primești ofertele și promoțiile ei exclusive. Pune pe silențios pe oricare mai jos fără să renunți la urmărire — rămâi urmăritor, doar oprești notificările.",
+    "loadFailed": "Urmăririle tale nu s-au putut încărca.",
+    "signedOutIntro": "Urmăririle tale sunt private. Conectează-te ca să vezi localurile pe care le urmărești și să le gestionezi notificările.",
+    "unknownVenue": "Local necunoscut",
+    "pushUpdateFailed": "Nu am putut actualiza notificările.",
+    "offersPromotions": "Oferte și promoții",
+    "pushOnHint": "Vei fi anunțat despre oferte noi",
+    "pushOffHint": "Notificări pe silențios — încă urmărești",
+    "on": "Pornit",
+    "off": "Oprit",
+    "empty": {
+      "title": "Nu urmărești nimic încă",
+      "body": "Urmărește un local din Explorează ca să primești o alertă când postează. Localurile pe care le urmărești apar aici."
+    },
+    "errorTitle": "Nu am putut încărca urmăririle tale"
+  },
+  "reportVenue": {
+    "cta": "Raportează acest local",
+    "signInToReport": "Conectează-te ca să raportezi acest local.",
+    "detailLabel": "Ce e în neregulă cu acest local?",
+    "detailPlaceholder": "ex. revendicat greșit, închis, conținut incorect sau abuziv…",
+    "sending": "Se trimite…",
+    "send": "Trimite raportul",
+    "cancel": "Anulează",
+    "thanks": "Mulțumim — raportul tău a fost trimis spre verificare.",
+    "submitFailed": "Nu am putut trimite raportul."
+  },
+  "copyLinkButton": {
+    "share": "Distribuie",
+    "copied": "Copiat!"
+  },
+  "venueOwnerEditor": {
+    "backToRoam": "Înapoi la Roam",
+    "loadFailed": "Nu am putut încărca acest local.",
+    "notFound": {
+      "title": "Localul nu a fost găsit",
+      "body": "Acest local nu există sau nu mai e disponibil."
+    },
+    "notOwner": {
+      "title": "Nu gestionezi acest local",
+      "body": "Doar proprietarul localului îl poate edita. Dacă l-ai revendicat, revendicarea ta poate fi încă în verificare."
+    },
+    "tabs": {
+      "overview": "Prezentare",
+      "audience": "Audiență",
+      "posts": "Postări",
+      "offers": "Oferte",
+      "shop": "Magazin",
+      "notifications": "Notificări",
+      "venue": "Local"
+    },
+    "header": {
+      "openNow": "Deschis acum",
+      "openNowTill": "Deschis acum · până la {time}",
+      "closed": "Închis",
+      "closedOpens": "Închis · deschide la {time}",
+      "claimed": "Revendicat",
+      "viewPublicPage": "Vezi pagina publică →"
+    },
+    "stats": {
+      "followers": "Urmăritori",
+      "profileViews": "Vizualizări de profil",
+      "offerRedemptions": "Revendicări de oferte",
+      "shopRevenue": "Venituri din magazin",
+      "rating": "Rating",
+      "newThisMonth": "+{count} luna aceasta",
+      "noChangeThisMonth": "nicio schimbare luna aceasta",
+      "viewsDelta": "{delta}% · 30 de zile",
+      "viewsTrackingNew": "30 de zile · urmărirea e nouă",
+      "savesAllTime": "{count} salvări · în total",
+      "ordersAllTime": "{count, plural, one {# comandă} few {# comenzi} other {# de comenzi}} · în total",
+      "reviews": "{count} recenzii",
+      "noReviews": "Nicio recenzie încă"
+    },
+    "quickActions": {
+      "title": "Acțiuni rapide",
+      "post": "Postează",
+      "offer": "Ofertă",
+      "push": "Push"
+    },
+    "activityCard": {
+      "title": "Activitate",
+      "subtitle": "Ce fac localnicii cu afacerea ta."
+    },
+    "paymentsCard": {
+      "title": "Plăți",
+      "subtitle": "Încasări pentru vânzările pe Roam — prin Stripe."
+    },
+    "marketingCard": {
+      "title": "Asistent de marketing",
+      "subtitle": "Lasă Roam să-ți schițeze oferte și postări personalizate — tu aprobi totul."
+    },
+    "postsCard": {
+      "title": "Postări locale",
+      "subtitle": "Publică noutăți, oferte și evenimente în numele afacerii tale. Fiecare apare pe pagina ta și în feedul de știri locale al orașului — acesta e și istoricul tău de postări."
+    },
+    "offersCard": {
+      "title": "Oferte",
+      "subtitle": "Publică oferte exclusive. Urmăritorii sunt notificați; oricine le poate salva și revendica în local."
+    },
+    "offerInsightsCard": {
+      "title": "Statistici despre oferte",
+      "subtitle": "Ce oferte prind cel mai bine la localnici."
+    },
+    "shopCard": {
+      "title": "Magazinul tău",
+      "subtitle": "Produse, servicii și vouchere pe care le vinzi pe Roam. Tot ce e aici apare în fila Magazin a paginii tale publice."
+    },
+    "ordersCard": {
+      "title": "Comenzi",
+      "subtitle": "Vânzările sosesc aici — marchează-le ca ridicate sau revendicate în local, ori rambursează."
+    },
+    "notifyCard": {
+      "title": "Trimite o notificare",
+      "subtitle": "Scrie în inboxul urmăritorilor tăi — tuturor, sau unei singure persoane."
+    },
+    "pushHistoryCard": {
+      "title": "Istoric push",
+      "subtitle": "Fiecare noutate trimisă, cele mai noi primele."
+    },
+    "photosCard": {
+      "title": "Fotografii",
+      "subtitle": "Încarcă-le pe ale tale — au prioritate față de fotografiile din surse publice. Setează o copertă și reordonează."
+    },
+    "detailsCard": {
+      "title": "Detalii",
+      "subtitle": "O descriere și linkurile de care au nevoie oamenii — meniu, rezervări, site web."
+    },
+    "hoursCard": {
+      "title": "Program",
+      "subtitle": "Setează când ești deschis — alimentează statusul live „Deschis acum” de pe pagina ta."
+    },
+    "nextBestAction": {
+      "kicker": "Următorul pas recomandat",
+      "titleNoFollowers": "Câștigă-ți primii urmăritori — publică o noutate locală",
+      "titleFollowers": "Urmăritorii tăi sunt atenți — împărtășește oferta săptămânii",
+      "subNoFollowers": "Postările apar în feedul orașului tău, unde localnicii descoperă afaceri ca a ta.",
+      "subFollowers": "{followers} localnici te urmăresc.",
+      "subFollowersCredits": "{followers} localnici te urmăresc — și ai {credits, plural, one {# credit push} few {# credite push} other {# de credite push}} ca să-i notifici.",
+      "writePost": "Scrie o postare",
+      "createOffer": "Creează o ofertă"
+    },
+    "performance": {
+      "title": "Performanță",
+      "subtitle": "Vizualizări de profil și urmăritori noi, ultimele {days} zile.",
+      "seg30": "30z",
+      "seg90": "90z",
+      "emptyChart": "Urmărirea vizualizărilor e activă — pe măsură ce localnicii îți deschid pagina, trendul se desenează aici.",
+      "chartAria": "Vizualizări zilnice de profil, cu vârf la {peak}",
+      "viewsLegend": "Vizualizări de profil · {count}",
+      "followersLegend": "Urmăritori noi · {count} (6 săptămâni)"
+    },
+    "recentPosts": {
+      "title": "Postări recente",
+      "subtitle": "Cum au mers ultimele tale noutăți.",
+      "allPosts": "Toate postările",
+      "empty": "Nimic postat încă — prima ta noutate locală va apărea aici și în feedul orașului.",
+      "untitled": "Noutate"
+    },
+    "audience": {
+      "yourAudienceTitle": "Audiența ta",
+      "yourAudienceSubtitle": "Cine te urmărește, în ansamblu — niciodată persoane individuale.",
+      "followers": "Urmăritori",
+      "newSub": "▲ {count} (30z)",
+      "engaged30": "Activi (30z)",
+      "pushReach": "Acoperire push",
+      "avgWeeklyViews": "Medie vizualizări/săptămână",
+      "growthTitle": "Creșterea urmăritorilor",
+      "growthSubtitle": "Urmăritori noi net pe săptămână.",
+      "newFollowersTitle": "{count, plural, one {# urmăritor nou} few {# urmăritori noi} other {# de urmăritori noi}}",
+      "week": "S{n}",
+      "growthEmpty": "Barele de creștere apar pe măsură ce oamenii încep să te urmărească.",
+      "ageTitle": "Vârsta urmăritorilor",
+      "ageSubtitle": "Agregat și anonimizat — afișat doar când grupul e suficient de mare.",
+      "ageBands": {
+        "under_18": "Sub 18",
+        "age_18_24": "18–24",
+        "age_25_34": "25–34",
+        "age_35_44": "35–44",
+        "age_45_54": "45–54",
+        "age_55_64": "55–64",
+        "age_65_plus": "65+"
+      },
+      "ageEmpty": "Prea puțini urmăritori și-au împărtășit ziua de naștere ca să afișăm o distribuție pe vârste (rămâne privată până când grupul e suficient de mare ca să rămână anonim).",
+      "birthdayTitle": "Ofertă aniversară",
+      "birthdaySubtitle": "Un cadou permanent livrat automat urmăritorilor abonați de ziua lor. Vezi doar cifre, niciodată cine.",
+      "birthdaysThisMonth": "{count, plural, one {<strong>#</strong> urmăritor abonat își serbează ziua luna aceasta.} few {<strong>#</strong> urmăritori abonați își serbează ziua luna aceasta.} other {<strong>#</strong> de urmăritori abonați își serbează ziua luna aceasta.}}"
+    }
+  },
+  "ownerHoursEditor": {
+    "days": {
+      "monday": "Luni",
+      "tuesday": "Marți",
+      "wednesday": "Miercuri",
+      "thursday": "Joi",
+      "friday": "Vineri",
+      "saturday": "Sâmbătă",
+      "sunday": "Duminică"
+    },
+    "copyMondayToWeekdays": "Copiază lunea pentru marți–vineri",
+    "closed": "Închis",
+    "sameAs": "La fel ca {day}",
+    "openingTimeAria": "Ora de deschidere {day}",
+    "closingTimeAria": "Ora de închidere {day}",
+    "to": "până la",
+    "remove": "Elimină",
+    "overnightNote": "Închide după miezul nopții (ziua următoare).",
+    "addBreak": "+ Adaugă o pauză",
+    "saving": "Se salvează…",
+    "saveHours": "Salvează programul",
+    "reset": "Resetează",
+    "clearAll": "Șterge tot",
+    "saved": "Salvat.",
+    "errors": {
+      "addBothTimes": "Adaugă și ora de deschidere, și cea de închidere.",
+      "sameTimes": "Ora de deschidere și cea de închidere nu pot fi identice.",
+      "clearFailedRetry": "Nu am putut șterge programul. Încearcă din nou.",
+      "clearFailed": "Nu am putut șterge programul.",
+      "saveFailedRetry": "Nu am putut salva programul. Încearcă din nou.",
+      "saveFailed": "Nu am putut salva programul."
+    }
+  },
+  "ownerMediaManager": {
+    "working": "Se lucrează…",
+    "uploadPhoto": "Încarcă o fotografie",
+    "noPhotos": "Nicio fotografie încărcată încă.",
+    "fromPublicSources": "Din surse publice ({count})",
+    "publicSourcesNote": "Acestea provin din listări publice și nu pot fi editate aici. Încarcă fotografiile tale mai sus ca să apară primele.",
+    "row": {
+      "cover": "Copertă",
+      "photo": "Fotografie",
+      "moveUp": "Mută mai sus",
+      "moveDown": "Mută mai jos",
+      "unsetCover": "Scoate coperta",
+      "setCover": "Setează coperta",
+      "remove": "Elimină"
+    },
+    "errors": {
+      "imageType": "Alege o imagine JPEG, PNG sau WebP.",
+      "imageTooLarge": "Imaginea depășește 10 MB. Alege un fișier mai mic.",
+      "uploadFailedWithMessage": "Încărcarea a eșuat: {message}",
+      "uploadedNotSaved": "Încărcată, dar nu am putut salva fotografia. Încearcă din nou.",
+      "uploadFailed": "Încărcarea a eșuat.",
+      "reorderFailedRetry": "Nu am putut salva noua ordine. Încearcă din nou.",
+      "reorderFailed": "Nu am putut reordona.",
+      "setCoverFailedRetry": "Nu am putut seta coperta. Încearcă din nou.",
+      "setCoverFailed": "Nu am putut seta coperta.",
+      "removeFailedRetry": "Nu am putut elimina acea fotografie. Încearcă din nou.",
+      "removeFailed": "Nu am putut elimina."
+    }
+  },
+  "ownerDetailsEditor": {
+    "description": "Descriere",
+    "descriptionPlaceholder": "Spune-le oamenilor ce face acest loc să merite o vizită.",
+    "links": "Linkuri",
+    "linkLabelPlaceholder": "Etichetă (ex. Meniu)",
+    "linkLabelAria": "Eticheta linkului",
+    "linkUrlPlaceholder": "https://…",
+    "linkUrlAria": "URL link",
+    "remove": "Elimină",
+    "addLink": "+ Adaugă un link",
+    "maxLinks": "Ai atins maximul de {max}.",
+    "saving": "Se salvează…",
+    "saveDetails": "Salvează detaliile",
+    "reset": "Resetează",
+    "saved": "Salvat.",
+    "errors": {
+      "addLabel": "Adaugă o etichetă.",
+      "addUrl": "Adaugă un URL.",
+      "labelTooLong": "Etichetă prea lungă (max {max}).",
+      "urlTooLong": "URL prea lung.",
+      "httpOnly": "Folosește un link http(s).",
+      "invalidUrl": "Nu pare un URL valid.",
+      "saveFailedRetry": "Nu am putut salva modificările. Încearcă din nou.",
+      "saveFailed": "Nu am putut salva modificările."
+    }
+  },
+  "venueShopManager": {
+    "addCta": "＋ Adaugă un produs sau serviciu",
+    "removeConfirm": "Elimini „{title}” din magazinul tău?",
+    "empty": "Nimic în magazinul tău încă. Adaugă ce vinzi — vouchere de masă, carduri cadou, produse, experiențe rezervabile — și apare pe pagina ta publică. Cumpărarea online se activează în curând.",
+    "kindService": "Serviciu",
+    "kindProduct": "Produs",
+    "soldOut": "stoc epuizat",
+    "inStock": "{count} în stoc",
+    "statusLive": "Activ",
+    "statusHidden": "Ascuns",
+    "editAria": "Editează {title}",
+    "hideAria": "Ascunde {title}",
+    "showAria": "Arată {title}",
+    "removeAria": "Elimină {title}",
+    "composer": {
+      "editTitle": "Editează",
+      "newTitle": "Produs sau serviciu nou",
+      "kindProduct": "Produs",
+      "kindService": "Serviciu / voucher",
+      "titlePlaceholderService": "ex. Voucher de cină de £25",
+      "titlePlaceholderProduct": "ex. Cafea boabe house-blend, 250g",
+      "titleAria": "Titlu",
+      "descriptionPlaceholder": "Un rând sau două — ce este, cum se ridică sau se revendică?",
+      "descriptionAria": "Descriere",
+      "priceLabel": "Preț (£)",
+      "pricePlaceholder": "12.50",
+      "priceAria": "Preț în lire",
+      "stockLabel": "Stoc (opțional)",
+      "stockPlaceholderService": "De obicei gol",
+      "stockPlaceholderProduct": "ex. 20",
+      "stockAria": "Cantitate în stoc",
+      "changePhoto": "Schimbă fotografia",
+      "addPhoto": "Adaugă o fotografie",
+      "cropTitle": "Încadrează fotografia produsului",
+      "saving": "Se salvează…",
+      "saveChanges": "Salvează modificările",
+      "addToShop": "Adaugă în magazin",
+      "cancel": "Anulează",
+      "errors": {
+        "badImageType": "Alege o imagine JPEG, PNG sau WebP.",
+        "imageTooLarge": "Imaginea depășește 10 MB. Alege un fișier mai mic.",
+        "uploadFailed": "Încărcarea a eșuat: {message}",
+        "titleMin": "Dă-i un nume (cel puțin 3 caractere).",
+        "priceInvalid": "Introdu un preț de forma 12.50.",
+        "priceMin": "Prețul minim e £0.50 (procesarea cardului îl cere).",
+        "stockInvalid": "Stocul trebuie să fie un număr întreg (sau lasă-l gol).",
+        "saveFailedRetry": "Nu s-a putut salva — încearcă din nou.",
+        "addFailedRetry": "Nu s-a putut adăuga — încearcă din nou.",
+        "saveFailed": "Nu s-a putut salva."
+      }
+    }
+  },
+  "venueOrders": {
+    "refundConfirm": "Rambursezi integral această comandă? Cumpărătorul primește totul înapoi.",
+    "actionFailed": "N-a mers — încearcă din nou.",
+    "empty": "Nicio comandă încă — apar aici imediat ce cineva cumpără din magazinul tău.",
+    "emptyFiltered": "Nimic în această vedere.",
+    "filters": {
+      "all": "Toate",
+      "paid": "De onorat",
+      "fulfilled": "Onorate",
+      "refunded": "Rambursate"
+    },
+    "status": {
+      "pending": "în așteptare",
+      "paid": "plătită",
+      "collected": "ridicată",
+      "redeemed": "revendicată",
+      "refunded": "rambursată",
+      "canceled": "anulată"
+    },
+    "code": {
+      "placeholder": "Revendică un cod…",
+      "aria": "Cod de revendicare",
+      "verify": "Verifică și revendică",
+      "noMatch": "Nicio comandă cu acest cod.",
+      "alreadyStatus": "Comanda acestui cod e deja {status}.",
+      "redeemedNote": "✓ Revendicat — {title}"
+    },
+    "roamFee": "Comision Roam {fee}",
+    "codeWord": "cod",
+    "markRedeemed": "Marchează revendicată",
+    "markCollected": "Marchează ridicată",
+    "refund": "Rambursează"
+  },
+  "businessDashboard": {
+    "back": "Cont",
+    "title": "Afaceri",
+    "signedOutIntro": "Conectează-te ca să gestionezi localurile pe care le-ai revendicat.",
+    "loadFailed": "Nu am putut încărca localurile tale.",
+    "statusClaimed": "Revendicat",
+    "empty": {
+      "title": "Niciun local revendicat încă",
+      "body": "Găsește-ți afacerea în <link>Explorează</link>, deschide-i pagina și apasă „Revendică-l gratuit”. Odată aprobată, apare aici, gata de editat.",
+      "howItWorks": "Cum funcționează revendicarea →"
+    }
+  },
+  "businessLanding": {
+    "back": "Explorează",
+    "kicker": "Pentru afaceri",
+    "title": "Ai o afacere locală? Revendic-o pe Roam.",
+    "heroBody": "Oamenii descoperă locuri din zonă pe Roam gratuit. Revendicându-ți localul îl ții la zi — fotografiile, programul, descrierea și linkurile tale — și controlezi cum apari.",
+    "findYourBusiness": "Găsește-ți afacerea",
+    "yourDashboard": "Panoul tău",
+    "alreadyClaimed": "Ai revendicat deja? Conectează-te",
+    "howItWorks": "Cum funcționează",
+    "steps": {
+      "find": {
+        "title": "Găsește-ți localul",
+        "body": "Probabil e deja pe Roam, listat din surse publice. Caută-l în Explorează și deschide-i pagina."
+      },
+      "claim": {
+        "title": "Revendică-l gratuit",
+        "body": "Apasă „Revendică-l gratuit” pe pagina localului. Conectează-te (sau creează un cont) — același cont pe care l-ai folosi pentru explorat."
+      },
+      "verify": {
+        "title": "Verifică și gestionează",
+        "body": "Verificăm automat când emailul tău se potrivește cu site-ul afacerii; altfel, o verificare manuală rapidă. Apoi adaugă fotografii, program, o descriere și linkuri."
+      }
+    },
+    "onceClaimed": "După ce ai revendicat",
+    "perks": {
+      "photos": "Adaugă și reordonează fotografii reale, setează-ți imaginea de copertă",
+      "hours": "Ține-ți programul la zi („deschis acum” live)",
+      "description": "Scrie-ți descrierea și adaugă-ți linkurile",
+      "followers": "Urmăritorii sunt notificați când postezi (în curând)"
+    },
+    "publicSourcesNote": "Roam listează localuri din surse publice ca localnicii să te găsească indiferent dacă ai revendicat sau nu — revendicarea e gratuită și pur și simplu îți dă cheile paginii tale."
+  },
+  "marketingSuggestions": {
+    "loadFailed": "Nu am putut încărca preferințele tale acum.",
+    "suggestionsOn": "Sugestii activate",
+    "suggestionsOff": "Sugestii dezactivate",
+    "summaryOn": "Îți vom sugera oferte și postări personalizate — niciodată publicate automat, mereu ale tale de editat mai întâi.",
+    "summaryOff": "Sugestiile automate sunt oprite. Activează-le ca să primești idei personalizate de oferte și postări.",
+    "discountCap": "Plafon de reducere {pct}%.",
+    "editPreferences": "Editează preferințele",
+    "turnOff": "Dezactivează",
+    "turnOn": "Activează",
+    "intro": "Vrei o mână de ajutor la marketingul afacerii tale? Activează sugestiile automate și îți vom propune oferte și postări personalizate — mereu ale tale de revizuit și editat înainte să iasă ceva. Răspunde la câteva întrebări rapide ca să le facem relevante.",
+    "capLabel": "Reducerea maximă pe care ești dispus s-o oferi: <pct>{cap}%</pct>",
+    "capAria": "Procent plafon de reducere",
+    "typesLabel": "Ce tipuri de oferte ai rula? (alege oricare)",
+    "notesLabel": "Ce produse sau servicii reduci de obicei?",
+    "notesPlaceholder": "ex. feluri principale la prânz în timpul săptămânii, prima cafea pentru clienți noi, tunsori în după-amiezile liniștite…",
+    "saving": "Se salvează…",
+    "turnOnSuggestions": "Activează sugestiile",
+    "savePreferences": "Salvează preferințele",
+    "notNow": "Nu acum",
+    "cancel": "Anulează"
+  },
+  "offerInsights": {
+    "loadFailed": "Nu am putut încărca statisticile acum.",
+    "empty": "Nicio dată despre oferte încă. Publică câteva oferte și etichetează-le tipul — după ce oamenii le salvează și le revendică, vei vedea aici ce tipuri merg cel mai bine.",
+    "topTheme": "Ofertele tale de tip <strong>{label}</strong> atrag cel mai mult interes până acum — {saves} salvări și {redemptions} revendicări.",
+    "offerCount": "{count, plural, one {# ofertă} few {# oferte} other {# de oferte}}"
+  },
+  "venueNotify": {
+    "roamMember": "Membru Roam",
+    "noFollowers": "Niciun urmăritor încă — după ce oamenii încep să te urmărească, le poți trimite o notificare de aici (tuturor sau pe rând).",
+    "allFollowers": "Toți urmăritorii",
+    "allFollowersCount": "Toți urmăritorii ({count})",
+    "onePerson": "O persoană",
+    "to": "Către",
+    "showingRecent": "Se afișează cei mai recenți {count} urmăritori ai tăi.",
+    "placeholderOne": "Scrie un mesaj acestui urmăritor…",
+    "placeholderAll": "Scrie un mesaj pentru urmăritorii tăi…",
+    "messageAria": "Mesajul notificării",
+    "sending": "Se trimite…",
+    "send": "Trimite",
+    "sendToAll": "Trimite tuturor",
+    "sendToAllCount": "Trimite tuturor ({count})",
+    "noneNotified": "Nimeni nu a fost notificat (niciun urmăritor potrivit).",
+    "sentTo": "{count, plural, one {Trimis către # urmăritor.} few {Trimis către # urmăritori.} other {Trimis către # de urmăritori.}}",
+    "footer": "Ajunge în notificările lor (clopoțelul). Urmăritorii care ți-au pus ofertele pe silențios primesc totuși mesajele directe trimise de aici.",
+    "errors": {
+      "emptyMessage": "Scrie un mesaj ca să-l trimiți.",
+      "noRecipient": "Alege un urmăritor căruia să-i trimiți.",
+      "sendFailed": "Nu am putut trimite notificarea."
+    }
+  },
+  "venueActivity": {
+    "someone": "Cineva",
+    "yourOffer": "oferta ta",
+    "quotedTitle": "„{title}”",
+    "phrase": {
+      "follow": "{who} a început să te urmărească",
+      "offerSave": "{who} a salvat {what}",
+      "offerRedeem": "{who} a revendicat {what}",
+      "sale": "{who} a cumpărat {what}",
+      "other": "{who} a interacționat cu localul tău"
+    },
+    "loadFailed": "Nu am putut încărca activitatea acum.",
+    "unreadNew": "{count} noi",
+    "allCaughtUp": "Ești la zi",
+    "markAllRead": "Marchează toate citite",
+    "empty": "Nicio activitate încă. Pe măsură ce oamenii te urmăresc și îți salvează ofertele, o vei vedea aici."
+  },
+  "venuePayments": {
+    "notConfigured": "Vânzarea pe Roam e aproape gata — procesarea plăților nu e încă activată în acest mediu.",
+    "chips": {
+      "payoutsActive": "Încasări active",
+      "chargesEnabled": "Plăți activate",
+      "detailsSubmitted": "Date trimise",
+      "detailsNeeded": "Date necesare",
+      "payoutsPending": "Încasări în așteptare"
+    },
+    "activeBody": "Ești pregătit să fii plătit — tot ce vinzi se virează în contul bancar conectat. Istoricul încasărilor și datele bancare sunt în panoul tău Stripe:",
+    "opening": "Se deschide…",
+    "manageOnStripe": "Gestionează încasările pe Stripe ↗",
+    "reviewingBody": "Stripe îți verifică datele — încasările se activează de obicei în una-două zile. Revino, sau finalizează ce a rămas:",
+    "unfinishedBody": "Configurarea încasărilor nu e gata încă. Continuă de unde ai rămas — durează câteva minute:",
+    "openingStripe": "Se deschide Stripe…",
+    "continueSetup": "Continuă configurarea încasărilor",
+    "connectBody": "Conectează un cont de încasări ca să vinzi produse, servicii și vouchere pe Roam. Configurarea e gestionată în siguranță de Stripe — Roam nu îți vede niciodată actul de identitate sau datele bancare.",
+    "setUp": "Configurează încasările",
+    "errors": {
+      "startFailed": "Nu am putut porni configurarea încasărilor.",
+      "openStripeFailed": "Nu am putut deschide Stripe."
+    }
+  }
+}

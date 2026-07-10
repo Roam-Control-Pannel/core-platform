@@ -225,6 +225,13 @@
   .forbiz {
     display: none;
   }
+
+  /* ＋Sell goes icon-only on phones (the aria-label carries the name) — translated labels
+     ("Gwerthu", "Verkaufen") otherwise push the bar past a 375px viewport next to the longer
+     translated Sign-in button. Same treatment as the squeeze band below. */
+  .actionLabel {
+    display: none;
+  }
 }
 
 /* The squeeze band (980–1139px, e.g. iPad landscape / small laptops): the FULL chrome — brand +
