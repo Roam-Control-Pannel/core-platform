@@ -300,6 +300,15 @@ export const INGEST_SNAP_DEGREES = 0.005;
 /** Hard ceiling on paid searchNearby calls per day, across ALL callers. The wallet backstop. */
 export const PLACES_DAILY_FETCH_BUDGET = 2000;
 
+/**
+ * Hard ceiling on paid Place DETAILS calls per day, across ALL callers — the on-demand venue
+ * enrichment budget (0080). Kept SEPARATE from PLACES_DAILY_FETCH_BUDGET (its own DB bucket) so
+ * Details spend — the pricier Atmosphere SKU — can never starve area discovery, and vice-versa.
+ * Enrichment is one Details call per venue LIFETIME (the details_fetched_at marker), so demand
+ * naturally decays; this is the wallet backstop against a surge. Tunable without a migration.
+ */
+export const PLACES_DETAILS_DAILY_BUDGET = 1000;
+
 /** Max paid searchNearby calls a single client (by IP) may trigger per window. Fairness. */
 export const PLACES_CLIENT_FETCH_LIMIT = 60;
 
