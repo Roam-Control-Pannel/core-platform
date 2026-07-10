@@ -9,11 +9,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PostCard, type WallPost } from "./ProfileWall";
 
 export function WallPostScreen({ postId, initialPost }: { postId: string; initialPost?: WallPost | null }) {
+  const t = useTranslations("wallPostScreen");
   const trpc = useTrpc();
   const session = useSession();
   const myId = session?.user?.id ?? null;
@@ -41,7 +43,7 @@ export function WallPostScreen({ postId, initialPost }: { postId: string; initia
         if (!cancelled) setPost(p);
       })
       .catch((e: unknown) => {
-        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Couldn't load this post.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -61,7 +63,7 @@ export function WallPostScreen({ postId, initialPost }: { postId: string; initia
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
       >
         <span aria-hidden>←</span>
-        {post?.author.displayName ?? (post?.author.handle ? `@${post.author.handle}` : "Profile")}
+        {post?.author.displayName ?? (post?.author.handle ? `@${post.author.handle}` : t("profile"))}
       </Link>
 
       {error ? (
@@ -73,9 +75,9 @@ export function WallPostScreen({ postId, initialPost }: { postId: string; initia
       ) : post === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-            Post not found
+            {t("notFoundTitle")}
           </div>
-          <p style={{ color: "var(--ink-2)", margin: 0 }}>It may have been removed, or the link is wrong.</p>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("notFoundBody")}</p>
         </Card>
       ) : (
         <PostCard post={post} canInteract={!!session} isOwner={myId === post.authorId} myId={myId} onChanged={onChanged} />

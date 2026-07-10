@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -53,6 +54,7 @@ export interface TopicDetailData {
 }
 
 export function TownHallTopic({ topicId, initialData }: { topicId: string; initialData?: TopicDetailData | null }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -83,7 +85,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
         if (!cancelled) setData(d);
       })
       .catch((e: unknown) => {
-        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Couldn't load this topic.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -108,7 +110,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
           marginBottom: "var(--space-4)",
         }}
       >
-        <span aria-hidden>←</span> Town Hall
+        <span aria-hidden>←</span> {t("townHall")}
       </Link>
 
       {error ? (
@@ -120,9 +122,9 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
       ) : data === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-            Topic not found
+            {t("notFoundTitle")}
           </div>
-          <p style={{ color: "var(--ink-2)", margin: 0 }}>It may have been removed, or the link is wrong.</p>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("notFoundBody")}</p>
         </Card>
       ) : (
         <>
@@ -186,7 +188,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
                       await del.mutate({ topicId });
                       router.push("/town-hall");
                     }}
-                    confirmLabel="Delete this topic?"
+                    confirmLabel={t("deleteTopicConfirm")}
                   />
                 ) : null}
               </>
@@ -205,11 +207,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
                 marginBottom: "var(--space-3)",
               }}
             >
-              {data.replies.length === 0
-                ? "No replies yet"
-                : data.replies.length === 1
-                  ? "1 reply"
-                  : `${data.replies.length} replies`}
+              {t("replies", { count: data.replies.length })}
             </div>
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
               {data.replies.map((r) => (
@@ -225,7 +223,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
             ) : (
               <Card style={{ padding: "var(--space-4)" }}>
                 <AuthPanel
-                  intro="Sign in to join the conversation."
+                  intro={t("signInToReply")}
                   emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
                   onAuthed={() => {
                     /* session change re-renders; the composer shows */
@@ -243,6 +241,7 @@ export function TownHallTopic({ topicId, initialData }: { topicId: string; initi
 }
 
 function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string | null; onChanged: () => void }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const [editing, setEditing] = useState(false);
   const mine = !!myId && reply.author.id === myId;
@@ -291,7 +290,7 @@ function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string |
                 await del.mutate({ replyId: reply.id });
                 onChanged();
               }}
-              confirmLabel="Delete this reply?"
+              confirmLabel={t("deleteReplyConfirm")}
             />
           ) : null}
         </>
@@ -302,6 +301,7 @@ function ReplyRow({ reply, myId, onChanged }: { reply: ReplyView; myId: string |
 
 /** A quiet Edit · Delete control row for content the viewer owns. Delete asks once inline. */
 function OwnerActions({ onEdit, onDelete, confirmLabel }: { onEdit: () => void; onDelete: () => Promise<void>; confirmLabel: string }) {
+  const t = useTranslations("townHallTopic");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -315,21 +315,22 @@ function OwnerActions({ onEdit, onDelete, confirmLabel }: { onEdit: () => void; 
           disabled={busy}
           onClick={async () => { setBusy(true); try { await onDelete(); } catch { setBusy(false); setConfirming(false); } }}
         >
-          {busy ? "Deleting…" : "Yes, delete"}
+          {busy ? t("owner.deleting") : t("owner.yesDelete")}
         </button>
-        <button type="button" className={actions.action} disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+        <button type="button" className={actions.action} disabled={busy} onClick={() => setConfirming(false)}>{t("owner.cancel")}</button>
       </div>
     );
   }
   return (
     <div className={actions.row} style={{ marginTop: "var(--space-3)" }}>
-      <button type="button" className={actions.action} onClick={onEdit}>Edit</button>
-      <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
+      <button type="button" className={actions.action} onClick={onEdit}>{t("owner.edit")}</button>
+      <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>{t("owner.delete")}</button>
     </div>
   );
 }
 
 function TopicEditor({ topicId, initialTitle, initialBody, onSaved, onCancel }: { topicId: string; initialTitle: string; initialBody: string; onSaved: () => void; onCancel: () => void }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const [title, setTitle] = useState(initialTitle);
   const [body, setBody] = useState(initialBody);
@@ -344,25 +345,26 @@ function TopicEditor({ topicId, initialTitle, initialBody, onSaved, onCancel }: 
       await mut.mutate({ topicId, title, body });
       onSaved();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setErr(e instanceof Error ? e.message : t("editor.saveFailed"));
       setBusy(false);
     }
   }, [trpc, topicId, title, body, onSaved]);
 
   return (
     <div>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Topic title" maxLength={140} style={editInput} />
-      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label="Topic detail" rows={4} style={{ ...editInput, resize: "vertical", minHeight: 96 }} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label={t("editor.titleAria")} maxLength={140} style={editInput} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label={t("editor.bodyAria")} rows={4} style={{ ...editInput, resize: "vertical", minHeight: 96 }} />
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0 || body.trim().length === 0}>{busy ? "Saving…" : "Save"}</Button>
-        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0 || body.trim().length === 0}>{busy ? t("editor.saving") : t("editor.save")}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>{t("editor.cancel")}</Button>
       </div>
     </div>
   );
 }
 
 function ReplyEditor({ replyId, initialBody, onSaved, onCancel }: { replyId: string; initialBody: string; onSaved: () => void; onCancel: () => void }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const [body, setBody] = useState(initialBody);
   const [busy, setBusy] = useState(false);
@@ -376,18 +378,18 @@ function ReplyEditor({ replyId, initialBody, onSaved, onCancel }: { replyId: str
       await mut.mutate({ replyId, body });
       onSaved();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setErr(e instanceof Error ? e.message : t("editor.saveFailed"));
       setBusy(false);
     }
   }, [trpc, replyId, body, onSaved]);
 
   return (
     <div>
-      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label="Edit reply" rows={3} style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} aria-label={t("editor.replyAria")} rows={3} style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || body.trim().length === 0}>{busy ? "Saving…" : "Save"}</Button>
-        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || body.trim().length === 0}>{busy ? t("editor.saving") : t("editor.save")}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>{t("editor.cancel")}</Button>
       </div>
     </div>
   );
@@ -408,6 +410,7 @@ const editInput: React.CSSProperties = {
 };
 
 function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () => void }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -425,7 +428,7 @@ function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () 
       setBusy(false);
       onReplied();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Couldn't post your reply.");
+      setErr(e instanceof Error ? e.message : t("composer.postFailed"));
       setBusy(false);
     }
   }, [trpc, topicId, body, onReplied]);
@@ -435,8 +438,8 @@ function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () 
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Add a reply…"
-        aria-label="Your reply"
+        placeholder={t("composer.placeholder")}
+        aria-label={t("composer.aria")}
         rows={3}
         style={{
           width: "100%",
@@ -460,7 +463,7 @@ function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () 
         </div>
       ) : null}
       <Button variant="pri" onClick={() => void submit()} disabled={body.trim().length === 0 || busy}>
-        {busy ? "Posting…" : "Post reply"}
+        {busy ? t("composer.posting") : t("composer.post")}
       </Button>
     </Card>
   );
@@ -468,6 +471,7 @@ function ReplyComposer({ topicId, onReplied }: { topicId: string; onReplied: () 
 
 /** Quiet report affordance for a topic — files a user_report for human review. */
 function ReportTopic({ topicId }: { topicId: string }) {
+  const t = useTranslations("townHallTopic");
   const trpc = useTrpc();
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
 
@@ -487,7 +491,7 @@ function ReportTopic({ topicId }: { topicId: string }) {
   if (state === "done") {
     return (
       <p style={{ marginTop: "var(--space-6)", textAlign: "center", fontSize: 12, color: "var(--muted)" }}>
-        Thanks — a moderator will take a look.
+        {t("report.thanks")}
       </p>
     );
   }
@@ -505,7 +509,7 @@ function ReportTopic({ topicId }: { topicId: string }) {
           textDecoration: "underline",
         }}
       >
-        {state === "sending" ? "Reporting…" : "Report this topic"}
+        {state === "sending" ? t("report.reporting") : t("report.cta")}
       </button>
     </div>
   );

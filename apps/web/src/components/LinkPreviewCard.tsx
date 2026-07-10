@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 
 export interface LinkPreview {
@@ -16,6 +17,7 @@ export interface LinkPreview {
 }
 
 export function LinkPreviewCard({ link, onRemove }: { link: LinkPreview; onRemove?: () => void }) {
+  const t = useTranslations("linkPreviewCard");
   const inner = (
     <div style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--line)", borderRadius: "var(--r-md)", overflow: "hidden", background: "var(--paper-2)" }}>
       <span aria-hidden style={{ width: 76, minWidth: 76, height: 76, background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", overflow: "hidden" }}>
@@ -28,7 +30,7 @@ export function LinkPreviewCard({ link, onRemove }: { link: LinkPreview; onRemov
       </span>
       <span style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, padding: "8px 12px" }}>
         <span style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".03em", color: "var(--crimson-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {link.domain || "link"}
+          {link.domain || t("link")}
         </span>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {link.title || link.url}
@@ -49,7 +51,7 @@ export function LinkPreviewCard({ link, onRemove }: { link: LinkPreview; onRemov
         <button
           type="button"
           onClick={onRemove}
-          aria-label="Remove link"
+          aria-label={t("removeLink")}
           style={{ all: "unset", cursor: "pointer", position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center" }}
         >
           <Icon name="close" size={13} />

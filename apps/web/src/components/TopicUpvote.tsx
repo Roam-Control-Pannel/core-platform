@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -34,6 +35,7 @@ function VotePill({
   /** Column form (chevron button above the count) — the board card's left vote rail. */
   vertical?: boolean;
 }) {
+  const t = useTranslations("topicUpvote");
   const [upvoted, setUpvoted] = useState(initialUpvoted);
   const [count, setCount] = useState(initialCount);
   const [busy, setBusy] = useState(false);
@@ -67,8 +69,8 @@ function VotePill({
           onClick={(e) => { e.preventDefault(); void toggle(); }}
           disabled={!canVote || busy}
           aria-pressed={upvoted}
-          aria-label={upvoted ? "Remove upvote" : "Upvote"}
-          title={canVote ? (upvoted ? "Remove upvote" : "Upvote") : "Sign in to upvote"}
+          aria-label={upvoted ? t("removeUpvote") : t("upvote")}
+          title={canVote ? (upvoted ? t("removeUpvote") : t("upvote")) : t("signInToUpvote")}
           style={{
             all: "unset",
             boxSizing: "border-box",
@@ -98,8 +100,8 @@ function VotePill({
       onClick={(e) => { e.preventDefault(); void toggle(); }}
       disabled={!canVote || busy}
       aria-pressed={upvoted}
-      aria-label={upvoted ? "Remove upvote" : "Upvote"}
-      title={canVote ? (upvoted ? "Remove upvote" : "Upvote") : "Sign in to upvote"}
+      aria-label={upvoted ? t("removeUpvote") : t("upvote")}
+      title={canVote ? (upvoted ? t("removeUpvote") : t("upvote")) : t("signInToUpvote")}
       style={{
         all: "unset",
         boxSizing: "border-box",
