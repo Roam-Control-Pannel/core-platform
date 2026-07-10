@@ -1,0 +1,2033 @@
+{
+  "common": {
+    "time": {
+      "justNow": "હમણાં જ",
+      "minutes": "{n}m",
+      "hours": "{n}h",
+      "days": "{n}d"
+    },
+    "someone": "કોઈક",
+    "roamMember": "Roam સભ્ય"
+  },
+  "categories": {
+    "foodDrink": "ખાણી-પીણી",
+    "shopping": "શોપિંગ",
+    "entertainment": "આકર્ષણો",
+    "transport": "ટ્રાન્સપોર્ટ",
+    "business": "બિઝનેસ",
+    "health": "હેલ્થ અને બ્યુટી",
+    "lodging": "હોટેલ",
+    "civic": "નાગરિક",
+    "worship": "ધર્મસ્થાન"
+  },
+  "offerTypes": {
+    "percent_off": "% છૂટ",
+    "amount_off": "રકમમાં છૂટ",
+    "two_for_one": "2-ફોર-1",
+    "bogof": "એક ખરીદો, એક મફત",
+    "free_item": "મફત વસ્તુ",
+    "bundle": "બંડલ ડીલ",
+    "happy_hour": "હૅપી અવર",
+    "loyalty": "લૉયલ્ટી ઇનામ",
+    "first_time": "પહેલી વારની ઑફર",
+    "seasonal": "મોસમી / ઇવેન્ટ",
+    "other": "અન્ય"
+  },
+  "chrome": {
+    "brandHome": "Roam હોમ",
+    "primaryNav": "મુખ્ય",
+    "nav": {
+      "home": "હોમ",
+      "explore": "શોધો",
+      "townHall": "ટાઉન હૉલ",
+      "plans": "પ્લાન",
+      "chat": "ચેટ",
+      "you": "તમે"
+    },
+    "forBusinesses": "બિઝનેસ માટે",
+    "create": "બનાવો",
+    "sell": "વેચો",
+    "sellOnRoam": "Roam પર વેચો",
+    "yourOrders": "તમારા ઓર્ડર",
+    "yourAccount": "તમારું એકાઉન્ટ",
+    "signIn": "સાઇન ઇન કરો",
+    "signInIntro": "વેન્યુ ફોલો કરવા અને નોટિફિકેશન મેનેજ કરવા સાઇન ઇન કરો.",
+    "close": "બંધ કરો",
+    "createMenu": {
+      "open": "બનાવો",
+      "close": "બનાવો મેનૂ બંધ કરો",
+      "newPlan": "નવો પ્લાન",
+      "postToWall": "તમારી વૉલ પર પોસ્ટ કરો"
+    }
+  },
+  "auth": {
+    "checkEmail": "તમારો ઇમેઇલ ચેક કરો",
+    "resetSentBody": "જો <strong>{email}</strong> માટે એકાઉન્ટ હશે, તો અમે પાસવર્ડ રીસેટ કરવાની લિંક મોકલી છે. નવો પાસવર્ડ પસંદ કરવા તે ખોલો.",
+    "backToSignIn": "સાઇન ઇન પર પાછા જાઓ",
+    "resetTitle": "તમારો પાસવર્ડ રીસેટ કરો",
+    "resetBody": "તમારા એકાઉન્ટનો ઇમેઇલ લખો અને અમે નવો પાસવર્ડ સેટ કરવાની લિંક મોકલીશું.",
+    "email": "ઇમેઇલ",
+    "emailPlaceholder": "you@business.com",
+    "password": "પાસવર્ડ",
+    "passwordPlaceholder": "ઓછામાં ઓછા 8 અક્ષર",
+    "sendResetLink": "રીસેટ લિંક મોકલો",
+    "pleaseWait": "થોડી રાહ જુઓ…",
+    "confirmSentBody": "અમે <strong>{email}</strong> પર કન્ફર્મેશન લિંક મોકલી છે. તમારું એકાઉન્ટ કન્ફર્મ કરવા તે ખોલો — તમે સીધા અહીં પાછા આવશો, સાઇન ઇન થયેલા.",
+    "signIn": "સાઇન ઇન કરો",
+    "createAccount": "એકાઉન્ટ બનાવો",
+    "forgotPassword": "પાસવર્ડ ભૂલી ગયા?",
+    "continueWith": "{provider} સાથે ચાલુ રાખો",
+    "or": "અથવા",
+    "errors": {
+      "enterEmailPassword": "તમારો ઇમેઇલ અને પાસવર્ડ લખો.",
+      "passwordMin": "ઓછામાં ઓછા 8 અક્ષરનો પાસવર્ડ વાપરો.",
+      "signInFailed": "તમને સાઇન ઇન કરી શકાયા નહીં. ફરી પ્રયત્ન કરો.",
+      "generic": "કંઈક ખોટું થયું. ફરી પ્રયત્ન કરો.",
+      "startSignInFailed": "સાઇન-ઇન શરૂ થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો.",
+      "enterEmailForReset": "તમારો ઇમેઇલ લખો અને અમે રીસેટ લિંક મોકલીશું.",
+      "invalidLogin": "એ ઇમેઇલ કે પાસવર્ડ મળતો નથી.",
+      "alreadyRegistered": "એ ઇમેઇલનું એકાઉન્ટ પહેલેથી છે — એના બદલે સાઇન ઇન કરી જુઓ.",
+      "rateLimit": "ઘણા બધા પ્રયત્નો થયા. થોડી રાહ જોઈને ફરી પ્રયત્ન કરો.",
+      "fallback": "એ પૂરું થઈ શક્યું નહીં. તમારી વિગતો ચકાસીને ફરી પ્રયત્ન કરો."
+    }
+  },
+  "settings": {
+    "back": "એકાઉન્ટ",
+    "title": "સેટિંગ્સ",
+    "account": {
+      "title": "એકાઉન્ટ",
+      "email": "ઇમેઇલ",
+      "signInMethod": "સાઇન-ઇન પદ્ધતિ",
+      "emailPassword": "ઇમેઇલ અને પાસવર્ડ",
+      "changePassword": "પાસવર્ડ બદલો",
+      "checkInbox": "તમારું ઇનબોક્સ ચેક કરો",
+      "sending": "મોકલી રહ્યા છીએ…",
+      "tryAgain": "ફરી પ્રયત્ન કરો",
+      "emailMeALink": "મને લિંક ઇમેઇલ કરો",
+      "editProfile": "પ્રોફાઇલ એડિટ કરો"
+    },
+    "notifications": {
+      "title": "નોટિફિકેશન",
+      "followedVenues": "ફોલો કરેલાં વેન્યુ અને પુશ",
+      "manage": "મેનેજ કરો",
+      "yourNotifications": "તમારાં નોટિફિકેશન"
+    },
+    "legal": {
+      "title": "કાનૂની",
+      "terms": "સેવાની શરતો",
+      "privacy": "પ્રાઇવસી પોલિસી",
+      "subscription": "સબ્સ્ક્રિપ્શન શરતો",
+      "guidelines": "કમ્યુનિટી માર્ગદર્શિકા",
+      "attributions": "શ્રેય-સૂચિ"
+    },
+    "support": {
+      "title": "સપોર્ટ",
+      "contact": "સપોર્ટનો સંપર્ક કરો",
+      "appVersion": "ઍપ વર્ઝન"
+    },
+    "signOut": "સાઇન આઉટ કરો",
+    "signingOut": "સાઇન આઉટ થઈ રહ્યું છે…",
+    "signedOutIntro": "તમારા એકાઉન્ટની સેટિંગ્સ મેનેજ કરવા સાઇન ઇન કરો.",
+    "danger": {
+      "title": "જોખમી વિભાગ",
+      "deleteAccount": "એકાઉન્ટ ડિલીટ કરો",
+      "deleteBody": "તમારી પ્રોફાઇલ, પોસ્ટ, પ્લાન, ચેટ અને ફોલો કાયમ માટે ડિલીટ થાય છે. આ પાછું વાળી શકાતું નથી.",
+      "modalTitle": "તમારું એકાઉન્ટ ડિલીટ કરવું છે?",
+      "modalBody": "આનાથી તમારી પ્રોફાઇલ, પોસ્ટ, પ્લાન, ચેટ, ફોલો અને સાચવેલી ઑફર કાયમ માટે દૂર થાય છે. પાછું વાળી શકાતું નથી. બીજાની વૉલ પર તમે મૂકેલી કૉમેન્ટ રહે છે, પણ તેમાં તમારું નામ દેખાતું નથી.",
+      "typeToConfirm": "કન્ફર્મ કરવા <strong>{word}</strong> ટાઇપ કરો",
+      "deleteFailed": "તમારું એકાઉન્ટ ડિલીટ થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો.",
+      "cancel": "રદ કરો",
+      "deleting": "ડિલીટ થઈ રહ્યું છે…"
+    },
+    "language": {
+      "title": "ભાષા",
+      "label": "ઍપની ભાષા",
+      "hint": "વધુ ભાષાઓ આવી રહી છે. પોસ્ટ અને કમ્યુનિટી કન્ટેન્ટ જે ભાષામાં લખાયાં હોય તે જ ભાષામાં રહે છે — તમારું બ્રાઉઝર તેનું ભાષાંતર કરી શકે."
+    }
+  },
+  "profileEditor": {
+    "displayName": "દેખાતું નામ",
+    "displayNamePlaceholder": "તમારું નામ",
+    "handle": {
+      "label": "હૅન્ડલ",
+      "placeholder": "handle",
+      "empty": "હૅન્ડલ પસંદ કરો — એ તમારી પ્રોફાઇલનું વેબ સરનામું છે.",
+      "notAvailable": "એ હૅન્ડલ ઉપલબ્ધ નથી.",
+      "checking": "ઉપલબ્ધતા ચકાસી રહ્યા છીએ…",
+      "available": "@{handle} ઉપલબ્ધ છે ✓",
+      "hint": "નાના અંગ્રેજી અક્ષરો, આંકડા અને અન્ડરસ્કોર. આ તમારી પ્રોફાઇલનું વેબ સરનામું છે."
+    },
+    "bio": "બાયો",
+    "bioPlaceholder": "તમારા વિશે અને તમને ગમતી જગ્યાઓ વિશે એક લીટી.",
+    "links": "લિંક",
+    "linkUrlPlaceholder": "{label} URL",
+    "cropAvatarTitle": "તમારો પ્રોફાઇલ ફોટો ગોઠવો",
+    "cropHeaderTitle": "તમારી હેડર ઇમેજ ગોઠવો",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "saveProfile": "પ્રોફાઇલ સેવ કરો",
+    "saved": "સેવ થયું ✓",
+    "changeAvatarImage": "અવતાર ઇમેજ બદલો",
+    "changeHeaderImage": "હેડર ઇમેજ બદલો",
+    "addHeaderImage": "હેડર ઇમેજ ઉમેરો",
+    "uploading": "અપલોડ થઈ રહ્યું છે…",
+    "change": "બદલો",
+    "errors": {
+      "loadFailed": "તમારી પ્રોફાઇલ લોડ થઈ શકી નહીં.",
+      "uploadFailed": "અપલોડ નિષ્ફળ ગયું.",
+      "saveFailedRetry": "તમારી પ્રોફાઇલ સેવ થઈ શકી નહીં. ફરી પ્રયત્ન કરો.",
+      "saveFailed": "તમારી પ્રોફાઇલ સેવ થઈ શકી નહીં."
+    }
+  },
+  "accountHub": {
+    "explore": "શોધો",
+    "title": "તમારું એકાઉન્ટ",
+    "signedOutIntro": "તમારી પ્રોફાઇલ સેટ કરવા અને વૉલ પર પોસ્ટ કરવા સાઇન ઇન કરો.",
+    "signOut": "સાઇન આઉટ કરો",
+    "signingOut": "સાઇન આઉટ થઈ રહ્યું છે…"
+  },
+  "notificationCenter": {
+    "home": "હોમ",
+    "title": "નોટિફિકેશન",
+    "signedOutIntro": "તમારાં નોટિફિકેશન જોવા સાઇન ઇન કરો.",
+    "loadFailed": "નોટિફિકેશન લોડ થઈ શક્યાં નહીં.",
+    "empty": "હજુ કંઈ નથી. લોકો તમને જવાબ આપે, તમારી પોસ્ટ પર કૉમેન્ટ કરે, કે તમારું વેન્યુ ફોલો કરે ત્યારે એ અહીં દેખાશે.",
+    "bellLabel": "{count, plural, =0 {નોટિફિકેશન} other {નોટિફિકેશન (# વણવાંચેલાં)}}"
+  },
+  "enableNotifications": {
+    "signedOutIntro": "આ ડિવાઇસ પર નોટિફિકેશન ચાલુ કરવા સાઇન ઇન કરો.",
+    "title": "નોટિફિકેશન",
+    "on": "ચાલુ",
+    "body": "તમે ફોલો કરો છો તે વેન્યુ કંઈક નવું પોસ્ટ કરે ત્યારે આ ડિવાઇસ પર જાણ મેળવો.",
+    "unsupported": "આ બ્રાઉઝર વેબ નોટિફિકેશન સપોર્ટ કરતું નથી.",
+    "registered": "આ ડિવાઇસ રજિસ્ટર થયું છે. વેન્યુ ફોલો કરીને દરેક વેન્યુ માટે ડિલિવરી મેનેજ કરી શકો છો.",
+    "enabling": "ચાલુ કરી રહ્યા છીએ…",
+    "enable": "નોટિફિકેશન ચાલુ કરો",
+    "errors": {
+      "registerFailed": "આ ડિવાઇસ રજિસ્ટર થઈ શક્યું નહીં.",
+      "generic": "કંઈક ખોટું થયું."
+    }
+  },
+  "resetPassword": {
+    "passwordsMismatch": "એ પાસવર્ડ મળતા નથી.",
+    "verifying": "તમારી રીસેટ લિંક ચકાસી રહ્યા છીએ…",
+    "expiredTitle": "આ લિંકની મુદત પૂરી થઈ ગઈ છે",
+    "expiredBody": "તમારી રીસેટ લિંક અમાન્ય છે અથવા વપરાઈ ચૂકી છે. સાઇન-ઇન સ્ક્રીન પરથી નવી માગો.",
+    "doneTitle": "પાસવર્ડ બદલાઈ ગયો",
+    "doneBody": "તમારો પાસવર્ડ બદલાઈ ગયો છે અને તમે સાઇન ઇન થયેલા છો. હવે તમારા એકાઉન્ટ પર પાછા જઈ શકો છો.",
+    "goToAccount": "તમારા એકાઉન્ટ પર જાઓ",
+    "chooseBody": "તમારા એકાઉન્ટ માટે નવો પાસવર્ડ પસંદ કરો.",
+    "newPassword": "નવો પાસવર્ડ",
+    "confirmPassword": "પાસવર્ડ કન્ફર્મ કરો",
+    "confirmPlaceholder": "તમારો નવો પાસવર્ડ ફરી લખો",
+    "setNewPassword": "નવો પાસવર્ડ સેટ કરો"
+  },
+  "firstRun": {
+    "title": "Roam માં તમારું સ્વાગત છે",
+    "intro": "બે નાની વાતો — જેથી મિત્રો તમને ઓળખે, અને તમે ફોલો કરો છો તે જગ્યાઓ તમને જન્મદિવસની ટ્રીટ મોકલી શકે.",
+    "nameLabel": "તમારું નામ",
+    "namePlaceholder": "દા.ત. Andrew M.",
+    "nameAria": "દેખાતું નામ",
+    "dobLabel": "જન્મતારીખ",
+    "treatsOptIn": "હું ફોલો કરું છું તે જગ્યાઓ પાસેથી મને જન્મદિવસની ટ્રીટ મોકલો",
+    "privacyNote": "તમારો જન્મદિવસ ખાનગી છે — બિઝનેસ ક્યારેય તારીખ જોતા નથી. તમે પસંદ કરેલી ટ્રીટ મોકલવા પૂરતો જ વપરાય છે. આ બધું પછી સેટિંગ્સમાં બદલી શકો છો.",
+    "dobInvalid": "એ જન્મતારીખ બરાબર લાગતી નથી — ચકાસીને ફરી પ્રયત્ન કરો.",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "save": "સેવ કરો",
+    "skip": "હમણાં રહેવા દો"
+  },
+  "birthdaySettings": {
+    "title": "જન્મદિવસ અને ઑફર",
+    "yourBirthday": "તમારો જન્મદિવસ",
+    "dobAria": "જન્મતારીખ",
+    "treatsOptIn": "હું ફોલો કરું છું તે જગ્યાઓ પાસેથી મને જન્મદિવસની ટ્રીટ મોકલો",
+    "privacyNote": "તમારો જન્મદિવસ ખાનગી છે. બિઝનેસ એ ક્યારેય જોતા નથી — તમે ફોલો કરો છો તે જગ્યાઓ પાસેથી, તમે પસંદ કરેલી જન્મદિવસ ઑફર મોકલવા પૂરતો જ વપરાય છે. ગમે ત્યારે એ કાઢી શકો કે બંધ કરી શકો છો.",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "save": "સેવ કરો",
+    "saved": "સેવ થયું ✓",
+    "saveFailed": "સેવ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરો."
+  },
+  "birthdayTreats": {
+    "title": "જન્મદિવસ મુબારક! તમારા માટે ટ્રીટ",
+    "fallbackTitle": "જન્મદિવસની ટ્રીટ",
+    "fallbackVenue": "તમે ફોલો કરો છો તે જગ્યા",
+    "untilDate": "{date} સુધી",
+    "redeemed": "રિડીમ થયું",
+    "redeem": "રિડીમ કરો"
+  },
+  "pushHistory": {
+    "loadFailed": "પુશ હિસ્ટ્રી હમણાં લોડ થઈ શકી નહીં.",
+    "empty": "હજુ કોઈ પુશ મોકલાયું નથી. તમે અપડેટ પોસ્ટ કરીને “ફોલોઅર્સને જાણ કરો” ટિક કરશો ત્યારે એ અહીં દેખાશે.",
+    "untitledUpdate": "અપડેટ"
+  },
+  "authCallback": {
+    "failedTitle": "સાઇન-ઇન પૂરું થયું નહીં",
+    "failedBody": "તમને સાઇન ઇન કરવાનું પૂરું થઈ શક્યું નહીં — કદાચ તમે રદ કર્યું હોય, અથવા લિંકની મુદત પૂરી થઈ ગઈ હોય. ફરી પ્રયત્ન કરો.",
+    "completing": "સાઇન-ઇન પૂરું થઈ રહ્યું છે…"
+  },
+  "home": {
+    "greeting": {
+      "morning": "શુભ સવાર",
+      "afternoon": "શુભ બપોર",
+      "evening": "શુભ સાંજ"
+    },
+    "movingIn": "અહીં શું ચાલી રહ્યું છે તે જુઓ",
+    "customise": "કસ્ટમાઇઝ કરો",
+    "quick": {
+      "newPlan": "નવો પ્લાન",
+      "startTopic": "ટૉપિક શરૂ કરો",
+      "findVenues": "વેન્યુ શોધો",
+      "messageFriend": "મિત્રને મેસેજ કરો",
+      "market": "બજાર",
+      "basecamp": "બેઝકૅમ્પ"
+    },
+    "basecampLink": {
+      "title": "બેઝકૅમ્પ",
+      "subtitle": "તમારાં બધાં વિજેટ, પૂરા કદમાં"
+    },
+    "widgets": {
+      "townForum": "ટાઉન ફોરમ",
+      "trendingNearby": "નજીકમાં ટ્રેન્ડિંગ",
+      "recentChats": "તાજેતરની ચેટ",
+      "deals": "ડીલ",
+      "nearbyTransit": "નજીકનું ટ્રાન્ઝિટ",
+      "yourPlans": "તમારા પ્લાન",
+      "followedVenues": "ફોલો કરેલાં વેન્યુ",
+      "savedDeals": "સાચવેલી ડીલ",
+      "marketplace": "માર્કેટપ્લેસ"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "તમે બધા વિભાગ છુપાવી દીધા છે.",
+      "cta": "હોમ કસ્ટમાઇઝ કરો"
+    },
+    "signIn": "સાઇન ઇન કરો",
+    "chatKind": {
+      "plan": "પ્લાન ચેટ",
+      "group": "ગ્રુપ",
+      "direct": "ડાયરેક્ટ"
+    },
+    "recentChats": {
+      "title": "તાજેતરની ચેટ",
+      "allChats": "બધી ચેટ",
+      "nudge": "નજીકના લોકો સાથેની તમારી વાતચીત અને પ્લાન જોવા સાઇન ઇન કરો.",
+      "error": "તમારી ચેટ હમણાં લોડ થઈ શકી નહીં.",
+      "empty": "હજુ કોઈ ચેટ નથી. મિત્રને મેસેજ કરો કે પ્લાન ખોલીને ચેટ શરૂ કરો — એ અહીં દેખાશે.",
+      "people": "{count, plural, one {# વ્યક્તિ} other {# લોકો}}"
+    },
+    "trending": {
+      "title": "નજીકમાં ટ્રેન્ડિંગ",
+      "explore": "શોધો",
+      "error": "તમારી નજીકનાં વેન્યુ હમણાં લોડ થઈ શક્યાં નહીં.",
+      "empty": "{place} નજીક હજુ કોઈ વેન્યુ મળ્યાં નથી.",
+      "venueFallback": "વેન્યુ"
+    },
+    "townForum": {
+      "title": "ટાઉન ફોરમ",
+      "townHall": "ટાઉન હૉલ",
+      "error": "ફોરમ હમણાં લોડ થઈ શક્યું નહીં.",
+      "empty": "{place} માં હજુ કોઈ ટૉપિક નથી.",
+      "startOne": "એક શરૂ કરો →",
+      "replies": "{count, plural, one {# જવાબ} other {# જવાબો}}"
+    },
+    "savedDeals": {
+      "title": "સાચવેલી ડીલ",
+      "empty": "તમે સાચવેલી ડીલ અહીં દેખાશે, વેન્યુમાં રિડીમ કરવા તૈયાર."
+    },
+    "followed": {
+      "title": "ફોલો કરેલાં વેન્યુ",
+      "manage": "મેનેજ કરો",
+      "nudge": "બિઝનેસ ફોલો કરીને એની એક્સક્લુઝિવ લૉયલ્ટી ડીલ મેળવો — એ અહીં દેખાશે, ફક્ત ફોલોઅર્સ માટે.",
+      "error": "તમારાં ફોલો કરેલાં વેન્યુ હમણાં લોડ થઈ શક્યાં નહીં.",
+      "empty": "તમે હજુ કોઈ બિઝનેસ ફોલો કરતા નથી. એક ફોલો કરો અને એની એક્સક્લુઝિવ લૉયલ્ટી ડીલ અહીં મેળવો.",
+      "findCta": "ફોલો કરવા બિઝનેસ શોધો",
+      "venueFallback": "વેન્યુ",
+      "exclusiveDeals": "તમારા માટે એક્સક્લુઝિવ ડીલ",
+      "noDeals": "તમારાં વેન્યુ તરફથી અત્યારે કોઈ લાઇવ ડીલ નથી — કોઈ લૉયલ્ટી ઑફર પોસ્ટ કરે કે તરત અહીં બતાવીશું."
+    },
+    "plans": {
+      "title": "તમારા પ્લાન",
+      "allPlans": "બધા પ્લાન",
+      "nudge": "પ્લાન બનાવો — રાતની મહેફિલ, વીકએન્ડ, અજમાવવાની યાદી — અને એમાં વેન્યુ સાચવો.",
+      "error": "તમારા પ્લાન હમણાં લોડ થઈ શક્યા નહીં.",
+      "empty": "હજુ કોઈ પ્લાન નથી — એક શરૂ કરો અને Roam પર ક્યાંયથી પણ વેન્યુ ઉમેરો.",
+      "newPlanCta": "＋ નવો પ્લાન",
+      "noDate": "હજુ તારીખ નથી",
+      "venues": "{count, plural, one {# વેન્યુ} other {# વેન્યુ}}"
+    },
+    "market": {
+      "title": "{place} બજાર",
+      "body": "તમારા ટાઉનના લોકો સાથે ખરીદો, વેચો અને અદલાબદલી કરો — મિનિટમાં કંઈક લિસ્ટ કરો, ચેટમાં નક્કી કરો, નજીકમાં મળો.",
+      "open": "બજાર ખોલો",
+      "browse": "બ્રાઉઝ કરો"
+    }
+  },
+  "homeFeed": {
+    "title": "તમારી લોકલ ફીડ",
+    "tabs": {
+      "forYou": "તમારા માટે",
+      "following": "ફોલોઇંગ",
+      "nearby": "નજીકમાં"
+    },
+    "error": "તમારી ફીડ હમણાં લોડ થઈ શકી નહીં.",
+    "followingNudge": "સાઇન ઇન કરીને તમારા મનપસંદ લોકલ બિઝનેસ ફોલો કરો — એમના સમાચાર, ઑફર અને ઇવેન્ટ અહીં આવશે.",
+    "signIn": "સાઇન ઇન કરો",
+    "emptyFollowing": "તમે ફોલો કરો છો તે વેન્યુની હજુ કોઈ પોસ્ટ નથી — શોધોમાં થોડાં ફોલો કરો અને એમનાં અપડેટ અહીં આવશે.",
+    "emptyLocal": "{place} માં હમણાં કંઈ ચાલી રહ્યું નથી — થોડી વારે ફરી જુઓ, અથવા ટાઉન હૉલમાં કંઈક શરૂ કરનાર તમે બનો.",
+    "exploreVenues": "વેન્યુ શોધો",
+    "openTownHall": "ટાઉન હૉલ ખોલો",
+    "caughtUp": "તમે બધું જોઈ લીધું",
+    "exploreAround": "તમારી આસપાસ શું છે તે શોધો",
+    "kind": {
+      "news": "સમાચાર",
+      "offer": "ઑફર",
+      "event": "ઇવેન્ટ"
+    },
+    "aLocalBusiness": "એક લોકલ બિઝનેસ",
+    "viewPost": "પોસ્ટ જુઓ",
+    "townHall": "ટાઉન હૉલ",
+    "asked": "{author} એ પૂછ્યું",
+    "replies": "{count, plural, one {# જવાબ} other {# જવાબો}}"
+  },
+  "homeCustomize": {
+    "title": "હોમ કસ્ટમાઇઝ કરો",
+    "subtitle": "ક્રમ બદલવા હૅન્ડલ ખેંચો, અથવા દેખાતા વિભાગ છુપાવો.",
+    "done": "થઈ ગયું",
+    "reorderItem": "{label} નો ક્રમ બદલો",
+    "showItem": "{label} બતાવો",
+    "hideItem": "{label} છુપાવો",
+    "reset": "ડિફૉલ્ટ પર રીસેટ કરો"
+  },
+  "basecamp": {
+    "title": "બેઝકૅમ્પ",
+    "intro": "તમારું Roam, તમારી રીતે — બધું અહીં",
+    "customise": "કસ્ટમાઇઝ કરો",
+    "nav": {
+      "explore": "શોધો",
+      "townHall": "ટાઉન હૉલ",
+      "plans": "પ્લાન",
+      "chat": "ચેટ",
+      "deals": "ડીલ",
+      "market": "બજાર",
+      "orders": "ઓર્ડર",
+      "friends": "મિત્રો"
+    },
+    "emptyHiddenAll": "તમે બધાં વિજેટ છુપાવી દીધાં છે.",
+    "customiseCta": "બેઝકૅમ્પ કસ્ટમાઇઝ કરો"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "{name} બ્રાઉઝ કરી રહ્યા છો — જગ્યા બદલો",
+    "searchPlaceholder": "ટાઉન કે પોસ્ટકોડ શોધો…",
+    "searchAria": "જગ્યા શોધો",
+    "searching": "શોધી રહ્યા છીએ…",
+    "searchError": "હમણાં શોધી શકાયું નહીં. ફરી પ્રયત્ન કરો.",
+    "noMatches": "“{query}” માટે કંઈ મળ્યું નહીં.",
+    "saveCurrent": "“{name}” સાચવો",
+    "savedSection": "સાચવેલાં",
+    "suggestedSection": "સૂચવેલાં",
+    "savePlace": "{name} સાચવો",
+    "unsavePlace": "{name} સાચવેલામાંથી કાઢો",
+    "savedTitle": "સાચવેલાં",
+    "saveThisPlace": "આ જગ્યા સાચવો",
+    "removePlace": "{name} દૂર કરો",
+    "removeTitle": "દૂર કરો",
+    "locating": "લોકેશન શોધી રહ્યા છીએ…",
+    "useMyLocation": "મારું લોકેશન વાપરો",
+    "nearMe": "મારી નજીક",
+    "yourLocation": "તમારું લોકેશન",
+    "geoError": "તમારું લોકેશન મળ્યું નહીં. એના બદલે જગ્યા પસંદ કરો."
+  },
+  "suggested": {
+    "title": "તમારા માટે સૂચનો",
+    "intro": "તમારા માટે તૈયાર કરેલા ઑફર અને પોસ્ટના આઇડિયા — બહાર જાય એ પહેલાં દરેકને જોઈ-તપાસીને એડિટ કરો.",
+    "published": "પબ્લિશ થયું — સુધારવા કે કોડ ઉમેરવા ઉપર ઑફરમાં જુઓ.",
+    "offerTitleAria": "ઑફરનું શીર્ષક",
+    "discountAria": "ડિસ્કાઉન્ટ ટકા",
+    "discountPlaceholder": "ડિસ્કાઉન્ટ %",
+    "offerDetailsAria": "ઑફરની વિગતો",
+    "publishing": "પબ્લિશ થઈ રહ્યું છે…",
+    "publishOffer": "ઑફર પબ્લિશ કરો",
+    "cancel": "રદ કરો",
+    "useThisOffer": "આ ઑફર વાપરો",
+    "postCopyAria": "પોસ્ટ લખાણ",
+    "copied": "કૉપી થયું ✓",
+    "copyCta": "કૉપી કરો — લોકલ પોસ્ટમાં પેસ્ટ કરો"
+  },
+  "nearbyDepartures": {
+    "title": "નજીકના ડિપાર્ચર",
+    "loading": "નજીકના ડિપાર્ચર લોડ થઈ રહ્યા છે…",
+    "due": "આવવાનું",
+    "mins": "{mins} મિનિટ",
+    "mAway": "{distance} મીટર દૂર",
+    "realtimeWhereAvailable": "જ્યાં ઉપલબ્ધ ત્યાં રિયલટાઇમ",
+    "noDepartures": "થોડા સમયમાં કોઈ ડિપાર્ચર નથી.",
+    "minLate": "{mins} મિનિટ મોડું",
+    "minEarly": "{mins} મિનિટ વહેલું",
+    "onTime": "સમયસર (લાઇવ)",
+    "live": "લાઇવ",
+    "comingSoon": {
+      "title": "લોકલ ટ્રાન્ઝિટ",
+      "badge": "જલદી આવી રહ્યું છે",
+      "body": "{place} માટે લાઇવ બસ અને ટ્રેન ડિપાર્ચર આવી રહ્યા છે — સમગ્ર આયર્લૅન્ડમાં, Translink ના સહયોગથી."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "એક ટ્રીટ સેટ કરો અને અમે એ ફોલોઅર્સને એમના જન્મદિવસે આપોઆપ પહોંચાડીશું — જેમણે હા પાડી છે તેમને જ. કોનો જન્મદિવસ છે એ તમે ક્યારેય જોતા નથી, ફક્ત કેટલી મોકલાઈ એ જ.",
+    "sentThisMonth": "આ મહિને મોકલાઈ",
+    "redeemedThisMonth": "આ મહિને રિડીમ થઈ",
+    "sentAllTime": "કુલ મોકલાઈ",
+    "redeemedAllTime": "કુલ રિડીમ થઈ",
+    "redeemedPct": "{pct}% જન્મદિવસ ટ્રીટ રિડીમ થઈ છે.",
+    "theTreat": "ટ્રીટ",
+    "titlePlaceholder": "દા.ત. જન્મદિવસે એક મફત કૉફી",
+    "titleAria": "જન્મદિવસ ટ્રીટનું શીર્ષક",
+    "detailsLabel": "વિગતો (વૈકલ્પિક)",
+    "detailsPlaceholder": "ક્લેમ કરવા તમારા જન્મદિવસે વેન્યુમાં આ મેસેજ બતાવો.",
+    "detailsAria": "જન્મદિવસ ટ્રીટની વિગતો",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "save": "સેવ કરો",
+    "turnOff": "બંધ કરો",
+    "turnOn": "ચાલુ કરો",
+    "live": "● લાઇવ",
+    "off": "બંધ",
+    "saved": "સેવ થયું ✓"
+  },
+  "explore": {
+    "browse": "બ્રાઉઝ કરો",
+    "feed": "ફીડ",
+    "all": "બધું",
+    "market": "બજાર",
+    "categoriesLabel": "કૅટેગરી",
+    "searchPlaceholder": "{placeName} માં વેન્યુ શોધો…",
+    "searchAria": "વેન્યુ શોધો",
+    "showMap": "નકશો બતાવો",
+    "hideMap": "નકશો છુપાવો",
+    "loadMore": "વધુ લોડ કરો · બીજાં {count}",
+    "venuesInView": "{count, plural, one {# વેન્યુ દેખાય છે} other {# વેન્યુ દેખાય છે}}",
+    "openInMaps": "Maps માં ખોલો",
+    "openPlaceInMaps": "{placeName} Maps માં ખોલો",
+    "discovering": "{placeName} માં જગ્યાઓ શોધી રહ્યા છીએ…",
+    "gate": {
+      "title": "શોધવાનું ચાલુ રાખવા મફત એકાઉન્ટ બનાવો",
+      "body": "તમે આ સેશનમાં {limit} શોધેલાં લોકેશન જોયાં — મફત મર્યાદા આટલી છે. તમારું પોતાનું લોકેશન મફત જ રહે છે; સાઇન અપ કરીને <strong>{placeName}</strong> અને બીજે ક્યાંય પણ ખોલો, જગ્યાઓ સાચવો, અને ગમતાં વેન્યુ ફોલો કરો."
+    },
+    "empty": {
+      "title": "અહીં હજુ કંઈ નથી",
+      "body": "આ વ્યૂમાં કોઈ વેન્યુ મળતાં નથી. બીજી કૅટેગરી કે જગ્યા અજમાવો, અથવા તમારા વિસ્તારમાં Roam વધે તેમ ફરી જુઓ."
+    },
+    "errors": {
+      "loadFailed": "વેન્યુ લોડ થઈ શક્યાં નહીં.",
+      "title": "વેન્યુ લોડ થઈ શક્યાં નહીં"
+    }
+  },
+  "venueDetail": {
+    "back": "શોધો",
+    "manageVenue": "આ વેન્યુ મેનેજ કરો",
+    "tabsAria": "વેન્યુ વિભાગો",
+    "tabs": {
+      "posts": "પોસ્ટ",
+      "offers": "ઑફર",
+      "gallery": "ગૅલેરી",
+      "details": "વિગતો",
+      "shop": "શોપ"
+    },
+    "posts": {
+      "empty": "હજુ કોઈ પોસ્ટ નથી — આ વેન્યુ સમાચાર, ઑફર કે ઇવેન્ટ પોસ્ટ કરશે ત્યારે એ અહીં દેખાશે."
+    },
+    "offers": {
+      "empty": "અત્યારે કોઈ લાઇવ ઑફર નથી — ફરી જુઓ, અથવા જાણ મેળવવા ફોલો કરો."
+    },
+    "gallery": {
+      "empty": "હજુ કોઈ ફોટા નથી."
+    },
+    "fromPublicSources": "જાહેર સ્રોતોમાંથી",
+    "claim": {
+      "intro": "ક્લેમ કરવું મફત છે. સાઇન ઇન કરો કે એકાઉન્ટ બનાવો અને આ વેન્યુ તરત જ તમારા મેનેજમેન્ટમાં.",
+      "ownerTitle": "શું આ તમારો બિઝનેસ છે?",
+      "ownerBody": "મફતમાં ક્લેમ કરીને ફોટા, ખુલવાના સમય, તમારું મેનૂ અને લિંક ઉમેરો, અને નજીકના લોકોને ઑફર અને ઇવેન્ટ પોસ્ટ કરો — લગભગ 90 સેકન્ડ, અને તરત જ એડિટ કરવાનું શરૂ કરી શકો છો.",
+      "claiming": "ક્લેમ થઈ રહ્યું છે…",
+      "tryAgain": "ફરી પ્રયત્ન કરો",
+      "cta": "આ વેન્યુ ક્લેમ કરો",
+      "knowTitle": "આ જગ્યા જાણો છો?",
+      "knowBody": "તમારા લોકલ સાથીઓને મદદ કરો — ફોટો, ખુલવાના સમય, કે સુધારો સૂચવો.",
+      "suggestEditSoon": "એડિટ સૂચવવાની સુવિધા જલદી આવી રહી છે",
+      "suggestEdit": "એડિટ સૂચવો",
+      "submittedTitle": "ક્લેમ સબમિટ થયો",
+      "submittedBody": "આભાર — તમારો ક્લેમ હવે ચકાસણી માટે અમારી પાસે છે. મંજૂર થયા પછી તમે આ વેન્યુ મેનેજ કરી શકશો, ફોટા અને વિગતો ઉમેરી શકશો, અને નજીકના લોકોને પોસ્ટ કરી શકશો.",
+      "underReviewTitle": "ક્લેમની સમીક્ષા ચાલુ છે",
+      "underReviewBody": "આ વેન્યુ માટે ક્લેમ સબમિટ થયો છે અને ચકાસાઈ રહ્યો છે. થોડી વારે ફરી જુઓ — મંજૂર થયા પછી વેન્યુના માલિક એની વિગતો અપડેટ રાખી શકશે."
+    },
+    "details": {
+      "title": "વિગતો",
+      "address": "સરનામું",
+      "locality": "વિસ્તાર",
+      "region": "પ્રદેશ",
+      "phone": "ફોન",
+      "website": "વેબસાઇટ"
+    },
+    "goodToKnow": {
+      "title": "જાણવા જેવું",
+      "perPerson": "વ્યક્તિ દીઠ",
+      "upTo": "{price} સુધી",
+      "groups": {
+        "serviceOptions": "સેવાના વિકલ્પો",
+        "dining": "ડાઇનિંગ",
+        "amenities": "સુવિધાઓ",
+        "payments": "ચુકવણી",
+        "parking": "પાર્કિંગ",
+        "accessibility": "ઍક્સેસિબિલિટી"
+      },
+      "attrs": {
+        "dineIn": "ડાઇન-ઇન",
+        "takeout": "ટેકઅવે",
+        "delivery": "ડિલિવરી",
+        "curbsidePickup": "કર્બસાઇડ પિકઅપ",
+        "reservable": "બુકિંગ લે છે",
+        "servesBreakfast": "નાસ્તો",
+        "servesBrunch": "બ્રન્ચ",
+        "servesLunch": "લંચ",
+        "servesDinner": "ડિનર",
+        "servesCoffee": "કૉફી",
+        "servesDessert": "ડેઝર્ટ",
+        "servesBeer": "બિયર",
+        "servesWine": "વાઇન",
+        "servesCocktails": "કૉકટેલ",
+        "servesVegetarianFood": "શાકાહારી વિકલ્પો",
+        "outdoorSeating": "બહાર બેસવાની જગ્યા",
+        "liveMusic": "લાઇવ મ્યુઝિક",
+        "goodForGroups": "ગ્રુપ માટે સારું",
+        "goodForChildren": "બાળકો માટે સારું",
+        "menuForChildren": "બાળકોનું મેનૂ",
+        "goodForWatchingSports": "સ્પોર્ટ્સ જોવા માટે સારું",
+        "allowsDogs": "કૂતરાં આવકાર્ય",
+        "restroom": "ટોઇલેટ",
+        "acceptsNfc": "કૉન્ટૅક્ટલેસ",
+        "acceptsCreditCards": "ક્રેડિટ કાર્ડ",
+        "acceptsDebitCards": "ડેબિટ કાર્ડ",
+        "acceptsCashOnly": "ફક્ત રોકડ",
+        "freeParkingLot": "મફત કાર પાર્ક",
+        "paidParkingLot": "પેઇડ કાર પાર્ક",
+        "freeStreetParking": "મફત સ્ટ્રીટ પાર્કિંગ",
+        "paidStreetParking": "પેઇડ સ્ટ્રીટ પાર્કિંગ",
+        "freeGarageParking": "મફત ગૅરેજ",
+        "paidGarageParking": "પેઇડ ગૅરેજ",
+        "valetParking": "વૅલે પાર્કિંગ",
+        "wheelchairAccessibleEntrance": "વ્હીલચેર પ્રવેશ",
+        "wheelchairAccessibleParking": "વ્હીલચેર પાર્કિંગ",
+        "wheelchairAccessibleRestroom": "વ્હીલચેર ટોઇલેટ",
+        "wheelchairAccessibleSeating": "વ્હીલચેર બેઠક"
+      }
+    },
+    "hours": {
+      "title": "ખુલવાના સમય",
+      "openNow": "અત્યારે ખુલ્લું",
+      "openNowCloses": "અત્યારે ખુલ્લું · {time} વાગ્યે બંધ",
+      "closed": "બંધ",
+      "closedOpens": "બંધ · {time} વાગ્યે ખૂલશે"
+    },
+    "getDirections": "રસ્તો બતાવો",
+    "notFound": {
+      "title": "વેન્યુ મળ્યું નહીં",
+      "body": "આ વેન્યુ કદાચ દૂર થયું હોય, અથવા લિંક ખોટી છે.",
+      "backToExplore": "શોધો પર પાછા જાઓ"
+    },
+    "errors": {
+      "loadFailed": "વેન્યુ લોડ થઈ શક્યું નહીં.",
+      "claimFailed": "તમારો ક્લેમ સબમિટ થઈ શક્યો નહીં.",
+      "title": "આ વેન્યુ લોડ થઈ શક્યું નહીં"
+    }
+  },
+  "venueCard": {
+    "priceFree": "મફત",
+    "temporarilyClosed": "થોડા સમય માટે બંધ",
+    "claimed": "ક્લેમ થયેલું",
+    "fromPublicSources": "જાહેર સ્રોતોમાંથી",
+    "claimItFree": "મફતમાં ક્લેમ કરો"
+  },
+  "venueMap": {
+    "ariaLabel": "વેન્યુનો નકશો",
+    "attribution": "© OpenStreetMap contributors"
+  },
+  "localPosts": {
+    "kinds": {
+      "news": "સમાચાર",
+      "offer": "ઑફર",
+      "event": "ઇવેન્ટ"
+    },
+    "state": {
+      "live": "લાઇવ",
+      "scheduled": "શેડ્યૂલ થયેલી",
+      "draft": "ડ્રાફ્ટ"
+    },
+    "inFeed": "ફીડમાં",
+    "pushed": "પુશ થયું",
+    "newLocalPost": "નવી લોકલ પોસ્ટ",
+    "empty": "હજુ કોઈ પોસ્ટ નથી. સમાચાર, ઑફર કે ઇવેન્ટ શેર કરો — એ તમારા વેન્યુ પેજ પર અને તમારા ટાઉનની લોકલ ન્યૂઝ ફીડમાં દેખાય છે.",
+    "composer": {
+      "offerNeedsTitle": "ઑફર માટે શીર્ષક જરૂરી છે.",
+      "addSomething": "પોસ્ટ કરવા શીર્ષક, થોડું લખાણ કે ફોટો ઉમેરો.",
+      "insufficientCredits": "ફોલોઅર્સને જાણ કરવા પૂરતી પુશ ક્રેડિટ નથી. પુશ વગર પોસ્ટ કરવા “ફોલોઅર્સને જાણ કરો” અનટિક કરો.",
+      "postFailed": "એ પોસ્ટ થઈ શક્યું નહીં.",
+      "postFailedRetry": "એ પોસ્ટ થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો.",
+      "offerTitlePlaceholder": "ઑફરનું શીર્ષક — દા.ત. 2-ફોર-1 કૉકટેલ",
+      "titlePlaceholder": "શીર્ષક (વૈકલ્પિક)",
+      "bodyPlaceholder": "લોકલ લોકોને કહો શું ચાલી રહ્યું છે…",
+      "titleAria": "પોસ્ટનું શીર્ષક",
+      "bodyAria": "પોસ્ટનું લખાણ",
+      "notifyFollowers": "ફોલોઅર્સને જાણ કરો (1 પુશ ક્રેડિટ વપરાય છે)",
+      "posting": "પોસ્ટ થઈ રહ્યું છે…",
+      "post": "પોસ્ટ કરો",
+      "cancel": "રદ કરો",
+      "footer": "તમારા વેન્યુ પેજ પર અને તમારા ટાઉનની લોકલ ન્યૂઝ ફીડમાં દેખાય છે."
+    },
+    "row": {
+      "deleteConfirm": "ડિલીટ કરવું છે?",
+      "yes": "હા",
+      "no": "ના",
+      "edit": "એડિટ કરો",
+      "delete": "ડિલીટ કરો",
+      "bodyPlaceholder": "લખાણ",
+      "saving": "સેવ થઈ રહ્યું છે…",
+      "save": "સેવ કરો"
+    },
+    "media": {
+      "signInToAdd": "ઇમેજ ઉમેરવા તમારે સાઇન ઇન કરેલું હોવું જોઈએ.",
+      "uploadingProgress": "{total} માંથી {current} અપલોડ થઈ રહ્યું છે…",
+      "uploadFailed": "એ ઇમેજ અપલોડ થઈ શકી નહીં.",
+      "removeImage": "ઇમેજ દૂર કરો",
+      "moveEarlier": "આગળ ખસેડો",
+      "moveLater": "પાછળ ખસેડો",
+      "uploading": "અપલોડ થઈ રહ્યું છે…",
+      "addPhoto": "ફોટો ઉમેરો"
+    }
+  },
+  "deals": {
+    "home": "હોમ",
+    "title": "ડીલ",
+    "intro": "અમારા પાર્ટનર બ્રાન્ડ્સની ચૂંટેલી ઑફર અને વાઉચર કોડ. <strong>Ad</strong> નિશાનવાળી લિંકથી Roam ને કમિશન મળી શકે — તમે ચૂકવો છો તે ભાવ ક્યારેય બદલાતો નથી.",
+    "featured": "ફીચર્ડ",
+    "ad": "Ad",
+    "affiliateAdAria": "એફિલિયેટ જાહેરાત",
+    "affiliateAdTitle": "એફિલિયેટ લિંક — Roam ને કમિશન મળી શકે",
+    "affiliateAria": "એફિલિયેટ",
+    "affiliateLinksTitle": "એફિલિયેટ લિંક — Roam ને કમિશન મળી શકે",
+    "getDeal": "ડીલ મેળવો",
+    "shopDeal": "ડીલ ખરીદો",
+    "ends": "{date} ના રોજ પૂરી થાય",
+    "loadFailed": "ડીલ હમણાં લોડ થઈ શકી નહીં.",
+    "emptyTitle": "હમણાં કોઈ ડીલ નથી",
+    "emptyBody": "અમારા પાર્ટનર બ્રાન્ડ્સની તાજી ઑફર જલદી અહીં દેખાશે — થોડી વારે ફરી જુઓ.",
+    "detail": {
+      "loadFailed": "આ ડીલ હમણાં લોડ થઈ શકી નહીં.",
+      "notFoundTitle": "ડીલ મળી નહીં",
+      "notFoundBody": "આ ઑફર કદાચ પૂરી થઈ ગઈ હોય — તાજી ડીલ ડીલ પેજ પર છે."
+    },
+    "widget": {
+      "allDeals": "બધી ડીલ",
+      "code": "CODE"
+    }
+  },
+  "offerCard": {
+    "signInToSave": "ડીલ સાચવવા સાઇન ઇન કરો.",
+    "signInToRedeem": "આ ઑફર રિડીમ કરવા સાઇન ઇન કરો.",
+    "soldOut": "આ ઑફર પૂરેપૂરી રિડીમ થઈ ગઈ છે.",
+    "expired": "આ ઑફરની મુદત પૂરી થઈ ગઈ છે.",
+    "redeemFailed": "હમણાં રિડીમ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરો.",
+    "ends": "{date} ના રોજ પૂરી થાય",
+    "redeemed": "રિડીમ થયું",
+    "showToStaff": "આ સ્ટાફને બતાવો.",
+    "redeeming": "રિડીમ થઈ રહ્યું છે…",
+    "redeem": "રિડીમ કરો",
+    "saved": "સાચવ્યું",
+    "save": "સાચવો"
+  },
+  "venueOffers": {
+    "newOffer": "નવી ઑફર",
+    "empty": "હજુ કોઈ ઑફર નથી. એક્સક્લુઝિવ ડીલ પબ્લિશ કરો — તમારા ફોલોઅર્સને જાણ થાય છે, અને કોઈપણ એને સાચવીને વેન્યુમાં રિડીમ કરી શકે છે.",
+    "ends": "{date} ના રોજ પૂરી થાય",
+    "savedCount": "{count} સાચવી",
+    "redeemedCount": "{count} રિડીમ થઈ",
+    "redeemedOfMax": "{count} / {max} રિડીમ થઈ",
+    "deleteOffer": "ઑફર ડિલીટ કરો",
+    "delete": "ડિલીટ કરો",
+    "composer": {
+      "titlePlaceholder": "ઑફર — દા.ત. તમારી પહેલી કૉફી પર 20% છૂટ",
+      "titleAria": "ઑફરનું શીર્ષક",
+      "typeLabel": "ડીલનો પ્રકાર",
+      "typeAria": "ઑફરનો પ્રકાર",
+      "discountLabel": "ડિસ્કાઉન્ટ %",
+      "discountPlaceholder": "દા.ત. 20",
+      "discountAria": "ડિસ્કાઉન્ટ ટકા",
+      "detailsPlaceholder": "વિગત — શરતો, શું સામેલ છે…",
+      "detailsAria": "ઑફરની વિગતો",
+      "codePlaceholder": "રિડેમ્પશન કોડ (વૈકલ્પિક) — દા.ત. ROAM20",
+      "codeAria": "રિડેમ્પશન કોડ",
+      "endsLabel": "પૂરી થાય (વૈકલ્પિક)",
+      "endsAria": "ઑફરની અંતિમ તારીખ",
+      "maxLabel": "મહત્તમ રિડેમ્પશન (વૈકલ્પિક)",
+      "maxPlaceholder": "અમર્યાદિત",
+      "maxAria": "મહત્તમ રિડેમ્પશન",
+      "publishFailed": "ઑફર પબ્લિશ થઈ શકી નહીં.",
+      "publishing": "પબ્લિશ થઈ રહ્યું છે…",
+      "publish": "ઑફર પબ્લિશ કરો",
+      "cancel": "રદ કરો"
+    }
+  },
+  "townHall": {
+    "loadFailed": "ટાઉન હૉલ લોડ થઈ શક્યો નહીં.",
+    "hero": {
+      "kicker": "લોકલ ફોરમ",
+      "title": "ટાઉન હૉલ",
+      "body": "લોકલ લોકો અત્યારે શાની વાત કરે છે. સવાલ પૂછો, ટિપ શેર કરો, અથવા તમારા વિસ્તારમાં જે મહત્ત્વનું છે તેને અપવોટ કરો.",
+      "startTopic": "ટૉપિક શરૂ કરો"
+    },
+    "sort": {
+      "hot": "હૉટ",
+      "new": "તાજેતરના",
+      "top": "ટોચના"
+    },
+    "placeHub": "{place} હબ",
+    "filterByCategory": "કૅટેગરી પ્રમાણે ફિલ્ટર કરો",
+    "categories": {
+      "all": "બધું",
+      "foodDrink": "ખાવા-પીવાનું",
+      "thingsToDo": "કરવા જેવું",
+      "recommendations": "ભલામણો",
+      "events": "ઇવેન્ટ",
+      "neighbourhood": "પડોશ"
+    },
+    "signInToStart": "{place} માં ટૉપિક શરૂ કરવા સાઇન ઇન કરો.",
+    "empty": {
+      "titleCategory": "{place} માં હજુ {category} નો કોઈ ટૉપિક નથી",
+      "title": "{place} માં હજુ કોઈ ટૉપિક નથી",
+      "body": "વાતચીત શરૂ કરનાર પહેલા બનો — સવાલ પૂછો, ભલામણ શેર કરો, અથવા કંઈક સૂચવો."
+    },
+    "activeNow": "અત્યારે સક્રિય",
+    "replies": "{count, plural, one {# જવાબ} other {# જવાબો}}",
+    "trendingTags": "ટ્રેન્ડિંગ ટૅગ",
+    "activeLocals": "સક્રિય લોકલ લોકો",
+    "helpfulVotes": "{count, plural, one {# મદદરૂપ વોટ} other {# મદદરૂપ વોટ}}",
+    "composer": {
+      "title": "{place} માં નવો ટૉપિક",
+      "titlePlaceholder": "શીર્ષક — દા.ત. અહીં આસપાસ બેસ્ટ સન્ડે રોસ્ટ ક્યાં?",
+      "titleAria": "ટૉપિકનું શીર્ષક",
+      "bodyPlaceholder": "વિગત શેર કરો…",
+      "bodyAria": "ટૉપિકની વિગત",
+      "linkPlaceholder": "લિંક ઉમેરો (વૈકલ્પિક) — https://…",
+      "linkAria": "લિંક URL",
+      "fetchingPreview": "લિંક પ્રિવ્યૂ લાવી રહ્યા છીએ…",
+      "postFailed": "તમારો ટૉપિક પોસ્ટ થઈ શક્યો નહીં.",
+      "posting": "પોસ્ટ થઈ રહ્યું છે…",
+      "post": "ટૉપિક પોસ્ટ કરો",
+      "cancel": "રદ કરો"
+    }
+  },
+  "townHallTopic": {
+    "townHall": "ટાઉન હૉલ",
+    "loadFailed": "આ ટૉપિક લોડ થઈ શક્યો નહીં.",
+    "notFoundTitle": "ટૉપિક મળ્યો નહીં",
+    "notFoundBody": "એ કદાચ દૂર થયો હોય, અથવા લિંક ખોટી છે.",
+    "deleteTopicConfirm": "આ ટૉપિક ડિલીટ કરવો છે?",
+    "deleteReplyConfirm": "આ જવાબ ડિલીટ કરવો છે?",
+    "replies": "{count, plural, =0 {હજુ કોઈ જવાબ નથી} one {# જવાબ} other {# જવાબો}}",
+    "signInToReply": "વાતચીતમાં જોડાવા સાઇન ઇન કરો.",
+    "owner": {
+      "deleting": "ડિલીટ થઈ રહ્યું છે…",
+      "yesDelete": "હા, ડિલીટ કરો",
+      "cancel": "રદ કરો",
+      "edit": "એડિટ કરો",
+      "delete": "ડિલીટ કરો"
+    },
+    "editor": {
+      "titleAria": "ટૉપિકનું શીર્ષક",
+      "bodyAria": "ટૉપિકની વિગત",
+      "replyAria": "જવાબ એડિટ કરો",
+      "saveFailed": "તમારા ફેરફારો સેવ થઈ શક્યા નહીં.",
+      "saving": "સેવ થઈ રહ્યું છે…",
+      "save": "સેવ કરો",
+      "cancel": "રદ કરો"
+    },
+    "composer": {
+      "placeholder": "જવાબ ઉમેરો…",
+      "aria": "તમારો જવાબ",
+      "postFailed": "તમારો જવાબ પોસ્ટ થઈ શક્યો નહીં.",
+      "posting": "પોસ્ટ થઈ રહ્યું છે…",
+      "post": "જવાબ પોસ્ટ કરો"
+    },
+    "report": {
+      "thanks": "આભાર — મોડરેટર એ જોઈ લેશે.",
+      "reporting": "રિપોર્ટ થઈ રહ્યું છે…",
+      "cta": "આ ટૉપિકનો રિપોર્ટ કરો"
+    }
+  },
+  "tagFeed": {
+    "kicker": "હૅશટૅગ",
+    "postCount": "Roam પર કુલ {count, plural, one {# પોસ્ટ} other {# પોસ્ટ}}",
+    "loadFailed": "#{tag} હમણાં લોડ થઈ શક્યું નહીં.",
+    "emptyTitle": "#{tag} ટૅગવાળું હજુ કંઈ નથી",
+    "emptyBody": "ટાઉન હૉલ ટૉપિકમાં કે વૉલ પોસ્ટમાં #{tag} વાપરો અને એ અહીં દેખાશે.",
+    "sections": {
+      "townHall": "ટાઉન હૉલ ચર્ચા",
+      "businesses": "લોકલ બિઝનેસ તરફથી",
+      "locals": "લોકલ લોકો તરફથી"
+    },
+    "replies": "{count, plural, one {# જવાબ} other {# જવાબો}}",
+    "venueUpdate": "{venue} — અપડેટ",
+    "localUpdate": "લોકલ અપડેટ",
+    "aLocal": "એક લોકલ",
+    "viewPost": "પોસ્ટ જુઓ →"
+  },
+  "topicUpvote": {
+    "upvote": "અપવોટ કરો",
+    "removeUpvote": "અપવોટ દૂર કરો",
+    "signInToUpvote": "અપવોટ કરવા સાઇન ઇન કરો"
+  },
+  "linkPreviewCard": {
+    "link": "લિંક",
+    "removeLink": "લિંક દૂર કરો"
+  },
+  "profileWall": {
+    "loadFailed": "આ પ્રોફાઇલ લોડ થઈ શકી નહીં.",
+    "notFoundTitle": "પ્રોફાઇલ મળી નહીં",
+    "notFoundBody": "આ એકાઉન્ટ કદાચ દૂર થયું હોય, અથવા લિંક ખોટી છે.",
+    "done": "થઈ ગયું",
+    "empty": {
+      "ownerTitle": "તમારી વૉલ શાંત છે",
+      "visitorTitle": "શાંત વૉલ",
+      "ownerBody": "તમારી પહેલી પોસ્ટ શેર કરો, અથવા થોડાં વેન્યુ અને મિત્રો ફોલો કરીને તમારી ફીડ ભરો.",
+      "visitorBody": "{name} એ હજુ કંઈ પોસ્ટ કર્યું નથી.",
+      "thisUser": "આ યુઝરે"
+    },
+    "header": {
+      "yourCoverPhoto": "તમારો કવર ફોટો",
+      "roamMember": "Roam સભ્ય",
+      "aRoamMember": "એક Roam સભ્ય",
+      "close": "બંધ કરો",
+      "editProfile": "પ્રોફાઇલ એડિટ કરો",
+      "tabs": {
+        "wall": "વૉલ",
+        "friends": "મિત્રો",
+        "following": "ફોલોઇંગ",
+        "plans": "પ્લાન",
+        "orders": "ઓર્ડર",
+        "notifications": "નોટિફિકેશન",
+        "businessDashboard": "બિઝનેસ ડૅશબોર્ડ",
+        "settings": "સેટિંગ્સ"
+      }
+    },
+    "stats": {
+      "friends": "મિત્રો",
+      "following": "ફોલોઇંગ",
+      "plans": "પ્લાન"
+    },
+    "composer": {
+      "maxItems": "તમે વધુમાં વધુ {max} વસ્તુઓ ઉમેરી શકો છો.",
+      "uploadingProgress": "{total} માંથી {current} અપલોડ થઈ રહ્યું છે…",
+      "uploadImageFailed": "એ ઇમેજ અપલોડ થઈ શકી નહીં.",
+      "uploadVideoFailed": "એ વિડિયો અપલોડ થઈ શક્યો નહીં.",
+      "postFailed": "એ પોસ્ટ થઈ શક્યું નહીં.",
+      "placeholder": "તમારા લોકલ લોકો સાથે કંઈક શેર કરો…",
+      "writeAria": "પોસ્ટ લખો",
+      "moveEarlier": "આગળ ખસેડો",
+      "moveLater": "પાછળ ખસેડો",
+      "removeMedia": "મીડિયા દૂર કરો",
+      "removeImage": "ઇમેજ દૂર કરો",
+      "uploading": "અપલોડ થઈ રહ્યું છે…",
+      "addPhoto": "＋ ફોટો",
+      "addPhotoCount": "＋ ફોટો ({count}/{max})",
+      "addVideo": "＋ વિડિયો",
+      "posting": "પોસ્ટ થઈ રહ્યું છે…",
+      "post": "પોસ્ટ કરો"
+    },
+    "post": {
+      "deleteConfirm": "ડિલીટ કરવું છે?",
+      "deleting": "ડિલીટ થઈ રહ્યું છે…",
+      "yes": "હા",
+      "no": "ના",
+      "edit": "એડિટ કરો",
+      "delete": "ડિલીટ કરો",
+      "editPost": "પોસ્ટ એડિટ કરો",
+      "deletePost": "પોસ્ટ ડિલીટ કરો",
+      "comments": "{count, plural, one {# કૉમેન્ટ} other {# કૉમેન્ટ}}",
+      "shareTitle": "Roam પર {name}"
+    },
+    "editor": {
+      "saveFailed": "તમારા ફેરફારો સેવ થઈ શક્યા નહીં.",
+      "editPostAria": "પોસ્ટ એડિટ કરો",
+      "saving": "સેવ થઈ રહ્યું છે…",
+      "save": "સેવ કરો",
+      "cancel": "રદ કરો"
+    },
+    "like": {
+      "unlike": "લાઇક હટાવો",
+      "like": "લાઇક કરો",
+      "signInToLike": "લાઇક કરવા સાઇન ઇન કરો"
+    },
+    "comments": {
+      "placeholder": "કૉમેન્ટ ઉમેરો…",
+      "addAria": "કૉમેન્ટ ઉમેરો",
+      "send": "મોકલો",
+      "signInToInteract": "લાઇક અને કૉમેન્ટ કરવા <link>સાઇન ઇન કરો</link>."
+    },
+    "comment": {
+      "editAria": "કૉમેન્ટ એડિટ કરો",
+      "save": "સેવ કરો",
+      "cancel": "રદ કરો",
+      "deleteConfirm": "ડિલીટ કરવું છે?",
+      "yes": "હા",
+      "no": "ના",
+      "edit": "એડિટ કરો",
+      "delete": "ડિલીટ કરો"
+    }
+  },
+  "feedList": {
+    "filters": {
+      "all": "બધું",
+      "offer": "ઑફર",
+      "event": "ઇવેન્ટ",
+      "news": "સમાચાર"
+    },
+    "loadFailed": "ફીડ લોડ થઈ શકી નહીં.",
+    "noFilteredPosts": {
+      "all": "અહીં હજુ કોઈ પોસ્ટ નથી.",
+      "offer": "અહીં હજુ કોઈ ઑફર પોસ્ટ નથી.",
+      "event": "અહીં હજુ કોઈ ઇવેન્ટ પોસ્ટ નથી.",
+      "news": "અહીં હજુ કોઈ સમાચાર પોસ્ટ નથી."
+    },
+    "empty": {
+      "title": "{placeName} ની ફીડ હજી શરૂ થઈ રહી છે",
+      "body": "અહીંનાં વેન્યુ સમાચાર, ઑફર અને ઇવેન્ટ પોસ્ટ કરશે ત્યારે એ આ ફીડમાં દેખાશે. ત્યાં સુધી નજીકમાં શું છે તે બ્રાઉઝ કરો — અને જો તમે {placeName} માં કોઈ જગ્યા ચલાવો છો, તો એને ક્લેમ કરીને નજીકના લોકોને પોસ્ટ કરી શકો છો."
+    },
+    "errorTitle": "ફીડ લોડ થઈ શકી નહીં"
+  },
+  "postDetail": {
+    "kind": {
+      "news": "સમાચાર",
+      "offer": "ઑફર",
+      "event": "ઇવેન્ટ"
+    },
+    "when": {
+      "today": "આજે",
+      "yesterday": "ગઈકાલે",
+      "daysAgo": "{count, plural, one {# દિવસ પહેલાં} other {# દિવસ પહેલાં}}"
+    },
+    "postedWhen": "{when} પોસ્ટ થયું",
+    "posted": "પોસ્ટ થયું",
+    "redeemOffer": "ઑફર રિડીમ કરો",
+    "shareTitleFallback": "Roam પર એક પોસ્ટ",
+    "viewVenue": "વેન્યુ જુઓ",
+    "screen": {
+      "back": "ફીડ",
+      "loadFailed": "આ પોસ્ટ લોડ થઈ શકી નહીં.",
+      "notFoundTitle": "પોસ્ટ મળી નહીં",
+      "notFoundBody": "એ કદાચ દૂર થઈ હોય, અથવા લિંક ખોટી છે."
+    }
+  },
+  "wallPostScreen": {
+    "loadFailed": "આ પોસ્ટ લોડ થઈ શકી નહીં.",
+    "profile": "પ્રોફાઇલ",
+    "notFoundTitle": "પોસ્ટ મળી નહીં",
+    "notFoundBody": "એ કદાચ દૂર થઈ હોય, અથવા લિંક ખોટી છે."
+  },
+  "threadDetail": {
+    "roamMember": "Roam સભ્ય",
+    "directChat": "ડાયરેક્ટ ચેટ",
+    "untitledGroup": "નામ વગરનું ગ્રુપ",
+    "someone": "કોઈક",
+    "youLower": "તમે",
+    "you": "તમે",
+    "planChat": "પ્લાન ચેટ",
+    "people": "{count, plural, one {# વ્યક્તિ} other {# લોકો}}",
+    "chats": "ચેટ",
+    "openChatInfo": "ચેટની માહિતી ખોલો",
+    "kind": {
+      "plan": "પ્લાન",
+      "group": "ગ્રુપ",
+      "direct": "ડાયરેક્ટ"
+    },
+    "meetupBar": {
+      "voting": "મીટ-અપ · વોટિંગ ચાલુ",
+      "winner": "મીટ-અપ · વિજેતા નક્કી",
+      "open": "ખોલો"
+    },
+    "backToChat": "ચેટ પર પાછા જાઓ",
+    "createdWhen": "{when} બન્યું",
+    "viewThePlan": "પ્લાન જુઓ",
+    "addFriend": "મિત્ર ઉમેરો",
+    "done": "થઈ ગયું",
+    "noFriendsToAdd": "ઉમેરવા હજુ કોઈ મિત્રો નથી. મિત્રોની પ્રોફાઇલ વૉલ પરથી એમને ઉમેરો, પછી અહીં લાવો.",
+    "allFriendsHere": "તમારા બધા મિત્રો પહેલેથી આ ચેટમાં છે.",
+    "add": "ઉમેરો",
+    "addSomeone": "કોઈને ઉમેરો",
+    "groupNameAria": "ગ્રુપનું નામ",
+    "save": "સેવ કરો",
+    "cancel": "રદ કરો",
+    "renameChat": "ચેટનું નામ બદલો",
+    "leaveConfirm": "આ ચેટ છોડવી છે?",
+    "leaving": "છોડી રહ્યા છીએ…",
+    "yesLeave": "હા, છોડો",
+    "leaveChat": "ચેટ છોડો",
+    "noMessages": "હજુ કોઈ મેસેજ નથી — આ ચેટ શરૂ કરવા કંઈક કહો.",
+    "composerPlaceholder": "મેસેજ લખો…",
+    "sending": "મોકલી રહ્યા છીએ…",
+    "send": "મોકલો",
+    "editMessageAria": "મેસેજ એડિટ કરો",
+    "deleteConfirm": "ડિલીટ કરવું છે?",
+    "yes": "હા",
+    "no": "ના",
+    "edit": "એડિટ કરો",
+    "delete": "ડિલીટ કરો",
+    "day": {
+      "today": "આજે",
+      "yesterday": "ગઈકાલે"
+    },
+    "when": {
+      "today": "આજે",
+      "yesterday": "ગઈકાલે",
+      "daysAgo": "{count, plural, one {# દિવસ પહેલાં} other {# દિવસ પહેલાં}}"
+    },
+    "signedOut": {
+      "title": "આ ચેટ જોવા સાઇન ઇન કરો",
+      "body": "ચેટ ફક્ત એના સભ્યો માટે ખાનગી હોય છે."
+    },
+    "backToChats": "ચેટ પર પાછા જાઓ",
+    "notFound": {
+      "title": "ચેટ મળી નહીં",
+      "body": "આ ચેટ કદાચ દૂર થઈ હોય, અથવા તમને એની ઍક્સેસ નથી."
+    },
+    "errorTitle": "આ ચેટ લોડ થઈ શકી નહીં",
+    "errors": {
+      "loadChat": "આ ચેટ લોડ થઈ શકી નહીં.",
+      "addPerson": "એ વ્યક્તિ ઉમેરી શકાઈ નહીં.",
+      "loadMessages": "મેસેજ લોડ થઈ શક્યા નહીં.",
+      "emptyMessage": "મોકલવા મેસેજ ટાઇપ કરો.",
+      "send": "તમારો મેસેજ મોકલી શકાયો નહીં.",
+      "share": "એ શેર થઈ શક્યું નહીં."
+    }
+  },
+  "threadList": {
+    "title": "ચેટ",
+    "cancel": "રદ કરો",
+    "new": "＋ નવી",
+    "removePerson": "{name} ને દૂર કરો",
+    "groupNamePlaceholder": "ગ્રુપનું નામ — દા.ત. શુક્રવારની મહેફિલ",
+    "groupNameAria": "ગ્રુપનું નામ",
+    "starting": "શરૂ થઈ રહ્યું છે…",
+    "messagePerson": "{name} ને મેસેજ કરો",
+    "createGroup": "ગ્રુપ બનાવો · {count}",
+    "pickHint": "ડાયરેક્ટ ચેટ માટે એક વ્યક્તિ પસંદ કરો, અથવા ગ્રુપ માટે ઘણી.",
+    "kindLabel": {
+      "plan": "પ્લાન ચેટ",
+      "group": "ગ્રુપ",
+      "direct": "ડાયરેક્ટ"
+    },
+    "fallback": {
+      "plan": "પ્લાન ચેટ",
+      "group": "નામ વગરનું ગ્રુપ",
+      "direct": "ડાયરેક્ટ ચેટ"
+    },
+    "preview": {
+      "noMessages": "હજુ કોઈ મેસેજ નથી",
+      "you": "તમે: {text}",
+      "message": "મેસેજ",
+      "sharedPlace": "એક જગ્યા શેર કરી",
+      "sharedPlan": "એક પ્લાન શેર કર્યો",
+      "sharedContact": "એક કૉન્ટૅક્ટ શેર કર્યો",
+      "photo": "ફોટો",
+      "poll": "પોલ"
+    },
+    "unreadAria": "{count} વણવાંચેલા",
+    "when": {
+      "today": "આજે",
+      "yesterday": "ગઈકાલે",
+      "daysAgo": "{count, plural, one {# દિવસ પહેલાં} other {# દિવસ પહેલાં}}"
+    },
+    "signedOutIntro": "તમારી ચેટ ખાનગી છે. એ જોવા અને નવી શરૂ કરવા સાઇન ઇન કરો.",
+    "empty": {
+      "title": "હજુ કોઈ ચેટ નથી",
+      "body": "“નવી ચેટ” પર ટૅપ કરો, પછી કોઈને શોધો — ડાયરેક્ટ મેસેજ માટે એક વ્યક્તિ પસંદ કરો, અથવા ગ્રુપ માટે ઘણી. મિત્રની પ્રોફાઇલ પરથી પણ મેસેજ કરી શકો છો, અથવા પ્લાન ખોલીને એના બધા સાથે ચેટ કરી શકો છો."
+    },
+    "errorTitle": "તમારી ચેટ લોડ થઈ શકી નહીં",
+    "errors": {
+      "load": "તમારી ચેટ લોડ થઈ શકી નહીં.",
+      "groupName": "તમારા ગ્રુપને નામ આપો.",
+      "start": "એ ચેટ શરૂ થઈ શકી નહીં."
+    }
+  },
+  "chatShareMenu": {
+    "shareSomethingAria": "કંઈક શેર કરો",
+    "shareTitle": "જગ્યા, પ્લાન, વ્યક્તિ કે ફોટો શેર કરો",
+    "sharePlace": "જગ્યા શેર કરો",
+    "sharePlan": "પ્લાન શેર કરો",
+    "sharePerson": "વ્યક્તિ શેર કરો",
+    "poll": "પોલ",
+    "photo": "ફોટો",
+    "createPollTitle": "પોલ બનાવો",
+    "close": "બંધ કરો",
+    "venuesLoading": "{place} નજીકનાં વેન્યુ લોડ થઈ રહ્યાં છે…",
+    "venuesLoadFailed": "વેન્યુ લોડ થઈ શક્યાં નહીં.",
+    "venuesEmpty": "{place} નજીક હજુ કોઈ વેન્યુ નથી.",
+    "plansLoading": "તમારા પ્લાન લોડ થઈ રહ્યા છે…",
+    "plansLoadFailed": "તમારા પ્લાન લોડ થઈ શક્યા નહીં.",
+    "plansEmpty": "તમારો હજુ કોઈ પ્લાન નથી. પ્લાન ટૅબમાંથી એક બનાવો, પછી અહીં શેર કરો.",
+    "roamMember": "Roam સભ્ય",
+    "friendsLoading": "મિત્રો લોડ થઈ રહ્યા છે…",
+    "friendsLoadFailed": "તમારા મિત્રો લોડ થઈ શક્યા નહીં.",
+    "friendsEmpty": "હજુ કોઈ મિત્રો નથી. મિત્રોની પ્રોફાઇલ વૉલ પરથી એમને ઉમેરો, પછી અહીં શેર કરો.",
+    "questionPlaceholder": "સવાલ પૂછો…",
+    "questionAria": "પોલનો સવાલ",
+    "optionN": "વિકલ્પ {n}",
+    "removeOption": "વિકલ્પ દૂર કરો",
+    "addOption": "+ વિકલ્પ ઉમેરો",
+    "allowMultiple": "એકથી વધુ જવાબની છૂટ",
+    "createPoll": "પોલ બનાવો",
+    "errors": {
+      "uploadPhoto": "એ ફોટો અપલોડ થઈ શક્યો નહીં."
+    }
+  },
+  "chatCards": {
+    "aPlace": "એક જગ્યા",
+    "viewVenue": "વેન્યુ જુઓ",
+    "aPlan": "એક પ્લાન",
+    "viewPlan": "પ્લાન જુઓ",
+    "someone": "કોઈક",
+    "viewProfile": "પ્રોફાઇલ જુઓ",
+    "photoUnavailable": "ફોટો ઉપલબ્ધ નથી",
+    "sharedPhotoAlt": "શેર કરેલો ફોટો",
+    "unsupportedMessage": "અસમર્થિત મેસેજ"
+  },
+  "chatPoll": {
+    "closed": "પોલ બંધ થયો",
+    "selectMulti": "એક કે વધુ પસંદ કરો",
+    "selectOne": "એક પસંદ કરો",
+    "votes": "{count, plural, one {# વોટ} other {# વોટ}}",
+    "closePoll": "પોલ બંધ કરો",
+    "roamMember": "Roam સભ્ય"
+  },
+  "chatShell": {
+    "emptyTitle": "કોઈ વાતચીત પસંદ કરો",
+    "emptyBody": "ડાબી બાજુથી ચેટ પસંદ કરો, અથવા નવી શરૂ કરો."
+  },
+  "messageButton": {
+    "message": "મેસેજ",
+    "opening": "ખૂલી રહ્યું છે…"
+  },
+  "planDetail": {
+    "roamMember": "Roam સભ્ય",
+    "back": "પ્લાન",
+    "signedOutIntro": "પૂરો પ્લાન જોવા અને જોડાવા સાઇન ઇન કરો.",
+    "notMemberBody": "તમે હજુ આ પ્લાનમાં નથી — જેણે શેર કર્યો હોય તેને આમંત્રણ આપવા કહો, અને એ તમારા <plansLink>પ્લાન</plansLink> માં દેખાશે.",
+    "notFound": {
+      "title": "પ્લાન મળ્યો નહીં",
+      "body": "એ કદાચ દૂર થયો હોય, અથવા તમને એની ઍક્સેસ નથી."
+    },
+    "opening": "ખૂલી રહ્યું છે…",
+    "groupChat": "ગ્રુપ ચેટ",
+    "edit": "એડિટ કરો",
+    "venues": "{count, plural, one {# વેન્યુ} other {# વેન્યુ}}",
+    "emptyVenues": "હજુ કોઈ વેન્યુ નથી. કોઈપણ વેન્યુ ખોલીને <strong>＋ પ્લાનમાં ઉમેરો</strong> પર ટૅપ કરો એટલે અહીં ઉમેરાય.",
+    "findVenues": "વેન્યુ શોધો",
+    "removeFromPlanTitle": "પ્લાનમાંથી દૂર કરો",
+    "remove": "દૂર કરો",
+    "places": "{count, plural, one {# જગ્યા} other {# જગ્યાઓ}}",
+    "going": "{count} આવવાના",
+    "uploading": "અપલોડ થઈ રહ્યું છે…",
+    "change": "બદલો",
+    "addImage": "＋ ઇમેજ ઉમેરો",
+    "tapToAddHeader": "હેડર ઇમેજ ઉમેરવા ટૅપ કરો",
+    "changeHeaderAria": "હેડર ઇમેજ બદલો",
+    "addHeaderAria": "હેડર ઇમેજ ઉમેરો",
+    "cropTitle": "તમારા પ્લાનનું હેડર ગોઠવો",
+    "removeImage": "ઇમેજ દૂર કરો",
+    "planTitleAria": "પ્લાનનું શીર્ષક",
+    "plannedDateAria": "નક્કી કરેલી તારીખ",
+    "notesAria": "નોંધ",
+    "notesPlaceholder": "નોંધ (વૈકલ્પિક)",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "save": "સેવ કરો",
+    "cancel": "રદ કરો",
+    "deletePlan": "પ્લાન ડિલીટ કરો",
+    "members": "{count, plural, one {ફક્ત તમે} other {# લોકો}}",
+    "done": "થઈ ગયું",
+    "inviteFriends": "＋ મિત્રોને આમંત્રણ આપો",
+    "host": "હોસ્ટ",
+    "removeMemberAria": "{name} ને પ્લાનમાંથી દૂર કરો",
+    "noFriendsToInvite": "આમંત્રણ આપવા હજુ કોઈ મિત્રો નથી. મિત્રોની પ્રોફાઇલ વૉલ પરથી એમને ઉમેરો, પછી અહીં આમંત્રણ આપો.",
+    "allFriendsOnPlan": "તમારા બધા મિત્રો પહેલેથી આ પ્લાનમાં છે.",
+    "add": "ઉમેરો",
+    "errors": {
+      "load": "આ પ્લાન લોડ થઈ શક્યો નહીં.",
+      "signInImage": "ઇમેજ ઉમેરવા તમારે સાઇન ઇન કરેલું હોવું જોઈએ.",
+      "upload": "એ ઇમેજ અપલોડ થઈ શકી નહીં.",
+      "save": "પ્લાન સેવ થઈ શક્યો નહીં."
+    }
+  },
+  "plansList": {
+    "kicker": "{place} માં સાથે મળીને",
+    "title": "પ્લાન",
+    "subtitle": "આઉટિંગ ગોઠવો, વેન્યુ ઉમેરો, અને ક્યાં મળવું એ ગ્રુપને નક્કી કરવા દો.",
+    "newPlan": "＋ નવો પ્લાન",
+    "signedOutIntro": "પ્લાન બનાવવા અને એમાં વેન્યુ સાચવવા સાઇન ઇન કરો.",
+    "noDate": "હજુ તારીખ નથી",
+    "going": "{count} આવવાના",
+    "venues": "{count, plural, one {# વેન્યુ} other {# વેન્યુ}}",
+    "startNewPlan": "નવો પ્લાન શરૂ કરો",
+    "startNewPlanHint": "તારીખ પસંદ કરો, મિત્રોને આમંત્રણ આપો",
+    "titlePlaceholder": "પ્લાનનું શીર્ષક — દા.ત. શુક્રવારની મહેફિલ",
+    "titleAria": "પ્લાનનું શીર્ષક",
+    "dateAria": "નક્કી કરેલી તારીખ",
+    "notesPlaceholder": "નોંધ (વૈકલ્પિક)",
+    "notesAria": "નોંધ",
+    "creating": "બની રહ્યું છે…",
+    "create": "પ્લાન બનાવો",
+    "cancel": "રદ કરો",
+    "errors": {
+      "load": "તમારા પ્લાન લોડ થઈ શક્યા નહીં.",
+      "create": "પ્લાન બની શક્યો નહીં."
+    }
+  },
+  "meetupPanel": {
+    "title": "મીટ-અપ",
+    "unknownVenue": "અજાણ્યું વેન્યુ",
+    "loading": "લોડ થઈ રહ્યું છે…",
+    "stateVoting": "વોટિંગ",
+    "stateResolved": "નક્કી થયું",
+    "stateEnded": "પૂરું થયું",
+    "tie": "ટાઈ છે — તોડવા માટે એક વોટ બદલો.",
+    "noVenuesVoting": "હજુ કોઈ વેન્યુ નથી — પોલ શરૂ કરવા એક ઉમેરો.",
+    "noVenues": "હજુ કોઈ વેન્યુ નથી.",
+    "voteFor": "વોટ · {venue}",
+    "meetingAt": "<strong>{venueName}</strong> પર મળીશું.",
+    "winningVenue": "વિજેતા વેન્યુ",
+    "working": "કામ ચાલુ છે…",
+    "resolve": "વિજેતા નક્કી કરો",
+    "endMeetup": "મીટ-અપ પૂરું કરો",
+    "ended": "આ મીટ-અપ પૂરું થયું છે.",
+    "addVenue": "વેન્યુ ઉમેરો",
+    "venuesLoading": "{place} નજીકનાં વેન્યુ લોડ થઈ રહ્યાં છે…",
+    "venuesLoadFailed": "વેન્યુ લોડ થઈ શક્યાં નહીં.",
+    "venuesEmpty": "{place} નજીક હજુ કોઈ વેન્યુ નથી.",
+    "done": "થઈ ગયું",
+    "startBody": "થોડાં વેન્યુ વોટ માટે મૂકો અને ક્યાં મળવું એ ગ્રુપને નક્કી કરવા દો.",
+    "starting": "શરૂ થઈ રહ્યું છે…",
+    "start": "મીટ-અપ શરૂ કરો",
+    "errors": {
+      "load": "મીટ-અપ લોડ થઈ શક્યું નહીં.",
+      "poll": "પોલ લોડ થઈ શક્યો નહીં.",
+      "start": "મીટ-અપ શરૂ થઈ શક્યું નહીં.",
+      "addVenue": "એ વેન્યુ ઉમેરી શકાયું નહીં.",
+      "vote": "તમારો વોટ નોંધાઈ શક્યો નહીં.",
+      "resolve": "મીટ-અપનું પરિણામ નક્કી થઈ શક્યું નહીં.",
+      "end": "મીટ-અપ પૂરું થઈ શક્યું નહીં."
+    }
+  },
+  "addToPlan": {
+    "signInTitle": "પ્લાનમાં સાચવવા સાઇન ઇન કરો",
+    "addToPlan": "＋ પ્લાનમાં ઉમેરો",
+    "addToAPlan": "કોઈ પ્લાનમાં ઉમેરો",
+    "empty": "હજુ કોઈ પ્લાન નથી — નીચે તમારો પહેલો બનાવો.",
+    "added": "ઉમેરાયું ✓",
+    "add": "ઉમેરો",
+    "newPlanPlaceholder": "નવો પ્લાન…",
+    "newPlanAria": "નવા પ્લાનનું શીર્ષક",
+    "errors": {
+      "add": "એ પ્લાનમાં ઉમેરી શકાયું નહીં.",
+      "create": "પ્લાન બની શક્યો નહીં."
+    }
+  },
+  "market": {
+    "toggle": {
+      "shops": "દુકાનો",
+      "marketplace": "માર્કેટપ્લેસ",
+      "aria": "બજાર મોડ"
+    },
+    "kicker": {
+      "shops": "Roam બજાર",
+      "marketplace": "Roam માર્કેટપ્લેસ"
+    },
+    "headline": {
+      "shops": "તમારી હાઈ સ્ટ્રીટ પરથી ખરીદો",
+      "marketplace": "પડોશીઓ સાથે ખરીદો, વેચો અને અદલાબદલી કરો"
+    },
+    "sub": {
+      "shops": "<strong>{place}</strong> ના લોકલ બિઝનેસનાં પ્રોડક્ટ, વાઉચર અને અનુભવો.",
+      "marketplace": "<strong>{place}</strong> નજીકના સાચા લોકલ લોકો પાસેથી સેકન્ડ-હૅન્ડ અને હાથે બનાવેલું."
+    },
+    "searchPlaceholder": {
+      "shops": "પ્રોડક્ટ અને લોકલ દુકાનો શોધો…",
+      "marketplace": "સાઇકલ, ફર્નિચર, કપડાં શોધો…"
+    },
+    "searchAria": "બજારમાં શોધો",
+    "sellOnRoam": "＋ Roam પર વેચો",
+    "view": {
+      "browse": "બ્રાઉઝ કરો",
+      "mine": "તમારાં લિસ્ટિંગ"
+    },
+    "listAnItem": "＋ વસ્તુ લિસ્ટ કરો",
+    "signInToPost": "લિસ્ટિંગ મૂકવા <link>સાઇન ઇન કરો</link> — એક જ મિનિટ લાગે છે.",
+    "filter": {
+      "all": "બધું",
+      "forSale": "વેચાણ માટે",
+      "swap": "અદલાબદલી ચાલે",
+      "free": "મફત"
+    },
+    "allCategories": "બધી કૅટેગરી",
+    "categories": {
+      "furniture": "ફર્નિચર",
+      "electronics": "ઇલેક્ટ્રોનિક્સ",
+      "clothing": "કપડાં",
+      "kids": "બાળકો",
+      "home": "ઘર",
+      "garden": "બગીચો",
+      "sports": "સ્પોર્ટ્સ",
+      "books": "પુસ્તકો",
+      "vehicles": "વાહનો",
+      "other": "અન્ય"
+    },
+    "saved": "સાચવેલાં",
+    "badge": {
+      "sold": "વેચાઈ ગયું",
+      "removed": "દૂર થયું",
+      "free": "મફત",
+      "swapOk": "અદલાબદલી ચાલે",
+      "newIn": "નવું આવ્યું",
+      "forSale": "વેચાણ માટે"
+    },
+    "price": {
+      "free": "મફત",
+      "swap": "અદલાબદલી"
+    },
+    "miles": "{miles} માઇલ",
+    "nearby": "નજીકમાં",
+    "views": "{count, plural, one {# વ્યૂ} other {# વ્યૂ}}",
+    "emptyMine": "તમે હજુ કંઈ લિસ્ટ કર્યું નથી.",
+    "emptyBrowse": "{place} માં હજુ કંઈ લિસ્ટ થયું નથી — પહેલા તમે બનો.",
+    "markSold": "વેચાયું માર્ક કરો",
+    "remove": "દૂર કરો",
+    "relist": "ફરી લિસ્ટ કરો",
+    "composer": {
+      "title": "{place} માં નવું લિસ્ટિંગ",
+      "modeSell": "વેચો",
+      "modeSwap": "અદલાબદલી ચાલે",
+      "modeFree": "મફત",
+      "titlePlaceholder": "તમે શું લિસ્ટ કરી રહ્યા છો?",
+      "titleAria": "શીર્ષક",
+      "pricePlaceholder": "કિંમત (£)",
+      "priceAria": "કિંમત",
+      "categoryAria": "કૅટેગરી",
+      "descriptionPlaceholder": "કન્ડિશન, સાઇઝ, પિકઅપની વિગતો…",
+      "descriptionAria": "વર્ણન",
+      "photoRules": "ફોટા JPEG/PNG/WebP અને 10 MB થી ઓછા હોવા જોઈએ.",
+      "uploadingProgress": "{total} માંથી {current} અપલોડ થઈ રહ્યું છે…",
+      "uploadFailed": "અપલોડ નિષ્ફળ: {message}",
+      "titleMin": "એને શીર્ષક આપો (ઓછામાં ઓછા 3 અક્ષર).",
+      "priceInvalid": "25 કે 12.50 જેવી કિંમત લખો.",
+      "postFailedRetry": "એ પોસ્ટ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરો.",
+      "postFailed": "એ પોસ્ટ થઈ શક્યું નહીં.",
+      "cover": "કવર",
+      "removePhoto": "ફોટો દૂર કરો",
+      "moveEarlier": "આગળ ખસેડો",
+      "moveLater": "પાછળ ખસેડો",
+      "uploading": "અપલોડ થઈ રહ્યું છે…",
+      "addPhotos": "ફોટા ઉમેરો",
+      "posting": "પોસ્ટ થઈ રહ્યું છે…",
+      "post": "લિસ્ટિંગ પોસ્ટ કરો",
+      "cancel": "રદ કરો"
+    }
+  },
+  "marketShops": {
+    "empty": "{place} ની કોઈ દુકાને હજુ માલ ભર્યો નથી — બિઝનેસ પોતાના ડૅશબોર્ડમાંથી પ્રોડક્ટ ઉમેરે છે, અને ઉમેરે કે તરત અહીં દેખાશે.",
+    "all": "બધું",
+    "saved": "સાચવેલાં",
+    "noMatches": "કંઈ મળતું નથી — બીજી કૅટેગરી કે શોધ અજમાવો.",
+    "badge": {
+      "soldOut": "સ્ટૉક ખતમ",
+      "giftCard": "ગિફ્ટ કાર્ડ",
+      "collect": "કલેક્ટ કરો"
+    },
+    "claimedVenue": "ક્લેમ થયેલું વેન્યુ",
+    "removeFromSaved": "{title} સાચવેલામાંથી કાઢો",
+    "saveItem": "{title} સાચવો"
+  },
+  "listingDetail": {
+    "gone": "આ લિસ્ટિંગ હવે નથી — કદાચ વેચાઈ ગયું હોય કે દૂર થયું હોય. <link>બજાર પર પાછા જાઓ</link>",
+    "back": "બજાર",
+    "sellerFallback": "એક લોકલ",
+    "nearby": "નજીકમાં",
+    "price": {
+      "free": "મફત",
+      "swap": "અદલાબદલી"
+    },
+    "seller": "વેચનાર",
+    "meetsIn": "{place} માં મળે છે",
+    "yourTown": "તમારું ટાઉન",
+    "yourListing": "તમારું લિસ્ટિંગ",
+    "signInToMessage": "મેસેજ કરવા સાઇન ઇન કરો",
+    "safetyNote": "લોકલ લિસ્ટિંગ માટે Roam ચુકવણી સંભાળતું નથી — ચેટમાં વિગતો નક્કી કરો અને કોઈ જાહેર જગ્યાએ મળો. જેને મળ્યા નથી તેને ક્યારેય પૈસા મોકલશો નહીં.",
+    "enquiryMessage": "તમારા લિસ્ટિંગ “{title}” વિશે — હજુ ઉપલબ્ધ છે? {url}",
+    "openingChat": "ચેટ ખૂલી રહી છે…",
+    "messageSeller": "વેચનારને મેસેજ કરો",
+    "reported": "રિપોર્ટ થયું — આભાર, અમે જોઈ લઈશું.",
+    "reportPrompt": "આ લિસ્ટિંગમાં શું ખોટું છે? (વૈકલ્પિક)",
+    "reportListing": "આ લિસ્ટિંગનો રિપોર્ટ કરો"
+  },
+  "venueShop": {
+    "checkoutFailed": "ચેકઆઉટ શરૂ થઈ શક્યું નહીં.",
+    "empty": "આ વેન્યુએ હજુ પોતાની Roam શોપમાં માલ ભર્યો નથી — થોડી વારે ફરી જુઓ.",
+    "kind": {
+      "voucher": "વાઉચર / સેવા",
+      "soldOut": "સ્ટૉક ખતમ",
+      "collect": "વેન્યુમાંથી કલેક્ટ કરો"
+    },
+    "quantityAria": "જથ્થો",
+    "openingCheckout": "ચેકઆઉટ ખૂલી રહ્યું છે…",
+    "buy": "ખરીદો",
+    "signInToBuy": "ખરીદવા સાઇન ઇન કરો",
+    "payoutPending": "આ વેન્યુનું પેઆઉટ સેટઅપ પૂરું થાય પછી Roam મારફતે ખરીદી શરૂ થશે — હમણાં ખરીદવા વેન્યુની મુલાકાત લો કે મેસેજ કરો.",
+    "paymentsNote": "ચુકવણી Stripe દ્વારા સુરક્ષિત રીતે થાય છે. પ્રોડક્ટ વેન્યુમાંથી કલેક્ટ થાય છે; વાઉચરનો રિડીમ કોડ <link>તમારા ઓર્ડર</link> માં આવે છે."
+  },
+  "myOrders": {
+    "signedOutIntro": "તમારા ઓર્ડર જોવા સાઇન ઇન કરો.",
+    "title": "તમારા ઓર્ડર",
+    "placedNote": "ઓર્ડર થઈ ગયો — Stripe કન્ફર્મ કરે એની થોડી સેકન્ડમાં અહીં ચૂકવાયેલ તરીકે દેખાશે.",
+    "empty": "હજુ કંઈ નથી — Roam પરની વેન્યુ શોપ માલ ભરી રહી છે. <link>શોધો</link> માં કંઈક શોધો.",
+    "status": {
+      "pending": "ચુકવણી બાકી",
+      "paid": "ચૂકવાયેલ",
+      "collected": "કલેક્ટ થયું",
+      "redeemed": "રિડીમ થયું",
+      "refunded": "રિફંડ થયું",
+      "canceled": "રદ થયું"
+    },
+    "showCode": "રિડીમ કરવા વેન્યુમાં આ કોડ બતાવો:"
+  },
+  "friendsList": {
+    "fallbackName": "કોઈક",
+    "home": "હોમ",
+    "title": "મિત્રો",
+    "signedOutIntro": "તમારા મિત્રો અને રિક્વેસ્ટ જોવા સાઇન ઇન કરો.",
+    "findPeople": "લોકોને શોધો",
+    "searchPlaceholder": "નામ કે @હૅન્ડલથી શોધો",
+    "requests": "રિક્વેસ્ટ",
+    "accept": "સ્વીકારો",
+    "decline": "નકારો",
+    "empty": "હજુ કોઈ મિત્રો નથી. કોઈની વૉલ ખોલીને <strong>＋ મિત્ર ઉમેરો</strong> પર ટૅપ કરીને જોડાઓ.",
+    "friendCount": "{count, plural, one {# મિત્ર} other {# મિત્રો}}"
+  },
+  "userSearch": {
+    "placeholderFriends": "તમારા મિત્રોમાં શોધો",
+    "placeholderEveryone": "નામ કે @હૅન્ડલથી બધામાં શોધો",
+    "modeFriends": "મિત્રો",
+    "modeEveryone": "બધા",
+    "noFriendsYet": "તમે હજુ કોઈ મિત્રો ઉમેર્યા નથી.",
+    "noFriendMatches": "તમારા કોઈ મિત્રો “{query}” સાથે મળતા નથી.",
+    "searchEveryone": "બધામાં શોધો →",
+    "noResults": "“{query}” માટે કોઈ મળ્યું નહીં. બીજું નામ કે @હૅન્ડલ અજમાવો.",
+    "hint": "Roam પર બધાને નામ કે @હૅન્ડલથી શોધો."
+  },
+  "addFriendButton": {
+    "friends": "મિત્રો ✓",
+    "requested": "રિક્વેસ્ટ મોકલી",
+    "acceptRequest": "રિક્વેસ્ટ સ્વીકારો",
+    "addFriend": "＋ મિત્ર ઉમેરો"
+  },
+  "following": {
+    "back": "શોધો",
+    "title": "ફોલોઇંગ",
+    "intro": "બિઝનેસ ફોલો કરવાથી એની એક્સક્લુઝિવ ઑફર અને પ્રમોશન તમને મળે છે. અનફોલો કર્યા વગર નીચે કોઈને પણ મ્યૂટ કરો — તમે ફોલો કરતા રહો છો, ફક્ત નોટિફિકેશન બંધ થાય છે.",
+    "loadFailed": "તમારા ફોલો લોડ થઈ શક્યા નહીં.",
+    "signedOutIntro": "તમારા ફોલો ખાનગી છે. તમે ફોલો કરો છો તે વેન્યુ જોવા અને એમનાં નોટિફિકેશન મેનેજ કરવા સાઇન ઇન કરો.",
+    "unknownVenue": "અજાણ્યું વેન્યુ",
+    "pushUpdateFailed": "નોટિફિકેશન અપડેટ થઈ શક્યાં નહીં.",
+    "offersPromotions": "ઑફર અને પ્રમોશન",
+    "pushOnHint": "નવી ડીલની તમને જાણ થશે",
+    "pushOffHint": "નોટિફિકેશન મ્યૂટ — તમે હજુ ફોલો કરો છો",
+    "on": "ચાલુ",
+    "off": "બંધ",
+    "empty": {
+      "title": "હજુ કંઈ ફોલો કરતા નથી",
+      "body": "શોધોમાંથી કોઈ વેન્યુ ફોલો કરો એટલે એ પોસ્ટ કરે ત્યારે તમને જાણ થાય. તમે ફોલો કરો છો તે વેન્યુ અહીં દેખાય છે."
+    },
+    "errorTitle": "તમારા ફોલો લોડ થઈ શક્યા નહીં"
+  },
+  "reportVenue": {
+    "cta": "આ વેન્યુનો રિપોર્ટ કરો",
+    "signInToReport": "આ વેન્યુનો રિપોર્ટ કરવા સાઇન ઇન કરો.",
+    "detailLabel": "આ વેન્યુમાં શું ખોટું છે?",
+    "detailPlaceholder": "દા.ત. ખોટી રીતે ક્લેમ થયું, બંધ છે, ખોટું કે અપમાનજનક કન્ટેન્ટ…",
+    "sending": "મોકલી રહ્યા છીએ…",
+    "send": "રિપોર્ટ મોકલો",
+    "cancel": "રદ કરો",
+    "thanks": "આભાર — તમારો રિપોર્ટ સમીક્ષા માટે મોકલાયો છે.",
+    "submitFailed": "તમારો રિપોર્ટ સબમિટ થઈ શક્યો નહીં."
+  },
+  "copyLinkButton": {
+    "share": "શેર કરો",
+    "copied": "કૉપી થયું!"
+  },
+  "venueOwnerEditor": {
+    "backToRoam": "Roam પર પાછા જાઓ",
+    "loadFailed": "આ વેન્યુ લોડ થઈ શક્યું નહીં.",
+    "notFound": {
+      "title": "વેન્યુ મળ્યું નહીં",
+      "body": "આ વેન્યુ અસ્તિત્વમાં નથી અથવા હવે ઉપલબ્ધ નથી."
+    },
+    "notOwner": {
+      "title": "તમે આ વેન્યુ મેનેજ કરતા નથી",
+      "body": "ફક્ત વેન્યુના માલિક જ એને એડિટ કરી શકે. જો તમે ક્લેમ કર્યું હોય, તો તમારો ક્લેમ કદાચ હજુ સમીક્ષામાં હોય."
+    },
+    "tabs": {
+      "overview": "ઓવરવ્યૂ",
+      "audience": "ઑડિયન્સ",
+      "posts": "પોસ્ટ",
+      "offers": "ઑફર",
+      "shop": "શોપ",
+      "notifications": "નોટિફિકેશન",
+      "venue": "વેન્યુ"
+    },
+    "header": {
+      "openNow": "અત્યારે ખુલ્લું",
+      "openNowTill": "અત્યારે ખુલ્લું · {time} સુધી",
+      "closed": "બંધ",
+      "closedOpens": "બંધ · {time} વાગ્યે ખૂલશે",
+      "claimed": "ક્લેમ થયેલું",
+      "viewPublicPage": "જાહેર પેજ જુઓ →"
+    },
+    "stats": {
+      "followers": "ફોલોઅર્સ",
+      "profileViews": "પ્રોફાઇલ વ્યૂ",
+      "offerRedemptions": "ઑફર રિડેમ્પશન",
+      "shopRevenue": "શોપની આવક",
+      "rating": "રેટિંગ",
+      "newThisMonth": "આ મહિને +{count}",
+      "noChangeThisMonth": "આ મહિને કોઈ ફેરફાર નથી",
+      "viewsDelta": "{delta}% · 30 દિવસ",
+      "viewsTrackingNew": "30 દિવસ · ટ્રૅકિંગ નવું છે",
+      "savesAllTime": "{count} સેવ · કુલ",
+      "ordersAllTime": "{count, plural, one {# ઓર્ડર} other {# ઓર્ડર}} · કુલ",
+      "reviews": "{count} રિવ્યૂ",
+      "noReviews": "હજુ કોઈ રિવ્યૂ નથી"
+    },
+    "quickActions": {
+      "title": "ઝડપી ઍક્શન",
+      "post": "પોસ્ટ",
+      "offer": "ઑફર",
+      "push": "પુશ"
+    },
+    "activityCard": {
+      "title": "ઍક્ટિવિટી",
+      "subtitle": "લોકલ લોકો તમારા બિઝનેસ સાથે શું કરે છે."
+    },
+    "paymentsCard": {
+      "title": "ચુકવણી",
+      "subtitle": "Roam પર વેચાણનાં પેઆઉટ — Stripe ના સહયોગથી."
+    },
+    "marketingCard": {
+      "title": "માર્કેટિંગ સહાયક",
+      "subtitle": "Roam ને તમારા માટે ઑફર અને પોસ્ટના ડ્રાફ્ટ બનાવવા દો — બધું તમે જ મંજૂર કરો છો."
+    },
+    "postsCard": {
+      "title": "લોકલ પોસ્ટ",
+      "subtitle": "તમારા બિઝનેસ વતી સમાચાર, ઑફર અને ઇવેન્ટ પોસ્ટ કરો. દરેક તમારા પેજ પર અને તમારા ટાઉનની લોકલ ન્યૂઝ ફીડમાં દેખાય છે — આ તમારી પોસ્ટિંગ હિસ્ટ્રી પણ છે."
+    },
+    "offersCard": {
+      "title": "ઑફર",
+      "subtitle": "એક્સક્લુઝિવ ડીલ પબ્લિશ કરો. ફોલોઅર્સને જાણ થાય છે; કોઈપણ એને સાચવીને વેન્યુમાં રિડીમ કરી શકે છે."
+    },
+    "offerInsightsCard": {
+      "title": "ઑફર ઇનસાઇટ્સ",
+      "subtitle": "કઈ ડીલ લોકલ લોકોમાં સૌથી વધુ ચાલે છે."
+    },
+    "shopCard": {
+      "title": "તમારી શોપ",
+      "subtitle": "તમે Roam પર વેચો છો તે પ્રોડક્ટ, સેવાઓ અને વાઉચર. અહીંનું બધું તમારા જાહેર પેજના શોપ ટૅબ પર દેખાય છે."
+    },
+    "ordersCard": {
+      "title": "ઓર્ડર",
+      "subtitle": "વેચાણ અહીં આવે છે — એને વેન્યુમાં કલેક્ટ થયું કે રિડીમ થયું માર્ક કરો, અથવા રિફંડ કરો."
+    },
+    "notifyCard": {
+      "title": "નોટિફિકેશન મોકલો",
+      "subtitle": "તમારા ફોલોઅર્સના ઇનબોક્સમાં મેસેજ કરો — બધાને, અથવા એક વ્યક્તિને."
+    },
+    "pushHistoryCard": {
+      "title": "પુશ હિસ્ટ્રી",
+      "subtitle": "તમે મોકલેલું દરેક અપડેટ, નવું પહેલાં."
+    },
+    "photosCard": {
+      "title": "ફોટા",
+      "subtitle": "તમારા પોતાના અપલોડ કરો — જાહેર સ્રોતના ફોટા કરતાં એમને પ્રાથમિકતા મળે છે. કવર સેટ કરો અને ક્રમ ગોઠવો."
+    },
+    "detailsCard": {
+      "title": "વિગતો",
+      "subtitle": "વર્ણન અને લોકોને જોઈતી લિંક — મેનૂ, બુકિંગ, વેબસાઇટ."
+    },
+    "hoursCard": {
+      "title": "ખુલવાના સમય",
+      "subtitle": "તમે ક્યારે ખુલ્લા છો તે સેટ કરો — તમારા પેજ પરના લાઇવ “અત્યારે ખુલ્લું” સ્ટેટસને ચલાવે છે."
+    },
+    "nextBestAction": {
+      "kicker": "હવે શું કરવું",
+      "titleNoFollowers": "તમારા પહેલા ફોલોઅર્સ મેળવો — લોકલ અપડેટ પોસ્ટ કરો",
+      "titleFollowers": "તમારા ફોલોઅર્સ સાંભળી રહ્યા છે — આ અઠવાડિયાની ઑફર શેર કરો",
+      "subNoFollowers": "પોસ્ટ તમારા ટાઉનની ફીડમાં દેખાય છે, જ્યાં લોકલ લોકો તમારા જેવા બિઝનેસ શોધે છે.",
+      "subFollowers": "{followers} લોકલ લોકો તમને ફોલો કરે છે.",
+      "subFollowersCredits": "{followers} લોકલ લોકો તમને ફોલો કરે છે — અને એમને જાણ કરવા તમારી પાસે {credits, plural, one {# પુશ ક્રેડિટ} other {# પુશ ક્રેડિટ}} છે.",
+      "writePost": "પોસ્ટ લખો",
+      "createOffer": "ઑફર બનાવો"
+    },
+    "performance": {
+      "title": "પર્ફોર્મન્સ",
+      "subtitle": "પ્રોફાઇલ વ્યૂ અને નવા ફોલોઅર્સ, છેલ્લા {days} દિવસ.",
+      "seg30": "30d",
+      "seg90": "90d",
+      "emptyChart": "વ્યૂ ટ્રૅકિંગ લાઇવ છે — લોકલ લોકો તમારું પેજ ખોલશે તેમ ટ્રેન્ડ અહીં દોરાતો જશે.",
+      "chartAria": "દૈનિક પ્રોફાઇલ વ્યૂ, ટોચ {peak} પર",
+      "viewsLegend": "પ્રોફાઇલ વ્યૂ · {count}",
+      "followersLegend": "નવા ફોલોઅર્સ · {count} (6 અઠવાડિયાં)"
+    },
+    "recentPosts": {
+      "title": "તાજેતરની પોસ્ટ",
+      "subtitle": "તમારાં છેલ્લાં અપડેટ કેવાં ચાલ્યાં.",
+      "allPosts": "બધી પોસ્ટ",
+      "empty": "હજુ કંઈ પોસ્ટ થયું નથી — તમારું પહેલું લોકલ અપડેટ અહીં અને તમારા ટાઉનની ફીડમાં દેખાશે.",
+      "untitled": "અપડેટ"
+    },
+    "audience": {
+      "yourAudienceTitle": "તમારું ઑડિયન્સ",
+      "yourAudienceSubtitle": "તમને કોણ ફોલો કરે છે, સમગ્રપણે — ક્યારેય વ્યક્તિગત લોકો નહીં.",
+      "followers": "ફોલોઅર્સ",
+      "newSub": "▲ {count} (30d)",
+      "engaged30": "સક્રિય (30d)",
+      "pushReach": "પુશ પહોંચ",
+      "avgWeeklyViews": "સરેરાશ સાપ્તાહિક વ્યૂ",
+      "growthTitle": "ફોલોઅર વૃદ્ધિ",
+      "growthSubtitle": "દર અઠવાડિયે ચોખ્ખા નવા ફોલોઅર્સ.",
+      "newFollowersTitle": "{count, plural, one {# નવો ફોલોઅર} other {# નવા ફોલોઅર્સ}}",
+      "week": "W{n}",
+      "growthEmpty": "લોકો તમને ફોલો કરવા લાગશે તેમ વૃદ્ધિના બાર દેખાશે.",
+      "ageTitle": "ફોલોઅર્સની ઉંમર",
+      "ageSubtitle": "એકંદર અને અનામી — ગ્રુપ પૂરતું મોટું હોય ત્યારે જ બતાવાય છે.",
+      "ageBands": {
+        "under_18": "18 થી નાના",
+        "age_18_24": "18–24",
+        "age_25_34": "25–34",
+        "age_35_44": "35–44",
+        "age_45_54": "45–54",
+        "age_55_64": "55–64",
+        "age_65_plus": "65+"
+      },
+      "ageEmpty": "ઉંમરનું વિભાજન બતાવવા પૂરતા ફોલોઅર્સે હજુ જન્મદિવસ શેર કર્યો નથી (ગ્રુપ અનામી રહે એટલું મોટું ન થાય ત્યાં સુધી ખાનગી રખાય છે).",
+      "birthdayTitle": "જન્મદિવસ ઑફર",
+      "birthdaySubtitle": "હા પાડનારા ફોલોઅર્સને એમના જન્મદિવસે આપોઆપ પહોંચતી કાયમી ટ્રીટ. તમે સંખ્યા જુઓ છો, ક્યારેય કોણ એ નહીં.",
+      "birthdaysThisMonth": "{count, plural, one {<strong>#</strong> હા પાડનાર ફોલોઅરનો આ મહિને જન્મદિવસ છે.} other {<strong>#</strong> હા પાડનારા ફોલોઅર્સનો આ મહિને જન્મદિવસ છે.}}"
+    }
+  },
+  "ownerHoursEditor": {
+    "days": {
+      "monday": "સોમવાર",
+      "tuesday": "મંગળવાર",
+      "wednesday": "બુધવાર",
+      "thursday": "ગુરુવાર",
+      "friday": "શુક્રવાર",
+      "saturday": "શનિવાર",
+      "sunday": "રવિવાર"
+    },
+    "copyMondayToWeekdays": "સોમવારનું મંગળ–શુક્રમાં કૉપી કરો",
+    "closed": "બંધ",
+    "sameAs": "{day} જેવું જ",
+    "openingTimeAria": "{day} ખુલવાનો સમય",
+    "closingTimeAria": "{day} બંધ થવાનો સમય",
+    "to": "થી",
+    "remove": "દૂર કરો",
+    "overnightNote": "મધરાત પછી બંધ થાય છે (બીજા દિવસે).",
+    "addBreak": "+ બ્રેક ઉમેરો",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "saveHours": "સમય સેવ કરો",
+    "reset": "રીસેટ કરો",
+    "clearAll": "બધું સાફ કરો",
+    "saved": "સેવ થયું.",
+    "errors": {
+      "addBothTimes": "ખુલવાનો અને બંધ થવાનો બંને સમય ઉમેરો.",
+      "sameTimes": "ખુલવાનો અને બંધ થવાનો સમય એક જ ન હોઈ શકે.",
+      "clearFailedRetry": "તમારા સમય સાફ થઈ શક્યા નહીં. ફરી પ્રયત્ન કરો.",
+      "clearFailed": "તમારા સમય સાફ થઈ શક્યા નહીં.",
+      "saveFailedRetry": "તમારા સમય સેવ થઈ શક્યા નહીં. ફરી પ્રયત્ન કરો.",
+      "saveFailed": "તમારા સમય સેવ થઈ શક્યા નહીં."
+    }
+  },
+  "ownerMediaManager": {
+    "working": "કામ ચાલુ છે…",
+    "uploadPhoto": "ફોટો અપલોડ કરો",
+    "noPhotos": "હજુ કોઈ ફોટા અપલોડ થયા નથી.",
+    "fromPublicSources": "જાહેર સ્રોતોમાંથી ({count})",
+    "publicSourcesNote": "આ જાહેર લિસ્ટિંગમાંથી આવે છે અને અહીં એડિટ થઈ શકતા નથી. તમારા પોતાના ફોટા ઉપર અપલોડ કરો એટલે એ પહેલાં દેખાય.",
+    "row": {
+      "cover": "કવર",
+      "photo": "ફોટો",
+      "moveUp": "ઉપર ખસેડો",
+      "moveDown": "નીચે ખસેડો",
+      "unsetCover": "કવરમાંથી હટાવો",
+      "setCover": "કવર સેટ કરો",
+      "remove": "દૂર કરો"
+    },
+    "errors": {
+      "imageType": "JPEG, PNG કે WebP ઇમેજ પસંદ કરો.",
+      "imageTooLarge": "એ ઇમેજ 10 MB થી મોટી છે. નાની ફાઇલ પસંદ કરો.",
+      "uploadFailedWithMessage": "અપલોડ નિષ્ફળ: {message}",
+      "uploadedNotSaved": "અપલોડ થયું, પણ ફોટો સેવ થઈ શક્યો નહીં. ફરી પ્રયત્ન કરો.",
+      "uploadFailed": "અપલોડ નિષ્ફળ ગયું.",
+      "reorderFailedRetry": "નવો ક્રમ સેવ થઈ શક્યો નહીં. ફરી પ્રયત્ન કરો.",
+      "reorderFailed": "ક્રમ બદલી શકાયો નહીં.",
+      "setCoverFailedRetry": "કવર સેટ થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો.",
+      "setCoverFailed": "કવર સેટ થઈ શક્યું નહીં.",
+      "removeFailedRetry": "એ ફોટો દૂર થઈ શક્યો નહીં. ફરી પ્રયત્ન કરો.",
+      "removeFailed": "દૂર થઈ શક્યું નહીં."
+    }
+  },
+  "ownerDetailsEditor": {
+    "description": "વર્ણન",
+    "descriptionPlaceholder": "લોકોને કહો કે આ જગ્યા શા માટે મુલાકાત લેવા જેવી છે.",
+    "links": "લિંક",
+    "linkLabelPlaceholder": "લેબલ (દા.ત. મેનૂ)",
+    "linkLabelAria": "લિંક લેબલ",
+    "linkUrlPlaceholder": "https://…",
+    "linkUrlAria": "લિંક URL",
+    "remove": "દૂર કરો",
+    "addLink": "+ લિંક ઉમેરો",
+    "maxLinks": "વધુમાં વધુ {max} થાય.",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "saveDetails": "વિગતો સેવ કરો",
+    "reset": "રીસેટ કરો",
+    "saved": "સેવ થયું.",
+    "errors": {
+      "addLabel": "લેબલ ઉમેરો.",
+      "addUrl": "URL ઉમેરો.",
+      "labelTooLong": "લેબલ બહુ લાંબું છે (વધુમાં વધુ {max}).",
+      "urlTooLong": "URL બહુ લાંબું છે.",
+      "httpOnly": "http(s) લિંક વાપરો.",
+      "invalidUrl": "એ માન્ય URL લાગતું નથી.",
+      "saveFailedRetry": "તમારા ફેરફારો સેવ થઈ શક્યા નહીં. ફરી પ્રયત્ન કરો.",
+      "saveFailed": "તમારા ફેરફારો સેવ થઈ શક્યા નહીં."
+    }
+  },
+  "venueShopManager": {
+    "addCta": "＋ પ્રોડક્ટ કે સેવા ઉમેરો",
+    "removeConfirm": "“{title}” તમારી શોપમાંથી કાઢવું છે?",
+    "empty": "તમારી શોપમાં હજુ કંઈ નથી. તમે જે વેચો છો તે ઉમેરો — મીલ વાઉચર, ગિફ્ટ કાર્ડ, રિટેલ પ્રોડક્ટ, બુક કરી શકાય તેવા અનુભવો — અને એ તમારા જાહેર પેજ પર દેખાય છે. ઓનલાઇન ખરીદી જલદી ચાલુ થાય છે.",
+    "kindService": "સેવા",
+    "kindProduct": "પ્રોડક્ટ",
+    "soldOut": "સ્ટૉક ખતમ",
+    "inStock": "{count} સ્ટૉકમાં",
+    "statusLive": "લાઇવ",
+    "statusHidden": "છુપાયેલ",
+    "editAria": "{title} એડિટ કરો",
+    "hideAria": "{title} છુપાવો",
+    "showAria": "{title} બતાવો",
+    "removeAria": "{title} દૂર કરો",
+    "composer": {
+      "editTitle": "એડિટ કરો",
+      "newTitle": "નવી પ્રોડક્ટ કે સેવા",
+      "kindProduct": "પ્રોડક્ટ",
+      "kindService": "સેવા / વાઉચર",
+      "titlePlaceholderService": "દા.ત. £25 નું ડિનર વાઉચર",
+      "titlePlaceholderProduct": "દા.ત. હાઉસ-બ્લેન્ડ કૉફી બીન્સ, 250g",
+      "titleAria": "શીર્ષક",
+      "descriptionPlaceholder": "એક-બે લીટી — શું છે, કેવી રીતે કલેક્ટ કે રિડીમ થાય?",
+      "descriptionAria": "વર્ણન",
+      "priceLabel": "કિંમત (£)",
+      "pricePlaceholder": "12.50",
+      "priceAria": "પાઉન્ડમાં કિંમત",
+      "stockLabel": "સ્ટૉક (વૈકલ્પિક)",
+      "stockPlaceholderService": "સામાન્ય રીતે ખાલી",
+      "stockPlaceholderProduct": "દા.ત. 20",
+      "stockAria": "સ્ટૉકની સંખ્યા",
+      "changePhoto": "ફોટો બદલો",
+      "addPhoto": "ફોટો ઉમેરો",
+      "cropTitle": "તમારો પ્રોડક્ટ ફોટો ગોઠવો",
+      "saving": "સેવ થઈ રહ્યું છે…",
+      "saveChanges": "ફેરફારો સેવ કરો",
+      "addToShop": "શોપમાં ઉમેરો",
+      "cancel": "રદ કરો",
+      "errors": {
+        "badImageType": "JPEG, PNG કે WebP ઇમેજ પસંદ કરો.",
+        "imageTooLarge": "એ ઇમેજ 10 MB થી મોટી છે. નાની ફાઇલ પસંદ કરો.",
+        "uploadFailed": "અપલોડ નિષ્ફળ: {message}",
+        "titleMin": "એને નામ આપો (ઓછામાં ઓછા 3 અક્ષર).",
+        "priceInvalid": "12.50 જેવી કિંમત લખો.",
+        "priceMin": "ઓછામાં ઓછી કિંમત £0.50 છે (કાર્ડ પ્રોસેસિંગ માટે જરૂરી).",
+        "stockInvalid": "સ્ટૉક પૂર્ણાંક હોવો જોઈએ (અથવા ખાલી રાખો).",
+        "saveFailedRetry": "સેવ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરો.",
+        "addFailedRetry": "એ ઉમેરી શકાયું નહીં — ફરી પ્રયત્ન કરો.",
+        "saveFailed": "સેવ થઈ શક્યું નહીં."
+      }
+    }
+  },
+  "venueOrders": {
+    "refundConfirm": "આ ઓર્ડરનું પૂરું રિફંડ કરવું છે? ખરીદનારને બધું પાછું મળે છે.",
+    "actionFailed": "એ થઈ શક્યું નહીં — ફરી પ્રયત્ન કરો.",
+    "empty": "હજુ કોઈ ઓર્ડર નથી — કોઈ તમારી શોપમાંથી ખરીદે કે તરત અહીં આવે છે.",
+    "emptyFiltered": "આ વ્યૂમાં કંઈ નથી.",
+    "filters": {
+      "all": "બધા",
+      "paid": "પૂરા કરવાના",
+      "fulfilled": "પૂરા થયેલા",
+      "refunded": "રિફંડ થયેલા"
+    },
+    "status": {
+      "pending": "બાકી",
+      "paid": "ચૂકવાયેલ",
+      "collected": "કલેક્ટ થયું",
+      "redeemed": "રિડીમ થયું",
+      "refunded": "રિફંડ થયું",
+      "canceled": "રદ થયું"
+    },
+    "code": {
+      "placeholder": "કોડ રિડીમ કરો…",
+      "aria": "રિડીમ કોડ",
+      "verify": "ચકાસો અને રિડીમ કરો",
+      "noMatch": "એ કોડવાળો કોઈ ઓર્ડર નથી.",
+      "alreadyStatus": "એ કોડનો ઓર્ડર પહેલેથી {status} છે.",
+      "redeemedNote": "✓ રિડીમ થયું — {title}"
+    },
+    "roamFee": "Roam ફી {fee}",
+    "codeWord": "કોડ",
+    "markRedeemed": "રિડીમ થયું માર્ક કરો",
+    "markCollected": "કલેક્ટ થયું માર્ક કરો",
+    "refund": "રિફંડ કરો"
+  },
+  "businessDashboard": {
+    "back": "એકાઉન્ટ",
+    "title": "બિઝનેસ",
+    "signedOutIntro": "તમે ક્લેમ કરેલાં વેન્યુ મેનેજ કરવા સાઇન ઇન કરો.",
+    "loadFailed": "તમારાં વેન્યુ લોડ થઈ શક્યાં નહીં.",
+    "statusClaimed": "ક્લેમ થયેલું",
+    "empty": {
+      "title": "હજુ કોઈ ક્લેમ થયેલાં વેન્યુ નથી",
+      "body": "<link>શોધો</link> માં તમારો બિઝનેસ શોધો, એનું પેજ ખોલો અને “મફતમાં ક્લેમ કરો” પર ટૅપ કરો. મંજૂર થયા પછી એ અહીં દેખાય છે, એડિટ કરવા તૈયાર.",
+      "howItWorks": "ક્લેમ કેવી રીતે થાય →"
+    }
+  },
+  "businessLanding": {
+    "back": "શોધો",
+    "kicker": "બિઝનેસ માટે",
+    "title": "લોકલ બિઝનેસ ચલાવો છો? Roam પર એને ક્લેમ કરો.",
+    "heroBody": "લોકો Roam પર લોકલ જગ્યાઓ મફતમાં શોધે છે. તમારું વેન્યુ ક્લેમ કરવાથી તમે એને સચોટ રાખી શકો છો — તમારા ફોટા, સમય, વર્ણન અને લિંક — અને તમે કેવા દેખાઓ છો એ તમારા હાથમાં.",
+    "findYourBusiness": "તમારો બિઝનેસ શોધો",
+    "yourDashboard": "તમારું ડૅશબોર્ડ",
+    "alreadyClaimed": "પહેલેથી ક્લેમ કરેલું? સાઇન ઇન કરો",
+    "howItWorks": "કેવી રીતે કામ કરે છે",
+    "steps": {
+      "find": {
+        "title": "તમારું વેન્યુ શોધો",
+        "body": "એ કદાચ પહેલેથી Roam પર છે, જાહેર સ્રોતોમાંથી લિસ્ટ થયેલું. શોધોમાં એને શોધીને એનું પેજ ખોલો."
+      },
+      "claim": {
+        "title": "મફતમાં ક્લેમ કરો",
+        "body": "વેન્યુ પર “મફતમાં ક્લેમ કરો” પર ટૅપ કરો. સાઇન ઇન કરો (કે એકાઉન્ટ બનાવો) — શોધવા માટે વાપરો છો એ જ એકાઉન્ટ."
+      },
+      "verify": {
+        "title": "ચકાસો અને મેનેજ કરો",
+        "body": "તમારો ઇમેઇલ બિઝનેસની વેબસાઇટ સાથે મળે તો અમે આપોઆપ ચકાસીએ છીએ; નહીંતર એક ઝડપી મેન્યુઅલ ચકાસણી. પછી ફોટા, સમય, વર્ણન અને લિંક ઉમેરો."
+      }
+    },
+    "onceClaimed": "ક્લેમ કર્યા પછી",
+    "perks": {
+      "photos": "સાચા ફોટા ઉમેરો અને ગોઠવો, તમારી કવર ઇમેજ સેટ કરો",
+      "hours": "તમારા ખુલવાના સમય સચોટ રાખો (લાઇવ “અત્યારે ખુલ્લું”)",
+      "description": "તમારું વર્ણન લખો અને તમારી લિંક ઉમેરો",
+      "followers": "તમે પોસ્ટ કરો ત્યારે ફોલોઅર્સને જાણ થાય (જલદી આવી રહ્યું છે)"
+    },
+    "publicSourcesNote": "Roam જાહેર સ્રોતોમાંથી વેન્યુ લિસ્ટ કરે છે જેથી તમે ક્લેમ કર્યું હોય કે નહીં, લોકલ લોકો તમને શોધી શકે — ક્લેમ કરવું મફત છે અને એનાથી ફક્ત તમારા પેજની ચાવી તમારા હાથમાં આવે છે."
+  },
+  "marketingSuggestions": {
+    "loadFailed": "તમારી પસંદગીઓ હમણાં લોડ થઈ શકી નહીં.",
+    "suggestionsOn": "સૂચનો ચાલુ",
+    "suggestionsOff": "સૂચનો બંધ",
+    "summaryOn": "અમે તમારા માટે તૈયાર ઑફર અને પોસ્ટ સૂચવીશું — ક્યારેય આપોઆપ પબ્લિશ નહીં, પહેલા એડિટ કરવાનું હંમેશા તમારા હાથમાં.",
+    "summaryOff": "ઑટોમેટેડ સૂચનો બંધ છે. તમારા માટે તૈયાર ઑફર અને પોસ્ટના આઇડિયા મેળવવા ચાલુ કરો.",
+    "discountCap": "ડિસ્કાઉન્ટ મર્યાદા {pct}%.",
+    "editPreferences": "પસંદગીઓ એડિટ કરો",
+    "turnOff": "બંધ કરો",
+    "turnOn": "ચાલુ કરો",
+    "intro": "તમારા બિઝનેસના માર્કેટિંગમાં મદદ જોઈએ છે? ઑટોમેટેડ સૂચનો ચાલુ કરો અને અમે તમારા માટે તૈયાર ઑફર અને પોસ્ટ સૂચવીશું — બહાર જાય એ પહેલાં જોવા-એડિટ કરવાનું હંમેશા તમારા હાથમાં. એમને ઉપયોગી બનાવવા થોડા ઝડપી સવાલોના જવાબ આપો.",
+    "capLabel": "તમે આપવા તૈયાર છો તે મહત્તમ ડિસ્કાઉન્ટ: <pct>{cap}%</pct>",
+    "capAria": "ડિસ્કાઉન્ટ મર્યાદા ટકા",
+    "typesLabel": "તમે કયા પ્રકારની ડીલ ચલાવશો? (ગમે તેટલી પસંદ કરો)",
+    "notesLabel": "તમે સામાન્ય રીતે કયાં પ્રોડક્ટ કે સેવાઓ પર ડિસ્કાઉન્ટ આપો છો?",
+    "notesPlaceholder": "દા.ત. અઠવાડિયાના દિવસોમાં લંચની મુખ્ય વાનગીઓ, નવા ગ્રાહકોની પહેલી કૉફી, શાંત બપોરના હેરકટ…",
+    "saving": "સેવ થઈ રહ્યું છે…",
+    "turnOnSuggestions": "સૂચનો ચાલુ કરો",
+    "savePreferences": "પસંદગીઓ સેવ કરો",
+    "notNow": "હમણાં નહીં",
+    "cancel": "રદ કરો"
+  },
+  "offerInsights": {
+    "loadFailed": "ઇનસાઇટ્સ હમણાં લોડ થઈ શકી નહીં.",
+    "empty": "હજુ ઑફરનો કોઈ ડેટા નથી. થોડી ડીલ પબ્લિશ કરો અને એમનો પ્રકાર ટૅગ કરો — લોકો એમને સાચવે અને રિડીમ કરે એટલે કયા પ્રકાર સૌથી સારા ચાલે છે એ અહીં દેખાશે.",
+    "topTheme": "તમારી <strong>{label}</strong> ડીલ અત્યાર સુધી સૌથી વધુ રસ ખેંચી રહી છે — {saves} સેવ અને {redemptions} રિડેમ્પશન.",
+    "offerCount": "{count, plural, one {# ઑફર} other {# ઑફર}}"
+  },
+  "venueNotify": {
+    "roamMember": "Roam સભ્ય",
+    "noFollowers": "હજુ કોઈ ફોલોઅર્સ નથી — લોકો તમને ફોલો કરવા લાગે એટલે અહીંથી એમને નોટિફિકેશન મોકલી શકો છો (બધાને સાથે કે એક-એક કરીને).",
+    "allFollowers": "બધા ફોલોઅર્સ",
+    "allFollowersCount": "બધા ફોલોઅર્સ ({count})",
+    "onePerson": "એક વ્યક્તિ",
+    "to": "પ્રતિ",
+    "showingRecent": "તમારા {count} સૌથી તાજેતરના ફોલોઅર્સ બતાવાય છે.",
+    "placeholderOne": "આ ફોલોઅરને મેસેજ લખો…",
+    "placeholderAll": "તમારા ફોલોઅર્સ માટે મેસેજ લખો…",
+    "messageAria": "નોટિફિકેશન મેસેજ",
+    "sending": "મોકલી રહ્યા છીએ…",
+    "send": "મોકલો",
+    "sendToAll": "બધાને મોકલો",
+    "sendToAllCount": "બધાને મોકલો ({count})",
+    "noneNotified": "કોઈને જાણ થઈ નહીં (કોઈ મળતા ફોલોઅર્સ નથી).",
+    "sentTo": "{count, plural, one {# ફોલોઅરને મોકલાયું.} other {# ફોલોઅર્સને મોકલાયું.}}",
+    "footer": "એમનાં નોટિફિકેશનમાં (ઘંટડીમાં) આવે છે. તમારી ઑફર મ્યૂટ કરનારા ફોલોઅર્સને પણ અહીંથી મોકલેલા ડાયરેક્ટ મેસેજ મળે છે.",
+    "errors": {
+      "emptyMessage": "મોકલવા મેસેજ લખો.",
+      "noRecipient": "મોકલવા માટે એક ફોલોઅર પસંદ કરો.",
+      "sendFailed": "નોટિફિકેશન મોકલી શકાયું નહીં."
+    }
+  },
+  "venueActivity": {
+    "someone": "કોઈક",
+    "yourOffer": "તમારી ઑફર",
+    "quotedTitle": "“{title}”",
+    "phrase": {
+      "follow": "{who} તમને ફોલો કરવા લાગ્યા",
+      "offerSave": "{who} એ {what} સાચવી",
+      "offerRedeem": "{who} એ {what} રિડીમ કરી",
+      "sale": "{who} એ {what} ખરીદ્યું",
+      "other": "{who} એ તમારા વેન્યુ સાથે ઇન્ટરેક્ટ કર્યું"
+    },
+    "loadFailed": "ઍક્ટિવિટી હમણાં લોડ થઈ શકી નહીં.",
+    "unreadNew": "{count} નવી",
+    "allCaughtUp": "બધું જોઈ લીધું",
+    "markAllRead": "બધું વાંચેલું માર્ક કરો",
+    "empty": "હજુ કોઈ ઍક્ટિવિટી નથી. લોકો તમને ફોલો કરે અને તમારી ઑફર સાચવે તેમ એ અહીં દેખાશે."
+  },
+  "venuePayments": {
+    "notConfigured": "Roam પર વેચાણ લગભગ આવી ગયું છે — આ એન્વાયર્નમેન્ટમાં પેમેન્ટ પ્રોસેસિંગ હજુ ચાલુ થયું નથી.",
+    "chips": {
+      "payoutsActive": "પેઆઉટ ચાલુ",
+      "chargesEnabled": "ચાર્જ ચાલુ",
+      "detailsSubmitted": "વિગતો સબમિટ થઈ",
+      "detailsNeeded": "વિગતો જરૂરી",
+      "payoutsPending": "પેઆઉટ બાકી"
+    },
+    "activeBody": "તમે પૈસા મેળવવા તૈયાર છો — તમે જે વેચો છો તે બધું તમે જોડેલા બૅન્ક એકાઉન્ટમાં જમા થાય છે. પેઆઉટ હિસ્ટ્રી અને બૅન્કની વિગતો તમારા Stripe ડૅશબોર્ડમાં છે:",
+    "opening": "ખૂલી રહ્યું છે…",
+    "manageOnStripe": "Stripe પર પેઆઉટ મેનેજ કરો ↗",
+    "reviewingBody": "Stripe તમારી વિગતોની સમીક્ષા કરી રહ્યું છે — પેઆઉટ સામાન્ય રીતે એક-બે દિવસમાં ચાલુ થાય છે. ફરી જુઓ, અથવા બાકી હોય તે પૂરું કરો:",
+    "unfinishedBody": "તમારું પેઆઉટ સેટઅપ હજુ પૂરું નથી. જ્યાં છોડ્યું હતું ત્યાંથી આગળ વધો — થોડી મિનિટ લાગે છે:",
+    "openingStripe": "Stripe ખૂલી રહ્યું છે…",
+    "continueSetup": "પેઆઉટ સેટઅપ ચાલુ રાખો",
+    "connectBody": "Roam પર પ્રોડક્ટ, સેવાઓ અને વાઉચર વેચવા પેઆઉટ એકાઉન્ટ જોડો. સેટઅપ Stripe દ્વારા સુરક્ષિત રીતે થાય છે — Roam તમારું ID કે બૅન્કની વિગતો ક્યારેય જોતું નથી.",
+    "setUp": "પેઆઉટ સેટ કરો",
+    "errors": {
+      "startFailed": "પેઆઉટ સેટઅપ શરૂ થઈ શક્યું નહીં.",
+      "openStripeFailed": "Stripe ખોલી શકાયું નહીં."
+    }
+  }
+}

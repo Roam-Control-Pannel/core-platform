@@ -29,8 +29,19 @@ import {
 
 type Messages = typeof en;
 
-/** Locale → catalogue loader. Translated languages register here as they ship (PR 7). */
-const CATALOGUES: Partial<Record<Locale, () => Promise<{ default: Messages }>>> = {};
+/** Locale → catalogue loader. Dynamic imports: a user only downloads the language they use. */
+const CATALOGUES: Partial<Record<Locale, () => Promise<{ default: Messages }>>> = {
+  cy: () => import("../../../messages/cy.json") as Promise<{ default: Messages }>,
+  de: () => import("../../../messages/de.json") as Promise<{ default: Messages }>,
+  es: () => import("../../../messages/es.json") as Promise<{ default: Messages }>,
+  fr: () => import("../../../messages/fr.json") as Promise<{ default: Messages }>,
+  it: () => import("../../../messages/it.json") as Promise<{ default: Messages }>,
+  pl: () => import("../../../messages/pl.json") as Promise<{ default: Messages }>,
+  ro: () => import("../../../messages/ro.json") as Promise<{ default: Messages }>,
+  bn: () => import("../../../messages/bn.json") as Promise<{ default: Messages }>,
+  gu: () => import("../../../messages/gu.json") as Promise<{ default: Messages }>,
+  pa: () => import("../../../messages/pa.json") as Promise<{ default: Messages }>,
+};
 
 interface LocaleSetting {
   locale: Locale;

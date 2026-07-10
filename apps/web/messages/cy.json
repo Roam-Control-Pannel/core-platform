@@ -1,0 +1,2033 @@
+{
+  "common": {
+    "time": {
+      "justNow": "gynnau",
+      "minutes": "{n}m",
+      "hours": "{n}a",
+      "days": "{n}d"
+    },
+    "someone": "Rhywun",
+    "roamMember": "Aelod Roam"
+  },
+  "categories": {
+    "foodDrink": "Bwytai",
+    "shopping": "Siopa",
+    "entertainment": "Atyniadau",
+    "transport": "Trafnidiaeth",
+    "business": "Busnes",
+    "health": "Iechyd a Harddwch",
+    "lodging": "Gwestai",
+    "civic": "Dinesig",
+    "worship": "Addoli"
+  },
+  "offerTypes": {
+    "percent_off": "% oddi ar",
+    "amount_off": "Swm oddi ar",
+    "two_for_one": "2 am 1",
+    "bogof": "Prynu un, cael un am ddim",
+    "free_item": "Eitem am ddim",
+    "bundle": "Bargen bwndel",
+    "happy_hour": "Awr hapus",
+    "loyalty": "Gwobr teyrngarwch",
+    "first_time": "Cynnig tro cyntaf",
+    "seasonal": "Tymhorol / digwyddiad",
+    "other": "Arall"
+  },
+  "chrome": {
+    "brandHome": "Hafan Roam",
+    "primaryNav": "Prif lywio",
+    "nav": {
+      "home": "Hafan",
+      "explore": "Darganfod",
+      "townHall": "Neuadd y Dref",
+      "plans": "Cynlluniau",
+      "chat": "Sgwrs",
+      "you": "Ti"
+    },
+    "forBusinesses": "I fusnesau",
+    "create": "Creu",
+    "sell": "Gwerthu",
+    "sellOnRoam": "Gwerthu ar Roam",
+    "yourOrders": "Dy archebion",
+    "yourAccount": "Dy gyfrif",
+    "signIn": "Mewngofnodi",
+    "signInIntro": "Mewngofnoda i ddilyn lleoliadau a rheoli hysbysiadau.",
+    "close": "Cau",
+    "createMenu": {
+      "open": "Creu",
+      "close": "Cau'r ddewislen greu",
+      "newPlan": "Cynllun newydd",
+      "postToWall": "Postia i dy wal"
+    }
+  },
+  "auth": {
+    "checkEmail": "Gwiria dy e-bost",
+    "resetSentBody": "Os oes cyfrif ar gyfer <strong>{email}</strong>, rydyn ni wedi anfon dolen i ailosod dy gyfrinair. Agor hi i ddewis un newydd.",
+    "backToSignIn": "Yn ôl i fewngofnodi",
+    "resetTitle": "Ailosod dy gyfrinair",
+    "resetBody": "Rho e-bost dy gyfrif ac fe anfonwn ni ddolen i osod cyfrinair newydd.",
+    "email": "E-bost",
+    "emailPlaceholder": "you@business.com",
+    "password": "Cyfrinair",
+    "passwordPlaceholder": "O leiaf 8 nod",
+    "sendResetLink": "Anfon dolen ailosod",
+    "pleaseWait": "Aros eiliad…",
+    "confirmSentBody": "Rydyn ni wedi anfon dolen gadarnhau i <strong>{email}</strong>. Agor hi i gadarnhau dy gyfrif — byddi di'n dod yn syth yn ôl yma, wedi mewngofnodi.",
+    "signIn": "Mewngofnodi",
+    "createAccount": "Creu cyfrif",
+    "forgotPassword": "Wedi anghofio dy gyfrinair?",
+    "continueWith": "Parhau gyda {provider}",
+    "or": "neu",
+    "errors": {
+      "enterEmailPassword": "Rho dy e-bost a chyfrinair.",
+      "passwordMin": "Defnyddia gyfrinair o leiaf 8 nod.",
+      "signInFailed": "Methu dy fewngofnodi. Rho gynnig arall arni.",
+      "generic": "Aeth rhywbeth o'i le. Rho gynnig arall arni.",
+      "startSignInFailed": "Methu dechrau mewngofnodi. Rho gynnig arall arni.",
+      "enterEmailForReset": "Rho dy e-bost ac fe anfonwn ni ddolen ailosod.",
+      "invalidLogin": "Dyw'r e-bost a'r cyfrinair yna ddim yn cyfateb.",
+      "alreadyRegistered": "Mae cyfrif eisoes ar gyfer yr e-bost yna — tria fewngofnodi yn lle.",
+      "rateLimit": "Gormod o ymdrechion. Aros eiliad a thria eto.",
+      "fallback": "Methu cwblhau hynny. Gwiria dy fanylion a thria eto."
+    }
+  },
+  "settings": {
+    "back": "Cyfrif",
+    "title": "Gosodiadau",
+    "account": {
+      "title": "Cyfrif",
+      "email": "E-bost",
+      "signInMethod": "Dull mewngofnodi",
+      "emailPassword": "E-bost a chyfrinair",
+      "changePassword": "Newid cyfrinair",
+      "checkInbox": "Gwiria dy fewnflwch",
+      "sending": "Wrthi'n anfon…",
+      "tryAgain": "Tria eto",
+      "emailMeALink": "E-bostio dolen ataf",
+      "editProfile": "Golygu proffil"
+    },
+    "notifications": {
+      "title": "Hysbysiadau",
+      "followedVenues": "Lleoliadau a ddilynir a gwthio",
+      "manage": "Rheoli",
+      "yourNotifications": "Dy hysbysiadau"
+    },
+    "legal": {
+      "title": "Cyfreithiol",
+      "terms": "Telerau Gwasanaeth",
+      "privacy": "Polisi Preifatrwydd",
+      "subscription": "Telerau Tanysgrifio",
+      "guidelines": "Canllawiau Cymunedol",
+      "attributions": "Priodoliadau"
+    },
+    "support": {
+      "title": "Cymorth",
+      "contact": "Cysylltu â chymorth",
+      "appVersion": "Fersiwn yr ap"
+    },
+    "signOut": "Allgofnodi",
+    "signingOut": "Wrthi'n allgofnodi…",
+    "signedOutIntro": "Mewngofnoda i reoli gosodiadau dy gyfrif.",
+    "danger": {
+      "title": "Parth perygl",
+      "deleteAccount": "Dileu cyfrif",
+      "deleteBody": "Yn dileu dy broffil, postiadau, cynlluniau, sgyrsiau a dilyniadau am byth. Does dim modd dadwneud hyn.",
+      "modalTitle": "Dileu dy gyfrif?",
+      "modalBody": "Mae hyn yn dileu dy broffil, postiadau, cynlluniau, sgyrsiau, dilyniadau a chynigion wedi'u cadw am byth. Does dim modd ei ddadwneud. Bydd sylwadau a adawaist ar waliau pobl eraill yn aros, ond heb ddangos dy enw mwyach.",
+      "typeToConfirm": "Teipia <strong>{word}</strong> i gadarnhau",
+      "deleteFailed": "Methu dileu dy gyfrif. Rho gynnig arall arni.",
+      "cancel": "Canslo",
+      "deleting": "Wrthi'n dileu…"
+    },
+    "language": {
+      "title": "Iaith",
+      "label": "Iaith yr ap",
+      "hint": "Mae mwy o ieithoedd ar y ffordd. Bydd postiadau a chynnwys cymunedol yn aros yn yr iaith y cawson nhw eu hysgrifennu ynddi — gall dy borwr gyfieithu'r rheini."
+    }
+  },
+  "profileEditor": {
+    "displayName": "Enw arddangos",
+    "displayNamePlaceholder": "Dy enw",
+    "handle": {
+      "label": "Handle",
+      "placeholder": "handle",
+      "empty": "Dewisa handle — dyma gyfeiriad gwe dy broffil.",
+      "notAvailable": "Dyw'r handle yna ddim ar gael.",
+      "checking": "Wrthi'n gwirio argaeledd…",
+      "available": "Mae @{handle} ar gael ✓",
+      "hint": "Llythrennau bach, rhifau a thanlinellau. Dyma gyfeiriad gwe dy broffil."
+    },
+    "bio": "Bywgraffiad",
+    "bioPlaceholder": "Llinell amdanat ti a'r llefydd rwyt ti'n eu caru.",
+    "links": "Dolenni",
+    "linkUrlPlaceholder": "URL {label}",
+    "cropAvatarTitle": "Gosoda dy lun proffil",
+    "cropHeaderTitle": "Gosoda dy ddelwedd pennawd",
+    "saving": "Wrthi'n cadw…",
+    "saveProfile": "Cadw proffil",
+    "saved": "Wedi cadw ✓",
+    "changeAvatarImage": "Newid delwedd afatar",
+    "changeHeaderImage": "Newid delwedd pennawd",
+    "addHeaderImage": "Ychwanegu delwedd pennawd",
+    "uploading": "Wrthi'n uwchlwytho…",
+    "change": "Newid",
+    "errors": {
+      "loadFailed": "Methu llwytho dy broffil.",
+      "uploadFailed": "Methodd yr uwchlwytho.",
+      "saveFailedRetry": "Methu cadw dy broffil. Rho gynnig arall arni.",
+      "saveFailed": "Methu cadw dy broffil."
+    }
+  },
+  "accountHub": {
+    "explore": "Darganfod",
+    "title": "Dy gyfrif",
+    "signedOutIntro": "Mewngofnoda i sefydlu dy broffil a phostio i dy wal.",
+    "signOut": "Allgofnodi",
+    "signingOut": "Wrthi'n allgofnodi…"
+  },
+  "notificationCenter": {
+    "home": "Hafan",
+    "title": "Hysbysiadau",
+    "signedOutIntro": "Mewngofnoda i weld dy hysbysiadau.",
+    "loadFailed": "Methu llwytho hysbysiadau.",
+    "empty": "Dim byd eto. Pan fydd pobl yn dy ateb, yn rhoi sylw ar dy bostiadau, neu'n dilyn lleoliad rwyt ti'n berchen arno, fe fydd yn ymddangos yma.",
+    "bellLabel": "{count, plural, =0 {Hysbysiadau} zero {Hysbysiadau} one {Hysbysiadau (# heb ei ddarllen)} two {Hysbysiadau (# heb eu darllen)} few {Hysbysiadau (# heb eu darllen)} many {Hysbysiadau (# heb eu darllen)} other {Hysbysiadau (# heb eu darllen)}}"
+  },
+  "enableNotifications": {
+    "signedOutIntro": "Mewngofnoda i droi hysbysiadau ymlaen ar y ddyfais hon.",
+    "title": "Hysbysiadau",
+    "on": "Ymlaen",
+    "body": "Cei rybudd ar y ddyfais hon pan fydd lleoliadau rwyt ti'n eu dilyn yn postio rhywbeth newydd.",
+    "unsupported": "Dyw'r porwr hwn ddim yn cefnogi hysbysiadau gwe.",
+    "registered": "Mae'r ddyfais hon wedi'i chofrestru. Galli reoli'r danfon fesul lleoliad drwy eu dilyn.",
+    "enabling": "Wrthi'n galluogi…",
+    "enable": "Galluogi hysbysiadau",
+    "errors": {
+      "registerFailed": "Methu cofrestru'r ddyfais hon.",
+      "generic": "Aeth rhywbeth o'i le."
+    }
+  },
+  "resetPassword": {
+    "passwordsMismatch": "Dyw'r cyfrineiriau yna ddim yn cyfateb.",
+    "verifying": "Wrthi'n gwirio dy ddolen ailosod…",
+    "expiredTitle": "Mae'r ddolen hon wedi dod i ben",
+    "expiredBody": "Mae dy ddolen ailosod yn annilys neu eisoes wedi'i defnyddio. Gofynna am un newydd o'r sgrin fewngofnodi.",
+    "doneTitle": "Cyfrinair wedi'i ddiweddaru",
+    "doneBody": "Mae dy gyfrinair wedi'i newid ac rwyt ti wedi mewngofnodi. Galli fynd yn ôl i dy gyfrif nawr.",
+    "goToAccount": "Mynd i dy gyfrif",
+    "chooseBody": "Dewisa gyfrinair newydd ar gyfer dy gyfrif.",
+    "newPassword": "Cyfrinair newydd",
+    "confirmPassword": "Cadarnhau cyfrinair",
+    "confirmPlaceholder": "Rho dy gyfrinair newydd eto",
+    "setNewPassword": "Gosod cyfrinair newydd"
+  },
+  "firstRun": {
+    "title": "Croeso i Roam",
+    "intro": "Dau beth cyflym fel bod ffrindiau'n dy adnabod — ac fel bod y llefydd rwyt ti'n eu dilyn yn gallu anfon anrheg pen-blwydd atat.",
+    "nameLabel": "Dy enw",
+    "namePlaceholder": "e.e. Andrew M.",
+    "nameAria": "Enw arddangos",
+    "dobLabel": "Dyddiad geni",
+    "treatsOptIn": "Anfon anrhegion pen-blwydd ataf o lefydd dwi'n eu dilyn",
+    "privacyNote": "Mae dy ben-blwydd yn breifat — dyw busnesau byth yn gweld y dyddiad. Dim ond i anfon yr anrhegion rwyt ti wedi optio i mewn iddyn nhw y caiff ei ddefnyddio. Galli newid unrhyw ran o hyn yn Gosodiadau nes ymlaen.",
+    "dobInvalid": "Dyw'r dyddiad geni yna ddim yn edrych yn iawn — gwiria fe a thria eto.",
+    "saving": "Wrthi'n cadw…",
+    "save": "Cadw",
+    "skip": "Hepgor am nawr"
+  },
+  "birthdaySettings": {
+    "title": "Pen-blwydd a chynigion",
+    "yourBirthday": "Dy ben-blwydd",
+    "dobAria": "Dyddiad geni",
+    "treatsOptIn": "Anfon anrhegion pen-blwydd ataf o lefydd dwi'n eu dilyn",
+    "privacyNote": "Mae dy ben-blwydd yn breifat. Dyw busnesau byth yn ei weld — dim ond i anfon y cynigion pen-blwydd rwyt ti wedi optio i mewn iddyn nhw y caiff ei ddefnyddio, o lefydd rwyt ti eisoes yn eu dilyn. Galli ei glirio neu droi hyn i ffwrdd unrhyw bryd.",
+    "saving": "Wrthi'n cadw…",
+    "save": "Cadw",
+    "saved": "Wedi cadw ✓",
+    "saveFailed": "Methu cadw — tria eto."
+  },
+  "birthdayTreats": {
+    "title": "Pen-blwydd hapus! Anrhegion i ti",
+    "fallbackTitle": "Anrheg pen-blwydd",
+    "fallbackVenue": "Lle rwyt ti'n ei ddilyn",
+    "untilDate": "tan {date}",
+    "redeemed": "Wedi'i hawlio",
+    "redeem": "Hawlio"
+  },
+  "pushHistory": {
+    "loadFailed": "Methu llwytho hanes gwthio ar hyn o bryd.",
+    "empty": "Dim gwthiadau wedi'u hanfon eto. Pan fyddi di'n postio diweddariad ac yn ticio “Hysbysu dilynwyr”, fe fydd yn ymddangos yma.",
+    "untitledUpdate": "Diweddariad"
+  },
+  "authCallback": {
+    "failedTitle": "Ni chwblhawyd y mewngofnodi",
+    "failedBody": "Fethon ni orffen dy fewngofnodi — efallai i ti ganslo, neu fod y ddolen wedi dod i ben. Rho gynnig arall arni.",
+    "completing": "Wrthi'n cwblhau'r mewngofnodi…"
+  },
+  "home": {
+    "greeting": {
+      "morning": "Bore da",
+      "afternoon": "Prynhawn da",
+      "evening": "Noswaith dda"
+    },
+    "movingIn": "Dyma beth sy'n digwydd yn",
+    "customise": "Addasu",
+    "quick": {
+      "newPlan": "Cynllun newydd",
+      "startTopic": "Dechrau pwnc",
+      "findVenues": "Dod o hyd i leoliadau",
+      "messageFriend": "Anfon neges at ffrind",
+      "market": "Marchnad",
+      "basecamp": "Basecamp"
+    },
+    "basecampLink": {
+      "title": "Basecamp",
+      "subtitle": "Dy holl declynnau, maint llawn"
+    },
+    "widgets": {
+      "townForum": "Fforwm y dref",
+      "trendingNearby": "Poblogaidd gerllaw",
+      "recentChats": "Sgyrsiau diweddar",
+      "deals": "Bargeinion",
+      "nearbyTransit": "Trafnidiaeth gerllaw",
+      "yourPlans": "Dy gynlluniau",
+      "followedVenues": "Lleoliadau a ddilynir",
+      "savedDeals": "Bargeinion wedi'u cadw",
+      "marketplace": "Marchnadle"
+    },
+    "emptyDashboard": {
+      "hiddenAll": "Rwyt ti wedi cuddio pob adran.",
+      "cta": "Addasu'r hafan"
+    },
+    "signIn": "Mewngofnodi",
+    "chatKind": {
+      "plan": "Sgwrs cynllun",
+      "group": "Grŵp",
+      "direct": "Uniongyrchol"
+    },
+    "recentChats": {
+      "title": "Sgyrsiau diweddar",
+      "allChats": "Pob sgwrs",
+      "nudge": "Mewngofnoda i weld dy sgyrsiau a dy gynlluniau gyda phobl gerllaw.",
+      "error": "Methu llwytho dy sgyrsiau ar hyn o bryd.",
+      "empty": "Dim sgyrsiau eto. Anfona neges at ffrind neu agor gynllun i ddechrau un — fe fydd yn ymddangos yma.",
+      "people": "{count, plural, zero {# o bobl} one {# person} two {# berson} few {# pherson} many {# pherson} other {# o bobl}}"
+    },
+    "trending": {
+      "title": "Poblogaidd gerllaw",
+      "explore": "Darganfod",
+      "error": "Methu llwytho lleoliadau'n agos atat ar hyn o bryd.",
+      "empty": "Dim lleoliadau wedi'u canfod ger {place} eto.",
+      "venueFallback": "Lleoliad"
+    },
+    "townForum": {
+      "title": "Fforwm y dref",
+      "townHall": "Neuadd y Dref",
+      "error": "Methu llwytho'r fforwm ar hyn o bryd.",
+      "empty": "Dim pynciau yn {place} eto.",
+      "startOne": "Dechreua un →",
+      "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}"
+    },
+    "savedDeals": {
+      "title": "Bargeinion wedi'u cadw",
+      "empty": "Bydd bargeinion rwyt ti'n eu cadw yn ymddangos yma, yn barod i'w hawlio yn y lleoliad."
+    },
+    "followed": {
+      "title": "Lleoliadau a ddilynir",
+      "manage": "Rheoli",
+      "nudge": "Dilyna fusnes i ddatgloi ei fargeinion teyrngarwch unigryw — fe fyddan nhw'n ymddangos yma, i ddilynwyr yn unig.",
+      "error": "Methu llwytho'r lleoliadau rwyt ti'n eu dilyn ar hyn o bryd.",
+      "empty": "Dwyt ti ddim yn dilyn unrhyw fusnesau eto. Dilyna un i gael ei fargeinion teyrngarwch unigryw yma.",
+      "findCta": "Dod o hyd i fusnesau i'w dilyn",
+      "venueFallback": "Lleoliad",
+      "exclusiveDeals": "Bargeinion unigryw i ti",
+      "noDeals": "Dim bargeinion byw gan dy leoliadau ar hyn o bryd — fe ddangoswn ni nhw yma cyn gynted ag y bydd un yn postio cynnig teyrngarwch."
+    },
+    "plans": {
+      "title": "Dy gynlluniau",
+      "allPlans": "Pob cynllun",
+      "nudge": "Gwna gynlluniau — noson allan, penwythnos, rhestr i'w thrio — a chadwa leoliadau iddyn nhw.",
+      "error": "Methu llwytho dy gynlluniau ar hyn o bryd.",
+      "empty": "Dim cynlluniau eto — dechreua un ac ychwanega leoliadau o unrhyw le ar Roam.",
+      "newPlanCta": "＋ Cynllun newydd",
+      "noDate": "Dim dyddiad eto",
+      "venues": "{count, plural, zero {# lleoliadau} one {# lleoliad} two {# leoliad} few {# lleoliad} many {# lleoliad} other {# lleoliadau}}"
+    },
+    "market": {
+      "title": "Marchnad {place}",
+      "body": "Pryna, gwertha a chyfnewidia gyda phobl yn dy dref — rhestra rywbeth mewn munud, cytuna mewn sgwrs, cwrdda'n lleol.",
+      "open": "Agor y Farchnad",
+      "browse": "Pori"
+    }
+  },
+  "homeFeed": {
+    "title": "Dy ffrwd leol",
+    "tabs": {
+      "forYou": "I ti",
+      "following": "Yn dilyn",
+      "nearby": "Gerllaw"
+    },
+    "error": "Methu llwytho dy ffrwd ar hyn o bryd.",
+    "followingNudge": "Mewngofnoda a dilyna dy hoff fusnesau lleol — bydd eu newyddion, cynigion a digwyddiadau'n glanio yma.",
+    "signIn": "Mewngofnodi",
+    "emptyFollowing": "Dim postiadau gan leoliadau rwyt ti'n eu dilyn eto — dilyna ambell un ar Darganfod a bydd eu diweddariadau'n glanio yma.",
+    "emptyLocal": "Dim byd yn digwydd yn {place} ar hyn o bryd — dere'n ôl cyn bo hir, neu bydda di'r un sy'n dechrau rhywbeth yn Neuadd y Dref.",
+    "exploreVenues": "Darganfod lleoliadau",
+    "openTownHall": "Agor Neuadd y Dref",
+    "caughtUp": "Rwyt ti wedi gweld popeth",
+    "exploreAround": "Darganfydda beth sydd o dy gwmpas",
+    "kind": {
+      "news": "Newyddion",
+      "offer": "Cynnig",
+      "event": "Digwyddiad"
+    },
+    "aLocalBusiness": "Busnes lleol",
+    "viewPost": "Gweld y postiad",
+    "townHall": "Neuadd y Dref",
+    "asked": "Gofynnodd {author}",
+    "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}"
+  },
+  "homeCustomize": {
+    "title": "Addasu'r hafan",
+    "subtitle": "Llusga'r ddolen i aildrefnu, neu cuddia'r adrannau a weli.",
+    "done": "Wedi gorffen",
+    "reorderItem": "Aildrefnu {label}",
+    "showItem": "Dangos {label}",
+    "hideItem": "Cuddio {label}",
+    "reset": "Ailosod i'r rhagosodiad"
+  },
+  "basecamp": {
+    "title": "Basecamp",
+    "intro": "Dy Roam, dy ffordd — popeth mewn",
+    "customise": "Addasu",
+    "nav": {
+      "explore": "Darganfod",
+      "townHall": "Neuadd y Dref",
+      "plans": "Cynlluniau",
+      "chat": "Sgwrs",
+      "deals": "Bargeinion",
+      "market": "Marchnad",
+      "orders": "Archebion",
+      "friends": "Ffrindiau"
+    },
+    "emptyHiddenAll": "Rwyt ti wedi cuddio pob teclyn.",
+    "customiseCta": "Addasu Basecamp"
+  },
+  "placeSwitcher": {
+    "triggerLabel": "Yn pori {name} — newid lle",
+    "searchPlaceholder": "Chwilio tref neu god post…",
+    "searchAria": "Chwilio am le",
+    "searching": "Wrthi'n chwilio…",
+    "searchError": "Methu chwilio ar hyn o bryd. Tria eto.",
+    "noMatches": "Dim byd yn cyfateb i “{query}”.",
+    "saveCurrent": "Cadw “{name}”",
+    "savedSection": "Wedi'u cadw",
+    "suggestedSection": "Awgrymiadau",
+    "savePlace": "Cadw {name}",
+    "unsavePlace": "Dad-gadw {name}",
+    "savedTitle": "Wedi'u cadw",
+    "saveThisPlace": "Cadw'r lle hwn",
+    "removePlace": "Tynnu {name}",
+    "removeTitle": "Tynnu",
+    "locating": "Wrthi'n lleoli…",
+    "useMyLocation": "Defnyddio fy lleoliad",
+    "nearMe": "Yn agos ataf",
+    "yourLocation": "Dy leoliad",
+    "geoError": "Methu cael dy leoliad. Dewisa le yn lle hynny."
+  },
+  "suggested": {
+    "title": "Awgrymiadau i ti",
+    "intro": "Syniadau cynigion a phostiadau wedi'u teilwra — adolyga a golyga bob un cyn iddo fynd allan.",
+    "published": "Wedi'i gyhoeddi — mae yn Cynigion uchod i'w diwygio neu i ychwanegu cod.",
+    "offerTitleAria": "Teitl y cynnig",
+    "discountAria": "Canran y gostyngiad",
+    "discountPlaceholder": "Gostyngiad %",
+    "offerDetailsAria": "Manylion y cynnig",
+    "publishing": "Wrthi'n cyhoeddi…",
+    "publishOffer": "Cyhoeddi'r cynnig",
+    "cancel": "Canslo",
+    "useThisOffer": "Defnyddio'r cynnig hwn",
+    "postCopyAria": "Testun y postiad",
+    "copied": "Wedi'i gopïo ✓",
+    "copyCta": "Copïo — gludia i Postiadau lleol"
+  },
+  "nearbyDepartures": {
+    "title": "Ymadawiadau gerllaw",
+    "loading": "Wrthi'n llwytho ymadawiadau gerllaw…",
+    "due": "Disgwyliedig",
+    "mins": "{mins} mun",
+    "mAway": "{distance} m i ffwrdd",
+    "realtimeWhereAvailable": "Amser real lle bo ar gael",
+    "noDepartures": "Dim ymadawiadau am sbel.",
+    "minLate": "{mins} mun yn hwyr",
+    "minEarly": "{mins} mun yn gynnar",
+    "onTime": "Ar amser (byw)",
+    "live": "Byw",
+    "comingSoon": {
+      "title": "Trafnidiaeth leol",
+      "badge": "Yn dod cyn bo hir",
+      "body": "Mae ymadawiadau bws a thrên byw ar gyfer {place} ar y ffordd — wedi'u pweru gan Translink, ar draws Iwerddon."
+    }
+  },
+  "birthdayOffer": {
+    "intro": "Gosoda anrheg ac fe'i danfonwn yn awtomatig at ddilynwyr ar eu pen-blwydd — y rhai sydd wedi optio i mewn. Dwyt ti byth yn gweld pen-blwydd pwy yw hi, dim ond faint a anfonwyd.",
+    "sentThisMonth": "Anfonwyd y mis hwn",
+    "redeemedThisMonth": "Hawliwyd y mis hwn",
+    "sentAllTime": "Anfonwyd erioed",
+    "redeemedAllTime": "Hawliwyd erioed",
+    "redeemedPct": "Mae {pct}% o'r anrhegion pen-blwydd wedi'u hawlio.",
+    "theTreat": "Yr anrheg",
+    "titlePlaceholder": "e.e. Coffi pen-blwydd am ddim",
+    "titleAria": "Teitl yr anrheg pen-blwydd",
+    "detailsLabel": "Manylion (dewisol)",
+    "detailsPlaceholder": "Dangosa'r neges hon yn y lleoliad ar dy ben-blwydd i'w hawlio.",
+    "detailsAria": "Manylion yr anrheg pen-blwydd",
+    "saving": "Wrthi'n cadw…",
+    "save": "Cadw",
+    "turnOff": "Diffodd",
+    "turnOn": "Troi ymlaen",
+    "live": "● Byw",
+    "off": "I ffwrdd",
+    "saved": "Wedi cadw ✓"
+  },
+  "explore": {
+    "browse": "Pori",
+    "feed": "Ffrwd",
+    "all": "Y cyfan",
+    "market": "Marchnad",
+    "categoriesLabel": "Categorïau",
+    "searchPlaceholder": "Chwilio lleoliadau yn {placeName}…",
+    "searchAria": "Chwilio lleoliadau",
+    "showMap": "Dangos y map",
+    "hideMap": "Cuddio'r map",
+    "loadMore": "Llwytho mwy · {count} arall",
+    "venuesInView": "{count, plural, zero {# lleoliadau yn y golwg} one {# lleoliad yn y golwg} two {# leoliad yn y golwg} few {# lleoliad yn y golwg} many {# lleoliad yn y golwg} other {# lleoliadau yn y golwg}}",
+    "openInMaps": "Agor yn Maps",
+    "openPlaceInMaps": "Agor {placeName} yn Maps",
+    "discovering": "Wrthi'n darganfod llefydd yn {placeName}…",
+    "gate": {
+      "title": "Crea gyfrif am ddim i ddal ati i grwydro",
+      "body": "Rwyt ti wedi archwilio {limit} lleoliad a chwiliwyd y sesiwn hwn — y terfyn am ddim. Mae dy leoliad dy hun yn aros am ddim; cofrestra i agor <strong>{placeName}</strong> ac unrhyw le arall, cadw llefydd, a dilyn y lleoliadau rwyt ti'n eu caru."
+    },
+    "empty": {
+      "title": "Dim byd yma eto",
+      "body": "Does dim lleoliadau'n cyfateb i'r olygfa hon. Tria gategori neu le arall, neu dere'n ôl wrth i Roam dyfu yn dy ardal."
+    },
+    "errors": {
+      "loadFailed": "Methwyd llwytho lleoliadau.",
+      "title": "Methu llwytho lleoliadau"
+    }
+  },
+  "venueDetail": {
+    "back": "Darganfod",
+    "manageVenue": "Rheoli'r lleoliad hwn",
+    "tabsAria": "Adrannau'r lleoliad",
+    "tabs": {
+      "posts": "Postiadau",
+      "offers": "Cynigion",
+      "gallery": "Oriel",
+      "details": "Manylion",
+      "shop": "Siop"
+    },
+    "posts": {
+      "empty": "Dim postiadau eto — pan fydd y lleoliad hwn yn postio newyddion, cynigion neu ddigwyddiadau fe fyddan nhw'n ymddangos yma."
+    },
+    "offers": {
+      "empty": "Dim cynigion byw ar hyn o bryd — dere'n ôl, neu dilyna i gael gwybod."
+    },
+    "gallery": {
+      "empty": "Dim lluniau eto."
+    },
+    "fromPublicSources": "O ffynonellau cyhoeddus",
+    "claim": {
+      "intro": "Mae hawlio am ddim. Mewngofnoda neu crea gyfrif ac mae'r lleoliad hwn yn eiddo i ti i'w reoli ar unwaith.",
+      "ownerTitle": "Ai dy fusnes di yw hwn?",
+      "ownerBody": "Hawlia fe am ddim i ychwanegu lluniau, oriau agor, dy fwydlen a dolenni, a phostio cynigion a digwyddiadau at bobl gerllaw — tua 90 eiliad, a chei ddechrau golygu'n syth.",
+      "claiming": "Wrthi'n hawlio…",
+      "tryAgain": "Tria eto",
+      "cta": "Hawlio'r lleoliad hwn",
+      "knowTitle": "Yn nabod y lle hwn?",
+      "knowBody": "Helpa dy gyd-bobl leol — awgryma lun, yr oriau agor, neu gywiriad.",
+      "suggestEditSoon": "Bydd modd awgrymu golygiadau cyn bo hir",
+      "suggestEdit": "Awgrymu golygiad",
+      "submittedTitle": "Cais wedi'i gyflwyno",
+      "submittedBody": "Diolch — mae dy gais gyda ni nawr i'w wirio. Unwaith y caiff ei gymeradwyo byddi di'n gallu rheoli'r lleoliad hwn, ychwanegu lluniau a manylion, a phostio at bobl gerllaw.",
+      "underReviewTitle": "Cais dan adolygiad",
+      "underReviewBody": "Mae cais am y lleoliad hwn wedi'i gyflwyno ac yn cael ei wirio. Dere'n ôl cyn bo hir — unwaith y caiff ei gymeradwyo gall perchennog y lleoliad gadw ei fanylion yn gyfredol."
+    },
+    "details": {
+      "title": "Manylion",
+      "address": "Cyfeiriad",
+      "locality": "Ardal",
+      "region": "Rhanbarth",
+      "phone": "Ffôn",
+      "website": "Gwefan"
+    },
+    "goodToKnow": {
+      "title": "Da gwybod",
+      "perPerson": "y pen",
+      "upTo": "Hyd at {price}",
+      "groups": {
+        "serviceOptions": "Opsiynau gwasanaeth",
+        "dining": "Bwyta",
+        "amenities": "Cyfleusterau",
+        "payments": "Taliadau",
+        "parking": "Parcio",
+        "accessibility": "Hygyrchedd"
+      },
+      "attrs": {
+        "dineIn": "Bwyta i mewn",
+        "takeout": "Tecawê",
+        "delivery": "Danfon",
+        "curbsidePickup": "Casglu wrth y palmant",
+        "reservable": "Yn derbyn archebion bwrdd",
+        "servesBreakfast": "Brecwast",
+        "servesBrunch": "Brecinio",
+        "servesLunch": "Cinio",
+        "servesDinner": "Swper",
+        "servesCoffee": "Coffi",
+        "servesDessert": "Pwdin",
+        "servesBeer": "Cwrw",
+        "servesWine": "Gwin",
+        "servesCocktails": "Coctels",
+        "servesVegetarianFood": "Opsiynau llysieuol",
+        "outdoorSeating": "Seddi awyr agored",
+        "liveMusic": "Cerddoriaeth fyw",
+        "goodForGroups": "Da i grwpiau",
+        "goodForChildren": "Da i blant",
+        "menuForChildren": "Bwydlen plant",
+        "goodForWatchingSports": "Da i wylio chwaraeon",
+        "allowsDogs": "Croeso i gŵn",
+        "restroom": "Toiledau",
+        "acceptsNfc": "Digyffwrdd",
+        "acceptsCreditCards": "Cardiau credyd",
+        "acceptsDebitCards": "Cardiau debyd",
+        "acceptsCashOnly": "Arian parod yn unig",
+        "freeParkingLot": "Maes parcio am ddim",
+        "paidParkingLot": "Maes parcio talu",
+        "freeStreetParking": "Parcio stryd am ddim",
+        "paidStreetParking": "Parcio stryd talu",
+        "freeGarageParking": "Garej am ddim",
+        "paidGarageParking": "Garej talu",
+        "valetParking": "Parcio valet",
+        "wheelchairAccessibleEntrance": "Mynedfa cadair olwyn",
+        "wheelchairAccessibleParking": "Parcio cadair olwyn",
+        "wheelchairAccessibleRestroom": "Toiled cadair olwyn",
+        "wheelchairAccessibleSeating": "Seddi cadair olwyn"
+      }
+    },
+    "hours": {
+      "title": "Oriau agor",
+      "openNow": "Ar agor nawr",
+      "openNowCloses": "Ar agor nawr · yn cau {time}",
+      "closed": "Ar gau",
+      "closedOpens": "Ar gau · yn agor {time}"
+    },
+    "getDirections": "Cael Cyfarwyddiadau",
+    "notFound": {
+      "title": "Heb ddod o hyd i'r lleoliad",
+      "body": "Efallai fod y lleoliad hwn wedi'i dynnu, neu fod y ddolen yn anghywir.",
+      "backToExplore": "Yn ôl i Darganfod"
+    },
+    "errors": {
+      "loadFailed": "Methwyd llwytho'r lleoliad.",
+      "claimFailed": "Methu cyflwyno dy gais.",
+      "title": "Methu llwytho'r lleoliad hwn"
+    }
+  },
+  "venueCard": {
+    "priceFree": "Am ddim",
+    "temporarilyClosed": "Ar gau dros dro",
+    "claimed": "Wedi'i hawlio",
+    "fromPublicSources": "O ffynonellau cyhoeddus",
+    "claimItFree": "Hawlia fe am ddim"
+  },
+  "venueMap": {
+    "ariaLabel": "Map o leoliadau",
+    "attribution": "© Cyfranwyr OpenStreetMap"
+  },
+  "localPosts": {
+    "kinds": {
+      "news": "Newyddion",
+      "offer": "Cynnig",
+      "event": "Digwyddiad"
+    },
+    "state": {
+      "live": "Byw",
+      "scheduled": "Wedi'i amserlennu",
+      "draft": "Drafft"
+    },
+    "inFeed": "Yn y ffrwd",
+    "pushed": "Gwthiwyd",
+    "newLocalPost": "Postiad lleol newydd",
+    "empty": "Dim postiadau eto. Rhanna newyddion, cynnig neu ddigwyddiad — bydd yn ymddangos ar dudalen dy leoliad ac yn ffrwd newyddion leol dy dref.",
+    "composer": {
+      "offerNeedsTitle": "Mae angen teitl ar gynnig.",
+      "addSomething": "Ychwanega deitl, ychydig destun neu lun i bostio.",
+      "insufficientCredits": "Dim digon o gredydau gwthio i hysbysu dilynwyr. Dad-dicia “Hysbysu dilynwyr” i bostio heb wthiad.",
+      "postFailed": "Methu postio hynny.",
+      "postFailedRetry": "Methu postio hynny. Rho gynnig arall arni.",
+      "offerTitlePlaceholder": "Teitl y cynnig — e.e. Coctels 2 am 1",
+      "titlePlaceholder": "Teitl (dewisol)",
+      "bodyPlaceholder": "Dwed wrth bobl leol beth sy'n digwydd…",
+      "titleAria": "Teitl y postiad",
+      "bodyAria": "Corff y postiad",
+      "notifyFollowers": "Hysbysu dilynwyr (yn defnyddio 1 credyd gwthio)",
+      "posting": "Wrthi'n postio…",
+      "post": "Postio",
+      "cancel": "Canslo",
+      "footer": "Yn ymddangos ar dudalen dy leoliad ac yn ffrwd newyddion leol dy dref."
+    },
+    "row": {
+      "deleteConfirm": "Dileu?",
+      "yes": "Ie",
+      "no": "Na",
+      "edit": "Golygu",
+      "delete": "Dileu",
+      "bodyPlaceholder": "Corff",
+      "saving": "Wrthi'n cadw…",
+      "save": "Cadw"
+    },
+    "media": {
+      "signInToAdd": "Mae angen i ti fewngofnodi i ychwanegu delweddau.",
+      "uploadingProgress": "Wrthi'n uwchlwytho {current} o {total}…",
+      "uploadFailed": "Methu uwchlwytho'r ddelwedd yna.",
+      "removeImage": "Tynnu'r ddelwedd",
+      "moveEarlier": "Symud yn gynt",
+      "moveLater": "Symud yn hwyrach",
+      "uploading": "Wrthi'n uwchlwytho…",
+      "addPhoto": "Ychwanegu llun"
+    }
+  },
+  "deals": {
+    "home": "Hafan",
+    "title": "Bargeinion",
+    "intro": "Cynigion a chodau taleb wedi'u dewis â llaw gan frandiau rydyn ni'n partneru â nhw. Gall dolenni wedi'u marcio'n <strong>Hysbyseb</strong> ennill comisiwn i Roam — dyw e byth yn newid y pris rwyt ti'n ei dalu.",
+    "featured": "Dan sylw",
+    "ad": "Hysbyseb",
+    "affiliateAdAria": "Hysbyseb affiliate",
+    "affiliateAdTitle": "Dolen affiliate — gall Roam ennill comisiwn",
+    "affiliateAria": "Affiliate",
+    "affiliateLinksTitle": "Dolenni affiliate — gall Roam ennill comisiwn",
+    "getDeal": "Cael y fargen",
+    "shopDeal": "Siopa'r fargen",
+    "ends": "Yn gorffen {date}",
+    "loadFailed": "Methu llwytho bargeinion ar hyn o bryd.",
+    "emptyTitle": "Dim bargeinion ar hyn o bryd",
+    "emptyBody": "Bydd cynigion ffres gan ein brandiau partner yn ymddangos yma cyn bo hir — dere'n ôl toc.",
+    "detail": {
+      "loadFailed": "Methu llwytho'r fargen hon ar hyn o bryd.",
+      "notFoundTitle": "Heb ddod o hyd i'r fargen",
+      "notFoundBody": "Efallai fod y cynnig hwn wedi gorffen — mae bargeinion ffres ar y dudalen bargeinion."
+    },
+    "widget": {
+      "allDeals": "Pob bargen",
+      "code": "CODE"
+    }
+  },
+  "offerCard": {
+    "signInToSave": "Mewngofnoda i gadw bargeinion.",
+    "signInToRedeem": "Mewngofnoda i hawlio'r cynnig hwn.",
+    "soldOut": "Mae'r cynnig hwn wedi'i hawlio'n llwyr.",
+    "expired": "Mae'r cynnig hwn wedi dod i ben.",
+    "redeemFailed": "Methu hawlio ar hyn o bryd — rho gynnig arall arni.",
+    "ends": "Yn gorffen {date}",
+    "redeemed": "Wedi'i hawlio",
+    "showToStaff": "Dangosa hwn i'r staff.",
+    "redeeming": "Wrthi'n hawlio…",
+    "redeem": "Hawlio",
+    "saved": "Wedi'i gadw",
+    "save": "Cadw"
+  },
+  "venueOffers": {
+    "newOffer": "Cynnig newydd",
+    "empty": "Dim cynigion eto. Cyhoedda fargen unigryw — caiff dy ddilynwyr eu hysbysu, a gall unrhyw un ei chadw a'i hawlio yn y lleoliad.",
+    "ends": "Yn gorffen {date}",
+    "savedCount": "{count} wedi'u cadw",
+    "redeemedCount": "{count} wedi'u hawlio",
+    "redeemedOfMax": "{count} / {max} wedi'u hawlio",
+    "deleteOffer": "Dileu'r cynnig",
+    "delete": "Dileu",
+    "composer": {
+      "titlePlaceholder": "Cynnig — e.e. 20% oddi ar dy goffi cyntaf",
+      "titleAria": "Teitl y cynnig",
+      "typeLabel": "Math o fargen",
+      "typeAria": "Math o gynnig",
+      "discountLabel": "Gostyngiad %",
+      "discountPlaceholder": "e.e. 20",
+      "discountAria": "Canran y gostyngiad",
+      "detailsPlaceholder": "Y manylion — telerau, beth sydd wedi'i gynnwys…",
+      "detailsAria": "Manylion y cynnig",
+      "codePlaceholder": "Cod hawlio (dewisol) — e.e. ROAM20",
+      "codeAria": "Cod hawlio",
+      "endsLabel": "Yn gorffen (dewisol)",
+      "endsAria": "Dyddiad gorffen y cynnig",
+      "maxLabel": "Uchafswm hawliadau (dewisol)",
+      "maxPlaceholder": "Diderfyn",
+      "maxAria": "Uchafswm hawliadau",
+      "publishFailed": "Methu cyhoeddi'r cynnig.",
+      "publishing": "Wrthi'n cyhoeddi…",
+      "publish": "Cyhoeddi'r cynnig",
+      "cancel": "Canslo"
+    }
+  },
+  "townHall": {
+    "loadFailed": "Methu llwytho Neuadd y Dref.",
+    "hero": {
+      "kicker": "Y fforwm lleol",
+      "title": "Neuadd y Dref",
+      "body": "Beth mae pobl leol yn ei drafod ar hyn o bryd. Gofynna gwestiwn, rhanna awgrym, neu rho bleidlais i'r hyn sy'n bwysig lle rwyt ti.",
+      "startTopic": "Dechrau pwnc"
+    },
+    "sort": {
+      "hot": "Poeth",
+      "new": "Diweddar",
+      "top": "Gorau"
+    },
+    "placeHub": "Hyb {place}",
+    "filterByCategory": "Hidlo yn ôl categori",
+    "categories": {
+      "all": "Y cyfan",
+      "foodDrink": "Bwyd a Diod",
+      "thingsToDo": "Pethau i'w gwneud",
+      "recommendations": "Argymhellion",
+      "events": "Digwyddiadau",
+      "neighbourhood": "Cymdogaeth"
+    },
+    "signInToStart": "Mewngofnoda i ddechrau pwnc yn {place}.",
+    "empty": {
+      "titleCategory": "Dim pynciau {category} yn {place} eto",
+      "title": "Dim pynciau yn {place} eto",
+      "body": "Bydda di'r cyntaf i ddechrau sgwrs — gofynna gwestiwn, rhanna argymhelliad, neu awgryma rywbeth."
+    },
+    "activeNow": "yn weithredol nawr",
+    "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}",
+    "trendingTags": "Tagiau poblogaidd",
+    "activeLocals": "Pobl leol weithgar",
+    "helpfulVotes": "{count, plural, zero {# pleidleisiau defnyddiol} one {# bleidlais ddefnyddiol} two {# bleidlais ddefnyddiol} few {# pleidlais ddefnyddiol} many {# phleidlais ddefnyddiol} other {# pleidleisiau defnyddiol}}",
+    "composer": {
+      "title": "Pwnc newydd yn {place}",
+      "titlePlaceholder": "Teitl — e.e. Cinio dydd Sul gorau'r ardal?",
+      "titleAria": "Teitl y pwnc",
+      "bodyPlaceholder": "Rhanna'r manylion…",
+      "bodyAria": "Manylion y pwnc",
+      "linkPlaceholder": "Ychwanega ddolen (dewisol) — https://…",
+      "linkAria": "URL y ddolen",
+      "fetchingPreview": "Wrthi'n nôl rhagolwg y ddolen…",
+      "postFailed": "Methu postio dy bwnc.",
+      "posting": "Wrthi'n postio…",
+      "post": "Postio'r pwnc",
+      "cancel": "Canslo"
+    }
+  },
+  "townHallTopic": {
+    "townHall": "Neuadd y Dref",
+    "loadFailed": "Methu llwytho'r pwnc hwn.",
+    "notFoundTitle": "Heb ddod o hyd i'r pwnc",
+    "notFoundBody": "Efallai iddo gael ei dynnu, neu fod y ddolen yn anghywir.",
+    "deleteTopicConfirm": "Dileu'r pwnc hwn?",
+    "deleteReplyConfirm": "Dileu'r ateb hwn?",
+    "replies": "{count, plural, =0 {Dim atebion eto} zero {Dim atebion eto} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}",
+    "signInToReply": "Mewngofnoda i ymuno â'r sgwrs.",
+    "owner": {
+      "deleting": "Wrthi'n dileu…",
+      "yesDelete": "Ie, dileu",
+      "cancel": "Canslo",
+      "edit": "Golygu",
+      "delete": "Dileu"
+    },
+    "editor": {
+      "titleAria": "Teitl y pwnc",
+      "bodyAria": "Manylion y pwnc",
+      "replyAria": "Golygu'r ateb",
+      "saveFailed": "Methu cadw dy newidiadau.",
+      "saving": "Wrthi'n cadw…",
+      "save": "Cadw",
+      "cancel": "Canslo"
+    },
+    "composer": {
+      "placeholder": "Ychwanega ateb…",
+      "aria": "Dy ateb",
+      "postFailed": "Methu postio dy ateb.",
+      "posting": "Wrthi'n postio…",
+      "post": "Postio'r ateb"
+    },
+    "report": {
+      "thanks": "Diolch — bydd cymedrolwr yn cael golwg.",
+      "reporting": "Wrthi'n adrodd…",
+      "cta": "Adrodd am y pwnc hwn"
+    }
+  },
+  "tagFeed": {
+    "kicker": "Hashnod",
+    "postCount": "{count, plural, zero {# postiadau} one {# postiad} two {# bostiad} few {# phostiad} many {# phostiad} other {# postiadau}} ar draws Roam",
+    "loadFailed": "Methu llwytho #{tag} ar hyn o bryd.",
+    "emptyTitle": "Dim byd wedi'i dagio #{tag} eto",
+    "emptyBody": "Defnyddia #{tag} mewn pwnc Neuadd y Dref neu bostiad wal ac fe fydd yn ymddangos yma.",
+    "sections": {
+      "townHall": "Trafodaeth Neuadd y Dref",
+      "businesses": "Gan fusnesau lleol",
+      "locals": "Gan bobl leol"
+    },
+    "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}",
+    "venueUpdate": "{venue} — diweddariad",
+    "localUpdate": "Diweddariad lleol",
+    "aLocal": "Person lleol",
+    "viewPost": "Gweld y postiad →"
+  },
+  "topicUpvote": {
+    "upvote": "Pleidleisio o blaid",
+    "removeUpvote": "Tynnu'r bleidlais",
+    "signInToUpvote": "Mewngofnoda i bleidleisio"
+  },
+  "linkPreviewCard": {
+    "link": "dolen",
+    "removeLink": "Tynnu'r ddolen"
+  },
+  "profileWall": {
+    "loadFailed": "Methu llwytho'r proffil hwn.",
+    "notFoundTitle": "Heb ddod o hyd i'r proffil",
+    "notFoundBody": "Efallai fod y cyfrif hwn wedi'i dynnu, neu fod y ddolen yn anghywir.",
+    "done": "Wedi gorffen",
+    "empty": {
+      "ownerTitle": "Mae dy wal yn dawel",
+      "visitorTitle": "Wal dawel",
+      "ownerBody": "Rhanna dy bostiad cyntaf, neu dilyna ambell leoliad a ffrind i lenwi dy ffrwd.",
+      "visitorBody": "Dyw {name} ddim wedi postio eto.",
+      "thisUser": "Y defnyddiwr hwn"
+    },
+    "header": {
+      "yourCoverPhoto": "Dy lun clawr",
+      "roamMember": "Aelod Roam",
+      "aRoamMember": "Aelod Roam",
+      "close": "Cau",
+      "editProfile": "Golygu proffil",
+      "tabs": {
+        "wall": "Wal",
+        "friends": "Ffrindiau",
+        "following": "Yn dilyn",
+        "plans": "Cynlluniau",
+        "orders": "Archebion",
+        "notifications": "Hysbysiadau",
+        "businessDashboard": "Dangosfwrdd busnes",
+        "settings": "Gosodiadau"
+      }
+    },
+    "stats": {
+      "friends": "Ffrindiau",
+      "following": "Yn dilyn",
+      "plans": "Cynlluniau"
+    },
+    "composer": {
+      "maxItems": "Galli ychwanegu hyd at {max} eitem.",
+      "uploadingProgress": "Wrthi'n uwchlwytho {current} o {total}…",
+      "uploadImageFailed": "Methu uwchlwytho'r ddelwedd yna.",
+      "uploadVideoFailed": "Methu uwchlwytho'r fideo yna.",
+      "postFailed": "Methu postio hynny.",
+      "placeholder": "Rhanna rywbeth gyda dy bobl leol…",
+      "writeAria": "Ysgrifennu postiad",
+      "moveEarlier": "Symud yn gynt",
+      "moveLater": "Symud yn hwyrach",
+      "removeMedia": "Tynnu'r cyfryngau",
+      "removeImage": "Tynnu'r ddelwedd",
+      "uploading": "Wrthi'n uwchlwytho…",
+      "addPhoto": "＋ Llun",
+      "addPhotoCount": "＋ Llun ({count}/{max})",
+      "addVideo": "＋ Fideo",
+      "posting": "Wrthi'n postio…",
+      "post": "Postio"
+    },
+    "post": {
+      "deleteConfirm": "Dileu?",
+      "deleting": "Wrthi'n dileu…",
+      "yes": "Ie",
+      "no": "Na",
+      "edit": "Golygu",
+      "delete": "Dileu",
+      "editPost": "Golygu'r postiad",
+      "deletePost": "Dileu'r postiad",
+      "comments": "{count, plural, zero {# sylwadau} one {# sylw} two {# sylw} few {# sylw} many {# sylw} other {# sylwadau}}",
+      "shareTitle": "{name} ar Roam"
+    },
+    "editor": {
+      "saveFailed": "Methu cadw dy newidiadau.",
+      "editPostAria": "Golygu'r postiad",
+      "saving": "Wrthi'n cadw…",
+      "save": "Cadw",
+      "cancel": "Canslo"
+    },
+    "like": {
+      "unlike": "Dad-hoffi",
+      "like": "Hoffi",
+      "signInToLike": "Mewngofnoda i hoffi"
+    },
+    "comments": {
+      "placeholder": "Ychwanega sylw…",
+      "addAria": "Ychwanegu sylw",
+      "send": "Anfon",
+      "signInToInteract": "<link>Mewngofnoda</link> i hoffi a rhoi sylwadau."
+    },
+    "comment": {
+      "editAria": "Golygu'r sylw",
+      "save": "Cadw",
+      "cancel": "Canslo",
+      "deleteConfirm": "Dileu?",
+      "yes": "Ie",
+      "no": "Na",
+      "edit": "Golygu",
+      "delete": "Dileu"
+    }
+  },
+  "feedList": {
+    "filters": {
+      "all": "Y cyfan",
+      "offer": "Cynigion",
+      "event": "Digwyddiadau",
+      "news": "Newyddion"
+    },
+    "loadFailed": "Methwyd llwytho'r ffrwd.",
+    "noFilteredPosts": {
+      "all": "Dim postiadau yma eto.",
+      "offer": "Dim postiadau cynnig yma eto.",
+      "event": "Dim postiadau digwyddiad yma eto.",
+      "news": "Dim postiadau newyddion yma eto."
+    },
+    "empty": {
+      "title": "Mae ffrwd {placeName} newydd ddechrau",
+      "body": "Pan fydd lleoliadau yma'n postio newyddion, cynigion a digwyddiadau, fe fyddan nhw'n ymddangos yn y ffrwd hon. Pora beth sydd gerllaw yn y cyfamser — ac os wyt ti'n rhedeg lle yn {placeName}, mae ei hawlio'n gadael i ti bostio at bobl gerllaw."
+    },
+    "errorTitle": "Methu llwytho'r ffrwd"
+  },
+  "postDetail": {
+    "kind": {
+      "news": "newyddion",
+      "offer": "cynnig",
+      "event": "digwyddiad"
+    },
+    "when": {
+      "today": "Heddiw",
+      "yesterday": "Ddoe",
+      "daysAgo": "{count, plural, zero {# diwrnodau yn ôl} one {# diwrnod yn ôl} two {# ddiwrnod yn ôl} few {# diwrnod yn ôl} many {# diwrnod yn ôl} other {# diwrnodau yn ôl}}"
+    },
+    "postedWhen": "Postiwyd {when}",
+    "posted": "Postiwyd",
+    "redeemOffer": "Hawlio'r cynnig",
+    "shareTitleFallback": "Postiad ar Roam",
+    "viewVenue": "Gweld y Lleoliad",
+    "screen": {
+      "back": "Ffrwd",
+      "loadFailed": "Methu llwytho'r postiad hwn.",
+      "notFoundTitle": "Heb ddod o hyd i'r postiad",
+      "notFoundBody": "Efallai iddo gael ei dynnu, neu fod y ddolen yn anghywir."
+    }
+  },
+  "wallPostScreen": {
+    "loadFailed": "Methu llwytho'r postiad hwn.",
+    "profile": "Proffil",
+    "notFoundTitle": "Heb ddod o hyd i'r postiad",
+    "notFoundBody": "Efallai iddo gael ei dynnu, neu fod y ddolen yn anghywir."
+  },
+  "threadDetail": {
+    "roamMember": "Aelod Roam",
+    "directChat": "Sgwrs uniongyrchol",
+    "untitledGroup": "Grŵp dienw",
+    "someone": "Rhywun",
+    "youLower": "ti",
+    "you": "Ti",
+    "planChat": "Sgwrs cynllun",
+    "people": "{count, plural, zero {# o bobl} one {# person} two {# berson} few {# pherson} many {# pherson} other {# o bobl}}",
+    "chats": "Sgyrsiau",
+    "openChatInfo": "Agor gwybodaeth y sgwrs",
+    "kind": {
+      "plan": "Cynllun",
+      "group": "Grŵp",
+      "direct": "Uniongyrchol"
+    },
+    "meetupBar": {
+      "voting": "Cyfarfod · pleidleisio ar agor",
+      "winner": "Cyfarfod · enillydd wedi'i benderfynu",
+      "open": "Agor"
+    },
+    "backToChat": "Yn ôl i'r sgwrs",
+    "createdWhen": "Crëwyd {when}",
+    "viewThePlan": "Gweld y cynllun",
+    "addFriend": "Ychwanegu ffrind",
+    "done": "Wedi gorffen",
+    "noFriendsToAdd": "Dim ffrindiau i'w hychwanegu eto. Ychwanega ffrindiau o waliau eu proffil, yna dere â nhw i mewn yma.",
+    "allFriendsHere": "Mae dy holl ffrindiau eisoes yn y sgwrs hon.",
+    "add": "Ychwanegu",
+    "addSomeone": "Ychwanegu rhywun",
+    "groupNameAria": "Enw'r grŵp",
+    "save": "Cadw",
+    "cancel": "Canslo",
+    "renameChat": "Ailenwi'r sgwrs",
+    "leaveConfirm": "Gadael y sgwrs hon?",
+    "leaving": "Wrthi'n gadael…",
+    "yesLeave": "Ie, gadael",
+    "leaveChat": "Gadael y sgwrs",
+    "noMessages": "Dim negeseuon eto — dwed rywbeth i gael y sgwrs hon i fynd.",
+    "composerPlaceholder": "Ysgrifenna neges…",
+    "sending": "Wrthi'n anfon…",
+    "send": "Anfon",
+    "editMessageAria": "Golygu'r neges",
+    "deleteConfirm": "Dileu?",
+    "yes": "Ie",
+    "no": "Na",
+    "edit": "Golygu",
+    "delete": "Dileu",
+    "day": {
+      "today": "Heddiw",
+      "yesterday": "Ddoe"
+    },
+    "when": {
+      "today": "heddiw",
+      "yesterday": "ddoe",
+      "daysAgo": "{count, plural, zero {# diwrnodau yn ôl} one {# diwrnod yn ôl} two {# ddiwrnod yn ôl} few {# diwrnod yn ôl} many {# diwrnod yn ôl} other {# diwrnodau yn ôl}}"
+    },
+    "signedOut": {
+      "title": "Mewngofnoda i weld y sgwrs hon",
+      "body": "Mae sgyrsiau'n breifat i'w haelodau."
+    },
+    "backToChats": "Yn ôl i Sgyrsiau",
+    "notFound": {
+      "title": "Heb ddod o hyd i'r sgwrs",
+      "body": "Efallai fod y sgwrs hon wedi'i thynnu, neu does gen ti ddim mynediad iddi."
+    },
+    "errorTitle": "Methu llwytho'r sgwrs hon",
+    "errors": {
+      "loadChat": "Methwyd llwytho'r sgwrs hon.",
+      "addPerson": "Methu ychwanegu'r person yna.",
+      "loadMessages": "Methwyd llwytho negeseuon.",
+      "emptyMessage": "Teipia neges i'w hanfon.",
+      "send": "Methu anfon dy neges.",
+      "share": "Methu rhannu hynny."
+    }
+  },
+  "threadList": {
+    "title": "Sgyrsiau",
+    "cancel": "Canslo",
+    "new": "＋ Newydd",
+    "removePerson": "Tynnu {name}",
+    "groupNamePlaceholder": "Enw'r grŵp — e.e. Noson allan nos Wener",
+    "groupNameAria": "Enw'r grŵp",
+    "starting": "Wrthi'n dechrau…",
+    "messagePerson": "Anfon neges at {name}",
+    "createGroup": "Creu grŵp · {count}",
+    "pickHint": "Dewisa un person am sgwrs uniongyrchol, neu sawl un am grŵp.",
+    "kindLabel": {
+      "plan": "Sgwrs cynllun",
+      "group": "Grŵp",
+      "direct": "Uniongyrchol"
+    },
+    "fallback": {
+      "plan": "Sgwrs cynllun",
+      "group": "Grŵp dienw",
+      "direct": "Sgwrs uniongyrchol"
+    },
+    "preview": {
+      "noMessages": "Dim negeseuon eto",
+      "you": "Ti: {text}",
+      "message": "Neges",
+      "sharedPlace": "Wedi rhannu lle",
+      "sharedPlan": "Wedi rhannu cynllun",
+      "sharedContact": "Wedi rhannu cyswllt",
+      "photo": "Llun",
+      "poll": "Pôl"
+    },
+    "unreadAria": "{count} heb eu darllen",
+    "when": {
+      "today": "heddiw",
+      "yesterday": "ddoe",
+      "daysAgo": "{count, plural, zero {# diwrnodau yn ôl} one {# diwrnod yn ôl} two {# ddiwrnod yn ôl} few {# diwrnod yn ôl} many {# diwrnod yn ôl} other {# diwrnodau yn ôl}}"
+    },
+    "signedOutIntro": "Mae dy sgyrsiau'n breifat. Mewngofnoda i'w gweld a dechrau rhai newydd.",
+    "empty": {
+      "title": "Dim sgyrsiau eto",
+      "body": "Tapia “Sgwrs newydd”, yna chwilia am rywun — dewisa un person am neges uniongyrchol, neu sawl un am grŵp. Galli hefyd anfon neges at ffrind o'i broffil, neu agor cynllun i sgwrsio gyda phawb arno."
+    },
+    "errorTitle": "Methu llwytho dy sgyrsiau",
+    "errors": {
+      "load": "Methwyd llwytho dy sgyrsiau.",
+      "groupName": "Rho enw i dy grŵp.",
+      "start": "Methu dechrau'r sgwrs yna."
+    }
+  },
+  "chatShareMenu": {
+    "shareSomethingAria": "Rhannu rhywbeth",
+    "shareTitle": "Rhannu lle, cynllun, person neu lun",
+    "sharePlace": "Rhannu lle",
+    "sharePlan": "Rhannu cynllun",
+    "sharePerson": "Rhannu person",
+    "poll": "Pôl",
+    "photo": "Llun",
+    "createPollTitle": "Creu pôl",
+    "close": "Cau",
+    "venuesLoading": "Wrthi'n llwytho lleoliadau ger {place}…",
+    "venuesLoadFailed": "Methu llwytho lleoliadau.",
+    "venuesEmpty": "Dim lleoliadau ger {place} eto.",
+    "plansLoading": "Wrthi'n llwytho dy gynlluniau…",
+    "plansLoadFailed": "Methu llwytho dy gynlluniau.",
+    "plansEmpty": "Does gen ti ddim cynlluniau eto. Crea un o'r tab Cynlluniau, yna rhanna fe yma.",
+    "roamMember": "Aelod Roam",
+    "friendsLoading": "Wrthi'n llwytho ffrindiau…",
+    "friendsLoadFailed": "Methu llwytho dy ffrindiau.",
+    "friendsEmpty": "Dim ffrindiau eto. Ychwanega ffrindiau o waliau eu proffil, yna rhanna nhw yma.",
+    "questionPlaceholder": "Gofynna gwestiwn…",
+    "questionAria": "Cwestiwn y pôl",
+    "optionN": "Opsiwn {n}",
+    "removeOption": "Tynnu'r opsiwn",
+    "addOption": "+ Ychwanegu opsiwn",
+    "allowMultiple": "Caniatáu mwy nag un ateb",
+    "createPoll": "Creu'r pôl",
+    "errors": {
+      "uploadPhoto": "Methu uwchlwytho'r llun yna."
+    }
+  },
+  "chatCards": {
+    "aPlace": "Lle",
+    "viewVenue": "Gweld y lleoliad",
+    "aPlan": "Cynllun",
+    "viewPlan": "Gweld y cynllun",
+    "someone": "Rhywun",
+    "viewProfile": "Gweld y proffil",
+    "photoUnavailable": "Llun ddim ar gael",
+    "sharedPhotoAlt": "Llun wedi'i rannu",
+    "unsupportedMessage": "Neges heb ei chefnogi"
+  },
+  "chatPoll": {
+    "closed": "Pôl wedi cau",
+    "selectMulti": "Dewisa un neu fwy",
+    "selectOne": "Dewisa un",
+    "votes": "{count, plural, zero {# pleidleisiau} one {# bleidlais} two {# bleidlais} few {# pleidlais} many {# phleidlais} other {# pleidleisiau}}",
+    "closePoll": "Cau'r pôl",
+    "roamMember": "Aelod Roam"
+  },
+  "chatShell": {
+    "emptyTitle": "Dewisa sgwrs",
+    "emptyBody": "Dewisa sgwrs o'r chwith, neu dechreua un newydd."
+  },
+  "messageButton": {
+    "message": "Neges",
+    "opening": "Wrthi'n agor…"
+  },
+  "planDetail": {
+    "roamMember": "Aelod Roam",
+    "back": "Cynlluniau",
+    "signedOutIntro": "Mewngofnoda i weld y cynllun llawn ac ymuno.",
+    "notMemberBody": "Dwyt ti ddim yn y cynllun hwn eto — gofynna i bwy bynnag a'i rhannodd dy wahodd, ac fe fydd yn ymddangos yn dy <plansLink>Cynlluniau</plansLink>.",
+    "notFound": {
+      "title": "Heb ddod o hyd i'r cynllun",
+      "body": "Efallai iddo gael ei dynnu, neu does gen ti ddim mynediad."
+    },
+    "opening": "Wrthi'n agor…",
+    "groupChat": "Sgwrs grŵp",
+    "edit": "Golygu",
+    "venues": "{count, plural, zero {# lleoliadau} one {# lleoliad} two {# leoliad} few {# lleoliad} many {# lleoliad} other {# lleoliadau}}",
+    "emptyVenues": "Dim lleoliadau eto. Agor unrhyw leoliad a thapia <strong>＋ Ychwanegu at Gynllun</strong> i'w ychwanegu yma.",
+    "findVenues": "Dod o hyd i leoliadau",
+    "removeFromPlanTitle": "Tynnu o'r cynllun",
+    "remove": "Tynnu",
+    "places": "{count, plural, zero {# llefydd} one {# lle} two {# le} few {# lle} many {# lle} other {# llefydd}}",
+    "going": "{count} yn mynd",
+    "uploading": "Wrthi'n uwchlwytho…",
+    "change": "Newid",
+    "addImage": "＋ Ychwanegu delwedd",
+    "tapToAddHeader": "Tapia i ychwanegu delwedd pennawd",
+    "changeHeaderAria": "Newid delwedd pennawd",
+    "addHeaderAria": "Ychwanegu delwedd pennawd",
+    "cropTitle": "Gosoda bennawd dy gynllun",
+    "removeImage": "Tynnu'r ddelwedd",
+    "planTitleAria": "Teitl y cynllun",
+    "plannedDateAria": "Dyddiad arfaethedig",
+    "notesAria": "Nodiadau",
+    "notesPlaceholder": "Nodiadau (dewisol)",
+    "saving": "Wrthi'n cadw…",
+    "save": "Cadw",
+    "cancel": "Canslo",
+    "deletePlan": "Dileu'r cynllun",
+    "members": "{count, plural, zero {# o bobl} one {Dim ond ti} two {# berson} few {# pherson} many {# pherson} other {# o bobl}}",
+    "done": "Wedi gorffen",
+    "inviteFriends": "＋ Gwahodd ffrindiau",
+    "host": "gwesteiwr",
+    "removeMemberAria": "Tynnu {name} o'r cynllun",
+    "noFriendsToInvite": "Dim ffrindiau i'w gwahodd eto. Ychwanega ffrindiau o waliau eu proffil, yna gwahodda nhw yma.",
+    "allFriendsOnPlan": "Mae dy holl ffrindiau eisoes ar y cynllun hwn.",
+    "add": "Ychwanegu",
+    "errors": {
+      "load": "Methu llwytho'r cynllun hwn.",
+      "signInImage": "Mae angen i ti fewngofnodi i ychwanegu delwedd.",
+      "upload": "Methu uwchlwytho'r ddelwedd yna.",
+      "save": "Methu cadw'r cynllun."
+    }
+  },
+  "plansList": {
+    "kicker": "Gyda'n gilydd yn {place}",
+    "title": "Cynlluniau",
+    "subtitle": "Trefna drip, ychwanega leoliadau, a gad i'r grŵp benderfynu ble i gwrdd.",
+    "newPlan": "＋ Cynllun newydd",
+    "signedOutIntro": "Mewngofnoda i wneud cynlluniau a chadw lleoliadau iddyn nhw.",
+    "noDate": "Dim dyddiad eto",
+    "going": "{count} yn mynd",
+    "venues": "{count, plural, zero {# lleoliadau} one {# lleoliad} two {# leoliad} few {# lleoliad} many {# lleoliad} other {# lleoliadau}}",
+    "startNewPlan": "Dechrau cynllun newydd",
+    "startNewPlanHint": "Dewisa ddyddiad, gwahodda ffrindiau",
+    "titlePlaceholder": "Teitl y cynllun — e.e. Noson allan nos Wener",
+    "titleAria": "Teitl y cynllun",
+    "dateAria": "Dyddiad arfaethedig",
+    "notesPlaceholder": "Nodiadau (dewisol)",
+    "notesAria": "Nodiadau",
+    "creating": "Wrthi'n creu…",
+    "create": "Creu'r cynllun",
+    "cancel": "Canslo",
+    "errors": {
+      "load": "Methu llwytho dy gynlluniau.",
+      "create": "Methu creu'r cynllun."
+    }
+  },
+  "meetupPanel": {
+    "title": "Cyfarfod",
+    "unknownVenue": "Lleoliad anhysbys",
+    "loading": "Wrthi'n llwytho…",
+    "stateVoting": "Pleidleisio",
+    "stateResolved": "Wedi'i benderfynu",
+    "stateEnded": "Wedi gorffen",
+    "tie": "Mae'n gyfartal — newidia bleidlais i'w dorri.",
+    "noVenuesVoting": "Dim lleoliadau eto — ychwanega un i gael y pôl i fynd.",
+    "noVenues": "Dim lleoliadau eto.",
+    "voteFor": "Pleidleisio · {venue}",
+    "meetingAt": "Yn cwrdd yn <strong>{venueName}</strong>.",
+    "winningVenue": "y lleoliad buddugol",
+    "working": "Wrthi'n gweithio…",
+    "resolve": "Penderfynu ar enillydd",
+    "endMeetup": "Gorffen y cyfarfod",
+    "ended": "Mae'r cyfarfod hwn wedi gorffen.",
+    "addVenue": "Ychwanegu lleoliad",
+    "venuesLoading": "Wrthi'n llwytho lleoliadau ger {place}…",
+    "venuesLoadFailed": "Methu llwytho lleoliadau.",
+    "venuesEmpty": "Dim lleoliadau ger {place} eto.",
+    "done": "Wedi gorffen",
+    "startBody": "Rho ambell leoliad i bleidlais a gad i'r grŵp setlo ar ble i gwrdd.",
+    "starting": "Wrthi'n dechrau…",
+    "start": "Dechrau cyfarfod",
+    "errors": {
+      "load": "Methu llwytho'r cyfarfod.",
+      "poll": "Methu llwytho'r pôl.",
+      "start": "Methu dechrau'r cyfarfod.",
+      "addVenue": "Methu ychwanegu'r lleoliad yna.",
+      "vote": "Methu cofnodi dy bleidlais.",
+      "resolve": "Methu penderfynu'r cyfarfod.",
+      "end": "Methu gorffen y cyfarfod."
+    }
+  },
+  "addToPlan": {
+    "signInTitle": "Mewngofnoda i gadw i gynllun",
+    "addToPlan": "＋ Ychwanegu at Gynllun",
+    "addToAPlan": "Ychwanegu at gynllun",
+    "empty": "Dim cynlluniau eto — gwna dy un cyntaf isod.",
+    "added": "Wedi'i ychwanegu ✓",
+    "add": "Ychwanegu",
+    "newPlanPlaceholder": "Cynllun newydd…",
+    "newPlanAria": "Teitl cynllun newydd",
+    "errors": {
+      "add": "Methu ychwanegu at y cynllun yna.",
+      "create": "Methu creu'r cynllun."
+    }
+  },
+  "market": {
+    "toggle": {
+      "shops": "Siopau",
+      "marketplace": "Marchnadle",
+      "aria": "Modd y farchnad"
+    },
+    "kicker": {
+      "shops": "Marchnad Roam",
+      "marketplace": "Marchnadle Roam"
+    },
+    "headline": {
+      "shops": "Pryna o dy stryd fawr",
+      "marketplace": "Pryna, gwertha a chyfnewidia gyda chymdogion"
+    },
+    "sub": {
+      "shops": "Cynhyrchion, talebau a phrofiadau gan fusnesau lleol yn <strong>{place}</strong>.",
+      "marketplace": "Pethau ail-law a gwaith llaw gan bobl leol go iawn ger <strong>{place}</strong>."
+    },
+    "searchPlaceholder": {
+      "shops": "Chwilio cynhyrchion a siopau lleol…",
+      "marketplace": "Chwilio beics, dodrefn, dillad…"
+    },
+    "searchAria": "Chwilio'r farchnad",
+    "sellOnRoam": "＋ Gwerthu ar Roam",
+    "view": {
+      "browse": "Pori",
+      "mine": "Dy restriadau"
+    },
+    "listAnItem": "＋ Rhestru eitem",
+    "signInToPost": "<link>Mewngofnoda</link> i bostio rhestriad — munud mae'n ei gymryd.",
+    "filter": {
+      "all": "Y cyfan",
+      "forSale": "Ar werth",
+      "swap": "Yn agored i gyfnewid",
+      "free": "Am ddim"
+    },
+    "allCategories": "Pob categori",
+    "categories": {
+      "furniture": "Dodrefn",
+      "electronics": "Electroneg",
+      "clothing": "Dillad",
+      "kids": "Plant",
+      "home": "Cartref",
+      "garden": "Gardd",
+      "sports": "Chwaraeon",
+      "books": "Llyfrau",
+      "vehicles": "Cerbydau",
+      "other": "Arall"
+    },
+    "saved": "Wedi'u cadw",
+    "badge": {
+      "sold": "Wedi'i werthu",
+      "removed": "Wedi'i dynnu",
+      "free": "Am ddim",
+      "swapOk": "Cyfnewid yn iawn",
+      "newIn": "Newydd i mewn",
+      "forSale": "Ar werth"
+    },
+    "price": {
+      "free": "Am ddim",
+      "swap": "Cyfnewid"
+    },
+    "miles": "{miles} mi",
+    "nearby": "Gerllaw",
+    "views": "{count, plural, zero {# golygon} one {# olwg} two {# olwg} few {# golwg} many {# golwg} other {# golygon}}",
+    "emptyMine": "Dwyt ti ddim wedi rhestru dim eto.",
+    "emptyBrowse": "Dim byd wedi'i restru yn {place} eto — bydda di'r cyntaf.",
+    "markSold": "Marcio'n werthwyd",
+    "remove": "Tynnu",
+    "relist": "Ail-restru",
+    "composer": {
+      "title": "Rhestriad newydd yn {place}",
+      "modeSell": "Gwerthu",
+      "modeSwap": "Yn agored i gyfnewid",
+      "modeFree": "Am ddim",
+      "titlePlaceholder": "Beth wyt ti'n ei restru?",
+      "titleAria": "Teitl",
+      "pricePlaceholder": "Pris (£)",
+      "priceAria": "Pris",
+      "categoryAria": "Categori",
+      "descriptionPlaceholder": "Cyflwr, maint, manylion casglu…",
+      "descriptionAria": "Disgrifiad",
+      "photoRules": "Rhaid i luniau fod yn JPEG/PNG/WebP o dan 10 MB.",
+      "uploadingProgress": "Wrthi'n uwchlwytho {current} o {total}…",
+      "uploadFailed": "Methodd yr uwchlwytho: {message}",
+      "titleMin": "Rho deitl iddo (o leiaf 3 nod).",
+      "priceInvalid": "Rho bris fel 25 neu 12.50.",
+      "postFailedRetry": "Methu postio hynny — tria eto.",
+      "postFailed": "Methu postio hynny.",
+      "cover": "Clawr",
+      "removePhoto": "Tynnu'r llun",
+      "moveEarlier": "Symud yn gynt",
+      "moveLater": "Symud yn hwyrach",
+      "uploading": "Wrthi'n uwchlwytho…",
+      "addPhotos": "Ychwanegu lluniau",
+      "posting": "Wrthi'n postio…",
+      "post": "Postio'r rhestriad",
+      "cancel": "Canslo"
+    }
+  },
+  "marketShops": {
+    "empty": "Does dim siopau yn {place} wedi stocio eto — mae busnesau'n ychwanegu cynhyrchion o'u dangosfwrdd, ac fe fyddan nhw'n ymddangos yma cyn gynted ag y gwnân nhw.",
+    "all": "Y cyfan",
+    "saved": "Wedi'u cadw",
+    "noMatches": "Dim byd yn cyfateb — tria gategori neu chwiliad arall.",
+    "badge": {
+      "soldOut": "Wedi gwerthu allan",
+      "giftCard": "Cerdyn rhodd",
+      "collect": "Casglu"
+    },
+    "claimedVenue": "Lleoliad wedi'i hawlio",
+    "removeFromSaved": "Tynnu {title} o'r rhai wedi'u cadw",
+    "saveItem": "Cadw {title}"
+  },
+  "listingDetail": {
+    "gone": "Mae'r rhestriad hwn wedi mynd — efallai iddo gael ei werthu neu ei dynnu. <link>Yn ôl i'r Farchnad</link>",
+    "back": "Marchnad",
+    "sellerFallback": "Person lleol",
+    "nearby": "Gerllaw",
+    "price": {
+      "free": "Am ddim",
+      "swap": "Cyfnewid"
+    },
+    "seller": "Gwerthwr",
+    "meetsIn": "yn cwrdd yn {place}",
+    "yourTown": "dy dref",
+    "yourListing": "Dy restriad",
+    "signInToMessage": "Mewngofnoda i anfon neges",
+    "safetyNote": "Dyw Roam ddim yn trin taliadau am restriadau lleol — cytuna ar y manylion mewn sgwrs a chwrdda rywle cyhoeddus. Paid byth ag anfon arian at rywun dwyt ti ddim wedi'i gwrdd.",
+    "enquiryMessage": "Ynglŷn â dy restriad “{title}” — ydy e ar gael o hyd? {url}",
+    "openingChat": "Wrthi'n agor sgwrs…",
+    "messageSeller": "Anfon neges at y gwerthwr",
+    "reported": "Adroddwyd — diolch, fe gawn ni olwg.",
+    "reportPrompt": "Beth sydd o'i le ar y rhestriad hwn? (dewisol)",
+    "reportListing": "Adrodd am y rhestriad hwn"
+  },
+  "venueShop": {
+    "checkoutFailed": "Methu dechrau'r ddesg dalu.",
+    "empty": "Dyw'r lleoliad hwn ddim wedi stocio ei siop Roam eto — dere'n ôl cyn bo hir.",
+    "kind": {
+      "voucher": "Taleb / gwasanaeth",
+      "soldOut": "Wedi gwerthu allan",
+      "collect": "Casglu yn y lleoliad"
+    },
+    "quantityAria": "Nifer",
+    "openingCheckout": "Wrthi'n agor y ddesg dalu…",
+    "buy": "Prynu",
+    "signInToBuy": "Mewngofnoda i brynu",
+    "payoutPending": "Bydd prynu drwy Roam yn agor unwaith y bydd y lleoliad hwn yn gorffen sefydlu ei daliadau — am nawr, ymwela â'r lleoliad neu anfona neges ato i brynu.",
+    "paymentsNote": "Caiff taliadau eu trin yn ddiogel gan Stripe. Caiff cynhyrchion eu casglu yn y lleoliad; daw talebau gyda chod hawlio yn <link>dy archebion</link>."
+  },
+  "myOrders": {
+    "signedOutIntro": "Mewngofnoda i weld dy archebion.",
+    "title": "Dy archebion",
+    "placedNote": "Archeb wedi'i gosod — bydd yn dangos fel Talwyd yma o fewn ychydig eiliadau i Stripe gadarnhau.",
+    "empty": "Dim byd eto — mae siopau lleoliadau ar draws Roam yn stocio. Chwilia am rywbeth yn <link>Darganfod</link>.",
+    "status": {
+      "pending": "Yn aros am daliad",
+      "paid": "Talwyd",
+      "collected": "Casglwyd",
+      "redeemed": "Hawliwyd",
+      "refunded": "Ad-dalwyd",
+      "canceled": "Canslwyd"
+    },
+    "showCode": "Dangosa'r cod hwn yn y lleoliad i'w hawlio:"
+  },
+  "friendsList": {
+    "fallbackName": "Rhywun",
+    "home": "Hafan",
+    "title": "Ffrindiau",
+    "signedOutIntro": "Mewngofnoda i weld dy ffrindiau a'th geisiadau.",
+    "findPeople": "Dod o hyd i bobl",
+    "searchPlaceholder": "Chwilio yn ôl enw neu @handle",
+    "requests": "Ceisiadau",
+    "accept": "Derbyn",
+    "decline": "Gwrthod",
+    "empty": "Dim ffrindiau eto. Agor wal rhywun a thapia <strong>＋ Ychwanegu ffrind</strong> i gysylltu.",
+    "friendCount": "{count, plural, zero {# ffrindiau} one {# ffrind} two {# ffrind} few {# ffrind} many {# ffrind} other {# ffrindiau}}"
+  },
+  "userSearch": {
+    "placeholderFriends": "Chwilio dy ffrindiau",
+    "placeholderEveryone": "Chwilio pawb yn ôl enw neu @handle",
+    "modeFriends": "Ffrindiau",
+    "modeEveryone": "Pawb",
+    "noFriendsYet": "Dwyt ti ddim wedi ychwanegu unrhyw ffrindiau eto.",
+    "noFriendMatches": "Does dim un o dy ffrindiau'n cyfateb i “{query}”.",
+    "searchEveryone": "Chwilio pawb →",
+    "noResults": "Neb wedi'i ganfod am “{query}”. Tria enw neu @handle gwahanol.",
+    "hint": "Chwilia bawb ar Roam yn ôl enw neu @handle."
+  },
+  "addFriendButton": {
+    "friends": "Ffrindiau ✓",
+    "requested": "Gofynnwyd",
+    "acceptRequest": "Derbyn y cais",
+    "addFriend": "＋ Ychwanegu ffrind"
+  },
+  "following": {
+    "back": "Darganfod",
+    "title": "Yn dilyn",
+    "intro": "Mae dilyn busnes yn dy optio i mewn i'w gynigion a'i hyrwyddiadau unigryw. Tawela unrhyw un ohonyn nhw isod heb ddad-ddilyn — rwyt ti'n dal i ddilyn, dim ond stopio'r hysbysiadau.",
+    "loadFailed": "Methwyd llwytho'r rhai rwyt ti'n eu dilyn.",
+    "signedOutIntro": "Mae dy ddilyniadau'n breifat. Mewngofnoda i weld y lleoliadau rwyt ti'n eu dilyn a rheoli eu hysbysiadau.",
+    "unknownVenue": "Lleoliad anhysbys",
+    "pushUpdateFailed": "Methu diweddaru hysbysiadau.",
+    "offersPromotions": "Cynigion a hyrwyddiadau",
+    "pushOnHint": "Cei wybod am fargeinion newydd",
+    "pushOffHint": "Hysbysiadau wedi'u tawelu — rwyt ti'n dal i ddilyn",
+    "on": "Ymlaen",
+    "off": "I ffwrdd",
+    "empty": {
+      "title": "Ddim yn dilyn unrhyw beth eto",
+      "body": "Dilyna leoliad o Darganfod i gael gwybod pan fydd yn postio. Bydd y lleoliadau rwyt ti'n eu dilyn yn ymddangos yma."
+    },
+    "errorTitle": "Methu llwytho dy ddilyniadau"
+  },
+  "reportVenue": {
+    "cta": "Adrodd am y lleoliad hwn",
+    "signInToReport": "Mewngofnoda i adrodd am y lleoliad hwn.",
+    "detailLabel": "Beth sydd o'i le ar y lleoliad hwn?",
+    "detailPlaceholder": "e.e. wedi'i hawlio ar gam, ar gau, cynnwys anghywir neu sarhaus…",
+    "sending": "Wrthi'n anfon…",
+    "send": "Anfon yr adroddiad",
+    "cancel": "Canslo",
+    "thanks": "Diolch — mae dy adroddiad wedi'i anfon i'w adolygu.",
+    "submitFailed": "Methu cyflwyno dy adroddiad."
+  },
+  "copyLinkButton": {
+    "share": "Rhannu",
+    "copied": "Wedi'i gopïo!"
+  },
+  "venueOwnerEditor": {
+    "backToRoam": "Yn ôl i Roam",
+    "loadFailed": "Methu llwytho'r lleoliad hwn.",
+    "notFound": {
+      "title": "Heb ddod o hyd i'r lleoliad",
+      "body": "Dyw'r lleoliad hwn ddim yn bodoli neu dyw e ddim ar gael mwyach."
+    },
+    "notOwner": {
+      "title": "Dwyt ti ddim yn rheoli'r lleoliad hwn",
+      "body": "Dim ond perchennog y lleoliad all ei olygu. Os gwnest ti ei hawlio, efallai fod dy gais yn dal dan adolygiad."
+    },
+    "tabs": {
+      "overview": "Trosolwg",
+      "audience": "Cynulleidfa",
+      "posts": "Postiadau",
+      "offers": "Cynigion",
+      "shop": "Siop",
+      "notifications": "Hysbysiadau",
+      "venue": "Lleoliad"
+    },
+    "header": {
+      "openNow": "Ar agor nawr",
+      "openNowTill": "Ar agor nawr · tan {time}",
+      "closed": "Ar gau",
+      "closedOpens": "Ar gau · yn agor {time}",
+      "claimed": "Wedi'i hawlio",
+      "viewPublicPage": "Gweld y dudalen gyhoeddus →"
+    },
+    "stats": {
+      "followers": "Dilynwyr",
+      "profileViews": "Golygon proffil",
+      "offerRedemptions": "Hawliadau cynigion",
+      "shopRevenue": "Refeniw'r siop",
+      "rating": "Sgôr",
+      "newThisMonth": "+{count} y mis hwn",
+      "noChangeThisMonth": "dim newid y mis hwn",
+      "viewsDelta": "{delta}% · 30 diwrnod",
+      "viewsTrackingNew": "30 diwrnod · mae'r tracio'n newydd",
+      "savesAllTime": "{count} cadw · erioed",
+      "ordersAllTime": "{count, plural, zero {# archebion} one {# archeb} two {# archeb} few {# archeb} many {# archeb} other {# archebion}} · erioed",
+      "reviews": "{count} adolygiad",
+      "noReviews": "Dim adolygiadau eto"
+    },
+    "quickActions": {
+      "title": "Camau cyflym",
+      "post": "Postio",
+      "offer": "Cynnig",
+      "push": "Gwthio"
+    },
+    "activityCard": {
+      "title": "Gweithgarwch",
+      "subtitle": "Beth mae pobl leol yn ei wneud gyda dy fusnes."
+    },
+    "paymentsCard": {
+      "title": "Taliadau",
+      "subtitle": "Taliadau am werthu ar Roam — wedi'u pweru gan Stripe."
+    },
+    "marketingCard": {
+      "title": "Cynorthwyydd marchnata",
+      "subtitle": "Gad i Roam ddrafftio cynigion a phostiadau wedi'u teilwra — ti sy'n cymeradwyo popeth."
+    },
+    "postsCard": {
+      "title": "Postiadau lleol",
+      "subtitle": "Postia newyddion, cynigion a digwyddiadau ar ran dy fusnes. Mae pob un yn ymddangos ar dy dudalen ac yn ffrwd newyddion leol dy dref — dyma hefyd dy hanes postio."
+    },
+    "offersCard": {
+      "title": "Cynigion",
+      "subtitle": "Cyhoedda fargeinion unigryw. Caiff dilynwyr eu hysbysu; gall unrhyw un eu cadw a'u hawlio yn y lleoliad."
+    },
+    "offerInsightsCard": {
+      "title": "Mewnwelediadau cynigion",
+      "subtitle": "Pa fargeinion sy'n taro deuddeg gyda phobl leol."
+    },
+    "shopCard": {
+      "title": "Dy siop",
+      "subtitle": "Cynhyrchion, gwasanaethau a thalebau rwyt ti'n eu gwerthu ar Roam. Mae popeth yma'n dangos ar dab Siop dy dudalen gyhoeddus."
+    },
+    "ordersCard": {
+      "title": "Archebion",
+      "subtitle": "Daw gwerthiannau i mewn yma — marcia nhw'n gasglwyd neu'n hawliwyd yn y lleoliad, neu ad-dala."
+    },
+    "notifyCard": {
+      "title": "Anfon hysbysiad",
+      "subtitle": "Anfona neges i fewnflwch dy ddilynwyr — pawb, neu un person."
+    },
+    "pushHistoryCard": {
+      "title": "Hanes gwthio",
+      "subtitle": "Pob diweddariad rwyt ti wedi'i anfon, y diweddaraf yn gyntaf."
+    },
+    "photosCard": {
+      "title": "Lluniau",
+      "subtitle": "Uwchlwytha dy rai dy hun — cân nhw flaenoriaeth dros luniau o ffynonellau cyhoeddus. Gosoda glawr ac aildrefnu."
+    },
+    "detailsCard": {
+      "title": "Manylion",
+      "subtitle": "Disgrifiad a'r dolenni sydd eu hangen ar bobl — bwydlen, archebu, gwefan."
+    },
+    "hoursCard": {
+      "title": "Oriau agor",
+      "subtitle": "Gosoda pryd rwyt ti ar agor — mae'n pweru'r statws “Ar agor nawr” byw ar dy dudalen."
+    },
+    "nextBestAction": {
+      "kicker": "Y cam gorau nesaf",
+      "titleNoFollowers": "Cael dy ddilynwyr cyntaf — postia ddiweddariad lleol",
+      "titleFollowers": "Mae dy ddilynwyr yn gwrando — rhanna gynnig yr wythnos hon",
+      "subNoFollowers": "Mae postiadau'n ymddangos yn ffrwd dy dref, lle mae pobl leol yn darganfod busnesau fel dy un di.",
+      "subFollowers": "Mae {followers} o bobl leol yn dy ddilyn.",
+      "subFollowersCredits": "Mae {followers} o bobl leol yn dy ddilyn — ac mae gen ti {credits, plural, zero {# credydau gwthio} one {# credyd gwthio} two {# gredyd gwthio} few {# chredyd gwthio} many {# chredyd gwthio} other {# credydau gwthio}} i'w hysbysu.",
+      "writePost": "Ysgrifennu postiad",
+      "createOffer": "Creu cynnig"
+    },
+    "performance": {
+      "title": "Perfformiad",
+      "subtitle": "Golygon proffil a dilynwyr newydd, y {days} diwrnod diwethaf.",
+      "seg30": "30d",
+      "seg90": "90d",
+      "emptyChart": "Mae tracio golygon yn fyw — wrth i bobl leol agor dy dudalen, bydd y duedd yn tynnu ei hun yma.",
+      "chartAria": "Golygon proffil dyddiol, yn cyrraedd uchafbwynt o {peak}",
+      "viewsLegend": "Golygon proffil · {count}",
+      "followersLegend": "Dilynwyr newydd · {count} (6 wythnos)"
+    },
+    "recentPosts": {
+      "title": "Postiadau diweddar",
+      "subtitle": "Sut wnaeth dy ddiweddariadau diweddaraf berfformio.",
+      "allPosts": "Pob postiad",
+      "empty": "Dim byd wedi'i bostio eto — bydd dy ddiweddariad lleol cyntaf yn ymddangos yma ac yn ffrwd dy dref.",
+      "untitled": "Diweddariad"
+    },
+    "audience": {
+      "yourAudienceTitle": "Dy gynulleidfa",
+      "yourAudienceSubtitle": "Pwy sy'n dy ddilyn, yn gyfanredol — byth unigolion.",
+      "followers": "Dilynwyr",
+      "newSub": "▲ {count} (30d)",
+      "engaged30": "Wedi ymgysylltu (30d)",
+      "pushReach": "Cyrhaeddiad gwthio",
+      "avgWeeklyViews": "Golygon wythnosol cyfartalog",
+      "growthTitle": "Twf dilynwyr",
+      "growthSubtitle": "Dilynwyr newydd net yr wythnos.",
+      "newFollowersTitle": "{count, plural, zero {# dilynwyr newydd} one {# dilynwr newydd} two {# ddilynwr newydd} few {# dilynwr newydd} many {# dilynwr newydd} other {# dilynwyr newydd}}",
+      "week": "W{n}",
+      "growthEmpty": "Bydd barrau twf yn ymddangos wrth i bobl ddechrau dy ddilyn.",
+      "ageTitle": "Oedran dilynwyr",
+      "ageSubtitle": "Wedi'u cyfanredu a'u hanonymeiddio — dim ond pan fydd y grŵp yn ddigon mawr y'u dangosir.",
+      "ageBands": {
+        "under_18": "O dan 18",
+        "age_18_24": "18–24",
+        "age_25_34": "25–34",
+        "age_35_44": "35–44",
+        "age_45_54": "45–54",
+        "age_55_64": "55–64",
+        "age_65_plus": "65+"
+      },
+      "ageEmpty": "Does dim digon o ddilynwyr wedi rhannu pen-blwydd eto i ddangos dadansoddiad oedran (fe'i cedwir yn breifat nes bod y grŵp yn ddigon mawr i aros yn ddienw).",
+      "birthdayTitle": "Cynnig pen-blwydd",
+      "birthdaySubtitle": "Anrheg sefydlog a ddanfonir yn awtomatig at ddilynwyr sydd wedi optio i mewn ar eu pen-blwydd. Rwyt ti'n gweld niferoedd, byth pwy.",
+      "birthdaysThisMonth": "{count, plural, zero {<strong>#</strong> dilynwyr wedi optio i mewn sydd â phen-blwydd y mis hwn.} one {<strong>#</strong> dilynwr wedi optio i mewn sydd â phen-blwydd y mis hwn.} two {<strong>#</strong> ddilynwr wedi optio i mewn sydd â phen-blwydd y mis hwn.} few {<strong>#</strong> dilynwr wedi optio i mewn sydd â phen-blwydd y mis hwn.} many {<strong>#</strong> dilynwr wedi optio i mewn sydd â phen-blwydd y mis hwn.} other {<strong>#</strong> dilynwyr wedi optio i mewn sydd â phen-blwydd y mis hwn.}}"
+    }
+  },
+  "ownerHoursEditor": {
+    "days": {
+      "monday": "Dydd Llun",
+      "tuesday": "Dydd Mawrth",
+      "wednesday": "Dydd Mercher",
+      "thursday": "Dydd Iau",
+      "friday": "Dydd Gwener",
+      "saturday": "Dydd Sadwrn",
+      "sunday": "Dydd Sul"
+    },
+    "copyMondayToWeekdays": "Copïo dydd Llun i Maw–Gwe",
+    "closed": "Ar gau",
+    "sameAs": "Yr un fath â {day}",
+    "openingTimeAria": "Amser agor {day}",
+    "closingTimeAria": "Amser cau {day}",
+    "to": "i",
+    "remove": "Tynnu",
+    "overnightNote": "Yn cau ar ôl hanner nos (y diwrnod nesaf).",
+    "addBreak": "+ Ychwanegu egwyl",
+    "saving": "Wrthi'n cadw…",
+    "saveHours": "Cadw'r oriau",
+    "reset": "Ailosod",
+    "clearAll": "Clirio'r cyfan",
+    "saved": "Wedi cadw.",
+    "errors": {
+      "addBothTimes": "Ychwanega amser agor ac amser cau.",
+      "sameTimes": "All yr amser agor a chau ddim bod yr un fath.",
+      "clearFailedRetry": "Methu clirio dy oriau. Rho gynnig arall arni.",
+      "clearFailed": "Methu clirio dy oriau.",
+      "saveFailedRetry": "Methu cadw dy oriau. Rho gynnig arall arni.",
+      "saveFailed": "Methu cadw dy oriau."
+    }
+  },
+  "ownerMediaManager": {
+    "working": "Wrthi'n gweithio…",
+    "uploadPhoto": "Uwchlwytho llun",
+    "noPhotos": "Dim lluniau wedi'u huwchlwytho eto.",
+    "fromPublicSources": "O ffynonellau cyhoeddus ({count})",
+    "publicSourcesNote": "Daw'r rhain o restrau cyhoeddus a does dim modd eu golygu yma. Uwchlwytha dy luniau dy hun uchod i'w dangos yn gyntaf.",
+    "row": {
+      "cover": "Clawr",
+      "photo": "Llun",
+      "moveUp": "Symud i fyny",
+      "moveDown": "Symud i lawr",
+      "unsetCover": "Dad-osod y clawr",
+      "setCover": "Gosod yn glawr",
+      "remove": "Tynnu"
+    },
+    "errors": {
+      "imageType": "Dewisa ddelwedd JPEG, PNG neu WebP.",
+      "imageTooLarge": "Mae'r ddelwedd yna dros 10 MB. Dewisa ffeil lai.",
+      "uploadFailedWithMessage": "Methodd yr uwchlwytho: {message}",
+      "uploadedNotSaved": "Uwchlwythwyd, ond methu cadw'r llun. Rho gynnig arall arni.",
+      "uploadFailed": "Methodd yr uwchlwytho.",
+      "reorderFailedRetry": "Methu cadw'r drefn newydd. Rho gynnig arall arni.",
+      "reorderFailed": "Methu aildrefnu.",
+      "setCoverFailedRetry": "Methu gosod y clawr. Rho gynnig arall arni.",
+      "setCoverFailed": "Methu gosod y clawr.",
+      "removeFailedRetry": "Methu tynnu'r llun yna. Rho gynnig arall arni.",
+      "removeFailed": "Methu tynnu."
+    }
+  },
+  "ownerDetailsEditor": {
+    "description": "Disgrifiad",
+    "descriptionPlaceholder": "Dwed wrth bobl beth sy'n gwneud y lle hwn yn werth ymweliad.",
+    "links": "Dolenni",
+    "linkLabelPlaceholder": "Label (e.e. Bwydlen)",
+    "linkLabelAria": "Label y ddolen",
+    "linkUrlPlaceholder": "https://…",
+    "linkUrlAria": "URL y ddolen",
+    "remove": "Tynnu",
+    "addLink": "+ Ychwanegu dolen",
+    "maxLinks": "Dyna'r uchafswm o {max}.",
+    "saving": "Wrthi'n cadw…",
+    "saveDetails": "Cadw'r manylion",
+    "reset": "Ailosod",
+    "saved": "Wedi cadw.",
+    "errors": {
+      "addLabel": "Ychwanega label.",
+      "addUrl": "Ychwanega URL.",
+      "labelTooLong": "Label yn rhy hir (uchafswm {max}).",
+      "urlTooLong": "URL yn rhy hir.",
+      "httpOnly": "Defnyddia ddolen http(s).",
+      "invalidUrl": "Dyw hynny ddim yn edrych fel URL dilys.",
+      "saveFailedRetry": "Methu cadw dy newidiadau. Rho gynnig arall arni.",
+      "saveFailed": "Methu cadw dy newidiadau."
+    }
+  },
+  "venueShopManager": {
+    "addCta": "＋ Ychwanegu cynnyrch neu wasanaeth",
+    "removeConfirm": "Tynnu “{title}” o dy siop?",
+    "empty": "Dim byd yn dy siop eto. Ychwanega'r hyn rwyt ti'n ei werthu — talebau pryd, cardiau rhodd, cynhyrchion manwerthu, profiadau y gellir eu harchebu — ac fe fydd yn dangos ar dy dudalen gyhoeddus. Bydd prynu ar-lein yn cael ei droi ymlaen cyn bo hir.",
+    "kindService": "Gwasanaeth",
+    "kindProduct": "Cynnyrch",
+    "soldOut": "wedi gwerthu allan",
+    "inStock": "{count} mewn stoc",
+    "statusLive": "Byw",
+    "statusHidden": "Wedi'i guddio",
+    "editAria": "Golygu {title}",
+    "hideAria": "Cuddio {title}",
+    "showAria": "Dangos {title}",
+    "removeAria": "Tynnu {title}",
+    "composer": {
+      "editTitle": "Golygu",
+      "newTitle": "Cynnyrch neu wasanaeth newydd",
+      "kindProduct": "Cynnyrch",
+      "kindService": "Gwasanaeth / taleb",
+      "titlePlaceholderService": "e.e. Taleb swper £25",
+      "titlePlaceholderProduct": "e.e. Ffa coffi'r tŷ, 250g",
+      "titleAria": "Teitl",
+      "descriptionPlaceholder": "Llinell neu ddwy — beth yw e, sut caiff ei gasglu neu ei hawlio?",
+      "descriptionAria": "Disgrifiad",
+      "priceLabel": "Pris (£)",
+      "pricePlaceholder": "12.50",
+      "priceAria": "Pris mewn punnoedd",
+      "stockLabel": "Stoc (dewisol)",
+      "stockPlaceholderService": "Fel arfer yn wag",
+      "stockPlaceholderProduct": "e.e. 20",
+      "stockAria": "Nifer y stoc",
+      "changePhoto": "Newid y llun",
+      "addPhoto": "Ychwanegu llun",
+      "cropTitle": "Fframia lun dy gynnyrch",
+      "saving": "Wrthi'n cadw…",
+      "saveChanges": "Cadw'r newidiadau",
+      "addToShop": "Ychwanegu at y siop",
+      "cancel": "Canslo",
+      "errors": {
+        "badImageType": "Dewisa ddelwedd JPEG, PNG neu WebP.",
+        "imageTooLarge": "Mae'r ddelwedd yna dros 10 MB. Dewisa ffeil lai.",
+        "uploadFailed": "Methodd yr uwchlwytho: {message}",
+        "titleMin": "Rho enw iddo (o leiaf 3 nod).",
+        "priceInvalid": "Rho bris fel 12.50.",
+        "priceMin": "Y pris lleiaf yw £0.50 (mae prosesu cardiau ei angen).",
+        "stockInvalid": "Rhaid i'r stoc fod yn rhif cyfan (neu gad e'n wag).",
+        "saveFailedRetry": "Methu cadw — rho gynnig arall arni.",
+        "addFailedRetry": "Methu ychwanegu hynny — rho gynnig arall arni.",
+        "saveFailed": "Methu cadw."
+      }
+    }
+  },
+  "venueOrders": {
+    "refundConfirm": "Ad-dalu'r archeb hon yn llawn? Caiff y prynwr bopeth yn ôl.",
+    "actionFailed": "Weithiodd hynny ddim — tria eto.",
+    "empty": "Dim archebion eto — fe lanian nhw yma cyn gynted ag y bydd rhywun yn prynu o dy siop.",
+    "emptyFiltered": "Dim byd yn yr olygfa hon.",
+    "filters": {
+      "all": "Y cyfan",
+      "paid": "I'w cyflawni",
+      "fulfilled": "Wedi'u cyflawni",
+      "refunded": "Ad-dalwyd"
+    },
+    "status": {
+      "pending": "yn aros",
+      "paid": "talwyd",
+      "collected": "casglwyd",
+      "redeemed": "hawliwyd",
+      "refunded": "ad-dalwyd",
+      "canceled": "canslwyd"
+    },
+    "code": {
+      "placeholder": "Hawlio cod…",
+      "aria": "Cod hawlio",
+      "verify": "Gwirio a hawlio",
+      "noMatch": "Dim archeb gyda'r cod yna.",
+      "alreadyStatus": "Mae archeb y cod yna eisoes wedi'i {status}.",
+      "redeemedNote": "✓ Hawliwyd — {title}"
+    },
+    "roamFee": "Ffi Roam {fee}",
+    "codeWord": "cod",
+    "markRedeemed": "Marcio'n hawliwyd",
+    "markCollected": "Marcio'n gasglwyd",
+    "refund": "Ad-dalu"
+  },
+  "businessDashboard": {
+    "back": "Cyfrif",
+    "title": "Busnes",
+    "signedOutIntro": "Mewngofnoda i reoli'r lleoliadau rwyt ti wedi'u hawlio.",
+    "loadFailed": "Methu llwytho dy leoliadau.",
+    "statusClaimed": "Wedi'i hawlio",
+    "empty": {
+      "title": "Dim lleoliadau wedi'u hawlio eto",
+      "body": "Chwilia am dy fusnes yn <link>Darganfod</link>, agor ei dudalen a thapia “Hawlia fe am ddim”. Unwaith y caiff ei gymeradwyo bydd yn ymddangos yma, yn barod i'w olygu.",
+      "howItWorks": "Sut mae hawlio'n gweithio →"
+    }
+  },
+  "businessLanding": {
+    "back": "Darganfod",
+    "kicker": "I fusnesau",
+    "title": "Yn rhedeg busnes lleol? Hawlia fe ar Roam.",
+    "heroBody": "Mae pobl yn darganfod llefydd lleol ar Roam am ddim. Mae hawlio dy leoliad yn gadael i ti ei gadw'n gywir — dy luniau, oriau, disgrifiad a dolenni — a pherchnogi sut rwyt ti'n ymddangos.",
+    "findYourBusiness": "Dod o hyd i dy fusnes",
+    "yourDashboard": "Dy ddangosfwrdd",
+    "alreadyClaimed": "Wedi hawlio eisoes? Mewngofnoda",
+    "howItWorks": "Sut mae'n gweithio",
+    "steps": {
+      "find": {
+        "title": "Dod o hyd i dy leoliad",
+        "body": "Mae'n debyg ei fod eisoes ar Roam, wedi'i restru o ffynonellau cyhoeddus. Chwilia amdano yn Darganfod ac agor ei dudalen."
+      },
+      "claim": {
+        "title": "Hawlia fe am ddim",
+        "body": "Tapia “Hawlia fe am ddim” ar y lleoliad. Mewngofnoda (neu crea gyfrif) — yr un cyfrif ag y byddet ti'n ei ddefnyddio i grwydro."
+      },
+      "verify": {
+        "title": "Gwirio a rheoli",
+        "body": "Rydyn ni'n awto-wirio pan fydd dy e-bost yn cyfateb i wefan y busnes; fel arall, gwiriad llaw cyflym. Yna ychwanega luniau, oriau, disgrifiad a dolenni."
+      }
+    },
+    "onceClaimed": "Unwaith i ti hawlio",
+    "perks": {
+      "photos": "Ychwanegu ac aildrefnu lluniau go iawn, gosod dy ddelwedd clawr",
+      "hours": "Cadw dy oriau agor yn gywir (“ar agor nawr” byw)",
+      "description": "Ysgrifennu dy ddisgrifiad ac ychwanegu dy ddolenni",
+      "followers": "Caiff dilynwyr eu hysbysu pan fyddi di'n postio (yn dod cyn bo hir)"
+    },
+    "publicSourcesNote": "Mae Roam yn rhestru lleoliadau o ffynonellau cyhoeddus fel bod pobl leol yn gallu dod o hyd i ti p'un a wyt ti wedi hawlio ai peidio — mae hawlio am ddim ac yn rhoi allweddi dy dudalen i ti."
+  },
+  "marketingSuggestions": {
+    "loadFailed": "Methu llwytho dy ddewisiadau ar hyn o bryd.",
+    "suggestionsOn": "Awgrymiadau ymlaen",
+    "suggestionsOff": "Awgrymiadau i ffwrdd",
+    "summaryOn": "Fe awgrymwn ni gynigion a phostiadau wedi'u teilwra i ti — byth yn cael eu cyhoeddi'n awtomatig, ti sy'n eu golygu bob tro yn gyntaf.",
+    "summaryOff": "Mae awgrymiadau awtomataidd i ffwrdd. Tro nhw ymlaen i gael syniadau cynigion a phostiadau wedi'u teilwra.",
+    "discountCap": "Cap gostyngiad {pct}%.",
+    "editPreferences": "Golygu dewisiadau",
+    "turnOff": "Diffodd",
+    "turnOn": "Troi ymlaen",
+    "intro": "Eisiau help llaw i farchnata dy fusnes? Tro awgrymiadau awtomataidd ymlaen ac fe gynigiwn ni gynigion a phostiadau wedi'u teilwra i ti — ti sy'n eu hadolygu a'u golygu bob tro cyn i unrhyw beth fynd allan. Ateba ambell gwestiwn cyflym i'w gwneud yn berthnasol.",
+    "capLabel": "Y gostyngiad mwyaf rwyt ti'n hapus i'w gynnig: <pct>{cap}%</pct>",
+    "capAria": "Canran cap y gostyngiad",
+    "typesLabel": "Pa fathau o fargen fyddet ti'n eu rhedeg? (dewisa unrhyw rai)",
+    "notesLabel": "Pa gynhyrchion neu wasanaethau rwyt ti fel arfer yn eu gostwng?",
+    "notesPlaceholder": "e.e. prif brydau cinio yn ystod yr wythnos, coffi cyntaf i gwsmeriaid newydd, toriadau gwallt prynhawn tawel…",
+    "saving": "Wrthi'n cadw…",
+    "turnOnSuggestions": "Troi awgrymiadau ymlaen",
+    "savePreferences": "Cadw'r dewisiadau",
+    "notNow": "Nid nawr",
+    "cancel": "Canslo"
+  },
+  "offerInsights": {
+    "loadFailed": "Methu llwytho mewnwelediadau ar hyn o bryd.",
+    "empty": "Dim data cynigion eto. Cyhoedda ambell fargen a thagia eu math — unwaith y bydd pobl yn eu cadw a'u hawlio, fe weli pa fathau sy'n gweithio orau yma.",
+    "topTheme": "Dy fargeinion <strong>{label}</strong> sy'n denu'r diddordeb mwyaf hyd yma — {saves} cadw a {redemptions} hawliad.",
+    "offerCount": "{count, plural, zero {# cynigion} one {# cynnig} two {# gynnig} few {# chynnig} many {# chynnig} other {# cynigion}}"
+  },
+  "venueNotify": {
+    "roamMember": "Aelod Roam",
+    "noFollowers": "Dim dilynwyr eto — unwaith y bydd pobl yn dy ddilyn, galli anfon hysbysiad atyn nhw yma (gyda'i gilydd neu fesul un).",
+    "allFollowers": "Pob dilynwr",
+    "allFollowersCount": "Pob dilynwr ({count})",
+    "onePerson": "Un person",
+    "to": "At",
+    "showingRecent": "Yn dangos dy {count} dilynwr diweddaraf.",
+    "placeholderOne": "Ysgrifenna neges i'r dilynwr hwn…",
+    "placeholderAll": "Ysgrifenna neges i dy ddilynwyr…",
+    "messageAria": "Neges yr hysbysiad",
+    "sending": "Wrthi'n anfon…",
+    "send": "Anfon",
+    "sendToAll": "Anfon at bawb",
+    "sendToAllCount": "Anfon at bawb ({count})",
+    "noneNotified": "Chafodd neb ei hysbysu (dim dilynwyr yn cyfateb).",
+    "sentTo": "{count, plural, zero {Anfonwyd at # dilynwyr.} one {Anfonwyd at # dilynwr.} two {Anfonwyd at # ddilynwr.} few {Anfonwyd at # dilynwr.} many {Anfonwyd at # dilynwr.} other {Anfonwyd at # dilynwyr.}}",
+    "footer": "Yn glanio yn eu hysbysiadau (y gloch). Bydd dilynwyr sydd wedi tawelu dy gynigion yn dal i dderbyn negeseuon uniongyrchol rwyt ti'n eu hanfon yma.",
+    "errors": {
+      "emptyMessage": "Ysgrifenna neges i'w hanfon.",
+      "noRecipient": "Dewisa ddilynwr i anfon ato.",
+      "sendFailed": "Methu anfon yr hysbysiad."
+    }
+  },
+  "venueActivity": {
+    "someone": "Rhywun",
+    "yourOffer": "dy gynnig",
+    "quotedTitle": "“{title}”",
+    "phrase": {
+      "follow": "Dechreuodd {who} dy ddilyn",
+      "offerSave": "Cadwodd {who} {what}",
+      "offerRedeem": "Hawliodd {who} {what}",
+      "sale": "Prynodd {who} {what}",
+      "other": "Rhyngweithiodd {who} â dy leoliad"
+    },
+    "loadFailed": "Methu llwytho gweithgarwch ar hyn o bryd.",
+    "unreadNew": "{count} newydd",
+    "allCaughtUp": "Popeth wedi'i weld",
+    "markAllRead": "Marcio'r cyfan yn ddarllenwyd",
+    "empty": "Dim gweithgarwch eto. Wrth i bobl dy ddilyn a chadw dy gynigion, fe weli fe yma."
+  },
+  "venuePayments": {
+    "notConfigured": "Mae gwerthu ar Roam bron â chyrraedd — dyw prosesu taliadau ddim wedi'i droi ymlaen ar gyfer yr amgylchedd hwn eto.",
+    "chips": {
+      "payoutsActive": "Taliadau'n weithredol",
+      "chargesEnabled": "Codi tâl wedi'i alluogi",
+      "detailsSubmitted": "Manylion wedi'u cyflwyno",
+      "detailsNeeded": "Angen manylion",
+      "payoutsPending": "Taliadau'n aros"
+    },
+    "activeBody": "Rwyt ti wedi dy sefydlu i gael dy dalu — mae popeth rwyt ti'n ei werthu'n talu allan i'r cyfrif banc a gysylltaist. Mae hanes taliadau a manylion banc yn dy ddangosfwrdd Stripe:",
+    "opening": "Wrthi'n agor…",
+    "manageOnStripe": "Rheoli taliadau ar Stripe ↗",
+    "reviewingBody": "Mae Stripe yn adolygu dy fanylion — mae taliadau fel arfer yn troi ymlaen o fewn diwrnod neu ddau. Dere'n ôl, neu gorffenna unrhyw beth sy'n weddill:",
+    "unfinishedBody": "Dyw dy osodiad taliadau ddim wedi'i orffen eto. Ailafael lle gadewaist — mae'n cymryd ychydig funudau:",
+    "openingStripe": "Wrthi'n agor Stripe…",
+    "continueSetup": "Parhau â gosodiad taliadau",
+    "connectBody": "Cysyllta gyfrif taliadau i werthu cynhyrchion, gwasanaethau a thalebau ar Roam. Caiff y gosodiad ei drin yn ddiogel gan Stripe — dyw Roam byth yn gweld dy ID na dy fanylion banc.",
+    "setUp": "Sefydlu taliadau",
+    "errors": {
+      "startFailed": "Methu dechrau gosodiad taliadau.",
+      "openStripeFailed": "Methu agor Stripe."
+    }
+  }
+}

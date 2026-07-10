@@ -15,8 +15,20 @@
  *     to en-GB (not bare "en", which Intl treats as en-US: "Jul 5" instead of "5 Jul").
  */
 
-/** Languages the picker offers. Translated catalogues land in PR 7; the list grows there. */
-export const SUPPORTED_LOCALES = [{ code: "en", label: "English" }] as const;
+/** Languages the picker offers. Labels are endonyms and are never translated. */
+export const SUPPORTED_LOCALES = [
+  { code: "en", label: "English" },
+  { code: "cy", label: "Cymraeg" },
+  { code: "de", label: "Deutsch" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "it", label: "Italiano" },
+  { code: "pl", label: "Polski" },
+  { code: "ro", label: "Română" },
+  { code: "bn", label: "বাংলা" },
+  { code: "gu", label: "ગુજરાતી" },
+  { code: "pa", label: "ਪੰਜਾਬੀ" },
+] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number]["code"];
 
@@ -29,9 +41,14 @@ export function isSupportedLocale(value: string): value is Locale {
   return SUPPORTED_LOCALES.some((l) => l.code === value);
 }
 
-/** Message-locale → Intl formatting locale. */
+/**
+ * Message-locale → Intl formatting locale. English formatting is pinned to en-GB (bare "en"
+ * is en-US to Intl). Every other language gets -u-nu-latn: prices and dates keep Western
+ * digits (the UK context all around them) even where the language's default numbering system
+ * differs (Bengali/Gujarati/Punjabi numerals) — a no-op for languages already using Latin digits.
+ */
 function formattingLocale(locale: string): string {
-  return locale === "en" ? "en-GB" : locale;
+  return locale === "en" ? "en-GB" : `${locale}-u-nu-latn`;
 }
 
 /** The handful of strings plain (non-hook) helpers need, fed from the active catalogue. */
