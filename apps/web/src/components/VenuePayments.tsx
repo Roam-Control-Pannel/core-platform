@@ -16,6 +16,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -28,6 +29,7 @@ interface PayoutStatus {
 }
 
 export function VenuePayments({ venueId }: { venueId: string }) {
+  const t = useTranslations("venuePayments");
   const trpc = useTrpc();
   const [status, setStatus] = useState<PayoutStatus | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -77,7 +79,7 @@ export function VenuePayments({ venueId }: { venueId: string }) {
       const { url } = await link.mutate({ venueId });
       window.location.href = url; // Stripe-hosted onboarding; returns to this dashboard.
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't start payout setup.");
+      setError(e instanceof Error ? e.message : t("errors.startFailed"));
       setBusy(false);
     }
   }, [trpc, venueId]);
@@ -89,8 +91,7 @@ export function VenuePayments({ venueId }: { venueId: string }) {
   if (!status.configured) {
     return (
       <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-        Selling on Roam is nearly here — payment processing isn&apos;t switched on for this
-        environment yet.
+        {t("notConfigured")}
       </p>
     );
   }
@@ -102,12 +103,11 @@ export function VenuePayments({ venueId }: { venueId: string }) {
       {active ? (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
-            <StatusChip ok label="Payouts active" />
-            <StatusChip ok label="Charges enabled" />
+            <StatusChip ok label={t("chips.payoutsActive")} />
+            <StatusChip ok label={t("chips.chargesEnabled")} />
           </div>
           <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            You&apos;re set up to get paid — everything you sell pays out to the bank account you
-            connected. Payout history and bank details live in your Stripe dashboard:
+            {t("activeBody")}
           </p>
           <Button
             variant="neutral"
@@ -120,36 +120,35 @@ export function VenuePayments({ venueId }: { venueId: string }) {
               link
                 .mutate({ venueId })
                 .then(({ url }) => { window.open(url, "_blank", "noopener"); })
-                .catch((e: unknown) => setError(e instanceof Error ? e.message : "Couldn't open Stripe."))
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : t("errors.openStripeFailed")))
                 .finally(() => setBusy(false));
             }}
           >
-            {busy ? "Opening…" : "Manage payouts on Stripe ↗"}
+            {busy ? t("opening") : t("manageOnStripe")}
           </Button>
         </>
       ) : status.connected ? (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
-            <StatusChip ok={status.detailsSubmitted} label={status.detailsSubmitted ? "Details submitted" : "Details needed"} />
-            <StatusChip ok={false} label="Payouts pending" />
+            <StatusChip ok={status.detailsSubmitted} label={status.detailsSubmitted ? t("chips.detailsSubmitted") : t("chips.detailsNeeded")} />
+            <StatusChip ok={false} label={t("chips.payoutsPending")} />
           </div>
           <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
             {status.detailsSubmitted
-              ? "Stripe is reviewing your details — payouts usually switch on within a day or two. Check back, or finish anything outstanding:"
-              : "Your payout setup isn't finished yet. Pick up where you left off — it takes a few minutes:"}
+              ? t("reviewingBody")
+              : t("unfinishedBody")}
           </p>
           <Button variant="pri" size="sm" onClick={() => void startOnboarding()} disabled={busy}>
-            {busy ? "Opening Stripe…" : "Continue payout setup"}
+            {busy ? t("openingStripe") : t("continueSetup")}
           </Button>
         </>
       ) : (
         <>
           <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            Connect a payout account to sell products, services and vouchers on Roam. Setup is
-            handled securely by Stripe — Roam never sees your ID or bank details.
+            {t("connectBody")}
           </p>
           <Button variant="pri" size="sm" onClick={() => void startOnboarding()} disabled={busy}>
-            {busy ? "Opening Stripe…" : "Set up payouts"}
+            {busy ? t("openingStripe") : t("setUp")}
           </Button>
         </>
       )}

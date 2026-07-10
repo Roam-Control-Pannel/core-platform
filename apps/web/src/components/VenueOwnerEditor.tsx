@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Icon, Seg, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { Button } from "@roam/design";
@@ -47,16 +48,9 @@ import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 import styles from "./BizDash.module.css";
 
-const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "audience", label: "Audience" },
-  { key: "posts", label: "Posts" },
-  { key: "offers", label: "Offers" },
-  { key: "shop", label: "Shop" },
-  { key: "notifications", label: "Notifications" },
-  { key: "venue", label: "Venue" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
+/** Tab keys — labels come from the catalogue (venueOwnerEditor.tabs.*). */
+const TABS = ["overview", "audience", "posts", "offers", "shop", "notifications", "venue"] as const;
+type TabKey = (typeof TABS)[number];
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
 interface OwnerVenue {
@@ -157,6 +151,7 @@ function useDashData(venueId: string): DashData {
 }
 
 export function VenueOwnerEditor({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueOwnerEditor");
   const trpc = useTrpc();
   const session = useSession();
   const [venue, setVenue] = useState<OwnerVenue | null | "missing">(null);
@@ -170,7 +165,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
       const v = await (trpc.venues.byId as unknown as ByIdQuery).query({ venueId });
       setVenue(v ?? "missing");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't load this venue.");
+      setError(e instanceof Error ? e.message : t("loadFailed"));
     }
   }, [trpc, venueId]);
 
@@ -184,7 +179,7 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
     <main style={{ maxWidth: 1140, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ padding: "var(--space-2) 0 var(--space-4)" }}>
         <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}>
-          <Icon name="arrowLeft" size={14} /> Back to Roam
+          <Icon name="arrowLeft" size={14} /> {t("backToRoam")}
         </Link>
       </header>
 
@@ -193,11 +188,11 @@ export function VenueOwnerEditor({ venueId }: { venueId: string }) {
       ) : venue === null ? (
         <div style={{ height: 420, borderRadius: 20, background: "var(--paper-2)" }} aria-hidden />
       ) : venue === "missing" ? (
-        <Message title="Venue not found" body="This venue doesn’t exist or is no longer available." />
+        <Message title={t("notFound.title")} body={t("notFound.body")} />
       ) : !isOwner ? (
         <Message
-          title="You don’t manage this venue"
-          body="Only the venue’s owner can edit it. If you claimed it, your claim may still be under review."
+          title={t("notOwner.title")}
+          body={t("notOwner.body")}
         />
       ) : (
         <Dashboard venue={venue} venueId={venueId} tab={tab} onTab={setTab} reloadVenue={load} />
@@ -221,6 +216,7 @@ function Dashboard({
   onTab: (t: TabKey) => void;
   reloadVenue: () => Promise<void>;
 }) {
+  const t = useTranslations("venueOwnerEditor");
   const data = useDashData(venueId);
 
   return (
@@ -237,20 +233,20 @@ function Dashboard({
             <RecentPosts venueId={venueId} onTab={onTab} />
           </div>
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
-            <DashCard icon="sparkle" title="Quick actions">
+            <DashCard icon="sparkle" title={t("quickActions.title")}>
               <div className={styles.quickGrid}>
-                <QuickTile glyph="megaphone" label="Post" onClick={() => onTab("posts")} />
-                <QuickTile glyph="ticket" label="Offer" onClick={() => onTab("offers")} />
-                <QuickTile glyph="bell" label="Push" onClick={() => onTab("notifications")} />
+                <QuickTile glyph="megaphone" label={t("quickActions.post")} onClick={() => onTab("posts")} />
+                <QuickTile glyph="ticket" label={t("quickActions.offer")} onClick={() => onTab("offers")} />
+                <QuickTile glyph="bell" label={t("quickActions.push")} onClick={() => onTab("notifications")} />
               </div>
             </DashCard>
-            <DashCard icon="bell" title="Activity" subtitle="What locals are doing with your business.">
+            <DashCard icon="bell" title={t("activityCard.title")} subtitle={t("activityCard.subtitle")}>
               <VenueActivity venueId={venueId} />
             </DashCard>
-            <DashCard icon="card" title="Payments" subtitle="Payouts for selling on Roam — powered by Stripe.">
+            <DashCard icon="card" title={t("paymentsCard.title")} subtitle={t("paymentsCard.subtitle")}>
               <VenuePayments venueId={venueId} />
             </DashCard>
-            <DashCard icon="idea" title="Marketing assistant" subtitle="Let Roam draft tailored offers & posts — you approve everything.">
+            <DashCard icon="idea" title={t("marketingCard.title")} subtitle={t("marketingCard.subtitle")}>
               <MarketingSuggestions venueId={venueId} />
             </DashCard>
           </div>
@@ -262,8 +258,8 @@ function Dashboard({
       {tab === "posts" ? (
         <DashCard
           icon="megaphone"
-          title="Local posts"
-          subtitle="Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed — this is also your posting history."
+          title={t("postsCard.title")}
+          subtitle={t("postsCard.subtitle")}
         >
           <LocalPosts venueId={venueId} />
         </DashCard>
@@ -273,13 +269,13 @@ function Dashboard({
         <div className={styles.split}>
           <DashCard
             icon="ticket"
-            title="Offers"
-            subtitle="Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue."
+            title={t("offersCard.title")}
+            subtitle={t("offersCard.subtitle")}
           >
             <VenueOffers venueId={venueId} />
           </DashCard>
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
-            <DashCard icon="poll" title="Offer insights" subtitle="Which deals land best with locals.">
+            <DashCard icon="poll" title={t("offerInsightsCard.title")} subtitle={t("offerInsightsCard.subtitle")}>
               <OfferInsights venueId={venueId} />
             </DashCard>
             {/* Renders itself only when the business has opted into suggestions. */}
@@ -293,16 +289,16 @@ function Dashboard({
           <div style={{ minWidth: 0, display: "grid", gap: "var(--space-4)" }}>
             <DashCard
               icon="bag"
-              title="Your shop"
-              subtitle="Products, services and vouchers you sell on Roam. Everything here shows on your public page's Shop tab."
+              title={t("shopCard.title")}
+              subtitle={t("shopCard.subtitle")}
             >
               <VenueShopManager venueId={venueId} />
             </DashCard>
-            <DashCard icon="redeem" title="Orders" subtitle="Sales come in here — mark them collected or redeemed in-venue, or refund.">
+            <DashCard icon="redeem" title={t("ordersCard.title")} subtitle={t("ordersCard.subtitle")}>
               <VenueOrders venueId={venueId} />
             </DashCard>
           </div>
-          <DashCard icon="card" title="Payments" subtitle="Payouts for selling on Roam — powered by Stripe.">
+          <DashCard icon="card" title={t("paymentsCard.title")} subtitle={t("paymentsCard.subtitle")}>
             <VenuePayments venueId={venueId} />
           </DashCard>
         </div>
@@ -312,12 +308,12 @@ function Dashboard({
         <div className={styles.split}>
           <DashCard
             icon="inbox"
-            title="Send a notification"
-            subtitle="Message your followers' inbox — everyone, or one person."
+            title={t("notifyCard.title")}
+            subtitle={t("notifyCard.subtitle")}
           >
             <VenueNotify venueId={venueId} />
           </DashCard>
-          <DashCard icon="send" title="Push history" subtitle="Every update you've sent, newest first.">
+          <DashCard icon="send" title={t("pushHistoryCard.title")} subtitle={t("pushHistoryCard.subtitle")}>
             <PushHistory venueId={venueId} />
           </DashCard>
         </div>
@@ -325,10 +321,10 @@ function Dashboard({
 
       {tab === "venue" ? (
         <div style={{ display: "grid", gap: "var(--space-4)" }}>
-          <DashCard icon="photo" title="Photos" subtitle="Upload your own — they take priority over public-source photos. Set a cover and reorder.">
+          <DashCard icon="photo" title={t("photosCard.title")} subtitle={t("photosCard.subtitle")}>
             <OwnerMediaManager venueId={venueId} />
           </DashCard>
-          <DashCard icon="edit" title="Details" subtitle="A description and the links people need — menu, booking, website.">
+          <DashCard icon="edit" title={t("detailsCard.title")} subtitle={t("detailsCard.subtitle")}>
             <OwnerDetailsEditor
               venueId={venueId}
               initialDescription={venue.description}
@@ -336,7 +332,7 @@ function Dashboard({
               onSaved={reloadVenue}
             />
           </DashCard>
-          <DashCard icon="clock" title="Opening hours" subtitle="Set when you're open — powers the live “Open now” status on your page.">
+          <DashCard icon="clock" title={t("hoursCard.title")} subtitle={t("hoursCard.subtitle")}>
             <OwnerHoursEditor
               venueId={venueId}
               initialPeriods={(venue.opening_times?.periods ?? null) as never}
@@ -352,6 +348,7 @@ function Dashboard({
 /* ── Identity header ─────────────────────────────────────────────────────────────────── */
 
 function IdentityHeader({ venue, venueId }: { venue: OwnerVenue; venueId: string }) {
+  const t = useTranslations("venueOwnerEditor");
   const open = useMemo(
     () => isOpenNow(venue.opening_times as OpeningTimesRead | null, new Date()),
     [venue.opening_times],
@@ -369,11 +366,11 @@ function IdentityHeader({ venue, venueId }: { venue: OwnerVenue; venueId: string
             <StatusChip status={venue.status} />
             {open.status === "open" ? (
               <span style={openChip}>
-                <span aria-hidden style={{ fontSize: 8 }}>●</span> Open now{open.nextChange ? ` · till ${open.nextChange.at}` : ""}
+                <span aria-hidden style={{ fontSize: 8 }}>●</span> {open.nextChange ? t("header.openNowTill", { time: open.nextChange.at }) : t("header.openNow")}
               </span>
             ) : open.status === "closed" ? (
               <span style={{ ...openChip, color: "var(--muted)", background: "var(--paper-2)" }}>
-                Closed{open.nextChange ? ` · opens ${open.nextChange.at}` : ""}
+                {open.nextChange ? t("header.closedOpens", { time: open.nextChange.at }) : t("header.closed")}
               </span>
             ) : null}
           </div>
@@ -383,7 +380,7 @@ function IdentityHeader({ venue, venueId }: { venue: OwnerVenue; venueId: string
         </div>
       </div>
       <Link href={venuePath(venue.slug ?? venueId)} style={{ textDecoration: "none", flexShrink: 0 }}>
-        <Button variant="neutral" size="sm">View public page →</Button>
+        <Button variant="neutral" size="sm">{t("header.viewPublicPage")}</Button>
       </Link>
     </div>
   );
@@ -449,6 +446,7 @@ function VenueAvatar({ venueId, name }: { venueId: string; name: string }) {
 }
 
 function StatusChip({ status }: { status: string }) {
+  const t = useTranslations("venueOwnerEditor");
   const claimed = status === "claimed";
   return (
     <span
@@ -468,7 +466,7 @@ function StatusChip({ status }: { status: string }) {
         background: claimed ? "var(--success-tint)" : "var(--paper-2)",
       }}
     >
-      {claimed ? <><Icon name="check" size={10} strokeWidth={3} /> Claimed</> : status.replace(/_/g, " ")}
+      {claimed ? <><Icon name="check" size={10} strokeWidth={3} /> {t("header.claimed")}</> : status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -476,6 +474,7 @@ function StatusChip({ status }: { status: string }) {
 /* ── Stat strip ──────────────────────────────────────────────────────────────────────── */
 
 function StatRow({ venue, data }: { venue: OwnerVenue; data: DashData }) {
+  const t = useTranslations("venueOwnerEditor");
   const { audience, views, growth, engagement } = data;
 
   const viewsDelta = views && views.previousTotal > 0
@@ -486,21 +485,21 @@ function StatRow({ venue, data }: { venue: OwnerVenue; data: DashData }) {
     <div className={styles.statRow}>
       <StatCard
         glyph="heart"
-        label="Followers"
+        label={t("stats.followers")}
         value={audience ? audience.followers.toLocaleString() : "–"}
-        delta={audience && audience.new30 > 0 ? `+${audience.new30} this month` : audience ? "no change this month" : undefined}
+        delta={audience && audience.new30 > 0 ? t("stats.newThisMonth", { count: audience.new30 }) : audience ? t("stats.noChangeThisMonth") : undefined}
         up={!!audience && audience.new30 > 0}
         spark={growth?.map((w) => w.count)}
       />
       <StatCard
         glyph="chat"
-        label="Profile views"
+        label={t("stats.profileViews")}
         value={views ? views.total.toLocaleString() : "–"}
         delta={
           views
             ? viewsDelta != null
-              ? `${viewsDelta >= 0 ? "+" : ""}${viewsDelta}% · 30 days`
-              : "30 days · tracking is new"
+              ? t("stats.viewsDelta", { delta: `${viewsDelta >= 0 ? "+" : ""}${viewsDelta}` })
+              : t("stats.viewsTrackingNew")
             : undefined
         }
         up={viewsDelta != null && viewsDelta > 0}
@@ -508,23 +507,23 @@ function StatRow({ venue, data }: { venue: OwnerVenue; data: DashData }) {
       />
       <StatCard
         glyph="redeem"
-        label="Offer redemptions"
+        label={t("stats.offerRedemptions")}
         value={engagement ? engagement.totals.redemptions.toLocaleString() : "–"}
-        delta={engagement ? `${engagement.totals.saves.toLocaleString()} saves · all time` : undefined}
+        delta={engagement ? t("stats.savesAllTime", { count: engagement.totals.saves.toLocaleString() }) : undefined}
         up={!!engagement && engagement.totals.redemptions > 0}
       />
       <StatCard
         glyph="card"
-        label="Shop revenue"
+        label={t("stats.shopRevenue")}
         value={data.revenuePence != null ? formatPence(data.revenuePence) : "–"}
-        delta={data.salesCount != null ? `${data.salesCount} order${data.salesCount === 1 ? "" : "s"} · all time` : undefined}
+        delta={data.salesCount != null ? t("stats.ordersAllTime", { count: data.salesCount }) : undefined}
         up={!!data.revenuePence && data.revenuePence > 0}
       />
       <StatCard
         glyph="star"
-        label="Rating"
+        label={t("stats.rating")}
         value={venue.rating != null ? venue.rating.toFixed(1) : "–"}
-        delta={venue.rating_count ? `${venue.rating_count.toLocaleString()} reviews` : "No reviews yet"}
+        delta={venue.rating_count ? t("stats.reviews", { count: venue.rating_count.toLocaleString() }) : t("stats.noReviews")}
         gold
       />
     </div>
@@ -579,6 +578,7 @@ function StatCard({
 /* ── Tabs ────────────────────────────────────────────────────────────────────────────── */
 
 function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
+  const t = useTranslations("venueOwnerEditor");
   return (
     <div
       style={{
@@ -590,13 +590,13 @@ function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
         scrollbarWidth: "none",
       }}
     >
-      {TABS.map((t) => {
-        const active = t.key === tab;
+      {TABS.map((tabKey) => {
+        const active = tabKey === tab;
         return (
           <button
-            key={t.key}
+            key={tabKey}
             type="button"
-            onClick={() => onTab(t.key)}
+            onClick={() => onTab(tabKey)}
             aria-current={active ? "page" : undefined}
             style={{
               all: "unset",
@@ -614,7 +614,7 @@ function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
               borderBottom: `2px solid ${active ? "var(--crimson)" : "transparent"}`,
             }}
           >
-            {t.label}
+            {t(`tabs.${tabKey}`)}
           </button>
         );
       })}
@@ -629,17 +629,20 @@ function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
  * numbers (never invented): push credits + follower count pick the most useful nudge.
  */
 function NextBestAction({ data, onTab }: { data: DashData; onTab: (t: TabKey) => void }) {
+  const t = useTranslations("venueOwnerEditor");
   const followers = data.audience?.followers ?? null;
   const credits = data.credits;
   if (followers == null) return null;
 
   const noFollowers = followers === 0;
   const title = noFollowers
-    ? "Get your first followers — post a local update"
-    : "Your followers are listening — share this week's offer";
+    ? t("nextBestAction.titleNoFollowers")
+    : t("nextBestAction.titleFollowers");
   const sub = noFollowers
-    ? "Posts appear in your town's feed, where locals discover businesses like yours."
-    : `${followers.toLocaleString()} locals follow you${credits != null && credits > 0 ? ` — and you've ${credits} push credit${credits === 1 ? "" : "s"} to notify them` : ""}.`;
+    ? t("nextBestAction.subNoFollowers")
+    : credits != null && credits > 0
+      ? t("nextBestAction.subFollowersCredits", { followers: followers.toLocaleString(), credits })
+      : t("nextBestAction.subFollowers", { followers: followers.toLocaleString() });
 
   return (
     <div className={styles.banner}>
@@ -647,12 +650,12 @@ function NextBestAction({ data, onTab }: { data: DashData; onTab: (t: TabKey) =>
         <Icon name="sparkle" size={18} />
       </span>
       <div style={{ flex: 1, minWidth: 220 }}>
-        <div className={styles.bannerKicker}>Next best action</div>
+        <div className={styles.bannerKicker}>{t("nextBestAction.kicker")}</div>
         <div className={styles.bannerTitle}>{title}</div>
         <p className={styles.bannerSub}>{sub}</p>
       </div>
       <Button variant="pri" onClick={() => onTab(noFollowers ? "posts" : "offers")}>
-        {noFollowers ? "Write a post" : "Create an offer"}
+        {noFollowers ? t("nextBestAction.writePost") : t("nextBestAction.createOffer")}
       </Button>
     </div>
   );
@@ -672,6 +675,7 @@ function PerformanceCard({
   initialViews: ViewStats | null;
   growth: GrowthWeek[] | null;
 }) {
+  const t = useTranslations("venueOwnerEditor");
   const trpc = useTrpc();
   const [days, setDays] = useState<30 | 90>(30);
   const [views, setViews] = useState<ViewStats | null>(initialViews);
@@ -704,14 +708,14 @@ function PerformanceCard({
             <Icon name="poll" size={16} />
           </span>
           <div>
-            <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Performance</h2>
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-2)" }}>Profile views and new followers, last {days} days.</p>
+            <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("performance.title")}</h2>
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-2)" }}>{t("performance.subtitle", { days })}</p>
           </div>
         </div>
         <Seg
           options={[
-            { value: "30", label: "30d" },
-            { value: "90", label: "90d" },
+            { value: "30", label: t("performance.seg30") },
+            { value: "90", label: t("performance.seg90") },
           ]}
           value={String(days)}
           onChange={(v) => setDays(v === "90" ? 90 : 30)}
@@ -723,11 +727,11 @@ function PerformanceCard({
       <div style={{ display: "flex", gap: "var(--space-4)", marginTop: "var(--space-3)", flexWrap: "wrap", fontSize: 12.5, color: "var(--ink-2)" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--crimson)" }} />
-          Profile views · {views ? views.total.toLocaleString() : "–"}
+          {t("performance.viewsLegend", { count: views ? views.total.toLocaleString() : "–" })}
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--gold)" }} />
-          New followers · {newFollowers != null ? newFollowers.toLocaleString() : "–"} (6 weeks)
+          {t("performance.followersLegend", { count: newFollowers != null ? newFollowers.toLocaleString() : "–" })}
         </span>
       </div>
     </Card>
@@ -736,11 +740,12 @@ function PerformanceCard({
 
 /** The SVG chart body: a filled crimson line of daily views. Data-honest empty state. */
 function ViewsChart({ views }: { views: ViewStats | null }) {
+  const t = useTranslations("venueOwnerEditor");
   if (!views || views.daily.length === 0 || views.total === 0) {
     return (
       <div style={{ height: 160, borderRadius: 14, background: "var(--paper-2)", display: "grid", placeItems: "center", padding: "var(--space-3)" }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", textAlign: "center", lineHeight: 1.5 }}>
-          View tracking is live — as locals open your page, the trend draws itself here.
+          {t("performance.emptyChart")}
         </p>
       </div>
     );
@@ -757,7 +762,7 @@ function ViewsChart({ views }: { views: ViewStats | null }) {
   const area = `${line} L${x(points.length - 1).toFixed(1)},${H - pad} L${x(0).toFixed(1)},${H - pad} Z`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 160, display: "block" }} role="img" aria-label={`Daily profile views, peaking at ${peak}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 160, display: "block" }} role="img" aria-label={t("performance.chartAria", { peak })}>
       <path d={area} fill="rgba(194,18,63,.09)" />
       <path d={line} fill="none" stroke="var(--crimson)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
@@ -766,6 +771,7 @@ function ViewsChart({ views }: { views: ViewStats | null }) {
 
 /** RecentPosts — the venue's latest updates at a glance; the Posts tab holds the full list. */
 function RecentPosts({ venueId, onTab }: { venueId: string; onTab: (t: TabKey) => void }) {
+  const t = useTranslations("venueOwnerEditor");
   const trpc = useTrpc();
   const [posts, setPosts] = useState<{ id: string; title: string | null; body: string | null; publishedAt: string | null; createdAt: string }[] | null>(null);
 
@@ -795,12 +801,12 @@ function RecentPosts({ venueId, onTab }: { venueId: string; onTab: (t: TabKey) =
             <Icon name="megaphone" size={16} />
           </span>
           <div>
-            <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Recent posts</h2>
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-2)" }}>How your latest updates performed.</p>
+            <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("recentPosts.title")}</h2>
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--ink-2)" }}>{t("recentPosts.subtitle")}</p>
           </div>
         </div>
         <button type="button" onClick={() => onTab("posts")} style={{ all: "unset", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", whiteSpace: "nowrap" }}>
-          All posts <span aria-hidden>→</span>
+          {t("recentPosts.allPosts")} <span aria-hidden>→</span>
         </button>
       </div>
 
@@ -808,14 +814,14 @@ function RecentPosts({ venueId, onTab }: { venueId: string; onTab: (t: TabKey) =
         <div style={{ height: 88, borderRadius: 14, background: "var(--paper-2)" }} aria-hidden />
       ) : posts.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-          Nothing posted yet — your first local update will show up here and in your town&apos;s feed.
+          {t("recentPosts.empty")}
         </p>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
           {posts.map((p) => (
             <li key={p.id} style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line)" }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: "var(--ui)", fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>{p.title?.trim() || "Update"}</div>
+                <div style={{ fontFamily: "var(--ui)", fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>{p.title?.trim() || t("recentPosts.untitled")}</div>
                 {p.body ? (
                   <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>
                     {p.body}
@@ -844,17 +850,20 @@ function QuickTile({ glyph, label, onClick }: { glyph: IconName; label: string; 
 
 /* ── Audience tab ────────────────────────────────────────────────────────────────────── */
 
-const BAND_ORDER: { key: string; label: string }[] = [
-  { key: "under_18", label: "Under 18" },
-  { key: "age_18_24", label: "18–24" },
-  { key: "age_25_34", label: "25–34" },
-  { key: "age_35_44", label: "35–44" },
-  { key: "age_45_54", label: "45–54" },
-  { key: "age_55_64", label: "55–64" },
-  { key: "age_65_plus", label: "65+" },
+/** Age-band wire keys, in display order — labels come from the catalogue
+ *  (venueOwnerEditor.audience.ageBands.*). */
+const BAND_ORDER: string[] = [
+  "under_18",
+  "age_18_24",
+  "age_25_34",
+  "age_35_44",
+  "age_45_54",
+  "age_55_64",
+  "age_65_plus",
 ];
 
 function AudienceTab({ venueId, data }: { venueId: string; data: DashData }) {
+  const t = useTranslations("venueOwnerEditor");
   const { audience, growth, views } = data;
 
   const engagedPct = audience && audience.followers > 0 ? Math.round((audience.engaged30 / audience.followers) * 100) : null;
@@ -867,20 +876,20 @@ function AudienceTab({ venueId, data }: { venueId: string; data: DashData }) {
   return (
     <div style={{ display: "grid", gap: "var(--space-4)" }}>
       <div className={styles.duo}>
-        <DashCard icon="users" title="Your audience" subtitle="Who follows you, in aggregate — never individual people.">
+        <DashCard icon="users" title={t("audience.yourAudienceTitle")} subtitle={t("audience.yourAudienceSubtitle")}>
           {audience ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--space-2)" }}>
-              <AudTile value={audience.followers.toLocaleString()} label="Followers" sub={audience.new30 > 0 ? `▲ ${audience.new30} (30d)` : undefined} />
-              <AudTile value={engagedPct != null ? `${engagedPct}%` : "–"} label="Engaged (30d)" />
-              <AudTile value={audience.pushReach.toLocaleString()} label="Push reach" />
-              <AudTile value={avgWeeklyViews != null ? avgWeeklyViews.toLocaleString() : "–"} label="Avg. weekly views" />
+              <AudTile value={audience.followers.toLocaleString()} label={t("audience.followers")} sub={audience.new30 > 0 ? t("audience.newSub", { count: audience.new30 }) : undefined} />
+              <AudTile value={engagedPct != null ? `${engagedPct}%` : "–"} label={t("audience.engaged30")} />
+              <AudTile value={audience.pushReach.toLocaleString()} label={t("audience.pushReach")} />
+              <AudTile value={avgWeeklyViews != null ? avgWeeklyViews.toLocaleString() : "–"} label={t("audience.avgWeeklyViews")} />
             </div>
           ) : (
             <div style={{ height: 120, borderRadius: 14, background: "var(--paper-2)" }} aria-hidden />
           )}
         </DashCard>
 
-        <DashCard icon="poll" title="Follower growth" subtitle="Net new followers per week.">
+        <DashCard icon="poll" title={t("audience.growthTitle")} subtitle={t("audience.growthSubtitle")}>
           {growth && growth.length > 0 ? (
             <div className={styles.bars}>
               {growth.map((w, i) => (
@@ -888,29 +897,29 @@ function AudienceTab({ venueId, data }: { venueId: string; data: DashData }) {
                   <span
                     className={`${styles.bar} ${i === growth.length - 1 ? styles.barHot : ""}`}
                     style={{ height: `${Math.max(4, Math.round((w.count / growthPeak) * 100))}%` }}
-                    title={`${w.count} new follower${w.count === 1 ? "" : "s"}`}
+                    title={t("audience.newFollowersTitle", { count: w.count })}
                   />
-                  <span className={styles.barLabel}>W{i + 1}</span>
+                  <span className={styles.barLabel}>{t("audience.week", { n: i + 1 })}</span>
                 </div>
               ))}
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-              Growth bars appear as people start following you.
+              {t("audience.growthEmpty")}
             </p>
           )}
         </DashCard>
       </div>
 
       <div className={styles.duo}>
-        <DashCard icon="person" title="Age of followers" subtitle="Aggregated & anonymised — shown only when the group is large enough.">
+        <DashCard icon="person" title={t("audience.ageTitle")} subtitle={t("audience.ageSubtitle")}>
           {bands ? (
             <div style={{ display: "grid", gap: 10 }}>
-              {BAND_ORDER.filter((b) => (bands[b.key] ?? 0) > 0).map((b) => {
-                const n = bands[b.key] ?? 0;
+              {BAND_ORDER.filter((b) => (bands[b] ?? 0) > 0).map((b) => {
+                const n = bands[b] ?? 0;
                 return (
-                  <div key={b.key} style={{ display: "grid", gridTemplateColumns: "56px 1fr 40px", alignItems: "center", gap: "var(--space-2)" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{b.label}</span>
+                  <div key={b} style={{ display: "grid", gridTemplateColumns: "56px 1fr 40px", alignItems: "center", gap: "var(--space-2)" }}>
+                    <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{t(`audience.ageBands.${b}`)}</span>
                     <span style={{ height: 8, borderRadius: 999, background: "var(--paper-2)", overflow: "hidden" }}>
                       <span style={{ display: "block", width: `${Math.round((n / bandPeak) * 100)}%`, height: "100%", background: "var(--crimson)", borderRadius: 999 }} />
                     </span>
@@ -921,15 +930,18 @@ function AudienceTab({ venueId, data }: { venueId: string; data: DashData }) {
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-              Not enough followers have shared a birthday yet to show an age breakdown (kept private until the group is large enough to stay anonymous).
+              {t("audience.ageEmpty")}
             </p>
           )}
         </DashCard>
 
-        <DashCard icon="cake" title="Birthday offer" subtitle="A standing treat delivered automatically to opted-in followers on their birthday. You see counts, never who.">
+        <DashCard icon="cake" title={t("audience.birthdayTitle")} subtitle={t("audience.birthdaySubtitle")}>
           {audience?.birthdaysThisMonth != null ? (
             <p style={{ margin: "0 0 var(--space-3)", fontSize: 13, color: "var(--ink-2)" }}>
-              <strong>{audience.birthdaysThisMonth}</strong> opted-in follower{audience.birthdaysThisMonth === 1 ? " has" : "s have"} a birthday this month.
+              {t.rich("audience.birthdaysThisMonth", {
+                count: audience.birthdaysThisMonth,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </p>
           ) : null}
           <BirthdayOffer venueId={venueId} />

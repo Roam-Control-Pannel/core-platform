@@ -1562,5 +1562,472 @@
   "copyLinkButton": {
     "share": "Share",
     "copied": "Copied!"
+  },
+  "venueOwnerEditor": {
+    "backToRoam": "Back to Roam",
+    "loadFailed": "Couldn't load this venue.",
+    "notFound": {
+      "title": "Venue not found",
+      "body": "This venue doesn’t exist or is no longer available."
+    },
+    "notOwner": {
+      "title": "You don’t manage this venue",
+      "body": "Only the venue’s owner can edit it. If you claimed it, your claim may still be under review."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "audience": "Audience",
+      "posts": "Posts",
+      "offers": "Offers",
+      "shop": "Shop",
+      "notifications": "Notifications",
+      "venue": "Venue"
+    },
+    "header": {
+      "openNow": "Open now",
+      "openNowTill": "Open now · till {time}",
+      "closed": "Closed",
+      "closedOpens": "Closed · opens {time}",
+      "claimed": "Claimed",
+      "viewPublicPage": "View public page →"
+    },
+    "stats": {
+      "followers": "Followers",
+      "profileViews": "Profile views",
+      "offerRedemptions": "Offer redemptions",
+      "shopRevenue": "Shop revenue",
+      "rating": "Rating",
+      "newThisMonth": "+{count} this month",
+      "noChangeThisMonth": "no change this month",
+      "viewsDelta": "{delta}% · 30 days",
+      "viewsTrackingNew": "30 days · tracking is new",
+      "savesAllTime": "{count} saves · all time",
+      "ordersAllTime": "{count, plural, one {# order} other {# orders}} · all time",
+      "reviews": "{count} reviews",
+      "noReviews": "No reviews yet"
+    },
+    "quickActions": {
+      "title": "Quick actions",
+      "post": "Post",
+      "offer": "Offer",
+      "push": "Push"
+    },
+    "activityCard": {
+      "title": "Activity",
+      "subtitle": "What locals are doing with your business."
+    },
+    "paymentsCard": {
+      "title": "Payments",
+      "subtitle": "Payouts for selling on Roam — powered by Stripe."
+    },
+    "marketingCard": {
+      "title": "Marketing assistant",
+      "subtitle": "Let Roam draft tailored offers & posts — you approve everything."
+    },
+    "postsCard": {
+      "title": "Local posts",
+      "subtitle": "Post news, offers and events on behalf of your business. Each appears on your page and in your town's local news feed — this is also your posting history."
+    },
+    "offersCard": {
+      "title": "Offers",
+      "subtitle": "Publish exclusive deals. Followers get notified; anyone can save them and redeem in-venue."
+    },
+    "offerInsightsCard": {
+      "title": "Offer insights",
+      "subtitle": "Which deals land best with locals."
+    },
+    "shopCard": {
+      "title": "Your shop",
+      "subtitle": "Products, services and vouchers you sell on Roam. Everything here shows on your public page's Shop tab."
+    },
+    "ordersCard": {
+      "title": "Orders",
+      "subtitle": "Sales come in here — mark them collected or redeemed in-venue, or refund."
+    },
+    "notifyCard": {
+      "title": "Send a notification",
+      "subtitle": "Message your followers' inbox — everyone, or one person."
+    },
+    "pushHistoryCard": {
+      "title": "Push history",
+      "subtitle": "Every update you've sent, newest first."
+    },
+    "photosCard": {
+      "title": "Photos",
+      "subtitle": "Upload your own — they take priority over public-source photos. Set a cover and reorder."
+    },
+    "detailsCard": {
+      "title": "Details",
+      "subtitle": "A description and the links people need — menu, booking, website."
+    },
+    "hoursCard": {
+      "title": "Opening hours",
+      "subtitle": "Set when you're open — powers the live “Open now” status on your page."
+    },
+    "nextBestAction": {
+      "kicker": "Next best action",
+      "titleNoFollowers": "Get your first followers — post a local update",
+      "titleFollowers": "Your followers are listening — share this week's offer",
+      "subNoFollowers": "Posts appear in your town's feed, where locals discover businesses like yours.",
+      "subFollowers": "{followers} locals follow you.",
+      "subFollowersCredits": "{followers} locals follow you — and you've {credits, plural, one {# push credit} other {# push credits}} to notify them.",
+      "writePost": "Write a post",
+      "createOffer": "Create an offer"
+    },
+    "performance": {
+      "title": "Performance",
+      "subtitle": "Profile views and new followers, last {days} days.",
+      "seg30": "30d",
+      "seg90": "90d",
+      "emptyChart": "View tracking is live — as locals open your page, the trend draws itself here.",
+      "chartAria": "Daily profile views, peaking at {peak}",
+      "viewsLegend": "Profile views · {count}",
+      "followersLegend": "New followers · {count} (6 weeks)"
+    },
+    "recentPosts": {
+      "title": "Recent posts",
+      "subtitle": "How your latest updates performed.",
+      "allPosts": "All posts",
+      "empty": "Nothing posted yet — your first local update will show up here and in your town's feed.",
+      "untitled": "Update"
+    },
+    "audience": {
+      "yourAudienceTitle": "Your audience",
+      "yourAudienceSubtitle": "Who follows you, in aggregate — never individual people.",
+      "followers": "Followers",
+      "newSub": "▲ {count} (30d)",
+      "engaged30": "Engaged (30d)",
+      "pushReach": "Push reach",
+      "avgWeeklyViews": "Avg. weekly views",
+      "growthTitle": "Follower growth",
+      "growthSubtitle": "Net new followers per week.",
+      "newFollowersTitle": "{count, plural, one {# new follower} other {# new followers}}",
+      "week": "W{n}",
+      "growthEmpty": "Growth bars appear as people start following you.",
+      "ageTitle": "Age of followers",
+      "ageSubtitle": "Aggregated & anonymised — shown only when the group is large enough.",
+      "ageBands": {
+        "under_18": "Under 18",
+        "age_18_24": "18–24",
+        "age_25_34": "25–34",
+        "age_35_44": "35–44",
+        "age_45_54": "45–54",
+        "age_55_64": "55–64",
+        "age_65_plus": "65+"
+      },
+      "ageEmpty": "Not enough followers have shared a birthday yet to show an age breakdown (kept private until the group is large enough to stay anonymous).",
+      "birthdayTitle": "Birthday offer",
+      "birthdaySubtitle": "A standing treat delivered automatically to opted-in followers on their birthday. You see counts, never who.",
+      "birthdaysThisMonth": "{count, plural, one {<strong>#</strong> opted-in follower has a birthday this month.} other {<strong>#</strong> opted-in followers have a birthday this month.}}"
+    }
+  },
+  "ownerHoursEditor": {
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "copyMondayToWeekdays": "Copy Monday to Tue–Fri",
+    "closed": "Closed",
+    "sameAs": "Same as {day}",
+    "openingTimeAria": "{day} opening time",
+    "closingTimeAria": "{day} closing time",
+    "to": "to",
+    "remove": "Remove",
+    "overnightNote": "Closes after midnight (next day).",
+    "addBreak": "+ Add a break",
+    "saving": "Saving…",
+    "saveHours": "Save hours",
+    "reset": "Reset",
+    "clearAll": "Clear all",
+    "saved": "Saved.",
+    "errors": {
+      "addBothTimes": "Add both an opening and closing time.",
+      "sameTimes": "Opening and closing time can't be the same.",
+      "clearFailedRetry": "Couldn't clear your hours. Please try again.",
+      "clearFailed": "Couldn't clear your hours.",
+      "saveFailedRetry": "Couldn't save your hours. Please try again.",
+      "saveFailed": "Couldn't save your hours."
+    }
+  },
+  "ownerMediaManager": {
+    "working": "Working…",
+    "uploadPhoto": "Upload a photo",
+    "noPhotos": "No photos uploaded yet.",
+    "fromPublicSources": "From public sources ({count})",
+    "publicSourcesNote": "These come from public listings and can't be edited here. Upload your own photos above to show them first.",
+    "row": {
+      "cover": "Cover",
+      "photo": "Photo",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "unsetCover": "Unset cover",
+      "setCover": "Set cover",
+      "remove": "Remove"
+    },
+    "errors": {
+      "imageType": "Please choose a JPEG, PNG or WebP image.",
+      "imageTooLarge": "That image is over 10 MB. Please choose a smaller file.",
+      "uploadFailedWithMessage": "Upload failed: {message}",
+      "uploadedNotSaved": "Uploaded, but couldn't save the photo. Please try again.",
+      "uploadFailed": "Upload failed.",
+      "reorderFailedRetry": "Couldn't save the new order. Please try again.",
+      "reorderFailed": "Couldn't reorder.",
+      "setCoverFailedRetry": "Couldn't set the cover. Please try again.",
+      "setCoverFailed": "Couldn't set cover.",
+      "removeFailedRetry": "Couldn't remove that photo. Please try again.",
+      "removeFailed": "Couldn't remove."
+    }
+  },
+  "ownerDetailsEditor": {
+    "description": "Description",
+    "descriptionPlaceholder": "Tell people what makes this place worth a visit.",
+    "links": "Links",
+    "linkLabelPlaceholder": "Label (e.g. Menu)",
+    "linkLabelAria": "Link label",
+    "linkUrlPlaceholder": "https://…",
+    "linkUrlAria": "Link URL",
+    "remove": "Remove",
+    "addLink": "+ Add a link",
+    "maxLinks": "That's the maximum of {max}.",
+    "saving": "Saving…",
+    "saveDetails": "Save details",
+    "reset": "Reset",
+    "saved": "Saved.",
+    "errors": {
+      "addLabel": "Add a label.",
+      "addUrl": "Add a URL.",
+      "labelTooLong": "Label too long (max {max}).",
+      "urlTooLong": "URL too long.",
+      "httpOnly": "Use an http(s) link.",
+      "invalidUrl": "That doesn't look like a valid URL.",
+      "saveFailedRetry": "Couldn't save your changes. Please try again.",
+      "saveFailed": "Couldn't save your changes."
+    }
+  },
+  "venueShopManager": {
+    "addCta": "＋ Add a product or service",
+    "removeConfirm": "Remove “{title}” from your shop?",
+    "empty": "Nothing in your shop yet. Add what you sell — meal vouchers, gift cards, retail products, bookable experiences — and it shows on your public page. Online buying switches on soon.",
+    "kindService": "Service",
+    "kindProduct": "Product",
+    "soldOut": "sold out",
+    "inStock": "{count} in stock",
+    "statusLive": "Live",
+    "statusHidden": "Hidden",
+    "editAria": "Edit {title}",
+    "hideAria": "Hide {title}",
+    "showAria": "Show {title}",
+    "removeAria": "Remove {title}",
+    "composer": {
+      "editTitle": "Edit",
+      "newTitle": "New product or service",
+      "kindProduct": "Product",
+      "kindService": "Service / voucher",
+      "titlePlaceholderService": "e.g. £25 dinner voucher",
+      "titlePlaceholderProduct": "e.g. House-blend coffee beans, 250g",
+      "titleAria": "Title",
+      "descriptionPlaceholder": "A line or two — what is it, how is it collected or redeemed?",
+      "descriptionAria": "Description",
+      "priceLabel": "Price (£)",
+      "pricePlaceholder": "12.50",
+      "priceAria": "Price in pounds",
+      "stockLabel": "Stock (optional)",
+      "stockPlaceholderService": "Usually empty",
+      "stockPlaceholderProduct": "e.g. 20",
+      "stockAria": "Stock count",
+      "changePhoto": "Change photo",
+      "addPhoto": "Add a photo",
+      "cropTitle": "Frame your product photo",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "addToShop": "Add to shop",
+      "cancel": "Cancel",
+      "errors": {
+        "badImageType": "Please choose a JPEG, PNG or WebP image.",
+        "imageTooLarge": "That image is over 10 MB. Please choose a smaller file.",
+        "uploadFailed": "Upload failed: {message}",
+        "titleMin": "Give it a name (at least 3 characters).",
+        "priceInvalid": "Enter a price like 12.50.",
+        "priceMin": "The minimum price is £0.50 (card processing needs it).",
+        "stockInvalid": "Stock must be a whole number (or leave it empty).",
+        "saveFailedRetry": "Couldn't save — please try again.",
+        "addFailedRetry": "Couldn't add that — please try again.",
+        "saveFailed": "Couldn't save."
+      }
+    }
+  },
+  "venueOrders": {
+    "refundConfirm": "Fully refund this order? The buyer gets everything back.",
+    "actionFailed": "That didn't work — try again.",
+    "empty": "No orders yet — they land here the moment someone buys from your shop.",
+    "emptyFiltered": "Nothing in this view.",
+    "filters": {
+      "all": "All",
+      "paid": "To fulfil",
+      "fulfilled": "Fulfilled",
+      "refunded": "Refunded"
+    },
+    "status": {
+      "pending": "pending",
+      "paid": "paid",
+      "collected": "collected",
+      "redeemed": "redeemed",
+      "refunded": "refunded",
+      "canceled": "canceled"
+    },
+    "code": {
+      "placeholder": "Redeem a code…",
+      "aria": "Redeem code",
+      "verify": "Verify & redeem",
+      "noMatch": "No order with that code.",
+      "alreadyStatus": "That code's order is already {status}.",
+      "redeemedNote": "✓ Redeemed — {title}"
+    },
+    "roamFee": "Roam fee {fee}",
+    "codeWord": "code",
+    "markRedeemed": "Mark redeemed",
+    "markCollected": "Mark collected",
+    "refund": "Refund"
+  },
+  "businessDashboard": {
+    "back": "Account",
+    "title": "Business",
+    "signedOutIntro": "Sign in to manage the venues you've claimed.",
+    "loadFailed": "Couldn't load your venues.",
+    "statusClaimed": "Claimed",
+    "empty": {
+      "title": "No claimed venues yet",
+      "body": "Find your business in <link>Explore</link>, open its page and tap “Claim it free”. Once it’s approved it shows up here, ready to edit.",
+      "howItWorks": "How claiming works →"
+    }
+  },
+  "businessLanding": {
+    "back": "Explore",
+    "kicker": "For businesses",
+    "title": "Run a local business? Claim it on Roam.",
+    "heroBody": "People discover local places on Roam for free. Claiming your venue lets you keep it accurate — your photos, hours, description and links — and own how you show up.",
+    "findYourBusiness": "Find your business",
+    "yourDashboard": "Your dashboard",
+    "alreadyClaimed": "Already claimed? Sign in",
+    "howItWorks": "How it works",
+    "steps": {
+      "find": {
+        "title": "Find your venue",
+        "body": "It's probably already on Roam, listed from public sources. Search for it in Explore and open its page."
+      },
+      "claim": {
+        "title": "Claim it free",
+        "body": "Tap “Claim it free” on the venue. Sign in (or create an account) — the same account you'd use to explore."
+      },
+      "verify": {
+        "title": "Verify & manage",
+        "body": "We auto-verify when your email matches the business's website; otherwise a quick manual check. Then add photos, hours, a description and links."
+      }
+    },
+    "onceClaimed": "Once you've claimed",
+    "perks": {
+      "photos": "Add and reorder real photos, set your cover image",
+      "hours": "Keep your opening hours accurate (live “open now”)",
+      "description": "Write your description and add your links",
+      "followers": "Followers get notified when you post (coming soon)"
+    },
+    "publicSourcesNote": "Roam lists venues from public sources so locals can find you whether or not you've claimed — claiming is free and just hands you the keys to your page."
+  },
+  "marketingSuggestions": {
+    "loadFailed": "Couldn't load your preferences just now.",
+    "suggestionsOn": "Suggestions on",
+    "suggestionsOff": "Suggestions off",
+    "summaryOn": "We'll suggest offers and posts tailored to you — never auto-published, always yours to edit first.",
+    "summaryOff": "Automated suggestions are off. Turn them on to get tailored offer and post ideas.",
+    "discountCap": "Discount cap {pct}%.",
+    "editPreferences": "Edit preferences",
+    "turnOff": "Turn off",
+    "turnOn": "Turn on",
+    "intro": "Want a hand marketing your business? Turn on automated suggestions and we'll propose offers and posts tailored to you — always yours to review and edit before anything goes out. Answer a few quick questions to make them relevant.",
+    "capLabel": "Maximum discount you're happy to offer: <pct>{cap}%</pct>",
+    "capAria": "Discount cap percent",
+    "typesLabel": "Which kinds of deal would you run? (pick any)",
+    "notesLabel": "What products or services do you usually discount?",
+    "notesPlaceholder": "e.g. weekday lunch mains, first coffee for new customers, quiet-afternoon haircuts…",
+    "saving": "Saving…",
+    "turnOnSuggestions": "Turn on suggestions",
+    "savePreferences": "Save preferences",
+    "notNow": "Not now",
+    "cancel": "Cancel"
+  },
+  "offerInsights": {
+    "loadFailed": "Couldn't load insights just now.",
+    "empty": "No offer data yet. Publish a few deals and tag their type — once people save and redeem them, you'll see which kinds work best here.",
+    "topTheme": "Your <strong>{label}</strong> deals are pulling the most interest so far — {saves} saves and {redemptions} redemptions.",
+    "offerCount": "{count, plural, one {# offer} other {# offers}}"
+  },
+  "venueNotify": {
+    "roamMember": "Roam member",
+    "noFollowers": "No followers yet — once people follow you, you can send them a notification here (collectively or one at a time).",
+    "allFollowers": "All followers",
+    "allFollowersCount": "All followers ({count})",
+    "onePerson": "One person",
+    "to": "To",
+    "showingRecent": "Showing your {count} most recent followers.",
+    "placeholderOne": "Write a message to this follower…",
+    "placeholderAll": "Write a message for your followers…",
+    "messageAria": "Notification message",
+    "sending": "Sending…",
+    "send": "Send",
+    "sendToAll": "Send to all",
+    "sendToAllCount": "Send to all ({count})",
+    "noneNotified": "No one was notified (no matching followers).",
+    "sentTo": "{count, plural, one {Sent to # follower.} other {Sent to # followers.}}",
+    "footer": "Lands in their notifications (the bell). Followers who muted your offers still receive direct messages you send here.",
+    "errors": {
+      "emptyMessage": "Write a message to send.",
+      "noRecipient": "Pick a follower to send to.",
+      "sendFailed": "Couldn't send the notification."
+    }
+  },
+  "venueActivity": {
+    "someone": "Someone",
+    "yourOffer": "your offer",
+    "quotedTitle": "“{title}”",
+    "phrase": {
+      "follow": "{who} started following you",
+      "offerSave": "{who} saved {what}",
+      "offerRedeem": "{who} redeemed {what}",
+      "sale": "{who} bought {what}",
+      "other": "{who} interacted with your venue"
+    },
+    "loadFailed": "Couldn't load activity just now.",
+    "unreadNew": "{count} new",
+    "allCaughtUp": "All caught up",
+    "markAllRead": "Mark all read",
+    "empty": "No activity yet. As people follow you and save your offers, you'll see it here."
+  },
+  "venuePayments": {
+    "notConfigured": "Selling on Roam is nearly here — payment processing isn't switched on for this environment yet.",
+    "chips": {
+      "payoutsActive": "Payouts active",
+      "chargesEnabled": "Charges enabled",
+      "detailsSubmitted": "Details submitted",
+      "detailsNeeded": "Details needed",
+      "payoutsPending": "Payouts pending"
+    },
+    "activeBody": "You're set up to get paid — everything you sell pays out to the bank account you connected. Payout history and bank details live in your Stripe dashboard:",
+    "opening": "Opening…",
+    "manageOnStripe": "Manage payouts on Stripe ↗",
+    "reviewingBody": "Stripe is reviewing your details — payouts usually switch on within a day or two. Check back, or finish anything outstanding:",
+    "unfinishedBody": "Your payout setup isn't finished yet. Pick up where you left off — it takes a few minutes:",
+    "openingStripe": "Opening Stripe…",
+    "continueSetup": "Continue payout setup",
+    "connectBody": "Connect a payout account to sell products, services and vouchers on Roam. Setup is handled securely by Stripe — Roam never sees your ID or bank details.",
+    "setUp": "Set up payouts",
+    "errors": {
+      "startFailed": "Couldn't start payout setup.",
+      "openStripeFailed": "Couldn't open Stripe."
+    }
   }
 }

@@ -8,9 +8,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { offerTypeLabel } from "../lib/offerTypes";
+import { useOfferTypeLabel } from "../lib/offerTypes";
 
 interface ThemeRow {
   offerType: string;
@@ -24,6 +25,8 @@ interface Engagement {
 }
 
 export function OfferInsights({ venueId }: { venueId: string }) {
+  const t = useTranslations("offerInsights");
+  const offerTypeLabelFor = useOfferTypeLabel();
   const trpc = useTrpc();
   const [data, setData] = useState<Engagement | undefined>(undefined);
   const [failed, setFailed] = useState(false);
@@ -42,7 +45,7 @@ export function OfferInsights({ venueId }: { venueId: string }) {
   }, [load]);
 
   if (failed) {
-    return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Couldn&apos;t load insights just now.</p>;
+    return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>{t("loadFailed")}</p>;
   }
   if (data === undefined) {
     return <div style={{ height: 80, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />;
@@ -50,8 +53,7 @@ export function OfferInsights({ venueId }: { venueId: string }) {
   if (data.totals.offers === 0) {
     return (
       <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-        No offer data yet. Publish a few deals and tag their type — once people save and redeem them,
-        you&apos;ll see which kinds work best here.
+        {t("empty")}
       </p>
     );
   }
@@ -64,23 +66,27 @@ export function OfferInsights({ venueId }: { venueId: string }) {
     <div>
       {best && best.saves + best.redemptions > 0 ? (
         <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-          Your <strong style={{ color: "var(--ink)" }}>{offerTypeLabel(best.offerType)}</strong> deals are pulling the most
-          interest so far — {best.saves} saves and {best.redemptions} redemptions.
+          {t.rich("topTheme", {
+            label: offerTypeLabelFor(best.offerType),
+            saves: best.saves,
+            redemptions: best.redemptions,
+            strong: (chunks) => <strong style={{ color: "var(--ink)" }}>{chunks}</strong>,
+          })}
         </p>
       ) : null}
 
       <div style={{ display: "grid", gap: "var(--space-3)" }}>
-        {data.themes.map((t) => {
-          const total = t.saves + t.redemptions;
+        {data.themes.map((theme) => {
+          const total = theme.saves + theme.redemptions;
           const w = Math.round((total / peak) * 100);
           return (
-            <div key={t.offerType}>
+            <div key={theme.offerType}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: "var(--ui)", fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>
-                  {offerTypeLabel(t.offerType)}
+                  {offerTypeLabelFor(theme.offerType)}
                 </span>
                 <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
-                  {t.offers} offer{t.offers === 1 ? "" : "s"} · <Icon name="heart" size={12} /> {t.saves} · <Icon name="redeem" size={12} /> {t.redemptions}
+                  {t("offerCount", { count: theme.offers })} · <Icon name="heart" size={12} /> {theme.saves} · <Icon name="redeem" size={12} /> {theme.redemptions}
                 </span>
               </div>
               <div style={{ height: 8, borderRadius: 999, background: "var(--paper-2)", overflow: "hidden" }}>

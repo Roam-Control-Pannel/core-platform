@@ -7,6 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Seg } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -17,15 +18,16 @@ interface Follower {
   avatarUrl: string | null;
 }
 
-function followerName(f: Follower): string {
+function followerName(t: ReturnType<typeof useTranslations>, f: Follower): string {
   if (f.displayName && f.displayName.trim()) return f.displayName.trim();
   if (f.handle && f.handle.trim()) return `@${f.handle.trim()}`;
-  return "Roam member";
+  return t("roamMember");
 }
 
 const MAX = 500;
 
 export function VenueNotify({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueNotify");
   const trpc = useTrpc();
   const [count, setCount] = useState<number | null>(null);
   const [followers, setFollowers] = useState<Follower[]>([]);
@@ -47,8 +49,8 @@ export function VenueNotify({ venueId }: { venueId: string }) {
 
   const send = useCallback(async () => {
     const body = text.trim();
-    if (!body) { setError("Write a message to send."); return; }
-    if (mode === "one" && !recipientId) { setError("Pick a follower to send to."); return; }
+    if (!body) { setError(t("errors.emptyMessage")); return; }
+    if (mode === "one" && !recipientId) { setError(t("errors.noRecipient")); return; }
     setBusy(true);
     setError(null);
     setResult(null);
@@ -58,9 +60,9 @@ export function VenueNotify({ venueId }: { venueId: string }) {
     try {
       const res = await mut.mutate({ venueId, text: body, ...(mode === "one" && recipientId ? { recipientId } : {}) });
       setText("");
-      setResult(res.sent === 0 ? "No one was notified (no matching followers)." : `Sent to ${res.sent} ${res.sent === 1 ? "follower" : "followers"}.`);
+      setResult(res.sent === 0 ? t("noneNotified") : t("sentTo", { count: res.sent }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't send the notification.");
+      setError(e instanceof Error ? e.message : t("errors.sendFailed"));
     } finally {
       setBusy(false);
     }
@@ -69,7 +71,7 @@ export function VenueNotify({ venueId }: { venueId: string }) {
   if (count === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>
-        No followers yet — once people follow you, you can send them a notification here (collectively or one at a time).
+        {t("noFollowers")}
       </p>
     );
   }
@@ -78,8 +80,8 @@ export function VenueNotify({ venueId }: { venueId: string }) {
     <div>
       <Seg
         options={[
-          { value: "all", label: `All followers${count != null ? ` (${count})` : ""}` },
-          { value: "one", label: "One person" },
+          { value: "all", label: count != null ? t("allFollowersCount", { count }) : t("allFollowers") },
+          { value: "one", label: t("onePerson") },
         ]}
         value={mode}
         onChange={(v) => { setMode(v as "all" | "one"); setResult(null); setError(null); }}
@@ -88,7 +90,7 @@ export function VenueNotify({ venueId }: { venueId: string }) {
       {mode === "one" ? (
         <div style={{ marginTop: "var(--space-3)" }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-2)" }}>
-            To
+            {t("to")}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
             {followers.map((f) => {
@@ -107,14 +109,14 @@ export function VenueNotify({ venueId }: { venueId: string }) {
                   }}
                 >
                   <Avatar f={f} size={22} on={on} />
-                  <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{followerName(f)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{followerName(t, f)}</span>
                 </button>
               );
             })}
           </div>
           {count != null && count > followers.length ? (
             <p style={{ margin: "var(--space-2) 2px 0", fontSize: 11.5, color: "var(--muted)" }}>
-              Showing your {followers.length} most recent followers.
+              {t("showingRecent", { count: followers.length })}
             </p>
           ) : null}
         </div>
@@ -123,8 +125,8 @@ export function VenueNotify({ venueId }: { venueId: string }) {
       <textarea
         value={text}
         onChange={(e) => { setText(e.target.value.slice(0, MAX)); setResult(null); }}
-        placeholder={mode === "one" ? "Write a message to this follower…" : "Write a message for your followers…"}
-        aria-label="Notification message"
+        placeholder={mode === "one" ? t("placeholderOne") : t("placeholderAll")}
+        aria-label={t("messageAria")}
         rows={3}
         style={{
           width: "100%", boxSizing: "border-box", marginTop: "var(--space-3)", padding: "10px 12px",
@@ -134,27 +136,28 @@ export function VenueNotify({ venueId }: { venueId: string }) {
       />
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-2)" }}>
         <Button variant="pri" onClick={() => void send()} disabled={busy || text.trim().length === 0 || (mode === "one" && !recipientId)}>
-          {busy ? "Sending…" : mode === "one" ? "Send" : `Send to all${count != null ? ` (${count})` : ""}`}
+          {busy ? t("sending") : mode === "one" ? t("send") : count != null ? t("sendToAllCount", { count }) : t("sendToAll")}
         </Button>
         <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{text.length}/{MAX}</span>
         {result ? <span style={{ fontSize: 13, color: "var(--success)" }}>{result}</span> : null}
         {error ? <span role="alert" style={{ fontSize: 13, color: "var(--crimson-700)" }}>{error}</span> : null}
       </div>
       <p style={{ margin: "var(--space-3) 2px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-        Lands in their notifications (the bell). Followers who muted your offers still receive direct messages you send here.
+        {t("footer")}
       </p>
     </div>
   );
 }
 
 function Avatar({ f, size, on }: { f: Follower; size: number; on: boolean }) {
+  const t = useTranslations("venueNotify");
   if (f.avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
     return <img src={f.avatarUrl} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
   }
   return (
     <span aria-hidden style={{ width: size, height: size, borderRadius: "50%", background: on ? "rgba(255,255,255,.25)" : "var(--crimson-tint)", color: on ? "#fff" : "var(--crimson-700)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: size * 0.42, flexShrink: 0 }}>
-      {followerName(f).replace(/^@/, "").charAt(0).toUpperCase() || "·"}
+      {followerName(t, f).replace(/^@/, "").charAt(0).toUpperCase() || "·"}
     </span>
   );
 }

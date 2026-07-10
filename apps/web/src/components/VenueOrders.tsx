@@ -7,18 +7,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useTrpc } from "./TrpcProvider";
 import { Button, Pill } from "@roam/design";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 
 type Filter = "all" | "paid" | "fulfilled" | "refunded";
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "paid", label: "To fulfil" },
-  { key: "fulfilled", label: "Fulfilled" },
-  { key: "refunded", label: "Refunded" },
-];
+/** Filter keys → catalogue label keys (venueOrders.filters.*). */
+const FILTERS: Filter[] = ["all", "paid", "fulfilled", "refunded"];
+
+/** Order-status wire values → catalogue label keys (venueOrders.status.*). Unknown statuses
+ *  fall back to the raw wire value at the render site. */
+const STATUS_KEY: Record<string, string> = {
+  pending: "pending",
+  paid: "paid",
+  collected: "collected",
+  redeemed: "redeemed",
+  refunded: "refunded",
+  canceled: "canceled",
+};
 
 interface VOrder {
   id: string;
@@ -34,6 +42,7 @@ interface VOrder {
 }
 
 export function VenueOrders({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueOrders");
   const trpc = useTrpc();
   const [orders, setOrders] = useState<VOrder[] | undefined>(undefined);
   const [busy, setBusy] = useState<string | null>(null);
@@ -51,7 +60,7 @@ export function VenueOrders({ venueId }: { venueId: string }) {
   }, [load]);
 
   const act = useCallback(async (orderId: string, action: "fulfil" | "refund") => {
-    if (action === "refund" && !window.confirm("Fully refund this order? The buyer gets everything back.")) return;
+    if (action === "refund" && !window.confirm(t("refundConfirm"))) return;
     setBusy(orderId);
     setError(null);
     try {
@@ -61,7 +70,7 @@ export function VenueOrders({ venueId }: { venueId: string }) {
       await proc.mutate({ orderId });
       setOrders(await load());
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "That didn't work — try again.");
+      setError(e instanceof Error ? e.message : t("actionFailed"));
     } finally {
       setBusy(null);
     }
@@ -84,17 +93,20 @@ export function VenueOrders({ venueId }: { venueId: string }) {
     const wanted = code.trim().toUpperCase();
     if (!wanted) return;
     const match = orders?.find((o) => o.redeemCode?.toUpperCase() === wanted);
-    if (!match) return setCodeNote("No order with that code.");
-    if (match.status !== "paid") return setCodeNote(`That code's order is already ${match.status}.`);
+    if (!match) return setCodeNote(t("code.noMatch"));
+    if (match.status !== "paid") {
+      const statusLabel = STATUS_KEY[match.status] ? t(`status.${STATUS_KEY[match.status]}`) : match.status;
+      return setCodeNote(t("code.alreadyStatus", { status: statusLabel }));
+    }
     setCodeNote(null);
     await act(match.id, "fulfil");
     setCode("");
-    setCodeNote(`✓ Redeemed — ${match.title}`);
+    setCodeNote(t("code.redeemedNote", { title: match.title }));
   }, [code, orders, act]);
 
   if (orders === undefined) return <div style={{ height: 80, borderRadius: 14, background: "var(--paper-2)" }} aria-hidden />;
   if (orders.length === 0) {
-    return <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>No orders yet — they land here the moment someone buys from your shop.</p>;
+    return <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{t("empty")}</p>;
   }
 
   return (
@@ -105,24 +117,24 @@ export function VenueOrders({ venueId }: { venueId: string }) {
           value={code}
           onChange={(e) => { setCode(e.target.value); setCodeNote(null); }}
           onKeyDown={(e) => { if (e.key === "Enter") void verifyCode(); }}
-          placeholder="Redeem a code…"
-          aria-label="Redeem code"
+          placeholder={t("code.placeholder")}
+          aria-label={t("code.aria")}
           style={{ flex: "1 1 140px", boxSizing: "border-box", padding: "8px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 14, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ink)", outline: "none" }}
         />
-        <Button variant="pri" size="sm" onClick={() => void verifyCode()} disabled={busy !== null || !code.trim()}>Verify & redeem</Button>
+        <Button variant="pri" size="sm" onClick={() => void verifyCode()} disabled={busy !== null || !code.trim()}>{t("code.verify")}</Button>
         {codeNote ? <span style={{ fontSize: 12.5, fontWeight: 600, color: codeNote.startsWith("✓") ? "var(--success)" : "var(--crimson-700)" }}>{codeNote}</span> : null}
       </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
         {FILTERS.map((f) => (
-          <button key={f.key} type="button" onClick={() => setFilter(f.key)} style={{ all: "unset", cursor: "pointer" }}>
-            <Pill variant={filter === f.key ? "crim" : "neutral"} size="sm">{f.label}</Pill>
+          <button key={f} type="button" onClick={() => setFilter(f)} style={{ all: "unset", cursor: "pointer" }}>
+            <Pill variant={filter === f ? "crim" : "neutral"} size="sm">{t(`filters.${f}`)}</Pill>
           </button>
         ))}
       </div>
 
       {error ? <p role="alert" style={{ margin: "0 0 var(--space-2)", color: "var(--crimson-700)", fontSize: 13 }}>{error}</p> : null}
-      {shown.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Nothing in this view.</p> : null}
+      {shown.length === 0 ? <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>{t("emptyFiltered")}</p> : null}
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
         {shown.map((o) => (
           <li key={o.id} style={{ padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--card)" }}>
@@ -132,21 +144,21 @@ export function VenueOrders({ venueId }: { venueId: string }) {
                   {o.title}{o.quantity > 1 ? ` × ${o.quantity}` : ""}
                 </div>
                 <div style={{ marginTop: 2, fontSize: 12, color: "var(--muted)" }}>
-                  {formatPence(o.amountPence, o.currency)} · Roam fee {formatPence(o.feePence, o.currency)} · {timeAgo(o.createdAt)}
-                  {o.redeemCode ? <> · code <code style={{ fontFamily: "var(--mono)", fontWeight: 700 }}>{o.redeemCode}</code></> : null}
+                  {formatPence(o.amountPence, o.currency)} · {t("roamFee", { fee: formatPence(o.feePence, o.currency) })} · {timeAgo(o.createdAt)}
+                  {o.redeemCode ? <> · {t("codeWord")} <code style={{ fontFamily: "var(--mono)", fontWeight: 700 }}>{o.redeemCode}</code></> : null}
                 </div>
               </div>
               <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: o.status === "paid" || o.status === "collected" || o.status === "redeemed" ? "var(--success)" : "var(--muted)", background: o.status === "paid" || o.status === "collected" || o.status === "redeemed" ? "var(--success-tint)" : "var(--paper-2)" }}>
-                {o.status}
+                {STATUS_KEY[o.status] ? t(`status.${STATUS_KEY[o.status]}`) : o.status}
               </span>
             </div>
             {o.status === "paid" ? (
               <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 8 }}>
                 <Button variant="pri" size="sm" onClick={() => void act(o.id, "fulfil")} disabled={busy === o.id}>
-                  {o.kind === "service" ? "Mark redeemed" : "Mark collected"}
+                  {o.kind === "service" ? t("markRedeemed") : t("markCollected")}
                 </Button>
                 <Button variant="neutral" size="sm" onClick={() => void act(o.id, "refund")} disabled={busy === o.id}>
-                  Refund
+                  {t("refund")}
                 </Button>
               </div>
             ) : null}

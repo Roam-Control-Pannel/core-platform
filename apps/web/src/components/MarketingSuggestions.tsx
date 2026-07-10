@@ -12,9 +12,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { OFFER_TYPES, OFFER_TYPE_LABELS, offerTypeLabel } from "../lib/offerTypes";
+import { OFFER_TYPES, useOfferTypeLabel } from "../lib/offerTypes";
 
 interface Prefs {
   suggestionsEnabled: boolean;
@@ -25,6 +26,8 @@ interface Prefs {
 }
 
 export function MarketingSuggestions({ venueId }: { venueId: string }) {
+  const t = useTranslations("marketingSuggestions");
+  const offerTypeLabelFor = useOfferTypeLabel();
   const trpc = useTrpc();
   const [prefs, setPrefs] = useState<Prefs | undefined>(undefined);
   const [failed, setFailed] = useState(false);
@@ -82,14 +85,14 @@ export function MarketingSuggestions({ venueId }: { venueId: string }) {
     [trpc, venueId, cap, types, notes],
   );
 
-  const toggleType = (t: string) =>
+  const toggleType = (type: string) =>
     setTypes((prev) => {
       const n = new Set(prev);
-      if (n.has(t)) n.delete(t); else n.add(t);
+      if (n.has(type)) n.delete(type); else n.add(type);
       return n;
     });
 
-  if (failed) return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Couldn&apos;t load your preferences just now.</p>;
+  if (failed) return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>{t("loadFailed")}</p>;
   if (prefs === undefined) return <div style={{ height: 80, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />;
 
   // ── Summary view (onboarded, not editing) ─────────────────────────────────────────────────
@@ -111,26 +114,26 @@ export function MarketingSuggestions({ venueId }: { venueId: string }) {
               border: `1px solid ${prefs.suggestionsEnabled ? "var(--crimson-tint-2)" : "var(--line)"}`,
             }}
           >
-            {prefs.suggestionsEnabled ? "Suggestions on" : "Suggestions off"}
+            {prefs.suggestionsEnabled ? t("suggestionsOn") : t("suggestionsOff")}
           </span>
         </div>
         <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
           {prefs.suggestionsEnabled
-            ? "We'll suggest offers and posts tailored to you — never auto-published, always yours to edit first."
-            : "Automated suggestions are off. Turn them on to get tailored offer and post ideas."}
-          {prefs.discountCapPct != null ? ` Discount cap ${prefs.discountCapPct}%.` : ""}
+            ? t("summaryOn")
+            : t("summaryOff")}
+          {prefs.discountCapPct != null ? ` ${t("discountCap", { pct: prefs.discountCapPct })}` : ""}
         </p>
         {prefs.offerTypes.length > 0 ? (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
-            {prefs.offerTypes.map((t) => (
-              <span key={t} style={chip(false)}>{offerTypeLabel(t)}</span>
+            {prefs.offerTypes.map((ot) => (
+              <span key={ot} style={chip(false)}>{offerTypeLabelFor(ot)}</span>
             ))}
           </div>
         ) : null}
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
-          <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit preferences</Button>
+          <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>{t("editPreferences")}</Button>
           <Button variant="neutral" size="sm" onClick={() => void save(!prefs.suggestionsEnabled)} disabled={busy}>
-            {prefs.suggestionsEnabled ? "Turn off" : "Turn on"}
+            {prefs.suggestionsEnabled ? t("turnOff") : t("turnOn")}
           </Button>
         </div>
       </div>
@@ -143,27 +146,25 @@ export function MarketingSuggestions({ venueId }: { venueId: string }) {
     <div>
       {firstRun ? (
         <p style={{ margin: "0 0 var(--space-4)", fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5 }}>
-          Want a hand marketing your business? Turn on automated suggestions and we&apos;ll propose
-          offers and posts tailored to you — always yours to review and edit before anything goes out.
-          Answer a few quick questions to make them relevant.
+          {t("intro")}
         </p>
       ) : null}
 
       <label style={{ display: "block", marginBottom: "var(--space-4)" }}>
         <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
-          Maximum discount you&apos;re happy to offer: <span style={{ color: "var(--crimson-700)" }}>{cap}%</span>
+          {t.rich("capLabel", { cap, pct: (chunks) => <span style={{ color: "var(--crimson-700)" }}>{chunks}</span> })}
         </span>
-        <input type="range" min={0} max={50} step={5} value={cap} onChange={(e) => setCap(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--crimson)" }} aria-label="Discount cap percent" />
+        <input type="range" min={0} max={50} step={5} value={cap} onChange={(e) => setCap(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--crimson)" }} aria-label={t("capAria")} />
       </label>
 
       <div style={{ marginBottom: "var(--space-4)" }}>
         <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>
-          Which kinds of deal would you run? (pick any)
+          {t("typesLabel")}
         </span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {OFFER_TYPES.filter((t) => t !== "other").map((t) => (
-            <button key={t} type="button" onClick={() => toggleType(t)} style={chip(types.has(t))}>
-              {OFFER_TYPE_LABELS[t]}
+          {OFFER_TYPES.filter((ot) => ot !== "other").map((ot) => (
+            <button key={ot} type="button" onClick={() => toggleType(ot)} style={chip(types.has(ot))}>
+              {offerTypeLabelFor(ot)}
             </button>
           ))}
         </div>
@@ -171,26 +172,26 @@ export function MarketingSuggestions({ venueId }: { venueId: string }) {
 
       <label style={{ display: "block", marginBottom: "var(--space-4)" }}>
         <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
-          What products or services do you usually discount?
+          {t("notesLabel")}
         </span>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           maxLength={2000}
-          placeholder="e.g. weekday lunch mains, first coffee for new customers, quiet-afternoon haircuts…"
+          placeholder={t("notesPlaceholder")}
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)", resize: "vertical", minHeight: 72 }}
         />
       </label>
 
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
         <Button variant="pri" onClick={() => void save(true)} disabled={busy}>
-          {busy ? "Saving…" : firstRun ? "Turn on suggestions" : "Save preferences"}
+          {busy ? t("saving") : firstRun ? t("turnOnSuggestions") : t("savePreferences")}
         </Button>
         {firstRun ? (
-          <Button variant="neutral" onClick={() => void save(false)} disabled={busy}>Not now</Button>
+          <Button variant="neutral" onClick={() => void save(false)} disabled={busy}>{t("notNow")}</Button>
         ) : (
-          <Button variant="neutral" onClick={() => setEditing(false)} disabled={busy}>Cancel</Button>
+          <Button variant="neutral" onClick={() => setEditing(false)} disabled={busy}>{t("cancel")}</Button>
         )}
       </div>
     </div>
