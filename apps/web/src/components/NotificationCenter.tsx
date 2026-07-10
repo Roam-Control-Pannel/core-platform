@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -37,6 +38,7 @@ const GLYPH: Record<string, IconName> = {
 };
 
 export function NotificationCenter() {
+  const t = useTranslations("notificationCenter");
   const trpc = useTrpc();
   const session = useSession();
   const [items, setItems] = useState<Notification[] | undefined>(undefined);
@@ -59,7 +61,7 @@ export function NotificationCenter() {
         void markAllRead.mutate().catch(() => {});
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load notifications.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -72,16 +74,16 @@ export function NotificationCenter() {
         href="/"
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Home
+        <span aria-hidden>←</span> {t("home")}
       </Link>
       <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, letterSpacing: "-.02em", margin: "0 0 var(--space-4)" }}>
-        Notifications
+        {t("title")}
       </h1>
 
       {!hasSession ? (
         <Card style={{ padding: "var(--space-4)" }}>
           <AuthPanel
-            intro="Sign in to see your notifications."
+            intro={t("signedOutIntro")}
             emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
             onAuthed={() => {}}
           />
@@ -98,7 +100,7 @@ export function NotificationCenter() {
       ) : items.length === 0 ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
-            Nothing yet. When people reply to you, comment on your posts, or follow a venue you own, it&apos;ll show up here.
+            {t("empty")}
           </p>
         </Card>
       ) : (
@@ -148,6 +150,7 @@ function NotificationRow({ n }: { n: Notification }) {
  * links to the center. A quiet crimson dot when there's anything unread.
  */
 export function NotificationBell() {
+  const t = useTranslations("notificationCenter");
   const trpc = useTrpc();
   const session = useSession();
   const [count, setCount] = useState(0);
@@ -170,7 +173,7 @@ export function NotificationBell() {
   return (
     <Link
       href="/notifications"
-      aria-label={count > 0 ? `Notifications (${count} unread)` : "Notifications"}
+      aria-label={t("bellLabel", { count })}
       style={{ position: "relative", display: "inline-grid", placeItems: "center", width: 36, height: 36, borderRadius: 11, background: "var(--paper-2)", color: "var(--ink-2)", textDecoration: "none", fontSize: 16 }}
     >
       <Icon name="bell" size={18} />

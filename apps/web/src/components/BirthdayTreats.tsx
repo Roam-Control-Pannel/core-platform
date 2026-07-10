@@ -7,6 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
@@ -21,6 +22,7 @@ interface Treat {
 }
 
 export function BirthdayTreats() {
+  const t = useTranslations("birthdayTreats");
   const trpc = useTrpc();
   const session = useSession();
   const [treats, setTreats] = useState<Treat[] | null>(null);
@@ -48,7 +50,7 @@ export function BirthdayTreats() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "var(--space-3)" }}>
         <Icon name="cake" size={20} style={{ color: "var(--crimson)" }} />
         <div className="t-h4" style={{ fontFamily: "var(--display)", fontWeight: 600, color: "var(--ink)" }}>
-          Happy birthday! Treats for you
+          {t("title")}
         </div>
       </div>
       <div style={{ display: "grid", gap: "var(--space-2)" }}>
@@ -59,6 +61,7 @@ export function BirthdayTreats() {
 }
 
 function TreatRow({ treat, onRedeemed }: { treat: Treat; onRedeemed: () => void }) {
+  const t = useTranslations("birthdayTreats");
   const trpc = useTrpc();
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState<string | null>(treat.redeemed ? treat.code : null);
@@ -81,19 +84,19 @@ function TreatRow({ treat, onRedeemed }: { treat: Treat; onRedeemed: () => void 
     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "10px 12px", borderRadius: "var(--r-md)", border: "1px solid var(--line)", background: "var(--paper-2)" }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontFamily: "var(--ui)", fontWeight: 600, fontSize: 14, color: "var(--ink)" }}>
-          {treat.title?.trim() || "A birthday treat"}
+          {treat.title?.trim() || t("fallbackTitle")}
         </div>
         <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 1 }}>
-          {treat.venueName ?? "A place you follow"}
-          {treat.expiresAt ? ` · until ${formatDate(treat.expiresAt)}` : ""}
+          {treat.venueName ?? t("fallbackVenue")}
+          {treat.expiresAt ? ` · ${t("untilDate", { date: formatDate(treat.expiresAt) })}` : ""}
         </div>
       </div>
       {redeemed ? (
         <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13, color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 8, padding: "6px 10px", whiteSpace: "nowrap" }}>
-          {code ?? "Redeemed"}
+          {code ?? t("redeemed")}
         </span>
       ) : (
-        <Button variant="pri" size="sm" onClick={() => void redeem()} disabled={busy}>{busy ? "…" : "Redeem"}</Button>
+        <Button variant="pri" size="sm" onClick={() => void redeem()} disabled={busy}>{busy ? "…" : t("redeem")}</Button>
       )}
     </div>
   );

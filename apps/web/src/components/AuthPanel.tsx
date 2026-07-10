@@ -22,6 +22,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card } from "@roam/design";
 import { getSupabaseBrowser } from "../lib/supabase";
 
@@ -55,6 +56,7 @@ export interface AuthPanelProps {
 }
 
 export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) {
+  const t = useTranslations("auth");
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,11 +72,11 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
-      setError("Enter your email and a password.");
+      setError(t("errors.enterEmailPassword"));
       return;
     }
     if (mode === "signup" && password.length < 8) {
-      setError("Use a password of at least 8 characters.");
+      setError(t("errors.passwordMin"));
       return;
     }
 
@@ -87,7 +89,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           password,
         });
         if (e) {
-          setError(friendlyAuthError(e.message));
+          setError(friendlyAuthError(t, e.message));
           return;
         }
         if (data.session) {
@@ -95,7 +97,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           return;
         }
         // No session and no error is unexpected for sign-in; surface gently.
-        setError("Couldn't sign you in. Please try again.");
+        setError(t("errors.signInFailed"));
       } else {
         const { data, error: e } = await supabase.auth.signUp({
           email: trimmedEmail,
@@ -103,7 +105,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           options: { emailRedirectTo },
         });
         if (e) {
-          setError(friendlyAuthError(e.message));
+          setError(friendlyAuthError(t, e.message));
           return;
         }
         // Email confirmation ON: session is null; user must confirm via email.
@@ -115,7 +117,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
         setConfirmSent(true);
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setBusy(false);
     }
@@ -128,7 +130,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
     setError(null);
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setError("Enter your email and we'll send a reset link.");
+      setError(t("errors.enterEmailForReset"));
       return;
     }
     setBusy(true);
@@ -137,12 +139,12 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
       const redirectTo = `${window.location.origin}/reset-password`;
       const { error: e } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
       if (e) {
-        setError(friendlyAuthError(e.message));
+        setError(friendlyAuthError(t, e.message));
         return;
       }
       setResetSent(true);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("errors.generic"));
     } finally {
       setBusy(false);
     }
@@ -164,12 +166,12 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error: e } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
       if (e) {
-        setError(friendlyAuthError(e.message));
+        setError(friendlyAuthError(t, e.message));
         setBusy(false);
       }
       // Success → browser navigates to the provider; nothing else here runs.
     } catch {
-      setError("Couldn't start sign-in. Please try again.");
+      setError(t("errors.startSignInFailed"));
       setBusy(false);
     }
   }
@@ -188,14 +190,13 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           className="t-h3"
           style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
         >
-          Check your email
+          {t("checkEmail")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
-          If an account exists for <strong>{email.trim()}</strong>, we&apos;ve sent a link to reset
-          your password. Open it to choose a new one.
+          {t.rich("resetSentBody", { email: email.trim(), strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
         <div style={{ marginTop: "var(--space-4)" }}>
-          <LinkButton onClick={backToSignIn}>Back to sign in</LinkButton>
+          <LinkButton onClick={backToSignIn}>{t("backToSignIn")}</LinkButton>
         </div>
       </Card>
     );
@@ -208,19 +209,19 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           className="t-h3"
           style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
         >
-          Reset your password
+          {t("resetTitle")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-          Enter your account email and we&apos;ll send you a link to set a new password.
+          {t("resetBody")}
         </p>
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
           <Field
-            label="Email"
+            label={t("email")}
             type="email"
             value={email}
             onChange={setEmail}
             autoComplete="email"
-            placeholder="you@business.com"
+            placeholder={t("emailPlaceholder")}
           />
           {error ? (
             <div style={{ color: "var(--crimson-700)", fontSize: 13 }} role="alert">
@@ -228,10 +229,10 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
             </div>
           ) : null}
           <Button variant="pri" onClick={sendReset} disabled={busy} block>
-            {busy ? "Please wait…" : "Send reset link"}
+            {busy ? t("pleaseWait") : t("sendResetLink")}
           </Button>
           <div style={{ textAlign: "center" }}>
-            <LinkButton onClick={backToSignIn}>Back to sign in</LinkButton>
+            <LinkButton onClick={backToSignIn}>{t("backToSignIn")}</LinkButton>
           </div>
         </div>
       </Card>
@@ -245,11 +246,10 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
           className="t-h3"
           style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}
         >
-          Check your email
+          {t("checkEmail")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
-          We&apos;ve sent a confirmation link to <strong>{email.trim()}</strong>. Open it to
-          confirm your account — you&apos;ll come straight back here, signed in.
+          {t.rich("confirmSentBody", { email: email.trim(), strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
       </Card>
     );
@@ -278,26 +278,26 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
 
       {/* mode toggle */}
       <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-        <ModeTab label="Sign in" active={mode === "signin"} onClick={() => setMode("signin")} />
-        <ModeTab label="Create account" active={mode === "signup"} onClick={() => setMode("signup")} />
+        <ModeTab label={t("signIn")} active={mode === "signin"} onClick={() => setMode("signin")} />
+        <ModeTab label={t("createAccount")} active={mode === "signup"} onClick={() => setMode("signup")} />
       </div>
 
       <div style={{ display: "grid", gap: "var(--space-3)" }}>
         <Field
-          label="Email"
+          label={t("email")}
           type="email"
           value={email}
           onChange={setEmail}
           autoComplete="email"
-          placeholder="you@business.com"
+          placeholder={t("emailPlaceholder")}
         />
         <Field
-          label="Password"
+          label={t("password")}
           type="password"
           value={password}
           onChange={setPassword}
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          placeholder={mode === "signup" ? "At least 8 characters" : ""}
+          placeholder={mode === "signup" ? t("passwordPlaceholder") : ""}
         />
 
         {error ? (
@@ -308,10 +308,10 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
 
         <Button variant="pri" onClick={submit} disabled={busy} block>
           {busy
-            ? "Please wait…"
+            ? t("pleaseWait")
             : mode === "signin"
-              ? "Sign in"
-              : "Create account"}
+              ? t("signIn")
+              : t("createAccount")}
         </Button>
 
         {mode === "signin" ? (
@@ -322,7 +322,7 @@ export function AuthPanel({ emailRedirectTo, onAuthed, intro }: AuthPanelProps) 
                 setError(null);
               }}
             >
-              Forgot your password?
+              {t("forgotPassword")}
             </LinkButton>
           </div>
         ) : null}
@@ -341,6 +341,7 @@ function SsoButton({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const t = useTranslations("auth");
   return (
     <button
       type="button"
@@ -368,17 +369,18 @@ function SsoButton({
       }}
     >
       {provider.id === "google" ? <GoogleMark /> : <AppleMark />}
-      <span>Continue with {provider.label}</span>
+      <span>{t("continueWith", { provider: provider.label })}</span>
     </button>
   );
 }
 
 /** A horizontal "or" divider between the SSO buttons and the email form. */
 function OrDivider() {
+  const t = useTranslations("auth");
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
       <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
-      <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--muted)" }}>or</span>
+      <span style={{ fontFamily: "var(--ui)", fontSize: 11, color: "var(--muted)" }}>{t("or")}</span>
       <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
     </div>
   );
@@ -502,15 +504,15 @@ function Field({
   );
 }
 
-/** Map Supabase's auth error strings to friendlier copy without leaking internals. */
-function friendlyAuthError(message: string): string {
+/** Map Supabase's auth error strings to friendlier catalogue copy without leaking internals. */
+function friendlyAuthError(t: ReturnType<typeof useTranslations>, message: string): string {
   const m = message.toLowerCase();
-  if (m.includes("invalid login")) return "That email or password doesn't match.";
+  if (m.includes("invalid login")) return t("errors.invalidLogin");
   if (m.includes("already registered") || m.includes("already been registered")) {
-    return "That email already has an account — try signing in instead.";
+    return t("errors.alreadyRegistered");
   }
   if (m.includes("rate limit") || m.includes("too many")) {
-    return "Too many attempts. Please wait a moment and try again.";
+    return t("errors.rateLimit");
   }
-  return "Couldn't complete that. Please check your details and try again.";
+  return t("errors.fallback");
 }
