@@ -26,6 +26,7 @@ import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { UserSearch, PersonAvatar, personName, type SearchedPerson } from "./UserSearch";
+import { ThreadAvatar } from "./ThreadAvatar";
 import { getFormatLocale } from "../lib/i18n/runtime";
 
 type ThreadKind = "plan" | "group" | "direct";
@@ -44,6 +45,8 @@ interface ThreadRow {
   kind: ThreadKind;
   title: string | null;
   name: string | null;
+  imageUrl: string | null;
+  memberAvatars: string[];
   updatedAt: string;
   participantCount: number;
   lastMessage: LastMessage | null;
@@ -312,23 +315,13 @@ function ThreadRowCard({ thread, myId, active, first }: { thread: ThreadRow; myI
         borderTop: first ? "none" : "1px solid var(--line)",
       }}
     >
-      <span
-        aria-hidden
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: "50%",
-          flexShrink: 0,
-          display: "grid",
-          placeItems: "center",
-          background: thread.kind === "plan" ? "var(--crimson-tint-2)" : "var(--paper-2)",
-          color: thread.kind === "plan" ? "var(--crimson-700)" : "var(--ink-2)",
-          fontSize: 16,
-          fontWeight: 700,
-        }}
-      >
-        {thread.kind === "plan" ? <Icon name="plan" size={18} /> : name.charAt(0).toUpperCase() || "·"}
-      </span>
+      <ThreadAvatar
+        kind={thread.kind}
+        name={name}
+        size={42}
+        imageUrl={thread.imageUrl}
+        memberAvatars={thread.memberAvatars}
+      />
       <span style={{ minWidth: 0, flex: 1 }}>
         <span style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
           <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink-hi)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

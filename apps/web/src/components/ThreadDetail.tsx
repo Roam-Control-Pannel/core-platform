@@ -23,6 +23,9 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
 import { MessageCard } from "./ChatCards";
 import { ChatShareMenu } from "./ChatShareMenu";
+import { ThreadAvatar } from "./ThreadAvatar";
+import { ImageCropper } from "./ImageCropper";
+import { uploadChatImage } from "../lib/uploadChatImage";
 import type { MessageKind } from "../lib/chatKinds";
 import { useThreadRealtime } from "../lib/useThreadRealtime";
 import { getFormatLocale } from "../lib/i18n/runtime";
@@ -42,9 +45,22 @@ interface ThreadData {
   isGroup: boolean;
   planId: string | null;
   title: string | null;
+  imagePath: string | null;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   participants: Participant[];
+}
+
+/** Kind + up-to-4 member avatars for a thread's ThreadAvatar (self ordered last). */
+function threadIconProps(thread: ThreadData, myId: string | null): { kind: "plan" | "group" | "direct"; memberAvatars: string[] } {
+  const kind = thread.planId ? "plan" : thread.isGroup ? "group" : "direct";
+  const ordered =
+    kind === "direct"
+      ? thread.participants.filter((p) => p.profileId !== myId)
+      : [...thread.participants].sort((a, b) => (a.profileId === myId ? 1 : 0) - (b.profileId === myId ? 1 : 0));
+  const memberAvatars = ordered.map((p) => p.avatarUrl).filter((u): u is string => !!u).slice(0, 4);
+  return { kind, memberAvatars };
 }
 
 interface Friend {
@@ -179,7 +195,7 @@ function ConversationView({
       </Link>
 
       <button type="button" className={styles.headerBtn} onClick={onOpenInfo} aria-label={t("openChatInfo")}>
-        <ChatAvatar label={threadHeading(t, thread, myId)} />
+        <ThreadAvatar name={threadHeading(t, thread, myId)} size={44} imageUrl={thread.imageUrl} {...threadIconProps(thread, myId)} />
         <span style={{ display: "grid", gap: 1, minWidth: 0, flex: 1 }}>
           <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
             <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -239,6 +255,107 @@ function MeetupBar({ threadId, onOpen }: { threadId: string; onOpen: () => void 
       <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 2, opacity: 0.85 }}>{t("meetupBar.open")} <Icon name="chevronRight" size={13} /></span>
     </button>
+  );
+}
+
+/* ------------------------------------------------------------------ group photo */
+
+/**
+ * The thread icon in Chat Info. For a free-standing GROUP chat it's tappable: pick → crop
+ * (round, avatar) → upload to chat-media → chat.setThreadImage. A photo can be removed to fall
+ * back to the member-avatar composite. Plan chats and DMs render a plain, non-editable icon.
+ */
+function GroupPhoto({ thread, myId, onChanged }: { thread: ThreadData; myId: string | null; onChanged: () => void }) {
+  const t = useTranslations("threadDetail");
+  const trpc = useTrpc();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [pending, setPending] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const editable = thread.isGroup && !thread.planId;
+  const icon = <ThreadAvatar name={threadHeading(t, thread, myId)} size={56} imageUrl={thread.imageUrl} {...threadIconProps(thread, myId)} />;
+
+  const upload = useCallback(
+    async (cropped: File) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const { path } = await uploadChatImage(thread.id, cropped);
+        await trpc.chat.setThreadImage.mutate({ threadId: thread.id, imagePath: path });
+        onChanged();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : t("photo.failed"));
+      } finally {
+        setBusy(false);
+        setPending(null);
+      }
+    },
+    [trpc, thread.id, onChanged, t],
+  );
+
+  const remove = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await trpc.chat.setThreadImage.mutate({ threadId: thread.id, imagePath: null });
+      onChanged();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : t("photo.failed"));
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, thread.id, onChanged, t]);
+
+  if (!editable) return icon;
+
+  return (
+    <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        aria-label={thread.imageUrl ? t("photo.change") : t("photo.add")}
+        style={{ all: "unset", cursor: busy ? "default" : "pointer", position: "relative", lineHeight: 0 }}
+      >
+        {icon}
+        <span
+          aria-hidden
+          style={{ position: "absolute", right: -2, bottom: -2, width: 20, height: 20, borderRadius: "50%", background: "var(--crimson-700)", color: "#fff", display: "grid", placeItems: "center", border: "2px solid var(--card)" }}
+        >
+          <Icon name="camera" size={11} />
+        </span>
+      </button>
+      <div style={{ display: "flex", gap: 8, fontSize: 11.5 }}>
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} style={{ all: "unset", cursor: busy ? "default" : "pointer", color: "var(--crimson-700)", fontWeight: 600 }}>
+          {busy ? t("photo.saving") : thread.imageUrl ? t("photo.change") : t("photo.add")}
+        </button>
+        {thread.imageUrl && !busy ? (
+          <button type="button" onClick={() => void remove()} style={{ all: "unset", cursor: "pointer", color: "var(--muted)" }}>
+            {t("photo.remove")}
+          </button>
+        ) : null}
+      </div>
+      {error ? <div style={{ fontSize: 11, color: "var(--crimson-700)", maxWidth: 160, textAlign: "center" }}>{error}</div> : null}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) setPending(f);
+        }}
+      />
+      {pending ? (
+        <ImageCropper
+          file={pending}
+          spec={{ aspect: 1, outputWidth: 800, round: true, title: t("photo.cropTitle") }}
+          onCancel={() => setPending(null)}
+          onCropped={(f) => void upload(f)}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -302,7 +419,7 @@ function ChatInfoView({
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
-        <ChatAvatar label={threadHeading(t, thread, myId)} size={44} />
+        <GroupPhoto thread={thread} myId={myId} onChanged={onChanged} />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
             <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, margin: 0 }}>
@@ -886,25 +1003,6 @@ function MessagesSkeleton() {
 }
 
 /* ------------------------------------------------------------------ shared bits */
-
-/** Round monogram avatar for a chat (group or DM), from the heading's first letter. */
-function ChatAvatar({ label, size = 38 }: { label: string; size?: number }) {
-  const initial = (label.replace(/^@/, "").charAt(0) || "?").toUpperCase();
-  return (
-    <div style={{ flex: "0 0 auto" }}>
-      <AvatarStack size={size}>
-        {[
-          <div
-            key="a"
-            style={{ width: "100%", height: "100%", background: "var(--crimson-tint)", display: "grid", placeItems: "center", color: "var(--crimson-700)", fontFamily: "var(--ui)", fontWeight: 600, fontSize: size <= 40 ? 15 : 18 }}
-          >
-            {initial}
-          </div>,
-        ]}
-      </AvatarStack>
-    </div>
-  );
-}
 
 function ParticipantRow({ participant }: { participant: Participant }) {
   const t = useTranslations("threadDetail");

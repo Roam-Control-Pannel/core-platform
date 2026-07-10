@@ -29,18 +29,23 @@ import {
 
 type Messages = typeof en;
 
-/** Locale → catalogue loader. Dynamic imports: a user only downloads the language they use. */
+/**
+ * Locale → catalogue loader. Dynamic imports: a user only downloads the language they use.
+ * The cast goes through `unknown` because a translated catalogue is legitimately a PARTIAL of
+ * the English shape — any key added to en.json before its translations catch up is simply
+ * absent here, and deepMerge() below fills it from English at load time.
+ */
 const CATALOGUES: Partial<Record<Locale, () => Promise<{ default: Messages }>>> = {
-  cy: () => import("../../../messages/cy.json") as Promise<{ default: Messages }>,
-  de: () => import("../../../messages/de.json") as Promise<{ default: Messages }>,
-  es: () => import("../../../messages/es.json") as Promise<{ default: Messages }>,
-  fr: () => import("../../../messages/fr.json") as Promise<{ default: Messages }>,
-  it: () => import("../../../messages/it.json") as Promise<{ default: Messages }>,
-  pl: () => import("../../../messages/pl.json") as Promise<{ default: Messages }>,
-  ro: () => import("../../../messages/ro.json") as Promise<{ default: Messages }>,
-  bn: () => import("../../../messages/bn.json") as Promise<{ default: Messages }>,
-  gu: () => import("../../../messages/gu.json") as Promise<{ default: Messages }>,
-  pa: () => import("../../../messages/pa.json") as Promise<{ default: Messages }>,
+  cy: () => import("../../../messages/cy.json") as unknown as Promise<{ default: Messages }>,
+  de: () => import("../../../messages/de.json") as unknown as Promise<{ default: Messages }>,
+  es: () => import("../../../messages/es.json") as unknown as Promise<{ default: Messages }>,
+  fr: () => import("../../../messages/fr.json") as unknown as Promise<{ default: Messages }>,
+  it: () => import("../../../messages/it.json") as unknown as Promise<{ default: Messages }>,
+  pl: () => import("../../../messages/pl.json") as unknown as Promise<{ default: Messages }>,
+  ro: () => import("../../../messages/ro.json") as unknown as Promise<{ default: Messages }>,
+  bn: () => import("../../../messages/bn.json") as unknown as Promise<{ default: Messages }>,
+  gu: () => import("../../../messages/gu.json") as unknown as Promise<{ default: Messages }>,
+  pa: () => import("../../../messages/pa.json") as unknown as Promise<{ default: Messages }>,
 };
 
 interface LocaleSetting {

@@ -39,6 +39,36 @@ import type { RoamClient } from "@roam/db";
 import { messaging } from "@roam/core";
 import { router, protectedProcedure } from "../trpc.js";
 
+/** The private bucket group photos + chat images share (migration 0058); RLS is path-scoped. */
+const CHAT_MEDIA_BUCKET = "chat-media";
+
+/**
+ * A widened db surface for the chat_threads.image_path column (migration 0077), which isn't in
+ * the generated DB types until db:types is re-run against prod — the same idiom as the .rpc()
+ * widening above and LooseDb in the other routers. Scoped to the three calls that touch it.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LooseDb = { from: (t: string) => any };
+
+/**
+ * Turn a stored chat-media object path into a short-lived signed URL the browser can render.
+ * Signed server-side under the caller's RLS context (they're a participant of the thread whose
+ * id prefixes the path), so this cannot leak a photo from a chat the caller isn't in. Any
+ * failure degrades to null and the UI falls back to the member-avatar composite.
+ */
+async function signThreadImage(db: RoamClient, path: string | null): Promise<string | null> {
+  if (!path) return null;
+  try {
+    const storage = (db as unknown as {
+      storage: { from: (b: string) => { createSignedUrl: (p: string, s: number) => Promise<{ data: { signedUrl: string } | null }> } };
+    }).storage;
+    const { data } = await storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Shape returned by the `create_thread_with_creator` RPC (migration 0011) — a single
  * chat_threads row. The function isn't in the generated DB types until db:types is
@@ -296,10 +326,10 @@ export const chatRouter = router({
    */
   listThreads: protectedProcedure.query(async ({ ctx }) => {
     const me = await callerId(ctx.db);
-    const { data, error } = await ctx.db
+    const { data, error } = await (ctx.db as unknown as LooseDb)
       .from("chat_threads")
       .select(
-        "id, is_group, plan_id, title, updated_at, chat_participants(profile_id, profiles(display_name, handle, avatar_url))",
+        "id, is_group, plan_id, title, image_path, updated_at, chat_participants(profile_id, profiles(display_name, handle, avatar_url))",
       )
       .order("updated_at", { ascending: false });
     if (error) {
@@ -333,8 +363,22 @@ export const chatRouter = router({
 
     type EmbeddedProfile = { display_name: string | null; handle: string | null; avatar_url: string | null };
     type PartRow = { profile_id: string; profiles?: unknown };
+    // Loose row shape — the select goes through LooseDb (image_path not yet in generated types).
+    type ThreadListRow = {
+      id: string;
+      is_group: boolean;
+      plan_id: string | null;
+      title: string | null;
+      image_path: string | null;
+      updated_at: string;
+      chat_participants?: unknown;
+    };
+    const profOf = (p: PartRow | undefined): EmbeddedProfile | null => {
+      const raw = (p as { profiles?: unknown } | undefined)?.profiles;
+      return Array.isArray(raw) ? ((raw[0] as EmbeddedProfile | undefined) ?? null) : ((raw as EmbeddedProfile | null) ?? null);
+    };
 
-    const rows = (data ?? []).map((t) => {
+    const rows = ((data ?? []) as ThreadListRow[]).map((t) => {
       const raw = (t as { chat_participants?: unknown }).chat_participants;
       const parts: PartRow[] = Array.isArray(raw) ? (raw as PartRow[]) : raw ? [raw as PartRow] : [];
 
@@ -344,12 +388,21 @@ export const chatRouter = router({
       let name = t.title?.trim() || null;
       if (kind === "direct") {
         const other = parts.find((p) => p.profile_id !== me) ?? parts[0];
-        const rawProf = (other as { profiles?: unknown } | undefined)?.profiles;
-        const prof: EmbeddedProfile | null = Array.isArray(rawProf)
-          ? ((rawProf[0] as EmbeddedProfile | undefined) ?? null)
-          : ((rawProf as EmbeddedProfile | null) ?? null);
+        const prof = profOf(other);
         name = prof?.display_name?.trim() || (prof?.handle ? `@${prof.handle}` : null);
       }
+
+      // Icon fallbacks for the client's ThreadAvatar: a group/plan without a custom photo shows a
+      // composite of member faces (self last so others lead); a DM shows the other person's avatar.
+      const memberAvatars: string[] =
+        kind === "direct"
+          ? [profOf(parts.find((p) => p.profile_id !== me) ?? parts[0])?.avatar_url].filter((u): u is string => !!u)
+          : parts
+              .slice()
+              .sort((a, b) => (a.profile_id === me ? 1 : 0) - (b.profile_id === me ? 1 : 0))
+              .map((p) => profOf(p)?.avatar_url)
+              .filter((u): u is string => !!u)
+              .slice(0, 4);
 
       const meta = metaById.get(t.id) ?? null;
       const lastMessage = meta && meta.last_created_at
@@ -368,6 +421,8 @@ export const chatRouter = router({
         kind,
         title: t.title,
         name,
+        imagePath: (t as { image_path?: string | null }).image_path ?? null,
+        memberAvatars,
         updatedAt: t.updated_at,
         participantCount: parts.length,
         lastMessage,
@@ -375,9 +430,14 @@ export const chatRouter = router({
       };
     });
 
+    // Sign the custom group photos (only the threads that have one) into short-lived URLs.
+    const withImages = await Promise.all(
+      rows.map(async (r) => ({ ...r, imageUrl: await signThreadImage(ctx.db, r.imagePath) })),
+    );
+
     // Order the inbox by REAL activity (newest message first), falling back to the thread's
     // updated_at when it has no messages yet — so a thread jumps to the top when someone posts.
-    return rows.sort((a, b) => {
+    return withImages.sort((a, b) => {
       const at = new Date(a.lastMessage?.createdAt ?? a.updatedAt).getTime();
       const bt = new Date(b.lastMessage?.createdAt ?? b.updatedAt).getTime();
       return bt - at;
@@ -417,9 +477,9 @@ export const chatRouter = router({
   getThread: protectedProcedure
     .input(z.object({ threadId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const { data: thread, error: threadErr } = await ctx.db
+      const { data: thread, error: threadErr } = await (ctx.db as unknown as LooseDb)
         .from("chat_threads")
-        .select("id, is_group, plan_id, title, created_at, updated_at")
+        .select("id, is_group, plan_id, title, image_path, created_at, updated_at")
         .eq("id", input.threadId)
         .maybeSingle();
       if (threadErr) {
@@ -471,6 +531,8 @@ export const chatRouter = router({
         isGroup: thread.is_group,
         planId: thread.plan_id,
         title: thread.title,
+        imagePath: (thread as { image_path?: string | null }).image_path ?? null,
+        imageUrl: await signThreadImage(ctx.db, (thread as { image_path?: string | null }).image_path ?? null),
         createdAt: thread.created_at,
         updatedAt: thread.updated_at,
         participants,
@@ -697,6 +759,48 @@ export const chatRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to rename chat: ${error?.message ?? "no row"}` });
       }
       return { id: data.id, title: data.title };
+    }),
+
+  /**
+   * Set (or clear) a GROUP thread's custom photo. `imagePath` is an already-uploaded object in
+   * the chat-media bucket (the client uploads via lib/uploadChatImage, whose storage RLS proves
+   * the caller is a participant), or null to remove the photo and fall back to the member-avatar
+   * composite. Group-only, mirroring renameThread; RLS (chat_threads_update) enforces membership.
+   * The path must be scoped to this thread (first segment = threadId) so a caller can't point the
+   * thread at another chat's media.
+   */
+  setThreadImage: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid(), imagePath: z.string().max(400).nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await callerId(ctx.db);
+      if (input.imagePath && !input.imagePath.startsWith(`${input.threadId}/`)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That image does not belong to this chat." });
+      }
+      const { data: thread, error: loadErr } = await ctx.db
+        .from("chat_threads")
+        .select("id, is_group, plan_id")
+        .eq("id", input.threadId)
+        .maybeSingle();
+      if (loadErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load thread: ${loadErr.message}` });
+      }
+      if (!thread) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Chat not found, or you do not have access to it." });
+      }
+      if (!thread.is_group || thread.plan_id) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: thread.plan_id ? "A plan chat shows its plan's image." : "Only group chats can have a photo.",
+        });
+      }
+      const { error } = await (ctx.db as unknown as LooseDb)
+        .from("chat_threads")
+        .update({ image_path: input.imagePath })
+        .eq("id", input.threadId);
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to set chat photo: ${error.message}` });
+      }
+      return { ok: true as const, imageUrl: await signThreadImage(ctx.db, input.imagePath) };
     }),
 
   /**
