@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TrpcProvider } from "../components/TrpcProvider";
+import { LocaleProvider } from "../lib/i18n/LocaleProvider";
 import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
@@ -73,18 +74,24 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // lang="en" is the SERVER truth — the server always renders English (client-first i18n; see
+  // lib/i18n/runtime.ts). LocaleProvider updates the attribute client-side when a user has
+  // picked another language. Deliberately NO cookie read here: that would force every route
+  // dynamic and foreclose static caching, for chrome that is client-rendered anyway.
   return (
     <html lang="en">
       <body>
-        <TrpcProvider>
-          <TopBar />
-          {children}
-          <CreateFab />
-          <TabBar />
-          <FirstRunProfilePrompt />
-          {/* Headless: syncs saved/current place to the account (cross-device). */}
-          <PlacePrefsSync />
-        </TrpcProvider>
+        <LocaleProvider>
+          <TrpcProvider>
+            <TopBar />
+            {children}
+            <CreateFab />
+            <TabBar />
+            <FirstRunProfilePrompt />
+            {/* Headless: syncs saved/current place to the account (cross-device). */}
+            <PlacePrefsSync />
+          </TrpcProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

@@ -17,6 +17,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSession } from "./TrpcProvider";
 import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
@@ -42,6 +43,7 @@ function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" 
 }
 
 export function TopBar() {
+  const t = useTranslations("chrome");
   const session = useSession();
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
@@ -49,35 +51,36 @@ export function TopBar() {
 
   return (
     <header className={styles.bar}>
-      <Link href="/" className={styles.brand} aria-label="Roam home">
+      {/* translate="no": the brand name is never machine-translated. */}
+      <Link href="/" className={styles.brand} aria-label={t("brandHome")} translate="no">
         {/* eslint-disable-next-line @next/next/no-img-element -- static brand lockup; next/image is overkill in the chrome */}
         <img src="/roam-logo.png" alt="Roam" className={styles.logo} />
       </Link>
 
-      <nav className={styles.nav} aria-label="Primary">
+      <nav className={styles.nav} aria-label={t("primaryNav")}>
         <Link href="/" className={`${styles.link} ${active === "home" ? styles.active : ""}`}>
-          Home
+          {t("nav.home")}
         </Link>
         <Link href="/explore" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
-          Explore
+          {t("nav.explore")}
         </Link>
         <Link href="/town-hall" className={`${styles.link} ${active === "townhall" ? styles.active : ""}`}>
-          Town Hall
+          {t("nav.townHall")}
         </Link>
         <Link href="/plans" className={`${styles.link} ${active === "plans" ? styles.active : ""}`}>
-          Plans
+          {t("nav.plans")}
         </Link>
         <Link
           href="/threads"
           className={`${styles.link} ${active === "chat" ? styles.active : ""}`}
         >
-          Chat
+          {t("nav.chat")}
         </Link>
         <Link
           href="/account"
           className={`${styles.link} ${active === "you" ? styles.active : ""}`}
         >
-          You
+          {t("nav.you")}
         </Link>
       </nav>
 
@@ -85,29 +88,29 @@ export function TopBar() {
 
       <div className={styles.actions}>
         <Link href="/business" className={styles.forbiz}>
-          For businesses
+          {t("forBusinesses")}
         </Link>
-        <Link href="/plans" className={styles.create} aria-label="Create">
-          <Icon name="edit" size={14} /> <span className={styles.actionLabel}>Create</span>
+        <Link href="/plans" className={styles.create} aria-label={t("create")}>
+          <Icon name="edit" size={14} /> <span className={styles.actionLabel}>{t("create")}</span>
         </Link>
-        <Link href="/market" className={styles.sell} aria-label="Sell on Roam">
-          ＋ <span className={styles.actionLabel}>Sell</span>
+        <Link href="/market" className={styles.sell} aria-label={t("sellOnRoam")}>
+          ＋ <span className={styles.actionLabel}>{t("sell")}</span>
         </Link>
         {session ? (
-          <Link href="/orders" className={styles.iconBtn} aria-label="Your orders">
+          <Link href="/orders" className={styles.iconBtn} aria-label={t("yourOrders")}>
             <Icon name="bag" size={17} />
           </Link>
         ) : null}
         {session ? <NotificationBell /> : null}
         {session ? (
-          <Link href="/account" className={styles.avatar} aria-label="Your account">
+          <Link href="/account" className={styles.avatar} aria-label={t("yourAccount")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6z" />
             </svg>
           </Link>
         ) : (
           <button className={styles.signin} onClick={() => setAuthOpen(true)}>
-            Sign in
+            {t("signIn")}
           </button>
         )}
       </div>
@@ -116,7 +119,7 @@ export function TopBar() {
         open={authOpen}
         onClose={() => setAuthOpen(false)}
         emailRedirectTo={typeof window !== "undefined" ? window.location.origin + "/" : ""}
-        intro="Sign in to follow venues and manage notifications."
+        intro={t("signInIntro")}
       />
     </header>
   );

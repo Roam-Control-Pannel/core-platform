@@ -13,11 +13,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card } from "@roam/design";
 import { useSession, useTrpc } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { BirthdaySettings } from "./BirthdaySettings";
 import { getSupabaseBrowser } from "../lib/supabase";
+import { useLocaleSetting } from "../lib/i18n/LocaleProvider";
+import type { Locale } from "../lib/i18n/runtime";
 
 const APP_VERSION = "1.0.0";
 const SUPPORT_EMAIL = "support@roam-local.com";
@@ -126,6 +129,8 @@ export function SettingsHub() {
         </>
       ) : null}
 
+      <LanguageGroup />
+
       <Group title="Legal">
         <LinkRow href="/legal/terms" label="Terms of Service" />
         <LinkRow href="/legal/privacy" label="Privacy Policy" />
@@ -230,6 +235,64 @@ export function SettingsHub() {
         <DeleteAccountModal onClose={() => setShowDelete(false)} onConfirm={deleteAccount} />
       ) : null}
     </main>
+  );
+}
+
+/* ── language ────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The app-language picker (renders for everyone, like Legal — no account needed). Writes the
+ * preference cookie and swaps the catalogue live via LocaleProvider. Community content is NOT
+ * translated by this — the hint says so and points at the browser's own translation.
+ */
+function LanguageGroup() {
+  const t = useTranslations("settings.language");
+  const { locale, setLocale, options } = useLocaleSetting();
+  return (
+    <Group title={t("title")}>
+      <div style={rowInner}>
+        <label
+          htmlFor="app-language"
+          style={{ fontFamily: "var(--ui)", fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}
+        >
+          {t("label")}
+        </label>
+        <select
+          id="app-language"
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as Locale)}
+          style={{
+            fontFamily: "var(--ui)",
+            fontSize: 13.5,
+            color: "var(--ink-2)",
+            background: "var(--paper)",
+            border: "1px solid var(--line-2)",
+            borderRadius: 10,
+            padding: "8px 10px",
+            maxWidth: 200,
+          }}
+        >
+          {options.map((o) => (
+            // Language names are endonyms ("Polski", "Cymraeg") — never translated.
+            <option key={o.code} value={o.code} translate="no">
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <p
+        style={{
+          margin: 0,
+          padding: "10px var(--space-4) 14px",
+          borderTop: "1px solid var(--line)",
+          fontSize: 12.5,
+          color: "var(--muted)",
+          lineHeight: 1.5,
+        }}
+      >
+        {t("hint")}
+      </p>
+    </Group>
   );
 }
 

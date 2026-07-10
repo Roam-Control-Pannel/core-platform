@@ -15,6 +15,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { AuthPanel } from "./AuthPanel";
 
@@ -29,6 +30,7 @@ export function AuthModal({
   emailRedirectTo: string;
   intro?: string;
 }) {
+  const t = useTranslations("chrome");
   const cardRef = useRef<HTMLDivElement>(null);
 
   // Escape-to-close + body-scroll lock while open. Both unwind on close/unmount.
@@ -58,7 +60,7 @@ export function AuthModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Sign in"
+      aria-label={t("signIn")}
       onClick={onClose}
       style={{
         position: "fixed",
@@ -82,7 +84,7 @@ export function AuthModal({
       >
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("close")}
           style={{
             all: "unset",
             cursor: "pointer",
