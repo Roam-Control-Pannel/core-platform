@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Icon} from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -23,6 +24,7 @@ interface MyVenue {
 type MyVenuesQuery = { query: () => Promise<MyVenue[]> };
 
 export function BusinessDashboard() {
+  const t = useTranslations("businessDashboard");
   const trpc = useTrpc();
   const session = useSession();
   const [venues, setVenues] = useState<MyVenue[] | null>(null);
@@ -39,7 +41,7 @@ export function BusinessDashboard() {
         if (!cancelled) setVenues(rows ?? []);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load your venues.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -58,17 +60,17 @@ export function BusinessDashboard() {
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-2) 0 var(--space-4)" }}>
         <Link href="/account" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}>
-          <span aria-hidden>←</span> Account
+          <span aria-hidden>←</span> {t("back")}
         </Link>
         <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
-          Business
+          {t("title")}
         </h1>
         <span style={{ width: 1 }} />
       </header>
 
       {!userId ? (
         <AuthPanel
-          intro="Sign in to manage the venues you've claimed."
+          intro={t("signedOutIntro")}
           emailRedirectTo={returnUrl()}
           onAuthed={() => {}}
         />
@@ -102,6 +104,7 @@ export function BusinessDashboard() {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("businessDashboard");
   const claimed = status === "claimed";
   return (
     <span
@@ -118,7 +121,7 @@ function StatusBadge({ status }: { status: string }) {
         background: claimed ? "var(--crimson-tint)" : "var(--paper-2)",
       }}
     >
-      {claimed ? "Claimed" : status.replace(/_/g, " ")}
+      {claimed ? t("statusClaimed") : status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -134,6 +137,7 @@ function Skeleton() {
 }
 
 function EmptyState() {
+  const t = useTranslations("businessDashboard");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", maxWidth: 440, margin: "0 auto" }}>
       <div
@@ -143,15 +147,16 @@ function EmptyState() {
         <Icon name="place" size={26} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        No claimed venues yet
+        {t("empty.title")}
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Find your business in <Link href="/explore" style={{ color: "var(--crimson-700)" }}>Explore</Link>, open its page and tap
-        “Claim it free”. Once it’s approved it shows up here, ready to edit.
+        {t.rich("empty.body", {
+          link: (chunks) => <Link href="/explore" style={{ color: "var(--crimson-700)" }}>{chunks}</Link>,
+        })}
       </p>
       <p style={{ marginTop: "var(--space-3)" }}>
         <Link href="/business" style={{ color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none" }}>
-          How claiming works →
+          {t("empty.howItWorks")}
         </Link>
       </p>
     </div>

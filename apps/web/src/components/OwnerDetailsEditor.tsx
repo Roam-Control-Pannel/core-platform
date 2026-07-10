@@ -26,6 +26,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -78,6 +79,7 @@ export function OwnerDetailsEditor({
   initialLinks: Record<string, unknown> | null;
   onSaved: () => Promise<unknown> | void;
 }) {
+  const t = useTranslations("ownerDetailsEditor");
   const trpc = useTrpc();
 
   // Seed form state once from the venue the page already holds. After a save we call
@@ -97,15 +99,15 @@ export function OwnerDetailsEditor({
     const label = d.label.trim();
     const url = d.url.trim();
     if (label.length === 0 && url.length === 0) return null; // blank row = will be dropped
-    if (label.length === 0) return "Add a label.";
-    if (url.length === 0) return "Add a URL.";
-    if (label.length > LIMITS.linkLabelMax) return `Label too long (max ${LIMITS.linkLabelMax}).`;
-    if (url.length > LIMITS.linkUrlMax) return `URL too long.`;
+    if (label.length === 0) return t("errors.addLabel");
+    if (url.length === 0) return t("errors.addUrl");
+    if (label.length > LIMITS.linkLabelMax) return t("errors.labelTooLong", { max: LIMITS.linkLabelMax });
+    if (url.length > LIMITS.linkUrlMax) return t("errors.urlTooLong");
     try {
       const p = new URL(url);
-      if (p.protocol !== "http:" && p.protocol !== "https:") return "Use an http(s) link.";
+      if (p.protocol !== "http:" && p.protocol !== "https:") return t("errors.httpOnly");
     } catch {
-      return "That doesn't look like a valid URL.";
+      return t("errors.invalidUrl");
     }
     return null;
   }, []);
@@ -166,13 +168,13 @@ export function OwnerDetailsEditor({
       });
       if (!res.ok) {
         // Zero rows updated => RLS refused (not owner / not claimed). Honest, not phantom.
-        setError("Couldn't save your changes. Please try again.");
+        setError(t("errors.saveFailedRetry"));
         return;
       }
       setSavedTick(true);
       await onSaved(); // the page's loadVenue refetch — public render reads fresh server truth
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setError(e instanceof Error ? e.message : t("errors.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -201,12 +203,12 @@ export function OwnerDetailsEditor({
     <div>
       {/* Description */}
       <div style={{ marginBottom: "var(--space-5)" }}>
-        <div style={labelStyle}>Description</div>
+        <div style={labelStyle}>{t("description")}</div>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
-          placeholder="Tell people what makes this place worth a visit."
+          placeholder={t("descriptionPlaceholder")}
           style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.6 }}
           disabled={busy}
         />
@@ -224,7 +226,7 @@ export function OwnerDetailsEditor({
 
       {/* Links */}
       <div>
-        <div style={labelStyle}>Links</div>
+        <div style={labelStyle}>{t("links")}</div>
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
           {links.map((d) => {
             const issue = linkIssue(d);
@@ -241,22 +243,22 @@ export function OwnerDetailsEditor({
                   <input
                     value={d.label}
                     onChange={(e) => updateLink(d.key, { label: e.target.value })}
-                    placeholder="Label (e.g. Menu)"
+                    placeholder={t("linkLabelPlaceholder")}
                     style={{ ...fieldStyle, flex: "1 1 140px", minWidth: 0 }}
                     disabled={busy}
-                    aria-label="Link label"
+                    aria-label={t("linkLabelAria")}
                   />
                   <input
                     value={d.url}
                     onChange={(e) => updateLink(d.key, { url: e.target.value })}
-                    placeholder="https://…"
+                    placeholder={t("linkUrlPlaceholder")}
                     inputMode="url"
                     style={{ ...fieldStyle, flex: "2 1 220px", minWidth: 0 }}
                     disabled={busy}
-                    aria-label="Link URL"
+                    aria-label={t("linkUrlAria")}
                   />
                   <Button variant="neutral" size="sm" disabled={busy} onClick={() => removeLink(d.key)}>
-                    Remove
+                    {t("remove")}
                   </Button>
                 </div>
                 {issue ? (
@@ -274,11 +276,11 @@ export function OwnerDetailsEditor({
             disabled={busy || links.length >= LIMITS.maxLinks}
             onClick={addLink}
           >
-            + Add a link
+            {t("addLink")}
           </Button>
           {nonBlankLinks.length >= LIMITS.maxLinks ? (
             <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: "var(--space-2)" }}>
-              That&apos;s the maximum of {LIMITS.maxLinks}.
+              {t("maxLinks", { max: LIMITS.maxLinks })}
             </span>
           ) : null}
         </div>
@@ -302,13 +304,13 @@ export function OwnerDetailsEditor({
         }}
       >
         <Button variant="pri" disabled={!canSave} onClick={() => void save()}>
-          {busy ? "Saving…" : "Save details"}
+          {busy ? t("saving") : t("saveDetails")}
         </Button>
         <Button variant="neutral" size="sm" disabled={busy} onClick={reset}>
-          Reset
+          {t("reset")}
         </Button>
         {savedTick && !busy ? (
-          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>Saved.</span>
+          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{t("saved")}</span>
         ) : null}
       </div>
     </div>

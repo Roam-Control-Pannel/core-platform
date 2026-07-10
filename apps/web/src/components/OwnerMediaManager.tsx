@@ -28,6 +28,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Pill } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { getSupabaseBrowser } from "../lib/supabase";
@@ -84,6 +85,7 @@ interface RemoveOwnerPhotoMutation {
 }
 
 export function OwnerMediaManager({ venueId }: { venueId: string }) {
+  const t = useTranslations("ownerMediaManager");
   const trpc = useTrpc();
   const [rows, setRows] = useState<ManagedPhotoRow[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -137,11 +139,11 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
 
       // Client-side guards (Storage re-enforces both at the edge).
       if (!ALLOWED_MIME.includes(file.type as (typeof ALLOWED_MIME)[number])) {
-        setError("Please choose a JPEG, PNG or WebP image.");
+        setError(t("errors.imageType"));
         return;
       }
       if (file.size > MAX_BYTES) {
-        setError("That image is over 10 MB. Please choose a smaller file.");
+        setError(t("errors.imageTooLarge"));
         return;
       }
 
@@ -166,7 +168,7 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
           });
         if (upErr) {
           // RLS refusal, MIME/size rejection, or network — all land here.
-          setError(`Upload failed: ${upErr.message}`);
+          setError(t("errors.uploadFailedWithMessage", { message: upErr.message }));
           return;
         }
 
@@ -182,12 +184,12 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
         if (!result.ok) {
           // Bytes landed but the row write was RLS-refused (shouldn't happen for the
           // owner, but we surface it honestly rather than show a phantom success).
-          setError("Uploaded, but couldn't save the photo. Please try again.");
+          setError(t("errors.uploadedNotSaved"));
           return;
         }
         setRows(await reload());
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Upload failed.");
+        setError(e instanceof Error ? e.message : t("errors.uploadFailed"));
       } finally {
         setBusy(false);
         if (fileRef.current) fileRef.current.value = ""; // allow re-picking the same file
@@ -238,10 +240,10 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
           venueId,
           orderedPhotoIds: reordered.map((r) => r.id),
         });
-        if (!res.ok) setError("Couldn't save the new order. Please try again.");
+        if (!res.ok) setError(t("errors.reorderFailedRetry"));
         setRows(await reload());
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Couldn't reorder.");
+        setError(e instanceof Error ? e.message : t("errors.reorderFailed"));
       } finally {
         setBusy(false);
       }
@@ -257,10 +259,10 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
       try {
         const setCoverMut = trpc.venues.setCover as unknown as SetCoverMutation;
         const res = await setCoverMut.mutate({ venueId, photoId });
-        if (!res.ok) setError("Couldn't set the cover. Please try again.");
+        if (!res.ok) setError(t("errors.setCoverFailedRetry"));
         setRows(await reload());
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Couldn't set cover.");
+        setError(e instanceof Error ? e.message : t("errors.setCoverFailed"));
       } finally {
         setBusy(false);
       }
@@ -276,10 +278,10 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
       try {
         const removeMut = trpc.venues.removeOwnerPhoto as unknown as RemoveOwnerPhotoMutation;
         const res = await removeMut.mutate({ photoId });
-        if (!res.ok) setError("Couldn't remove that photo. Please try again.");
+        if (!res.ok) setError(t("errors.removeFailedRetry"));
         setRows(await reload());
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Couldn't remove.");
+        setError(e instanceof Error ? e.message : t("errors.removeFailed"));
       } finally {
         setBusy(false);
       }
@@ -314,10 +316,10 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
           disabled={busy}
           onClick={() => fileRef.current?.click()}
         >
-          {busy ? "Working…" : "Upload a photo"}
+          {busy ? t("working") : t("uploadPhoto")}
         </Button>
         {ownerRows.length === 0 ? (
-          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>No photos uploaded yet.</span>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{t("noPhotos")}</span>
         ) : null}
       </div>
 
@@ -359,11 +361,10 @@ export function OwnerMediaManager({ venueId }: { venueId: string }) {
               marginBottom: "var(--space-2)",
             }}
           >
-            From public sources ({placesRows.length})
+            {t("fromPublicSources", { count: placesRows.length })}
           </div>
           <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: 0 }}>
-            These come from public listings and can&apos;t be edited here. Upload your own
-            photos above to show them first.
+            {t("publicSourcesNote")}
           </p>
         </div>
       ) : null}
@@ -391,6 +392,7 @@ function OwnerPhotoRow({
   onSetCover: () => void;
   onRemove: () => void;
 }) {
+  const t = useTranslations("ownerMediaManager");
   return (
     <div
       style={{
@@ -410,25 +412,25 @@ function OwnerPhotoRow({
       <div style={{ flex: "1 1 auto", minWidth: 0 }}>
         {row.is_cover ? (
           <Pill variant="ghost-crim" size="sm">
-            Cover
+            {t("row.cover")}
           </Pill>
         ) : (
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>Photo</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("row.photo")}</span>
         )}
       </div>
 
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <Button variant="neutral" size="sm" disabled={busy || isFirst} onClick={onUp} aria-label="Move up">
+        <Button variant="neutral" size="sm" disabled={busy || isFirst} onClick={onUp} aria-label={t("row.moveUp")}>
           ↑
         </Button>
-        <Button variant="neutral" size="sm" disabled={busy || isLast} onClick={onDown} aria-label="Move down">
+        <Button variant="neutral" size="sm" disabled={busy || isLast} onClick={onDown} aria-label={t("row.moveDown")}>
           ↓
         </Button>
         <Button variant="neutral" size="sm" disabled={busy} onClick={onSetCover}>
-          {row.is_cover ? "Unset cover" : "Set cover"}
+          {row.is_cover ? t("row.unsetCover") : t("row.setCover")}
         </Button>
         <Button variant="neutral" size="sm" disabled={busy} onClick={onRemove}>
-          Remove
+          {t("row.remove")}
         </Button>
       </div>
     </div>

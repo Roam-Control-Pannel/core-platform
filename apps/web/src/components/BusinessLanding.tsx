@@ -14,35 +14,22 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button, Card, Icon} from "@roam/design";
 import { useSession } from "./TrpcProvider";
 
-const STEPS: { n: string; title: string; body: string }[] = [
-  {
-    n: "1",
-    title: "Find your venue",
-    body: "It's probably already on Roam, listed from public sources. Search for it in Explore and open its page.",
-  },
-  {
-    n: "2",
-    title: "Claim it free",
-    body: "Tap “Claim it free” on the venue. Sign in (or create an account) — the same account you'd use to explore.",
-  },
-  {
-    n: "3",
-    title: "Verify & manage",
-    body: "We auto-verify when your email matches the business's website; otherwise a quick manual check. Then add photos, hours, a description and links.",
-  },
+/** Step numbers → catalogue key groups (businessLanding.steps.*). */
+const STEPS: { n: string; key: string }[] = [
+  { n: "1", key: "find" },
+  { n: "2", key: "claim" },
+  { n: "3", key: "verify" },
 ];
 
-const PERKS = [
-  "Add and reorder real photos, set your cover image",
-  "Keep your opening hours accurate (live “open now”)",
-  "Write your description and add your links",
-  "Followers get notified when you post (coming soon)",
-];
+/** Catalogue keys for the "once you've claimed" perks (businessLanding.perks.*). */
+const PERK_KEYS = ["photos", "hours", "description", "followers"];
 
 export function BusinessLanding() {
+  const t = useTranslations("businessLanding");
   const session = useSession();
   const signedIn = !!session?.user?.id;
 
@@ -50,7 +37,7 @@ export function BusinessLanding() {
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ padding: "var(--space-2) 0 var(--space-4)" }}>
         <Link href="/explore" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}>
-          <span aria-hidden>←</span> Explore
+          <span aria-hidden>←</span> {t("back")}
         </Link>
       </header>
 
@@ -65,25 +52,24 @@ export function BusinessLanding() {
             color: "var(--crimson-700)",
           }}
         >
-          For businesses
+          {t("kicker")}
         </span>
         <h1
           className="t-h1"
           style={{ fontFamily: "var(--display)", fontWeight: 700, margin: "var(--space-2) 0 var(--space-3)", fontSize: 34, lineHeight: 1.1 }}
         >
-          Run a local business? Claim it on Roam.
+          {t("title")}
         </h1>
         <p style={{ maxWidth: 520, margin: "0 auto", color: "var(--ink-2)", lineHeight: 1.6, fontSize: 16 }}>
-          People discover local places on Roam for free. Claiming your venue lets you keep it
-          accurate — your photos, hours, description and links — and own how you show up.
+          {t("heroBody")}
         </p>
 
         <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", flexWrap: "wrap", marginTop: "var(--space-5)" }}>
           <Link href="/explore" style={{ textDecoration: "none" }}>
-            <Button variant="pri">Find your business</Button>
+            <Button variant="pri">{t("findYourBusiness")}</Button>
           </Link>
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
-            <Button variant="neutral">{signedIn ? "Your dashboard" : "Already claimed? Sign in"}</Button>
+            <Button variant="neutral">{signedIn ? t("yourDashboard") : t("alreadyClaimed")}</Button>
           </Link>
         </div>
       </section>
@@ -91,7 +77,7 @@ export function BusinessLanding() {
       {/* How it works */}
       <section style={{ marginTop: "var(--space-4)" }}>
         <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>
-          How it works
+          {t("howItWorks")}
         </h2>
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
           {STEPS.map((s) => (
@@ -116,8 +102,8 @@ export function BusinessLanding() {
                   {s.n}
                 </span>
                 <div>
-                  <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>{s.title}</div>
-                  <div style={{ marginTop: 2, color: "var(--ink-2)", lineHeight: 1.55, fontSize: 14 }}>{s.body}</div>
+                  <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600 }}>{t(`steps.${s.key}.title`)}</div>
+                  <div style={{ marginTop: 2, color: "var(--ink-2)", lineHeight: 1.55, fontSize: 14 }}>{t(`steps.${s.key}.body`)}</div>
                 </div>
               </div>
             </Card>
@@ -128,27 +114,26 @@ export function BusinessLanding() {
       {/* What you can do */}
       <section style={{ marginTop: "var(--space-6)" }}>
         <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>
-          Once you've claimed
+          {t("onceClaimed")}
         </h2>
         <Card style={{ padding: "var(--space-4)" }}>
           <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: "var(--space-2)" }}>
-            {PERKS.map((p) => (
-              <li key={p} style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start", color: "var(--ink-2)", lineHeight: 1.5 }}>
+            {PERK_KEYS.map((k) => (
+              <li key={k} style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start", color: "var(--ink-2)", lineHeight: 1.5 }}>
                 <Icon name="check" size={15} style={{ color: "var(--crimson-700)" }} />
-                {p}
+                {t(`perks.${k}`)}
               </li>
             ))}
           </ul>
         </Card>
         <p style={{ marginTop: "var(--space-3)", fontSize: 13, color: "var(--muted)", lineHeight: 1.55 }}>
-          Roam lists venues from public sources so locals can find you whether or not you've
-          claimed — claiming is free and just hands you the keys to your page.
+          {t("publicSourcesNote")}
         </p>
       </section>
 
       <div style={{ textAlign: "center", marginTop: "var(--space-8)" }}>
         <Link href="/explore" style={{ textDecoration: "none" }}>
-          <Button variant="pri">Find your business</Button>
+          <Button variant="pri">{t("findYourBusiness")}</Button>
         </Link>
       </div>
     </main>

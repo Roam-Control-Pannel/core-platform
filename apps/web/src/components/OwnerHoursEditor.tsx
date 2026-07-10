@@ -33,12 +33,14 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
-/** Day labels, Monday-first (index 0=Mon … 6=Sun) — matches the server's WEEKDAY_NAMES
- *  and the order Places emits weekdayDescriptions in for this region. */
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+/** Day catalogue keys, Monday-first (index 0=Mon … 6=Sun) — the display order matches the
+ *  server's WEEKDAY_NAMES and the order Places emits weekdayDescriptions in for this region.
+ *  Labels come from the catalogue (ownerHoursEditor.days.*). */
+const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
 /** Mirror of the API caps (packages/api/src/venue-hours.ts VENUE_HOURS_LIMITS). The
  *  friendly first line; the server re-enforces them as the real boundary. */
@@ -115,9 +117,9 @@ function periodsToDrafts(periods: PeriodInput[] | null | undefined): DayDraft[] 
 /** Per-interval client validation (server is the real boundary; this is fast UX).
  *  A closing time earlier than the opening time is a legal overnight interval (e.g. a bar
  *  open 18:00–02:00); only equal times (no duration) are rejected. */
-function intervalIssue(iv: IntervalDraft): string | null {
-  if (!iv.open || !iv.close) return "Add both an opening and closing time.";
-  if (iv.open === iv.close) return "Opening and closing time can't be the same.";
+function intervalIssue(t: ReturnType<typeof useTranslations>, iv: IntervalDraft): string | null {
+  if (!iv.open || !iv.close) return t("errors.addBothTimes");
+  if (iv.open === iv.close) return t("errors.sameTimes");
   return null;
 }
 
@@ -135,6 +137,7 @@ export function OwnerHoursEditor({
   initialPeriods: PeriodInput[] | null | undefined;
   onSaved: () => Promise<unknown> | void;
 }) {
+  const t = useTranslations("ownerHoursEditor");
   const trpc = useTrpc();
 
   const [days, setDays] = useState<DayDraft[]>(() => periodsToDrafts(initialPeriods));
@@ -226,7 +229,7 @@ export function OwnerHoursEditor({
   }, []);
 
   const anyInvalid = useMemo(
-    () => days.some((d) => !d.closed && d.intervals.some((iv) => intervalIssue(iv) !== null)),
+    () => days.some((d) => !d.closed && d.intervals.some((iv) => intervalIssue(t, iv) !== null)),
     [days],
   );
   const canSave = !busy && !anyInvalid;
@@ -246,13 +249,13 @@ export function OwnerHoursEditor({
       const updateVenueHours = trpc.venues.updateVenueHours as unknown as UpdateVenueHoursMutation;
       const res = await updateVenueHours.mutate({ venueId, periods: null, timezone: DEFAULT_TIMEZONE });
       if (!res.ok) {
-        setError("Couldn't clear your hours. Please try again.");
+        setError(t("errors.clearFailedRetry"));
         return;
       }
       setSavedTick(true);
       await onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't clear your hours.");
+      setError(e instanceof Error ? e.message : t("errors.clearFailed"));
     } finally {
       setBusy(false);
     }
@@ -278,13 +281,13 @@ export function OwnerHoursEditor({
       const updateVenueHours = trpc.venues.updateVenueHours as unknown as UpdateVenueHoursMutation;
       const res = await updateVenueHours.mutate({ venueId, periods, timezone: DEFAULT_TIMEZONE });
       if (!res.ok) {
-        setError("Couldn't save your hours. Please try again.");
+        setError(t("errors.saveFailedRetry"));
         return;
       }
       setSavedTick(true);
       await onSaved();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't save your hours.");
+      setError(e instanceof Error ? e.message : t("errors.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -304,7 +307,7 @@ export function OwnerHoursEditor({
     <div>
       <div style={{ marginBottom: "var(--space-4)" }}>
         <Button variant="neutral" size="sm" disabled={busy} onClick={copyMondayToWeekdays}>
-          Copy Monday to Tue–Fri
+          {t("copyMondayToWeekdays")}
         </Button>
       </div>
 
@@ -312,7 +315,7 @@ export function OwnerHoursEditor({
         {days.map((d) => (
           <div key={d.day} style={{ display: "grid", gap: "var(--space-2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
-              <strong style={{ minWidth: 96, color: "var(--ink)" }}>{DAY_NAMES[d.day]}</strong>
+              <strong style={{ minWidth: 96, color: "var(--ink)" }}>{t(`days.${DAY_KEYS[d.day]}`)}</strong>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}>
                 <input
                   type="checkbox"
@@ -320,11 +323,11 @@ export function OwnerHoursEditor({
                   onChange={(e) => toggleClosed(d.day, e.target.checked)}
                   disabled={busy}
                 />
-                Closed
+                {t("closed")}
               </label>
               {d.day > 0 && !d.closed ? (
                 <Button variant="neutral" size="sm" disabled={busy} onClick={() => copyFromPrevious(d.day)}>
-                  Same as {DAY_NAMES[d.day - 1]}
+                  {t("sameAs", { day: t(`days.${DAY_KEYS[d.day - 1]}`) })}
                 </Button>
               ) : null}
             </div>
@@ -332,7 +335,7 @@ export function OwnerHoursEditor({
             {!d.closed ? (
               <div style={{ display: "grid", gap: 6, paddingLeft: 4 }}>
                 {d.intervals.map((iv) => {
-                  const issue = intervalIssue(iv);
+                  const issue = intervalIssue(t, iv);
                   return (
                     <div key={iv.key} style={{ display: "grid", gap: 4 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
@@ -342,16 +345,16 @@ export function OwnerHoursEditor({
                           onChange={(e) => updateInterval(d.day, iv.key, { open: e.target.value })}
                           style={timeInputStyle}
                           disabled={busy}
-                          aria-label={`${DAY_NAMES[d.day]} opening time`}
+                          aria-label={t("openingTimeAria", { day: t(`days.${DAY_KEYS[d.day]}`) })}
                         />
-                        <span style={{ color: "var(--muted)" }}>to</span>
+                        <span style={{ color: "var(--muted)" }}>{t("to")}</span>
                         <input
                           type="time"
                           value={iv.close}
                           onChange={(e) => updateInterval(d.day, iv.key, { close: e.target.value })}
                           style={timeInputStyle}
                           disabled={busy}
-                          aria-label={`${DAY_NAMES[d.day]} closing time`}
+                          aria-label={t("closingTimeAria", { day: t(`days.${DAY_KEYS[d.day]}`) })}
                         />
                         <Button
                           variant="neutral"
@@ -359,13 +362,13 @@ export function OwnerHoursEditor({
                           disabled={busy}
                           onClick={() => removeInterval(d.day, iv.key)}
                         >
-                          Remove
+                          {t("remove")}
                         </Button>
                       </div>
                       {issue ? (
                         <div style={{ fontSize: 12, color: "var(--crimson-700)" }}>{issue}</div>
                       ) : isOvernight(iv) ? (
-                        <div style={{ fontSize: 12, color: "var(--muted)" }}>Closes after midnight (next day).</div>
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("overnightNote")}</div>
                       ) : null}
                     </div>
                   );
@@ -373,7 +376,7 @@ export function OwnerHoursEditor({
                 {d.intervals.length < MAX_INTERVALS_PER_DAY ? (
                   <div>
                     <Button variant="neutral" size="sm" disabled={busy} onClick={() => addInterval(d.day)}>
-                      + Add a break
+                      {t("addBreak")}
                     </Button>
                   </div>
                 ) : null}
@@ -391,15 +394,15 @@ export function OwnerHoursEditor({
 
       <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center", marginTop: "var(--space-5)" }}>
         <Button variant="pri" disabled={!canSave} onClick={() => void save()}>
-          {busy ? "Saving…" : "Save hours"}
+          {busy ? t("saving") : t("saveHours")}
         </Button>
         <Button variant="neutral" size="sm" disabled={busy} onClick={reset}>
-          Reset
+          {t("reset")}
         </Button>
         <Button variant="neutral" size="sm" disabled={busy} onClick={() => void clearAll()}>
-          Clear all
+          {t("clearAll")}
         </Button>
-        {savedTick && !busy ? <span style={{ fontSize: 13, color: "var(--ink-2)" }}>Saved.</span> : null}
+        {savedTick && !busy ? <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{t("saved")}</span> : null}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { timeAgo } from "../lib/townHall";
@@ -21,9 +22,9 @@ interface ActivityItem {
   actor: { handle: string | null; displayName: string | null; avatarUrl: string | null } | null;
 }
 
-function actorName(a: ActivityItem["actor"]): string {
-  if (!a) return "Someone";
-  return a.displayName?.trim() || (a.handle ? `@${a.handle}` : "Someone");
+function actorName(t: ReturnType<typeof useTranslations>, a: ActivityItem["actor"]): string {
+  if (!a) return t("someone");
+  return a.displayName?.trim() || (a.handle ? `@${a.handle}` : t("someone"));
 }
 
 function glyph(type: string): IconName {
@@ -41,24 +42,25 @@ function glyph(type: string): IconName {
   }
 }
 
-function phrase(it: ActivityItem): string {
-  const who = actorName(it.actor);
-  const what = it.offerTitle ? `“${it.offerTitle}”` : "your offer";
+function phrase(t: ReturnType<typeof useTranslations>, it: ActivityItem): string {
+  const who = actorName(t, it.actor);
+  const what = it.offerTitle ? t("quotedTitle", { title: it.offerTitle }) : t("yourOffer");
   switch (it.type) {
     case "follow":
-      return `${who} started following you`;
+      return t("phrase.follow", { who });
     case "offer_save":
-      return `${who} saved ${what}`;
+      return t("phrase.offerSave", { who, what });
     case "offer_redeem":
-      return `${who} redeemed ${what}`;
+      return t("phrase.offerRedeem", { who, what });
     case "sale":
-      return `${who} bought ${what}`;
+      return t("phrase.sale", { who, what });
     default:
-      return `${who} interacted with your venue`;
+      return t("phrase.other", { who });
   }
 }
 
 export function VenueActivity({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueActivity");
   const trpc = useTrpc();
   const [items, setItems] = useState<ActivityItem[] | undefined>(undefined);
   const [unread, setUnread] = useState(0);
@@ -87,7 +89,7 @@ export function VenueActivity({ venueId }: { venueId: string }) {
   }, [trpc, venueId]);
 
   if (failed) {
-    return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Couldn&apos;t load activity just now.</p>;
+    return <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>{t("loadFailed")}</p>;
   }
   if (items === undefined) {
     return <div style={{ height: 72, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />;
@@ -98,9 +100,9 @@ export function VenueActivity({ venueId }: { venueId: string }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: "var(--space-3)" }}>
         <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
           {unread > 0 ? (
-            <span style={{ fontWeight: 700, color: "var(--crimson-700)" }}>{unread} new</span>
+            <span style={{ fontWeight: 700, color: "var(--crimson-700)" }}>{t("unreadNew", { count: unread })}</span>
           ) : (
-            "All caught up"
+            t("allCaughtUp")
           )}
         </span>
         {unread > 0 ? (
@@ -109,14 +111,14 @@ export function VenueActivity({ venueId }: { venueId: string }) {
             onClick={() => void markRead()}
             style={{ all: "unset", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--muted)", textDecoration: "underline" }}
           >
-            Mark all read
+            {t("markAllRead")}
           </button>
         ) : null}
       </div>
 
       {items.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-          No activity yet. As people follow you and save your offers, you&apos;ll see it here.
+          {t("empty")}
         </p>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
@@ -139,7 +141,7 @@ export function VenueActivity({ venueId }: { venueId: string }) {
               >
                 <Icon name={glyph(it.type)} size={14} />
               </span>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: "var(--ink)", lineHeight: 1.4 }}>{phrase(it)}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: "var(--ink)", lineHeight: 1.4 }}>{phrase(t, it)}</span>
               <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>{timeAgo(it.createdAt)}</span>
             </li>
           ))}
