@@ -43,6 +43,8 @@ export interface RuntimeStrings {
   days: string;
   /** Fallback display name for a deleted/anonymous author (townHallAuthor). */
   someone: string;
+  /** Fallback display name for a profile with no name or handle (personName). */
+  roamMember: string;
 }
 
 const EN_STRINGS: RuntimeStrings = {
@@ -51,6 +53,7 @@ const EN_STRINGS: RuntimeStrings = {
   hours: "{n}h",
   days: "{n}d",
   someone: "Someone",
+  roamMember: "Roam member",
 };
 
 let current: { locale: string; format: string; strings: RuntimeStrings } = {

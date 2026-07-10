@@ -6,6 +6,7 @@
  */
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ThreadList } from "./ThreadList";
 import styles from "./ChatShell.module.css";
 
@@ -32,14 +33,15 @@ export function ChatShell({
 
 /** The desktop placeholder for /threads before a chat is picked. */
 export function EmptyThreadPane() {
+  const t = useTranslations("chatShell");
   return (
     <div style={{ flex: 1, display: "grid", placeItems: "center", minHeight: 320 }}>
       <div style={{ textAlign: "center", maxWidth: 320 }}>
         <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, color: "var(--ink-2)", marginBottom: 6 }}>
-          Pick a conversation
+          {t("emptyTitle")}
         </div>
         <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)", lineHeight: 1.5 }}>
-          Choose a chat from the left, or start a new one.
+          {t("emptyBody")}
         </p>
       </div>
     </div>

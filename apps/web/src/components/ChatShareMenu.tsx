@@ -7,6 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
@@ -24,6 +25,7 @@ export function ChatShareMenu({
   onShare: (kind: MessageKind, payload: Record<string, unknown>) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("chatShareMenu");
   const [menuOpen, setMenuOpen] = useState(false);
   const [picker, setPicker] = useState<ShareTarget | null>(null);
   const [pollOpen, setPollOpen] = useState(false);
@@ -50,7 +52,7 @@ export function ChatShareMenu({
         const up = await uploadChatImage(threadId, file);
         onShare("image", { path: up.path, width: up.width, height: up.height, mime: up.mime });
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Couldn't upload that photo.");
+        setUploadError(err instanceof Error ? err.message : t("errors.uploadPhoto"));
       } finally {
         setUploading(false);
       }
@@ -71,8 +73,8 @@ export function ChatShareMenu({
         type="button"
         onClick={() => setMenuOpen((o) => !o)}
         disabled={disabled || uploading}
-        aria-label="Share something"
-        title="Share a place, plan, person or photo"
+        aria-label={t("shareSomethingAria")}
+        title={t("shareTitle")}
         style={{
           all: "unset",
           cursor: disabled ? "default" : "pointer",
@@ -99,11 +101,11 @@ export function ChatShareMenu({
           <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div style={{ position: "absolute", bottom: 56, left: 0, zIndex: 41 }}>
             <Card style={{ padding: 6, minWidth: 180, boxShadow: "var(--sh-2)" }}>
-              <MenuItem icon="place" label="Share a place" onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
-              <MenuItem icon="plan" label="Share a plan" onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
-              <MenuItem icon="person" label="Share a person" onClick={() => { setPicker("person"); setMenuOpen(false); }} />
-              <MenuItem icon="poll" label="Poll" onClick={() => { setPollOpen(true); setMenuOpen(false); }} />
-              <MenuItem icon="photo" label="Photo" onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
+              <MenuItem icon="place" label={t("sharePlace")} onClick={() => { setPicker("venue"); setMenuOpen(false); }} />
+              <MenuItem icon="plan" label={t("sharePlan")} onClick={() => { setPicker("plan"); setMenuOpen(false); }} />
+              <MenuItem icon="person" label={t("sharePerson")} onClick={() => { setPicker("person"); setMenuOpen(false); }} />
+              <MenuItem icon="poll" label={t("poll")} onClick={() => { setPollOpen(true); setMenuOpen(false); }} />
+              <MenuItem icon="photo" label={t("photo")} onClick={() => { setMenuOpen(false); fileRef.current?.click(); }} />
             </Card>
           </div>
         </>
@@ -116,7 +118,7 @@ export function ChatShareMenu({
       ) : null}
 
       {picker ? (
-        <PickerModal title={pickerTitle(picker)} onClose={() => setPicker(null)}>
+        <PickerModal title={pickerTitle(t, picker)} onClose={() => setPicker(null)}>
           {picker === "venue" ? <VenuePicker onPick={(v) => choose("venue_card", { venueId: v.id, name: v.name })} /> : null}
           {picker === "plan" ? <PlanPicker onPick={(p) => choose("plan_card", { planId: p.id, title: p.title })} /> : null}
           {picker === "person" ? <PersonPicker onPick={(f) => choose("profile_card", { profileId: f.id, name: f.name, handle: f.handle })} /> : null}
@@ -124,7 +126,7 @@ export function ChatShareMenu({
       ) : null}
 
       {pollOpen ? (
-        <PickerModal title="Create a poll" onClose={() => setPollOpen(false)}>
+        <PickerModal title={t("createPollTitle")} onClose={() => setPollOpen(false)}>
           <PollCreator onCreate={(payload) => { onShare("poll", payload); setPollOpen(false); }} />
         </PickerModal>
       ) : null}
@@ -132,8 +134,8 @@ export function ChatShareMenu({
   );
 }
 
-function pickerTitle(t: ShareTarget): string {
-  return t === "venue" ? "Share a place" : t === "plan" ? "Share a plan" : "Share a person";
+function pickerTitle(t: ReturnType<typeof useTranslations>, target: ShareTarget): string {
+  return target === "venue" ? t("sharePlace") : target === "plan" ? t("sharePlan") : t("sharePerson");
 }
 
 function MenuItem({ icon, label, onClick }: { icon: IconName; label: string; onClick: () => void }) {
@@ -154,6 +156,7 @@ function MenuItem({ icon, label, onClick }: { icon: IconName; label: string; onC
 /* ------------------------------------------------------------------ modal shell */
 
 function PickerModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const t = useTranslations("chatShareMenu");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -174,7 +177,7 @@ function PickerModal({ title, onClose, children }: { title: string; onClose: () 
         <Card style={{ padding: "var(--space-4)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
             <h2 style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, margin: 0, color: "var(--ink)" }}>{title}</h2>
-            <button type="button" onClick={onClose} aria-label="Close" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: 4, display: "inline-flex" }}><Icon name="close" size={18} /></button>
+            <button type="button" onClick={onClose} aria-label={t("close")} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: 4, display: "inline-flex" }}><Icon name="close" size={18} /></button>
           </div>
           {children}
         </Card>
@@ -188,6 +191,7 @@ function PickerModal({ title, onClose, children }: { title: string; onClose: () 
 interface VenueRow { id: string; name: string }
 
 function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
+  const t = useTranslations("chatShareMenu");
   const trpc = useTrpc();
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [venues, setVenues] = useState<VenueRow[] | null | undefined>(undefined);
@@ -212,11 +216,11 @@ function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
         ))}
       </div>
       {venues === undefined ? (
-        <Muted>Loading venues near {place.name}…</Muted>
+        <Muted>{t("venuesLoading", { place: place.name })}</Muted>
       ) : venues === null ? (
-        <Muted>Couldn&apos;t load venues.</Muted>
+        <Muted>{t("venuesLoadFailed")}</Muted>
       ) : venues.length === 0 ? (
-        <Muted>No venues near {place.name} yet.</Muted>
+        <Muted>{t("venuesEmpty", { place: place.name })}</Muted>
       ) : (
         <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
           {venues.map((v) => (
@@ -233,6 +237,7 @@ function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
 interface PlanRow { id: string; title: string }
 
 function PlanPicker({ onPick }: { onPick: (p: PlanRow) => void }) {
+  const t = useTranslations("chatShareMenu");
   const trpc = useTrpc();
   const [plans, setPlans] = useState<PlanRow[] | null | undefined>(undefined);
 
@@ -245,9 +250,9 @@ function PlanPicker({ onPick }: { onPick: (p: PlanRow) => void }) {
     return () => { cancelled = true; };
   }, [trpc]);
 
-  if (plans === undefined) return <Muted>Loading your plans…</Muted>;
-  if (plans === null) return <Muted>Couldn&apos;t load your plans.</Muted>;
-  if (plans.length === 0) return <Muted>You have no plans yet. Create one from the Plans tab, then share it here.</Muted>;
+  if (plans === undefined) return <Muted>{t("plansLoading")}</Muted>;
+  if (plans === null) return <Muted>{t("plansLoadFailed")}</Muted>;
+  if (plans.length === 0) return <Muted>{t("plansEmpty")}</Muted>;
   return (
     <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
       {plans.map((p) => (
@@ -262,6 +267,7 @@ function PlanPicker({ onPick }: { onPick: (p: PlanRow) => void }) {
 interface PersonRow { id: string; name: string; handle: string | null }
 
 function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
+  const t = useTranslations("chatShareMenu");
   const trpc = useTrpc();
   const [people, setPeople] = useState<PersonRow[] | null | undefined>(undefined);
 
@@ -275,7 +281,7 @@ function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
         if (cancelled) return;
         const friends = (r.ok ? r.friends ?? [] : []).map((f) => ({
           id: f.id,
-          name: f.displayName?.trim() || (f.handle ? `@${f.handle}` : "Roam member"),
+          name: f.displayName?.trim() || (f.handle ? `@${f.handle}` : t("roamMember")),
           handle: f.handle,
         }));
         setPeople(friends);
@@ -284,9 +290,9 @@ function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
     return () => { cancelled = true; };
   }, [trpc]);
 
-  if (people === undefined) return <Muted>Loading friends…</Muted>;
-  if (people === null) return <Muted>Couldn&apos;t load your friends.</Muted>;
-  if (people.length === 0) return <Muted>No friends yet. Add friends from their profile walls, then share them here.</Muted>;
+  if (people === undefined) return <Muted>{t("friendsLoading")}</Muted>;
+  if (people === null) return <Muted>{t("friendsLoadFailed")}</Muted>;
+  if (people.length === 0) return <Muted>{t("friendsEmpty")}</Muted>;
   return (
     <div style={{ display: "grid", gap: 6, maxHeight: 320, overflowY: "auto" }}>
       {people.map((f) => (
@@ -300,6 +306,7 @@ function PersonPicker({ onPick }: { onPick: (f: PersonRow) => void }) {
 
 /** Build a poll: a question, 2–10 options, and single-vs-multi. Emits the validated payload. */
 function PollCreator({ onCreate }: { onCreate: (payload: Record<string, unknown>) => void }) {
+  const t = useTranslations("chatShareMenu");
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<{ id: string; text: string }[]>(() => [
     { id: rid(), text: "" },
@@ -323,25 +330,25 @@ function PollCreator({ onCreate }: { onCreate: (payload: Record<string, unknown>
 
   return (
     <div style={{ display: "grid", gap: "var(--space-3)" }}>
-      <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask a question…" maxLength={300} aria-label="Poll question" autoFocus style={inputStyle} />
+      <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t("questionPlaceholder")} maxLength={300} aria-label={t("questionAria")} autoFocus style={inputStyle} />
       <div style={{ display: "grid", gap: 8 }}>
         {options.map((o, i) => (
           <div key={o.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input value={o.text} onChange={(e) => setText(o.id, e.target.value)} placeholder={`Option ${i + 1}`} maxLength={200} aria-label={`Option ${i + 1}`} style={inputStyle} />
+            <input value={o.text} onChange={(e) => setText(o.id, e.target.value)} placeholder={t("optionN", { n: i + 1 })} maxLength={200} aria-label={t("optionN", { n: i + 1 })} style={inputStyle} />
             {options.length > 2 ? (
-              <button type="button" aria-label="Remove option" onClick={() => removeOption(o.id)} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: "0 4px", display: "inline-flex" }}><Icon name="close" size={16} /></button>
+              <button type="button" aria-label={t("removeOption")} onClick={() => removeOption(o.id)} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", padding: "0 4px", display: "inline-flex" }}><Icon name="close" size={16} /></button>
             ) : null}
           </div>
         ))}
       </div>
       {options.length < 10 ? (
-        <button type="button" onClick={addOption} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13 }}>+ Add option</button>
+        <button type="button" onClick={addOption} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13 }}>{t("addOption")}</button>
       ) : null}
       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
         <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--crimson)" }} />
-        <span style={{ fontSize: 13.5, color: "var(--ink)" }}>Allow multiple answers</span>
+        <span style={{ fontSize: 13.5, color: "var(--ink)" }}>{t("allowMultiple")}</span>
       </label>
-      <Button variant="pri" onClick={create} disabled={!canCreate}>Create poll</Button>
+      <Button variant="pri" onClick={create} disabled={!canCreate}>{t("createPoll")}</Button>
     </div>
   );
 }

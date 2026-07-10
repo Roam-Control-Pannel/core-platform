@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
 import type { MessageKind, PollPayload } from "../lib/chatKinds";
 import { chatMediaSignedUrl } from "../lib/uploadChatImage";
@@ -25,16 +26,17 @@ export function MessageCard({
   messageId?: string;
   mine?: boolean;
 }) {
+  const t = useTranslations("chatCards");
   if (payload) {
     if (kind === "venue_card" && typeof payload.venueId === "string") {
-      return <RefCard href={`/venue/${payload.venueId}`} icon="place" title={str(payload.name, "A place")} sub="View venue" />;
+      return <RefCard href={`/venue/${payload.venueId}`} icon="place" title={str(payload.name, t("aPlace"))} sub={t("viewVenue")} />;
     }
     if (kind === "plan_card" && typeof payload.planId === "string") {
-      return <RefCard href={`/plans/${payload.planId}`} icon="plan" title={str(payload.title, "A plan")} sub="View plan" />;
+      return <RefCard href={`/plans/${payload.planId}`} icon="plan" title={str(payload.title, t("aPlan"))} sub={t("viewPlan")} />;
     }
     if (kind === "profile_card" && typeof payload.profileId === "string") {
-      const handle = typeof payload.handle === "string" && payload.handle ? `@${payload.handle}` : "View profile";
-      return <RefCard href={`/u/${payload.profileId}`} icon="person" title={str(payload.name, "Someone")} sub={handle} />;
+      const handle = typeof payload.handle === "string" && payload.handle ? `@${payload.handle}` : t("viewProfile");
+      return <RefCard href={`/u/${payload.profileId}`} icon="person" title={str(payload.name, t("someone"))} sub={handle} />;
     }
     if (kind === "image" && typeof payload.path === "string") {
       return <ImageBubble payload={payload} />;
@@ -51,6 +53,7 @@ export function MessageCard({
  * (chatMediaSignedUrl) on mount; the stored dims reserve the box so the layout doesn't jump.
  */
 function ImageBubble({ payload }: { payload: Record<string, unknown> }) {
+  const t = useTranslations("chatCards");
   const path = typeof payload.path === "string" ? payload.path : null;
   const width = typeof payload.width === "number" ? payload.width : null;
   const height = typeof payload.height === "number" ? payload.height : null;
@@ -72,7 +75,7 @@ function ImageBubble({ payload }: { payload: Record<string, unknown> }) {
   if (failed) {
     return (
       <div style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--paper-2)", maxWidth: maxW }}>
-        <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>Photo unavailable</span>
+        <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>{t("photoUnavailable")}</span>
       </div>
     );
   }
@@ -84,7 +87,7 @@ function ImageBubble({ payload }: { payload: Record<string, unknown> }) {
       {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private bucket; next/image can't optimize a short-lived signed URL */}
       <img
         src={url}
-        alt="Shared photo"
+        alt={t("sharedPhotoAlt")}
         style={{ width: "100%", maxWidth: maxW, maxHeight: 320, height: "auto", objectFit: "cover", borderRadius: 12, border: "1px solid var(--line)", display: "block" }}
       />
     </a>
@@ -127,9 +130,10 @@ function RefCard({ href, icon, title, sub }: { href: string; icon: IconName; tit
 }
 
 function Fallback() {
+  const t = useTranslations("chatCards");
   return (
     <div style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--paper-2)", maxWidth: 260 }}>
-      <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>Unsupported message</span>
+      <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 13 }}>{t("unsupportedMessage")}</span>
     </div>
   );
 }

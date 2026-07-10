@@ -13,11 +13,12 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Button } from "@roam/design";
 
 export function CopyLinkButton({
   path,
-  label = "Share",
+  label,
   title,
   text,
   variant = "pill",
@@ -32,6 +33,7 @@ export function CopyLinkButton({
   size?: "md" | "sm";
   block?: boolean;
 }) {
+  const t = useTranslations("copyLinkButton");
   const [copied, setCopied] = useState(false);
 
   const share = async (e: React.MouseEvent) => {
@@ -60,7 +62,7 @@ export function CopyLinkButton({
     }
   };
 
-  const shown = copied ? "Copied!" : label;
+  const shown = copied ? t("copied") : (label ?? t("share"));
 
   if (variant === "button") {
     return (
@@ -74,7 +76,7 @@ export function CopyLinkButton({
 
   // An empty label makes an icon-only pill (compact rows); the "Copied!" flash still shows.
   return (
-    <button type="button" onClick={(e) => void share(e)} aria-label="Share" style={pill}>
+    <button type="button" onClick={(e) => void share(e)} aria-label={t("share")} style={pill}>
       <Icon name="share" size={15} />
       {shown ? <span>{shown}</span> : null}
     </button>

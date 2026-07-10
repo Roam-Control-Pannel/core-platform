@@ -21,10 +21,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { UserSearch, PersonAvatar, personName, type SearchedPerson } from "./UserSearch";
+import { getFormatLocale } from "../lib/i18n/runtime";
 
 type ThreadKind = "plan" | "group" | "direct";
 
@@ -49,6 +51,7 @@ interface ThreadRow {
 }
 
 export function ThreadList({ activeThreadId = null }: { activeThreadId?: string | null }) {
+  const t = useTranslations("threadList");
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -70,7 +73,7 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
         if (!cancelled) setThreads(rows as ThreadRow[]);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load your chats.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("errors.load"));
       });
     return () => {
       cancelled = true;
@@ -112,7 +115,7 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
       }
       const title = groupTitle.trim();
       if (!title) {
-        setCreateError("Give your group a name.");
+        setCreateError(t("errors.groupName"));
         setCreating(false);
         return;
       }
@@ -122,7 +125,7 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
       const { id } = await grp.mutate({ title, memberIds: selected.map((p) => p.id) });
       router.push(`/threads/${id}`);
     } catch (e: unknown) {
-      setCreateError(e instanceof Error ? e.message : "Couldn't start that chat.");
+      setCreateError(e instanceof Error ? e.message : t("errors.start"));
       setCreating(false);
     }
   }, [trpc, selected, groupTitle, router]);
@@ -142,11 +145,11 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
           className="t-h2"
           style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}
         >
-          Chats
+          {t("title")}
         </h1>
         {session ? (
           <Button variant="pri" size="sm" onClick={() => (showCreate ? resetCreate() : setShowCreate(true))}>
-            {showCreate ? "Cancel" : "＋ New"}
+            {showCreate ? t("cancel") : t("new")}
           </Button>
         ) : null}
       </header>
@@ -160,7 +163,7 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
                 <span key={p.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 8px 4px 5px", borderRadius: 999, background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)" }}>
                   <PersonAvatar p={p} size={20} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}>{personName(p)}</span>
-                  <button type="button" aria-label={`Remove ${personName(p)}`} onClick={() => toggle(p)} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
+                  <button type="button" aria-label={t("removePerson", { name: personName(p) })} onClick={() => toggle(p)} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}>×</button>
                 </span>
               ))}
             </div>
@@ -178,8 +181,8 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
             <input
               value={groupTitle}
               onChange={(e) => setGroupTitle(e.target.value)}
-              placeholder="Group name — e.g. Friday night out"
-              aria-label="Group name"
+              placeholder={t("groupNamePlaceholder")}
+              aria-label={t("groupNameAria")}
               maxLength={200}
               style={{
                 width: "100%", boxSizing: "border-box", marginTop: "var(--space-3)",
@@ -199,15 +202,15 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
             <div style={{ marginTop: "var(--space-3)" }}>
               <Button variant="pri" onClick={() => void startChat()} disabled={creating}>
                 {creating
-                  ? "Starting…"
+                  ? t("starting")
                   : selected.length === 1
-                    ? `Message ${personName(selected[0]!)}`
-                    : `Create group · ${selected.length}`}
+                    ? t("messagePerson", { name: personName(selected[0]!) })
+                    : t("createGroup", { count: selected.length })}
               </Button>
             </div>
           ) : (
             <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "var(--space-3) 2px 0", lineHeight: 1.5 }}>
-              Pick one person for a direct chat, or several for a group.
+              {t("pickHint")}
             </p>
           )}
         </Card>
@@ -238,10 +241,10 @@ export function ThreadList({ activeThreadId = null }: { activeThreadId?: string 
   );
 }
 
-const KIND_META: Record<ThreadKind, { label: string; icon: IconName; fallback: string }> = {
-  plan: { label: "Plan chat", icon: "plan", fallback: "Plan chat" },
-  group: { label: "Group", icon: "users", fallback: "Untitled group" },
-  direct: { label: "Direct", icon: "chat", fallback: "Direct chat" },
+const KIND_META: Record<ThreadKind, { labelKey: string; icon: IconName; fallbackKey: string }> = {
+  plan: { labelKey: "kindLabel.plan", icon: "plan", fallbackKey: "fallback.plan" },
+  group: { labelKey: "kindLabel.group", icon: "users", fallbackKey: "fallback.group" },
+  direct: { labelKey: "kindLabel.direct", icon: "chat", fallbackKey: "fallback.direct" },
 };
 
 /** Icon for a last-message preview by kind (null = a plain text message, no icon). */
@@ -257,33 +260,42 @@ function previewIcon(kind: string): IconName | null {
 }
 
 /** The inbox preview line for a thread's last message ("You: …", or a label for a shared card). */
-function previewText(last: LastMessage | null, myId: string | null): string {
-  if (!last) return "No messages yet";
-  const prefix = last.senderId && last.senderId === myId ? "You: " : "";
+function previewText(t: ReturnType<typeof useTranslations>, last: LastMessage | null, myId: string | null): string {
+  if (!last) return t("preview.noMessages");
+  const mine = !!last.senderId && last.senderId === myId;
+  let text: string;
   switch (last.kind) {
     case "text":
-      return prefix + (last.body?.trim() || "Message");
+      text = last.body?.trim() || t("preview.message");
+      break;
     case "venue_card":
-      return prefix + "Shared a place";
+      text = t("preview.sharedPlace");
+      break;
     case "plan_card":
-      return prefix + "Shared a plan";
+      text = t("preview.sharedPlan");
+      break;
     case "profile_card":
-      return prefix + "Shared a contact";
+      text = t("preview.sharedContact");
+      break;
     case "image":
-      return prefix + "Photo";
+      text = t("preview.photo");
+      break;
     case "poll":
-      return prefix + "Poll";
+      text = t("preview.poll");
+      break;
     default:
-      return prefix + "Message";
+      text = t("preview.message");
   }
+  return mine ? t("preview.you", { text }) : text;
 }
 
 /** One conversation row (hi-fi mockup): avatar · name + snippet · time, tinted when open. */
 function ThreadRowCard({ thread, myId, active, first }: { thread: ThreadRow; myId: string | null; active: boolean; first: boolean }) {
+  const t = useTranslations("threadList");
   const meta = KIND_META[thread.kind];
-  const name = thread.name?.trim() || thread.title?.trim() || meta.fallback;
+  const name = thread.name?.trim() || thread.title?.trim() || t(meta.fallbackKey);
   const unread = thread.unreadCount > 0;
-  const when = formatWhen(thread.lastMessage?.createdAt ?? thread.updatedAt);
+  const when = formatWhen(t, thread.lastMessage?.createdAt ?? thread.updatedAt);
   return (
     <Link
       href={`/threads/${thread.id}`}
@@ -341,10 +353,10 @@ function ThreadRowCard({ thread, myId, active, first }: { thread: ThreadRow; myI
               minWidth: 0,
             }}
           >
-            {previewText(thread.lastMessage, myId)}
+            {previewText(t, thread.lastMessage, myId)}
           </span>
           {unread ? (
-            <span aria-label={`${thread.unreadCount} unread`} style={{ minWidth: 19, height: 19, padding: "0 6px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span aria-label={t("unreadAria", { count: thread.unreadCount })} style={{ minWidth: 19, height: 19, padding: "0 6px", borderRadius: 999, background: "var(--crimson)", color: "#fff", fontFamily: "var(--ui)", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
             </span>
           ) : null}
@@ -355,22 +367,23 @@ function ThreadRowCard({ thread, myId, active, first }: { thread: ThreadRow; myI
 }
 
 /** Compact relative-ish date — same helper shape as FeedList. */
-function formatWhen(iso: string): string {
+function formatWhen(t: ReturnType<typeof useTranslations>, iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diffMs = Date.now() - then;
   const day = 86_400_000;
-  if (diffMs < day) return "today";
-  if (diffMs < 2 * day) return "yesterday";
+  if (diffMs < day) return t("when.today");
+  if (diffMs < 2 * day) return t("when.yesterday");
   const days = Math.floor(diffMs / day);
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
+  if (days < 7) return t("when.daysAgo", { count: days });
+  return new Date(iso).toLocaleDateString(getFormatLocale());
 }
 
 function SignedOut() {
+  const t = useTranslations("threadList");
   return (
     <AuthPanel
-      intro="Your chats are private. Sign in to see them and start new ones."
+      intro={t("signedOutIntro")}
       emailRedirectTo={signedOutReturnUrl()}
       onAuthed={() => {
         // The session change re-runs the list effect automatically; nothing to do.
@@ -413,6 +426,7 @@ function ListSkeleton() {
 }
 
 function EmptyState() {
+  const t = useTranslations("threadList");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", maxWidth: 420, margin: "0 auto" }}>
       <div
@@ -431,22 +445,21 @@ function EmptyState() {
         <Icon name="chat" size={26} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        No chats yet
+        {t("empty.title")}
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Tap “New chat”, then search for someone — pick one person for a direct message, or several
-        for a group. You can also message a friend from their profile, or open a plan to chat with
-        everyone on it.
+        {t("empty.body")}
       </p>
     </div>
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const t = useTranslations("threadList");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load your chats
+        {t("errorTitle")}
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>

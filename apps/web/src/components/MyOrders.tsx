@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -29,16 +30,19 @@ interface OrderRow {
   createdAt: string;
 }
 
-const STATUS_LABEL: Record<string, { label: string; ok?: boolean }> = {
-  pending: { label: "Awaiting payment" },
-  paid: { label: "Paid", ok: true },
-  collected: { label: "Collected", ok: true },
-  redeemed: { label: "Redeemed", ok: true },
-  refunded: { label: "Refunded" },
-  canceled: { label: "Canceled" },
+/** Order-status wire values → catalogue label keys (myOrders.status.*). Unknown statuses
+ *  fall back to the raw wire value at the render site. */
+const STATUS_KEY: Record<string, { key: string; ok?: boolean }> = {
+  pending: { key: "pending" },
+  paid: { key: "paid", ok: true },
+  collected: { key: "collected", ok: true },
+  redeemed: { key: "redeemed", ok: true },
+  refunded: { key: "refunded" },
+  canceled: { key: "canceled" },
 };
 
 export function MyOrders() {
+  const t = useTranslations("myOrders");
   const trpc = useTrpc();
   const session = useSession();
   const [orders, setOrders] = useState<OrderRow[] | undefined>(undefined);
@@ -61,7 +65,7 @@ export function MyOrders() {
   if (!session) {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-6) var(--space-4)" }}>
-        <AuthPanel intro="Sign in to see your orders." emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""} onAuthed={() => {}} />
+        <AuthPanel intro={t("signedOutIntro")} emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""} onAuthed={() => {}} />
       </main>
     );
   }
@@ -69,11 +73,11 @@ export function MyOrders() {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.02em", margin: "0 0 var(--space-2)" }}>
-        Your orders
+        {t("title")}
       </h1>
       {placed ? (
         <p style={{ margin: "0 0 var(--space-4)", padding: "10px 14px", borderRadius: 12, background: "var(--success-tint)", color: "var(--success)", fontSize: 13.5, fontWeight: 600 }}>
-          Order placed — it&apos;ll show as Paid here within a few seconds of Stripe confirming.
+          {t("placedNote")}
         </p>
       ) : null}
 
@@ -81,13 +85,17 @@ export function MyOrders() {
         <div style={{ height: 120, borderRadius: 16, background: "var(--paper-2)" }} aria-hidden />
       ) : orders.length === 0 ? (
         <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
-          Nothing yet — venue shops across Roam are stocking up. Find something in{" "}
-          <Link href="/explore" style={{ color: "var(--crimson-700)" }}>Explore</Link>.
+          {t.rich("empty", {
+            link: (chunks) => <Link href="/explore" style={{ color: "var(--crimson-700)" }}>{chunks}</Link>,
+          })}
         </p>
       ) : (
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
           {orders.map((o) => {
-            const s = STATUS_LABEL[o.status] ?? { label: o.status };
+            const meta = STATUS_KEY[o.status];
+            const s: { label: string; ok?: boolean } = meta
+              ? { label: t(`status.${meta.key}`), ...(meta.ok ? { ok: true } : {}) }
+              : { label: o.status };
             return (
               <Card key={o.id} style={{ padding: "var(--space-4)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
@@ -109,7 +117,7 @@ export function MyOrders() {
                 </div>
                 {o.redeemCode ? (
                   <div style={{ marginTop: "var(--space-3)", padding: "10px 14px", borderRadius: 12, border: "1px dashed var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>Show this code in venue to redeem:</span>
+                    <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{t("showCode")}</span>
                     <code style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 16, letterSpacing: ".12em", color: "var(--crimson-700)" }}>{o.redeemCode}</code>
                   </div>
                 ) : null}

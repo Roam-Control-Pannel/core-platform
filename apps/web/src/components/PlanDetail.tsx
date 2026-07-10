@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -48,10 +49,10 @@ interface Friend {
   avatarUrl: string | null;
 }
 
-function personName(p: { displayName: string | null; handle: string | null }): string {
+function personName(t: ReturnType<typeof useTranslations>, p: { displayName: string | null; handle: string | null }): string {
   if (p.displayName && p.displayName.trim()) return p.displayName.trim();
   if (p.handle && p.handle.trim()) return `@${p.handle.trim()}`;
-  return "Roam member";
+  return t("roamMember");
 }
 
 /** The teaser a shared link shows a non-member (plans.preview): counts only, no names/notes. */
@@ -65,6 +66,7 @@ export interface PlanPreview {
 }
 
 export function PlanDetail({ planId, preview }: { planId: string; preview?: PlanPreview | null }) {
+  const t = useTranslations("planDetail");
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -88,7 +90,7 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
         if (!cancelled) setPlan(p);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load this plan.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("errors.load"));
       });
     return () => {
       cancelled = true;
@@ -140,13 +142,13 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
         href="/plans"
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Plans
+        <span aria-hidden>←</span> {t("back")}
       </Link>
 
       {!hasSession ? (
         <PlanTeaser preview={preview ?? null}>
           <AuthPanel
-            intro="Sign in to see the full plan and join in."
+            intro={t("signedOutIntro")}
             emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
             onAuthed={() => {}}
           />
@@ -162,14 +164,15 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
         // link). Show it with the way in — membership is invite-only, so point at the sharer.
         <PlanTeaser preview={preview}>
           <p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.55 }}>
-            You&apos;re not in this plan yet — ask whoever shared it to invite you, and it&apos;ll appear in your
-            {" "}<Link href="/plans" style={{ color: "var(--crimson-700)" }}>Plans</Link>.
+            {t.rich("notMemberBody", {
+              plansLink: (chunks) => <Link href="/plans" style={{ color: "var(--crimson-700)" }}>{chunks}</Link>,
+            })}
           </p>
         </PlanTeaser>
       ) : plan === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
-          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>Plan not found</div>
-          <p style={{ color: "var(--ink-2)", margin: 0 }}>It may have been removed, or you don&apos;t have access.</p>
+          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>{t("notFound.title")}</div>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("notFound.body")}</p>
         </Card>
       ) : editing ? (
         <PlanEditor plan={plan} onSaved={() => { setEditing(false); reload(); }} onCancel={() => setEditing(false)} onDelete={() => void deletePlan()} />
@@ -179,10 +182,10 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
 
           <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", justifyContent: "flex-end", flexWrap: "wrap" }}>
             <Button variant="pri" size="sm" onClick={() => void openChat()} disabled={openingChat}>
-              {openingChat ? "Opening…" : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="chat" size={14} /> Group chat</span>}
+              {openingChat ? t("opening") : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="chat" size={14} /> {t("groupChat")}</span>}
             </Button>
             <CopyLinkButton variant="button" size="sm" title={plan.title} />
-            <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+            <Button variant="neutral" size="sm" onClick={() => setEditing(true)}>{t("edit")}</Button>
           </div>
 
           {plan.notes ? <p style={{ marginTop: "var(--space-3)", color: "var(--ink-2)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{plan.notes}</p> : null}
@@ -190,16 +193,16 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
           <PlanMembers planId={plan.id} />
 
           <div style={{ marginTop: "var(--space-5)", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
-            {plan.venues.length === 1 ? "1 venue" : `${plan.venues.length} venues`}
+            {t("venues", { count: plan.venues.length })}
           </div>
 
           {plan.venues.length === 0 ? (
             <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
               <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
-                No venues yet. Open any venue and tap <strong>＋ Add to Plan</strong> to add it here.
+                {t.rich("emptyVenues", { strong: (chunks) => <strong>{chunks}</strong> })}
               </p>
               <div style={{ marginTop: "var(--space-3)" }}>
-                <Link href="/explore" style={{ textDecoration: "none" }}><Button variant="neutral" size="sm">Find venues</Button></Link>
+                <Link href="/explore" style={{ textDecoration: "none" }}><Button variant="neutral" size="sm">{t("findVenues")}</Button></Link>
               </div>
             </Card>
           ) : (
@@ -211,8 +214,8 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
                       <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</div>
                       {v.category ? <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{v.category}</div> : null}
                     </Link>
-                    <button type="button" onClick={() => void removeVenue(v.venueId)} title="Remove from plan" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline", flexShrink: 0 }}>
-                      Remove
+                    <button type="button" onClick={() => void removeVenue(v.venueId)} title={t("removeFromPlanTitle")} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline", flexShrink: 0 }}>
+                      {t("remove")}
                     </button>
                   </div>
                 </Card>
@@ -292,12 +295,13 @@ function PlanBanner({ plan }: { plan: { title: string; plannedFor: string | null
  * signed-in non-members). When the preview couldn't load, just the children in a card.
  */
 function PlanTeaser({ preview, children }: { preview: PlanPreview | null; children: React.ReactNode }) {
+  const t = useTranslations("planDetail");
   if (!preview) {
     return <Card style={{ padding: "var(--space-4)" }}>{children}</Card>;
   }
   const bits = [
-    preview.venueCount > 0 ? `${preview.venueCount} ${preview.venueCount === 1 ? "place" : "places"}` : null,
-    preview.memberCount > 0 ? `${preview.memberCount} going` : null,
+    preview.venueCount > 0 ? t("places", { count: preview.venueCount }) : null,
+    preview.memberCount > 0 ? t("going", { count: preview.memberCount }) : null,
   ].filter(Boolean);
   return (
     <>
@@ -314,6 +318,7 @@ function PlanTeaser({ preview, children }: { preview: PlanPreview | null; childr
 }
 
 function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved: () => void; onCancel: () => void; onDelete: () => void }) {
+  const t = useTranslations("planDetail");
   const trpc = useTrpc();
   const session = useSession();
   const [title, setTitle] = useState(plan.title);
@@ -331,7 +336,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
     (file: File | null) => {
       if (!file) return;
       if (!session?.user?.id) {
-        setErr("You need to be signed in to add an image.");
+        setErr(t("errors.signInImage"));
         return;
       }
       setErr(null);
@@ -351,7 +356,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
         const { url } = await uploadProfileImage(uid, file, "plan-header");
         setHeaderUrl(url);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Couldn't upload that image.");
+        setErr(e instanceof Error ? e.message : t("errors.upload"));
       } finally {
         setUploading(false);
       }
@@ -370,7 +375,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
       await update.mutate({ planId: plan.id, title, notes: notes.trim() ? notes : null, plannedFor, headerUrl });
       onSaved();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save the plan.");
+      setErr(e instanceof Error ? e.message : t("errors.save"));
       setBusy(false);
     }
   }, [trpc, plan.id, title, date, notes, headerUrl, onSaved]);
@@ -384,7 +389,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
         <div
           role="button"
           tabIndex={0}
-          aria-label={headerUrl ? "Change header image" : "Add header image"}
+          aria-label={headerUrl ? t("changeHeaderAria") : t("addHeaderAria")}
           onClick={() => { if (!uploading) fileRef.current?.click(); }}
           onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !uploading) fileRef.current?.click(); }}
           style={{
@@ -403,11 +408,11 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
               fontSize: 11.5, fontWeight: 600, color: "#fff", background: "rgba(33,29,26,.72)",
             }}
           >
-            {uploading ? "Uploading…" : headerUrl ? "Change" : "＋ Add image"}
+            {uploading ? t("uploading") : headerUrl ? t("change") : t("addImage")}
           </span>
           {!headerUrl ? (
             <span style={{ position: "relative", padding: "var(--space-3)", color: "rgba(255,255,255,.9)", fontSize: 12.5, fontFamily: "var(--ui)" }}>
-              Tap to add a header image
+              {t("tapToAddHeader")}
             </span>
           ) : null}
         </div>
@@ -421,7 +426,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
         {cropFile ? (
           <ImageCropper
             file={cropFile}
-            spec={{ aspect: 3, outputWidth: 2000, title: "Position your plan header" }}
+            spec={{ aspect: 3, outputWidth: 2000, title: t("cropTitle") }}
             onCancel={() => setCropFile(null)}
             onCropped={(f) => void uploadCropped(f)}
           />
@@ -429,22 +434,22 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
         {headerUrl ? (
           <div style={{ marginTop: "var(--space-2)" }}>
             <button type="button" onClick={() => setHeaderUrl(null)} disabled={uploading} style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)", textDecoration: "underline" }}>
-              Remove image
+              {t("removeImage")}
             </button>
           </div>
         ) : null}
       </div>
 
-      <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Plan title" maxLength={120} style={editInput} />
-      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Planned date" style={editInput} />
-      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} aria-label="Notes" rows={3} placeholder="Notes (optional)" style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label={t("planTitleAria")} maxLength={120} style={editInput} />
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t("plannedDateAria")} style={editInput} />
+      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} aria-label={t("notesAria")} rows={3} placeholder={t("notesPlaceholder")} style={{ ...editInput, resize: "vertical", minHeight: 72 }} />
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-        <Button variant="pri" onClick={() => void save()} disabled={title.trim().length === 0 || busy || uploading}>{busy ? "Saving…" : "Save"}</Button>
-        <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" onClick={() => void save()} disabled={title.trim().length === 0 || busy || uploading}>{busy ? t("saving") : t("save")}</Button>
+        <Button variant="neutral" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={onDelete} style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 13, textDecoration: "underline" }}>
-          Delete plan
+          {t("deletePlan")}
         </button>
       </div>
     </Card>
@@ -457,6 +462,7 @@ function PlanEditor({ plan, onSaved, onCancel, onDelete }: { plan: Plan; onSaved
  * plans.members; the invite picker loads social.myFriends and hides anyone already on the plan.
  */
 function PlanMembers({ planId }: { planId: string }) {
+  const t = useTranslations("planDetail");
   const trpc = useTrpc();
   const session = useSession();
   const me = session?.user?.id ?? null;
@@ -529,7 +535,7 @@ function PlanMembers({ planId }: { planId: string }) {
     <section style={{ marginTop: "var(--space-6)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
-          {members.length === 1 ? "Just you" : `${members.length} people`}
+          {t("members", { count: members.length })}
         </div>
         {isOwner ? (
           <button
@@ -537,7 +543,7 @@ function PlanMembers({ planId }: { planId: string }) {
             onClick={() => (inviting ? setInviting(false) : void openInvite())}
             style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 13, fontWeight: 600 }}
           >
-            {inviting ? "Done" : "＋ Invite friends"}
+            {inviting ? t("done") : t("inviteFriends")}
           </button>
         ) : null}
       </div>
@@ -547,17 +553,17 @@ function PlanMembers({ planId }: { planId: string }) {
           <div key={m.profileId} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px 5px 6px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)" }}>
             <MemberAvatar p={m} size={24} />
             <Link href={`/u/${m.handle ?? m.profileId}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textDecoration: "none" }}>
-              {personName(m)}
+              {personName(t, m)}
             </Link>
             {m.role === "owner" ? (
-              <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: ".05em" }}>host</span>
+              <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: ".05em" }}>{t("host")}</span>
             ) : isOwner ? (
               <button
                 type="button"
                 onClick={() => void remove(m.profileId)}
                 disabled={busyId === m.profileId}
-                title="Remove from plan"
-                aria-label={`Remove ${personName(m)} from plan`}
+                title={t("removeFromPlanTitle")}
+                aria-label={t("removeMemberAria", { name: personName(t, m) })}
                 style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 14, lineHeight: 1, padding: "0 2px" }}
               >
                 ×
@@ -572,17 +578,17 @@ function PlanMembers({ planId }: { planId: string }) {
           {invitable.length === 0 ? (
             <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
               {friends.length === 0
-                ? "No friends to invite yet. Add friends from their profile walls, then invite them here."
-                : "All your friends are already on this plan."}
+                ? t("noFriendsToInvite")
+                : t("allFriendsOnPlan")}
             </p>
           ) : (
             <div style={{ display: "grid", gap: "var(--space-2)" }}>
               {invitable.map((f) => (
                 <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                   <MemberAvatar p={{ displayName: f.displayName, handle: f.handle, avatarUrl: f.avatarUrl }} size={28} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{personName(f)}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{personName(t, f)}</span>
                   <Button variant="neutral" size="sm" onClick={() => void invite(f.id)} disabled={busyId === f.id}>
-                    {busyId === f.id ? "…" : "Add"}
+                    {busyId === f.id ? "…" : t("add")}
                   </Button>
                 </div>
               ))}
@@ -595,13 +601,14 @@ function PlanMembers({ planId }: { planId: string }) {
 }
 
 function MemberAvatar({ p, size }: { p: { displayName: string | null; handle: string | null; avatarUrl: string | null }; size: number }) {
+  const t = useTranslations("planDetail");
   if (p.avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
     return <img src={p.avatarUrl} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
   }
   return (
     <span aria-hidden style={{ width: size, height: size, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: size * 0.42, flexShrink: 0 }}>
-      {personName(p).replace(/^@/, "").charAt(0).toUpperCase() || "·"}
+      {personName(t, p).replace(/^@/, "").charAt(0).toUpperCase() || "·"}
     </span>
   );
 }

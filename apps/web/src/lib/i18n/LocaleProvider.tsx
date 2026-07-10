@@ -70,7 +70,7 @@ function deepMerge<T>(base: T, override: unknown): T {
 /** Push the active locale everywhere non-React code looks: <html lang> + the runtime helpers. */
 function broadcastLocale(locale: Locale, messages: Messages) {
   document.documentElement.lang = locale;
-  setRuntimeLocale(locale, { ...messages.common.time, someone: messages.common.someone });
+  setRuntimeLocale(locale, { ...messages.common.time, someone: messages.common.someone, roamMember: messages.common.roamMember });
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {

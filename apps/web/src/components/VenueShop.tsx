@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Icon, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { formatPence } from "../lib/money";
@@ -25,6 +26,7 @@ interface ShopItem {
 }
 
 export function VenueShop({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueShop");
   const trpc = useTrpc();
   const session = useSession();
   const [items, setItems] = useState<ShopItem[] | undefined>(undefined);
@@ -59,7 +61,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
       const { url } = await checkout.mutate({ productId, quantity });
       window.location.href = url; // Stripe-hosted payment page
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't start checkout.");
+      setError(e instanceof Error ? e.message : t("checkoutFailed"));
       setBuying(null);
     }
   }, [trpc]);
@@ -70,7 +72,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
-        This venue hasn&apos;t stocked its Roam shop yet — check back soon.
+        {t("empty")}
       </p>
     );
   }
@@ -100,7 +102,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
                 ) : null}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
                   <strong style={{ fontFamily: "var(--display)", fontSize: 16, color: "var(--ink-hi)" }}>{formatPence(p.pricePence, p.currency)}</strong>
-                  <Pill variant="neutral" size="sm">{p.kind === "service" ? "Voucher / service" : soldOut ? "Sold out" : "Collect in venue"}</Pill>
+                  <Pill variant="neutral" size="sm">{p.kind === "service" ? t("kind.voucher") : soldOut ? t("kind.soldOut") : t("kind.collect")}</Pill>
                 </div>
                 {sellable && !soldOut ? (
                   session ? (
@@ -109,7 +111,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
                         <select
                           value={qty[p.id] ?? 1}
                           onChange={(e) => setQty((m) => ({ ...m, [p.id]: Number(e.target.value) }))}
-                          aria-label="Quantity"
+                          aria-label={t("quantityAria")}
                           style={{ padding: "7px 8px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--paper-2)", fontFamily: "var(--ui)", fontSize: 13, color: "var(--ink)" }}
                         >
                           {Array.from({ length: Math.min(10, p.stock ?? 10) }, (_, i) => i + 1).map((n) => (
@@ -118,12 +120,12 @@ export function VenueShop({ venueId }: { venueId: string }) {
                         </select>
                       ) : null}
                       <Button variant="pri" size="sm" onClick={() => void buy(p.id, qty[p.id] ?? 1)} disabled={buying !== null}>
-                        {buying === p.id ? "Opening checkout…" : "Buy"}
+                        {buying === p.id ? t("openingCheckout") : t("buy")}
                       </Button>
                     </div>
                   ) : (
                     <Link href="/account" style={{ textDecoration: "none" }}>
-                      <Button variant="neutral" size="sm">Sign in to buy</Button>
+                      <Button variant="neutral" size="sm">{t("signInToBuy")}</Button>
                     </Link>
                   )
                 ) : null}
@@ -134,13 +136,13 @@ export function VenueShop({ venueId }: { venueId: string }) {
       </div>
       {!sellable ? (
         <p style={{ margin: "var(--space-4) 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-          Buying through Roam opens once this venue finishes its payout setup — for now, visit or
-          message the venue to purchase.
+          {t("payoutPending")}
         </p>
       ) : (
         <p style={{ margin: "var(--space-4) 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-          Payments are handled securely by Stripe. Products are collected in venue; vouchers come
-          with a redeem code in <Link href="/orders" style={{ color: "var(--crimson-700)" }}>your orders</Link>.
+          {t.rich("paymentsNote", {
+            link: (chunks) => <Link href="/orders" style={{ color: "var(--crimson-700)" }}>{chunks}</Link>,
+          })}
         </p>
       )}
     </div>

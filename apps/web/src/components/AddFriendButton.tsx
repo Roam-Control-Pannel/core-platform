@@ -6,12 +6,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 type Status = "none" | "pending_out" | "pending_in" | "friends" | "loading";
 
 export function AddFriendButton({ userId }: { userId: string }) {
+  const t = useTranslations("addFriendButton");
   const trpc = useTrpc();
   const session = useSession();
   const [status, setStatus] = useState<Status>("loading");
@@ -67,27 +69,27 @@ export function AddFriendButton({ userId }: { userId: string }) {
   if (status === "friends") {
     return (
       <Button variant="neutral" size="sm" aria-disabled style={{ cursor: "default" }} onClick={(e) => e.preventDefault()}>
-        Friends ✓
+        {t("friends")}
       </Button>
     );
   }
   if (status === "pending_out") {
     return (
       <Button variant="neutral" size="sm" aria-disabled style={{ cursor: "default", opacity: 0.7 }} onClick={(e) => e.preventDefault()}>
-        Requested
+        {t("requested")}
       </Button>
     );
   }
   if (status === "pending_in") {
     return (
       <Button variant="pri" size="sm" onClick={() => void accept()} disabled={busy}>
-        {busy ? "…" : "Accept request"}
+        {busy ? "…" : t("acceptRequest")}
       </Button>
     );
   }
   return (
     <Button variant="neutral" size="sm" onClick={() => void request()} disabled={busy}>
-      {busy ? "…" : "＋ Add friend"}
+      {busy ? "…" : t("addFriend")}
     </Button>
   );
 }

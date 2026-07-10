@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 type ReportMutation = {
@@ -15,6 +16,7 @@ type ReportMutation = {
 };
 
 export function ReportVenue({ venueId }: { venueId: string }) {
+  const t = useTranslations("reportVenue");
   const trpc = useTrpc();
   const session = useSession();
   const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ export function ReportVenue({ venueId }: { venueId: string }) {
       );
       setDone(true);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Couldn't submit your report.");
+      setError(e instanceof Error ? e.message : t("submitFailed"));
     } finally {
       setBusy(false);
     }
@@ -42,7 +44,7 @@ export function ReportVenue({ venueId }: { venueId: string }) {
   if (done) {
     return (
       <p style={{ marginTop: "var(--space-8)", textAlign: "center", fontSize: 12.5, color: "var(--muted)" }}>
-        Thanks — your report has been sent for review.
+        {t("thanks")}
       </p>
     );
   }
@@ -54,10 +56,10 @@ export function ReportVenue({ venueId }: { venueId: string }) {
           onClick={() => setOpen(true)}
           style={{ all: "unset", cursor: "pointer", fontSize: 12.5, color: "var(--muted)", textDecoration: "underline" }}
         >
-          Report this venue
+          {t("cta")}
         </button>
       ) : !session ? (
-        <p style={{ fontSize: 12.5, color: "var(--muted)" }}>Sign in to report this venue.</p>
+        <p style={{ fontSize: 12.5, color: "var(--muted)" }}>{t("signInToReport")}</p>
       ) : (
         <div style={{ maxWidth: 420, margin: "0 auto", textAlign: "left" }}>
           <label
@@ -72,14 +74,14 @@ export function ReportVenue({ venueId }: { venueId: string }) {
             }}
             htmlFor="report-detail"
           >
-            What's wrong with this venue?
+            {t("detailLabel")}
           </label>
           <textarea
             id="report-detail"
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
             maxLength={2000}
-            placeholder="e.g. wrongly claimed, closed, incorrect or abusive content…"
+            placeholder={t("detailPlaceholder")}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -111,13 +113,13 @@ export function ReportVenue({ venueId }: { venueId: string }) {
                 borderRadius: 999,
               }}
             >
-              {busy ? "Sending…" : "Send report"}
+              {busy ? t("sending") : t("send")}
             </button>
             <button
               onClick={() => setOpen(false)}
               style={{ all: "unset", cursor: "pointer", fontSize: 13, color: "var(--muted)" }}
             >
-              Cancel
+              {t("cancel")}
             </button>
             {error ? <span role="alert" style={{ fontSize: 12.5, color: "var(--crimson-700)" }}>{error}</span> : null}
           </div>
