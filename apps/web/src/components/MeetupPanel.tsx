@@ -241,7 +241,9 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         label: venueNames[tally.venueId] ?? t("loading"),
         count: tally.count,
       })),
-    [resolution, venueNames],
+    // t IS a dep here (unlike the fetch-effect baseline): the memo bakes a visible label
+    // fallback into render output, which must recompute when the language changes.
+    [resolution, venueNames, t],
   );
 
   if (!session) return null;
