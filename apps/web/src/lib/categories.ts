@@ -7,6 +7,9 @@
  * so they are mirrored here locally — the same lockstep-by-contract pattern as
  * venuePath in lib/routes.ts and urlBase64ToUint8Array in lib/push.ts.
  *
+ * i18n: display labels come from the message catalogue via useCategoryLabel(); the canonical
+ * group VALUES below are wire-contract identifiers and are never translated.
+ *
  * CANONICAL DEFINITION lives in packages/core/src/places/index.ts (CATEGORIES). The API
  * imports it from there and enforces it (places.ingestCategory's Zod enum), so this twin
  * is display-only: a tap sends the chosen name to /api/ingest, and the API is the single
@@ -14,6 +17,8 @@
  * order — order is the pill display order) to core's CATEGORIES. If you change the groups
  * in core, change them here too. Kept in lockstep by contract, not by a shared import.
  */
+
+import { useTranslations } from "next-intl";
 
 /** The nine canonical groups, in display order — a twin of core's CATEGORIES. */
 export const CATEGORY_GROUPS = [
@@ -52,4 +57,34 @@ export const CATEGORY_LABELS: Record<CategoryGroup, string> = {
 /** The friendly pill label for a canonical group (falls back to the canonical name). */
 export function categoryLabel(group: string): string {
   return (CATEGORY_LABELS as Record<string, string>)[group] ?? group;
+}
+
+/* ── i18n ────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Canonical group → catalogue key under the "categories" namespace. The CANONICAL VALUE is
+ * still what's stored and sent to the API (never translated); only the visible label moves
+ * with the language. CATEGORY_LABELS/categoryLabel above are the English source of truth the
+ * en.json catalogue mirrors — components migrate to useCategoryLabel() as their cluster is
+ * swept, and the plain map goes away once the sweep completes.
+ */
+const CATEGORY_KEYS: Record<CategoryGroup, string> = {
+  "Food & Drink": "foodDrink",
+  Shopping: "shopping",
+  "Entertainment & Recreation": "entertainment",
+  "Automotive & Transport": "transport",
+  "Finance & Business": "business",
+  "Health & Wellness": "health",
+  Lodging: "lodging",
+  "Education & Government": "civic",
+  "Places of Worship": "worship",
+};
+
+/** Hook: the localized pill label for a canonical group (falls back to the canonical name). */
+export function useCategoryLabel(): (group: string) => string {
+  const t = useTranslations("categories");
+  return (group: string) => {
+    const key = (CATEGORY_KEYS as Record<string, string>)[group];
+    return key ? t(key) : group;
+  };
 }

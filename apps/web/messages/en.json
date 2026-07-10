@@ -7,6 +7,30 @@
       "days": "{n}d"
     }
   },
+  "categories": {
+    "foodDrink": "Eateries",
+    "shopping": "Shopping",
+    "entertainment": "Attractions",
+    "transport": "Transport",
+    "business": "Business",
+    "health": "Health & Beauty",
+    "lodging": "Hotels",
+    "civic": "Civic",
+    "worship": "Worship"
+  },
+  "offerTypes": {
+    "percent_off": "% off",
+    "amount_off": "Amount off",
+    "two_for_one": "2-for-1",
+    "bogof": "Buy one get one free",
+    "free_item": "Free item",
+    "bundle": "Bundle deal",
+    "happy_hour": "Happy hour",
+    "loyalty": "Loyalty reward",
+    "first_time": "First-timer offer",
+    "seasonal": "Seasonal / event",
+    "other": "Other"
+  },
   "chrome": {
     "brandHome": "Roam home",
     "primaryNav": "Primary",
