@@ -314,7 +314,11 @@ function ProfileHeader({
 function ProfileStats() {
   const t = useTranslations("profileWall");
   const trpc = useTrpc();
-  const [stats, setStats] = useState<{ label: string; value: number }[]>([]);
+  // Store the stat KEY (not a pre-translated label) so the labels re-localize on a
+  // language switch. Baking t("…") into state here would freeze the mount-time
+  // (English) label for the page's lifetime — the client-first catalogue swaps in
+  // place without remounting — so a non-English owner would see English stat labels.
+  const [stats, setStats] = useState<{ key: "friends" | "following" | "plans"; value: number }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,10 +327,10 @@ function ProfileStats() {
     const pl = trpc.plans.list as unknown as { query: () => Promise<{ plans?: unknown[] }> };
     Promise.allSettled([mf.query(), fo.query(), pl.query()]).then(([f, w, p]) => {
       if (cancelled) return;
-      const next: { label: string; value: number }[] = [];
-      if (f.status === "fulfilled") next.push({ label: t("stats.friends"), value: (f.value.friends ?? []).length });
-      if (w.status === "fulfilled") next.push({ label: t("stats.following"), value: (w.value.follows ?? []).length });
-      if (p.status === "fulfilled") next.push({ label: t("stats.plans"), value: (p.value.plans ?? []).length });
+      const next: { key: "friends" | "following" | "plans"; value: number }[] = [];
+      if (f.status === "fulfilled") next.push({ key: "friends", value: (f.value.friends ?? []).length });
+      if (w.status === "fulfilled") next.push({ key: "following", value: (w.value.follows ?? []).length });
+      if (p.status === "fulfilled") next.push({ key: "plans", value: (p.value.plans ?? []).length });
       setStats(next);
     });
     return () => {
@@ -335,12 +339,13 @@ function ProfileStats() {
   }, [trpc]);
 
   if (stats.length === 0) return null;
+  const label = { friends: t("stats.friends"), following: t("stats.following"), plans: t("stats.plans") };
   return (
     <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
       {stats.map((s) => (
-        <span key={s.label}>
+        <span key={s.key}>
           <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{s.value}</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>{s.label}</span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>{label[s.key]}</span>
         </span>
       ))}
     </div>
