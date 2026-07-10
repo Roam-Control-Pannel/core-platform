@@ -37,8 +37,6 @@ interface EmbeddedVenue {
   cover_photo_id: string | null;
 }
 
-const PLAN_VENUE_COLS = "venue_id, position, venues(id, name, category, cover_photo_id)";
-
 export const plansRouter = router({
   /**
    * Protected: the caller's plans (owned or member-of), newest first, with the card facts:
@@ -75,17 +73,32 @@ export const plansRouter = router({
     const ids = rows.map((r) => r.id);
 
     // Venue count + first locality per plan (RLS scopes plan_venues to visible plans).
+    // Two-step (no `venues(locality)` embed): the bare plan_venues→venues embed doesn't resolve
+    // and, with its error ignored, silently under-counted every plan to 0. Plain selects.
     const counts = new Map<string, number>();
     const localities = new Map<string, string>();
     if (ids.length > 0) {
-      const { data: pv } = (await db
+      const { data: pv, error: pvErr } = (await db
         .from("plan_venues")
-        .select("plan_id, venues(locality)")
-        .in("plan_id", ids)) as PgResult<{ plan_id: string; venues: { locality: string | null } | { locality: string | null }[] | null }[] | null>;
-      for (const v of pv ?? []) {
-        counts.set(v.plan_id, (counts.get(v.plan_id) ?? 0) + 1);
-        const venue = Array.isArray(v.venues) ? (v.venues[0] ?? null) : v.venues;
-        if (venue?.locality && !localities.has(v.plan_id)) localities.set(v.plan_id, venue.locality);
+        .select("plan_id, venue_id")
+        .in("plan_id", ids)) as PgResult<{ plan_id: string; venue_id: string }[] | null>;
+      if (pvErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your plans: ${pvErr.message}` });
+      }
+      const pvRows = pv ?? [];
+      const localityByVenue = new Map<string, string | null>();
+      const venueIds = [...new Set(pvRows.map((r) => r.venue_id))];
+      if (venueIds.length > 0) {
+        const { data: vRows } = (await db
+          .from("venues")
+          .select("id, locality")
+          .in("id", venueIds)) as PgResult<{ id: string; locality: string | null }[] | null>;
+        for (const v of vRows ?? []) localityByVenue.set(v.id, v.locality);
+      }
+      for (const r of pvRows) {
+        counts.set(r.plan_id, (counts.get(r.plan_id) ?? 0) + 1);
+        const loc = localityByVenue.get(r.venue_id) ?? null;
+        if (loc && !localities.has(r.plan_id)) localities.set(r.plan_id, loc);
       }
     }
 
@@ -182,15 +195,32 @@ export const plansRouter = router({
       }
       if (!plan) return null;
 
-      const { data: rows } = (await db
+      // Two-step read, NOT a PostgREST embed. The bare `plan_venues → venues` embed did not
+      // resolve, so the embedded select errored and — because the error was ignored — the plan
+      // rendered "0 venues" even though the rows exist (confirmed in the DB). Plain selects can't
+      // hit that failure; venues_read RLS is public so the venue facts read fine either way.
+      const { data: pvRows, error: pvErr } = (await db
         .from("plan_venues")
-        .select(PLAN_VENUE_COLS)
+        .select("venue_id, position")
         .eq("plan_id", input.planId)
-        .order("position", { ascending: true })) as PgResult<
-        { venue_id: string; position: number; venues: EmbeddedVenue | EmbeddedVenue[] | null }[] | null
-      >;
-      const venues = (rows ?? []).map((r) => {
-        const v = Array.isArray(r.venues) ? (r.venues[0] ?? null) : r.venues;
+        .order("position", { ascending: true })) as PgResult<{ venue_id: string; position: number }[] | null>;
+      if (pvErr) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan's venues: ${pvErr.message}` });
+      }
+      const pvList = pvRows ?? [];
+      const venueById = new Map<string, EmbeddedVenue>();
+      if (pvList.length > 0) {
+        const { data: vRows, error: vErr } = (await db
+          .from("venues")
+          .select("id, name, category, cover_photo_id")
+          .in("id", pvList.map((r) => r.venue_id))) as PgResult<EmbeddedVenue[] | null>;
+        if (vErr) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan's venues: ${vErr.message}` });
+        }
+        for (const v of vRows ?? []) venueById.set(v.id, v);
+      }
+      const venues = pvList.map((r) => {
+        const v = venueById.get(r.venue_id);
         return {
           venueId: r.venue_id,
           name: v?.name ?? "Venue",
