@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Button, Seg, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -51,15 +52,22 @@ interface TopicListItem {
 type Sort = "hot" | "new" | "top";
 type CategoryId = "food-drink" | "things-to-do" | "recommendations" | "events" | "neighbourhood";
 
-/** The board's category vocabulary (matches the API's categorySchema). */
-const CATEGORIES: { id: CategoryId; label: string }[] = [
-  { id: "food-drink", label: "Food & Drink" },
-  { id: "things-to-do", label: "Things to do" },
-  { id: "recommendations", label: "Recommendations" },
-  { id: "events", label: "Events" },
-  { id: "neighbourhood", label: "Neighbourhood" },
+/** The board's category vocabulary (matches the API's categorySchema). Ids are wire values;
+ *  labels come from the catalogue (townHall.categories.*) at display sites. */
+const CATEGORIES: { id: CategoryId; labelKey: string }[] = [
+  { id: "food-drink", labelKey: "foodDrink" },
+  { id: "things-to-do", labelKey: "thingsToDo" },
+  { id: "recommendations", labelKey: "recommendations" },
+  { id: "events", labelKey: "events" },
+  { id: "neighbourhood", labelKey: "neighbourhood" },
 ];
-const CATEGORY_LABEL = new Map<string, string>(CATEGORIES.map((c) => [c.id, c.label]));
+const CATEGORY_KEY = new Map<string, string>(CATEGORIES.map((c) => [c.id, c.labelKey]));
+
+/** Resolve a category id (a wire value) to its translated display label. */
+function categoryLabel(t: ReturnType<typeof useTranslations>, id: string): string | null {
+  const key = CATEGORY_KEY.get(id);
+  return key ? t(`categories.${key}`) : null;
+}
 
 /** "Active now" = someone touched the thread in the last half hour. */
 function isActiveNow(lastActivityAt: string): boolean {
@@ -68,6 +76,7 @@ function isActiveNow(lastActivityAt: string): boolean {
 }
 
 export function TownHall() {
+  const t = useTranslations("townHall");
   const trpc = useTrpc();
   const session = useSession();
   const { place, setPlace } = useCurrentPlace();
@@ -88,18 +97,18 @@ export function TownHall() {
       const res = await listTopics.query({ localityName: place.name, sort, ...(category ? { category } : {}) });
       return res.topics ?? [];
     } catch (e: unknown) {
-      throw e instanceof Error ? e : new Error("Couldn't load the Town Hall.");
+      throw e instanceof Error ? e : new Error(t("loadFailed"));
     }
   }, [trpc, place.name, sort, category]);
 
   useEffect(() => {
     let cancelled = false;
     load()
-      .then((t) => {
-        if (!cancelled) setTopics(t);
+      .then((list) => {
+        if (!cancelled) setTopics(list);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load the Town Hall.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -108,7 +117,7 @@ export function TownHall() {
 
   const onPosted = useCallback(() => {
     setComposing(false);
-    void load().then((t) => setTopics(t)).catch(() => {});
+    void load().then((list) => setTopics(list)).catch(() => {});
   }, [load]);
 
   return (
@@ -135,13 +144,13 @@ export function TownHall() {
         />
         <div style={{ position: "relative", maxWidth: 560 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(255,255,255,.75)", marginBottom: 8 }}>
-            {place.name} · The local forum
+            {place.name} · {t("hero.kicker")}
           </div>
           <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 34, letterSpacing: "-.02em", margin: 0 }}>
-            Town Hall
+            {t("hero.title")}
           </h1>
           <p style={{ margin: "10px 0 0", fontSize: 15.5, lineHeight: 1.55, color: "rgba(255,255,255,.88)", maxWidth: 480 }}>
-            What locals are talking about right now. Ask a question, share a tip, or upvote what matters where you are.
+            {t("hero.body")}
           </p>
           <button
             type="button"
@@ -164,7 +173,7 @@ export function TownHall() {
               boxShadow: "0 2px 10px rgba(0,0,0,.18)",
             }}
           >
-            <Icon name="plus" size={16} /> Start a topic
+            <Icon name="plus" size={16} /> {t("hero.startTopic")}
           </button>
         </div>
       </section>
@@ -174,9 +183,9 @@ export function TownHall() {
         <PlaceSwitcher value={place} onChange={setPlace} />
         <Seg
           options={[
-            { value: "hot", label: "Hot" },
-            { value: "new", label: "Recent" },
-            { value: "top", label: "Top" },
+            { value: "hot", label: t("sort.hot") },
+            { value: "new", label: t("sort.new") },
+            { value: "top", label: t("sort.top") },
           ]}
           value={sort}
           onChange={(v) => setSort(v)}
@@ -185,17 +194,17 @@ export function TownHall() {
           href={townHubPath(townSlug(place.name))}
           style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}
         >
-          {place.name} hub <span aria-hidden>→</span>
+          {t("placeHub", { place: place.name })} <span aria-hidden>→</span>
         </Link>
       </div>
 
-      <div className={styles.chips} role="tablist" aria-label="Filter by category">
+      <div className={styles.chips} role="tablist" aria-label={t("filterByCategory")}>
         <button
           type="button"
           className={`${styles.chip} ${category === null ? styles.chipActive : ""}`}
           onClick={() => setCategory(null)}
         >
-          All
+          {t("categories.all")}
         </button>
         {CATEGORIES.map((c) => (
           <button
@@ -204,7 +213,7 @@ export function TownHall() {
             className={`${styles.chip} ${category === c.id ? styles.chipActive : ""}`}
             onClick={() => setCategory((cur) => (cur === c.id ? null : c.id))}
           >
-            {c.label}
+            {t(`categories.${c.labelKey}`)}
           </button>
         ))}
       </div>
@@ -219,7 +228,7 @@ export function TownHall() {
             ) : (
               <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
                 <AuthPanel
-                  intro={`Sign in to start a topic in ${place.name}.`}
+                  intro={t("signInToStart", { place: place.name })}
                   emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
                   onAuthed={() => {
                     /* session change re-renders; the composer shows next */
@@ -238,16 +247,16 @@ export function TownHall() {
           ) : topics.length === 0 ? (
             <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
               <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-                {category ? `No ${CATEGORY_LABEL.get(category) ?? ""} topics in ${place.name} yet` : `No topics in ${place.name} yet`}
+                {category ? t("empty.titleCategory", { category: categoryLabel(t, category) ?? "", place: place.name }) : t("empty.title", { place: place.name })}
               </div>
               <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
-                Be the first to start a conversation — ask a question, share a recommendation, or suggest something.
+                {t("empty.body")}
               </p>
             </Card>
           ) : (
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
-              {topics.map((t) => (
-                <TopicRow key={t.id} topic={t} canVote={!!session} />
+              {topics.map((topic) => (
+                <TopicRow key={topic.id} topic={topic} canVote={!!session} />
               ))}
             </div>
           )}
@@ -264,8 +273,9 @@ export function TownHall() {
 }
 
 function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }) {
+  const t = useTranslations("townHall");
   const href = topic.slug ? `/town-hall/${topic.locality}/${topic.slug}` : `/town-hall/${topic.id}`;
-  const catLabel = topic.category ? CATEGORY_LABEL.get(topic.category) : null;
+  const catLabel = topic.category ? categoryLabel(t, topic.category) : null;
   const active = isActiveNow(topic.lastActivityAt);
   return (
     <Card style={{ padding: "var(--space-4)", display: "flex", gap: "var(--space-4)", alignItems: "flex-start" }}>
@@ -289,7 +299,7 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
           {active ? (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".05em", color: "var(--success)" }}>
               <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)" }} />
-              active now
+              {t("activeNow")}
             </span>
           ) : (
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{timeAgo(topic.lastActivityAt)}</span>
@@ -333,8 +343,8 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
             <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>· {timeAgo(topic.createdAt)}</span>
           </span>
           <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <Link href={href} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink-2)", textDecoration: "none" }} aria-label={`${topic.replyCount} ${topic.replyCount === 1 ? "reply" : "replies"}`}>
-              <Icon name="chat" size={15} /> {topic.replyCount} {topic.replyCount === 1 ? "reply" : "replies"}
+            <Link href={href} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--ink-2)", textDecoration: "none" }} aria-label={t("replies", { count: topic.replyCount })}>
+              <Icon name="chat" size={15} /> {t("replies", { count: topic.replyCount })}
             </Link>
             <CopyLinkButton path={href} />
           </span>
@@ -349,12 +359,13 @@ function TopicRow({ topic, canVote }: { topic: TopicListItem; canVote: boolean }
 const HASHTAG_RE = /#([a-z0-9][a-z0-9_-]{2,30})/gi;
 
 function TrendingTags({ topics }: { topics: TopicListItem[] | undefined }) {
+  const t = useTranslations("townHall");
   const tags = useMemo(() => {
     if (!topics || topics.length === 0) return [];
     const counts = new Map<string, number>();
-    for (const t of topics) {
+    for (const topic of topics) {
       const seen = new Set<string>(); // count once per topic, not per mention
-      for (const m of `${t.title} ${t.body}`.matchAll(HASHTAG_RE)) {
+      for (const m of `${topic.title} ${topic.body}`.matchAll(HASHTAG_RE)) {
         const tag = m[1]!.toLowerCase();
         if (!seen.has(tag)) {
           seen.add(tag);
@@ -373,7 +384,7 @@ function TrendingTags({ topics }: { topics: TopicListItem[] | undefined }) {
         <span aria-hidden style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 8, background: "var(--gold-tint)", color: "var(--gold)" }}>
           <Icon name="sparkle" size={15} />
         </span>
-        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Trending tags</h2>
+        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("trendingTags")}</h2>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {tags.map((tag) => (
@@ -395,6 +406,7 @@ interface ActiveLocal {
 }
 
 function ActiveLocals({ localityName }: { localityName: string }) {
+  const t = useTranslations("townHall");
   const trpc = useTrpc();
   const [locals, setLocals] = useState<ActiveLocal[] | undefined>(undefined);
 
@@ -424,7 +436,7 @@ function ActiveLocals({ localityName }: { localityName: string }) {
         <span aria-hidden style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 8, background: "var(--crimson-tint)", color: "var(--crimson-700)" }}>
           <Icon name="person" size={15} />
         </span>
-        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>Active locals</h2>
+        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("activeLocals")}</h2>
       </div>
       <div style={{ display: "grid", gap: "var(--space-2)" }}>
         {locals.map((l) => (
@@ -435,7 +447,7 @@ function ActiveLocals({ localityName }: { localityName: string }) {
             <span style={{ minWidth: 0, flex: 1 }}>
               <AuthorLink author={l.author} style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }} />
               <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                {l.helpfulVotes} helpful {l.helpfulVotes === 1 ? "vote" : "votes"}
+                {t("helpfulVotes", { count: l.helpfulVotes })}
               </span>
             </span>
           </div>
@@ -456,6 +468,7 @@ function TopicComposer({
   onPosted: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("townHall");
   const trpc = useTrpc();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -474,10 +487,10 @@ function TopicComposer({
     const q = trpc.townHall.previewLink as unknown as {
       query: (i: { url: string }) => Promise<{ url: string; domain: string; title: string | null; imageUrl: string | null }>;
     };
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       q.query({ url }).then((r) => { setPreview(r); setPreviewing(false); }).catch(() => { setPreview(null); setPreviewing(false); });
     }, 500);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [linkUrl, trpc]);
 
   const submit = useCallback(async () => {
@@ -497,7 +510,7 @@ function TopicComposer({
       });
       onPosted();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Couldn't post your topic.");
+      setErr(e instanceof Error ? e.message : t("composer.postFailed"));
       setBusy(false);
     }
   }, [trpc, localityName, title, body, category, linkUrl, onPosted]);
@@ -507,21 +520,21 @@ function TopicComposer({
   return (
     <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
       <div style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>
-        New topic in {localityName}
+        {t("composer.title", { place: localityName })}
       </div>
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Title — e.g. Best Sunday roast around here?"
-        aria-label="Topic title"
+        placeholder={t("composer.titlePlaceholder")}
+        aria-label={t("composer.titleAria")}
         maxLength={140}
         style={inputStyle}
       />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Share the detail…"
-        aria-label="Topic detail"
+        placeholder={t("composer.bodyPlaceholder")}
+        aria-label={t("composer.bodyAria")}
         rows={4}
         style={{ ...inputStyle, resize: "vertical", minHeight: 96 }}
       />
@@ -550,7 +563,7 @@ function TopicComposer({
                 color: on ? "var(--crimson-700)" : "var(--ink-2)",
               }}
             >
-              {c.label}
+              {t(`categories.${c.labelKey}`)}
             </button>
           );
         })}
@@ -559,13 +572,13 @@ function TopicComposer({
       <input
         value={linkUrl}
         onChange={(e) => setLinkUrl(e.target.value)}
-        placeholder="Add a link (optional) — https://…"
-        aria-label="Link URL"
+        placeholder={t("composer.linkPlaceholder")}
+        aria-label={t("composer.linkAria")}
         inputMode="url"
         style={inputStyle}
       />
       {previewing ? (
-        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-3)" }}>Fetching link preview…</div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-3)" }}>{t("composer.fetchingPreview")}</div>
       ) : preview ? (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <LinkPreviewCard
@@ -581,10 +594,10 @@ function TopicComposer({
       ) : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
         <Button variant="pri" onClick={() => void submit()} disabled={!canPost}>
-          {busy ? "Posting…" : "Post topic"}
+          {busy ? t("composer.posting") : t("composer.post")}
         </Button>
         <Button variant="neutral" onClick={onCancel} disabled={busy}>
-          Cancel
+          {t("composer.cancel")}
         </Button>
       </div>
     </Card>

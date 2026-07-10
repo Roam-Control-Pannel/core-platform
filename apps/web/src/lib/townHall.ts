@@ -15,10 +15,10 @@ export interface TownHallAuthor {
 
 /** A display name for an author: display name → @handle → "Someone" (author may be deleted). */
 export function townHallAuthor(author: TownHallAuthor | null | undefined): string {
-  if (!author) return "Someone";
+  if (!author) return runtimeStrings().someone;
   if (author.displayName && author.displayName.trim()) return author.displayName.trim();
   if (author.handle && author.handle.trim()) return `@${author.handle.trim()}`;
-  return "Someone";
+  return runtimeStrings().someone;
 }
 
 /** A 1–2 char initial for an avatar bubble, from the best available name. */

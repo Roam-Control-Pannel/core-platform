@@ -5,7 +5,8 @@
       "minutes": "{n}m",
       "hours": "{n}h",
       "days": "{n}d"
-    }
+    },
+    "someone": "Someone"
   },
   "categories": {
     "foodDrink": "Eateries",
@@ -768,5 +769,261 @@
       "publish": "Publish offer",
       "cancel": "Cancel"
     }
+  },
+  "townHall": {
+    "loadFailed": "Couldn't load the Town Hall.",
+    "hero": {
+      "kicker": "The local forum",
+      "title": "Town Hall",
+      "body": "What locals are talking about right now. Ask a question, share a tip, or upvote what matters where you are.",
+      "startTopic": "Start a topic"
+    },
+    "sort": {
+      "hot": "Hot",
+      "new": "Recent",
+      "top": "Top"
+    },
+    "placeHub": "{place} hub",
+    "filterByCategory": "Filter by category",
+    "categories": {
+      "all": "All",
+      "foodDrink": "Food & Drink",
+      "thingsToDo": "Things to do",
+      "recommendations": "Recommendations",
+      "events": "Events",
+      "neighbourhood": "Neighbourhood"
+    },
+    "signInToStart": "Sign in to start a topic in {place}.",
+    "empty": {
+      "titleCategory": "No {category} topics in {place} yet",
+      "title": "No topics in {place} yet",
+      "body": "Be the first to start a conversation — ask a question, share a recommendation, or suggest something."
+    },
+    "activeNow": "active now",
+    "replies": "{count, plural, one {# reply} other {# replies}}",
+    "trendingTags": "Trending tags",
+    "activeLocals": "Active locals",
+    "helpfulVotes": "{count, plural, one {# helpful vote} other {# helpful votes}}",
+    "composer": {
+      "title": "New topic in {place}",
+      "titlePlaceholder": "Title — e.g. Best Sunday roast around here?",
+      "titleAria": "Topic title",
+      "bodyPlaceholder": "Share the detail…",
+      "bodyAria": "Topic detail",
+      "linkPlaceholder": "Add a link (optional) — https://…",
+      "linkAria": "Link URL",
+      "fetchingPreview": "Fetching link preview…",
+      "postFailed": "Couldn't post your topic.",
+      "posting": "Posting…",
+      "post": "Post topic",
+      "cancel": "Cancel"
+    }
+  },
+  "townHallTopic": {
+    "townHall": "Town Hall",
+    "loadFailed": "Couldn't load this topic.",
+    "notFoundTitle": "Topic not found",
+    "notFoundBody": "It may have been removed, or the link is wrong.",
+    "deleteTopicConfirm": "Delete this topic?",
+    "deleteReplyConfirm": "Delete this reply?",
+    "replies": "{count, plural, =0 {No replies yet} one {# reply} other {# replies}}",
+    "signInToReply": "Sign in to join the conversation.",
+    "owner": {
+      "deleting": "Deleting…",
+      "yesDelete": "Yes, delete",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "editor": {
+      "titleAria": "Topic title",
+      "bodyAria": "Topic detail",
+      "replyAria": "Edit reply",
+      "saveFailed": "Couldn't save your changes.",
+      "saving": "Saving…",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "composer": {
+      "placeholder": "Add a reply…",
+      "aria": "Your reply",
+      "postFailed": "Couldn't post your reply.",
+      "posting": "Posting…",
+      "post": "Post reply"
+    },
+    "report": {
+      "thanks": "Thanks — a moderator will take a look.",
+      "reporting": "Reporting…",
+      "cta": "Report this topic"
+    }
+  },
+  "tagFeed": {
+    "kicker": "Hashtag",
+    "postCount": "{count, plural, one {# post} other {# posts}} across Roam",
+    "loadFailed": "Couldn't load #{tag} just now.",
+    "emptyTitle": "Nothing tagged #{tag} yet",
+    "emptyBody": "Use #{tag} in a Town Hall topic or a wall post and it'll show up here.",
+    "sections": {
+      "townHall": "Town Hall discussion",
+      "businesses": "From local businesses",
+      "locals": "From locals"
+    },
+    "replies": "{count, plural, one {# reply} other {# replies}}",
+    "venueUpdate": "{venue} — update",
+    "localUpdate": "Local update",
+    "aLocal": "A local",
+    "viewPost": "View post →"
+  },
+  "topicUpvote": {
+    "upvote": "Upvote",
+    "removeUpvote": "Remove upvote",
+    "signInToUpvote": "Sign in to upvote"
+  },
+  "linkPreviewCard": {
+    "link": "link",
+    "removeLink": "Remove link"
+  },
+  "profileWall": {
+    "loadFailed": "Couldn't load this profile.",
+    "notFoundTitle": "Profile not found",
+    "notFoundBody": "This account may have been removed, or the link is wrong.",
+    "done": "Done",
+    "empty": {
+      "ownerTitle": "Your wall is quiet",
+      "visitorTitle": "A quiet wall",
+      "ownerBody": "Share your first post, or follow a few venues and friends to fill your feed.",
+      "visitorBody": "{name} hasn't posted yet.",
+      "thisUser": "This user"
+    },
+    "header": {
+      "yourCoverPhoto": "Your cover photo",
+      "roamMember": "Roam member",
+      "aRoamMember": "A Roam member",
+      "close": "Close",
+      "editProfile": "Edit profile",
+      "tabs": {
+        "wall": "Wall",
+        "friends": "Friends",
+        "following": "Following",
+        "plans": "Plans",
+        "orders": "Orders",
+        "notifications": "Notifications",
+        "businessDashboard": "Business dashboard",
+        "settings": "Settings"
+      }
+    },
+    "stats": {
+      "friends": "Friends",
+      "following": "Following",
+      "plans": "Plans"
+    },
+    "composer": {
+      "maxItems": "You can add up to {max} items.",
+      "uploadingProgress": "Uploading {current} of {total}…",
+      "uploadImageFailed": "Couldn't upload that image.",
+      "uploadVideoFailed": "Couldn't upload that video.",
+      "postFailed": "Couldn't post that.",
+      "placeholder": "Share something with your locals…",
+      "writeAria": "Write a post",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "removeMedia": "Remove media",
+      "removeImage": "Remove image",
+      "uploading": "Uploading…",
+      "addPhoto": "＋ Photo",
+      "addPhotoCount": "＋ Photo ({count}/{max})",
+      "addVideo": "＋ Video",
+      "posting": "Posting…",
+      "post": "Post"
+    },
+    "post": {
+      "deleteConfirm": "Delete?",
+      "deleting": "Deleting…",
+      "yes": "Yes",
+      "no": "No",
+      "edit": "Edit",
+      "delete": "Delete",
+      "editPost": "Edit post",
+      "deletePost": "Delete post",
+      "comments": "{count, plural, one {# comment} other {# comments}}",
+      "shareTitle": "{name} on Roam"
+    },
+    "editor": {
+      "saveFailed": "Couldn't save your changes.",
+      "editPostAria": "Edit post",
+      "saving": "Saving…",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "like": {
+      "unlike": "Unlike",
+      "like": "Like",
+      "signInToLike": "Sign in to like"
+    },
+    "comments": {
+      "placeholder": "Add a comment…",
+      "addAria": "Add a comment",
+      "send": "Send",
+      "signInToInteract": "<link>Sign in</link> to like and comment."
+    },
+    "comment": {
+      "editAria": "Edit comment",
+      "save": "Save",
+      "cancel": "Cancel",
+      "deleteConfirm": "Delete?",
+      "yes": "Yes",
+      "no": "No",
+      "edit": "Edit",
+      "delete": "Delete"
+    }
+  },
+  "feedList": {
+    "filters": {
+      "all": "All",
+      "offer": "Offers",
+      "event": "Events",
+      "news": "News"
+    },
+    "loadFailed": "Failed to load the feed.",
+    "noFilteredPosts": {
+      "all": "No posts here yet.",
+      "offer": "No offer posts here yet.",
+      "event": "No event posts here yet.",
+      "news": "No news posts here yet."
+    },
+    "empty": {
+      "title": "The feed for {placeName} is just getting started",
+      "body": "When venues here post news, offers and events, they'll appear in this feed. Browse what's nearby in the meantime — and if you run a place in {placeName}, claiming it lets you post to people close by."
+    },
+    "errorTitle": "Couldn't load the feed"
+  },
+  "postDetail": {
+    "kind": {
+      "news": "news",
+      "offer": "offer",
+      "event": "event"
+    },
+    "when": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    },
+    "postedWhen": "Posted {when}",
+    "posted": "Posted",
+    "redeemOffer": "Redeem offer",
+    "shareTitleFallback": "A post on Roam",
+    "viewVenue": "View Venue",
+    "screen": {
+      "back": "Feed",
+      "loadFailed": "Couldn't load this post.",
+      "notFoundTitle": "Post not found",
+      "notFoundBody": "It may have been removed, or the link is wrong."
+    }
+  },
+  "wallPostScreen": {
+    "loadFailed": "Couldn't load this post.",
+    "profile": "Profile",
+    "notFoundTitle": "Post not found",
+    "notFoundBody": "It may have been removed, or the link is wrong."
   }
 }

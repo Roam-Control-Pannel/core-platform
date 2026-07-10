@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { type FeedPost, KindTag, formatWhen, PostDetail } from "./PostDetail";
@@ -26,14 +27,10 @@ import styles from "./FeedList.module.css";
 
 type KindFilter = "all" | "offer" | "event" | "news";
 
-const FILTERS: { value: KindFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "offer", label: "Offers" },
-  { value: "event", label: "Events" },
-  { value: "news", label: "News" },
-];
+const FILTERS: KindFilter[] = ["all", "offer", "event", "news"];
 
 export function FeedList({ placeName, lat, lng }: { placeName: string; lat: number; lng: number }) {
+  const t = useTranslations("feedList");
   const trpc = useTrpc();
   const [posts, setPosts] = useState<FeedPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +49,7 @@ export function FeedList({ placeName, lat, lng }: { placeName: string; lat: numb
         if (!cancelled) setPosts(rows as FeedPost[]);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load the feed.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -95,9 +92,9 @@ export function FeedList({ placeName, lat, lng }: { placeName: string; lat: numb
         {/* type filters — map to the composer's post types */}
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
           {FILTERS.map((f) => (
-            <button key={f.value} onClick={() => setFilter(f.value)} style={{ all: "unset", cursor: "pointer" }}>
-              <Pill variant={filter === f.value ? "crim" : "neutral"} size="sm">
-                {f.label}
+            <button key={f} onClick={() => setFilter(f)} style={{ all: "unset", cursor: "pointer" }}>
+              <Pill variant={filter === f ? "crim" : "neutral"} size="sm">
+                {t(`filters.${f}`)}
               </Pill>
             </button>
           ))}
@@ -105,7 +102,7 @@ export function FeedList({ placeName, lat, lng }: { placeName: string; lat: numb
 
         {shown.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14, padding: "var(--space-4) 0" }}>
-            No {filter === "all" ? "" : `${filter} `}posts here yet.
+            {t(`noFilteredPosts.${filter}`)}
           </p>
         ) : (
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
@@ -128,6 +125,7 @@ export function FeedList({ placeName, lat, lng }: { placeName: string; lat: numb
  * marks the card that drives the web pane.
  */
 function PostCard({ post, active, onClick }: { post: FeedPost; active: boolean; onClick: (e: MouseEvent) => void }) {
+  const t = useTranslations("postDetail");
   return (
     <Link href={`/feed/${post.id}`} onClick={onClick} className={styles.card} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Card style={active ? { borderColor: "var(--crimson-tint-2)", boxShadow: "var(--shadow-pop)" } : undefined}>
@@ -145,7 +143,7 @@ function PostCard({ post, active, onClick }: { post: FeedPost; active: boolean; 
             ) : null}
             {post.publishedAt ? (
               <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", marginTop: 1 }}>
-                {formatWhen(post.publishedAt)}
+                {formatWhen(t, post.publishedAt)}
                 {post.venueLocality ? ` · ${post.venueLocality}` : ""}
               </div>
             ) : null}
@@ -212,6 +210,7 @@ function FeedSkeleton() {
 }
 
 function FeedEmpty({ placeName }: { placeName: string }) {
+  const t = useTranslations("feedList");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", maxWidth: 480, margin: "0 auto" }}>
       <div
@@ -230,22 +229,21 @@ function FeedEmpty({ placeName }: { placeName: string }) {
         <Icon name="inbox" size={24} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        The feed for {placeName} is just getting started
+        {t("empty.title", { placeName })}
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        When venues here post news, offers and events, they&apos;ll appear in this feed.
-        Browse what&apos;s nearby in the meantime — and if you run a place in {placeName},
-        claiming it lets you post to people close by.
+        {t("empty.body", { placeName })}
       </p>
     </div>
   );
 }
 
 function FeedError({ message }: { message: string }) {
+  const t = useTranslations("feedList");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load the feed
+        {t("errorTitle")}
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>

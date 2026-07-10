@@ -16,11 +16,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
 import { linkifyHashtags } from "../lib/hashtags";
+import { getFormatLocale } from "../lib/i18n/runtime";
 
 export interface FeedPost {
   id: string;
@@ -36,6 +38,7 @@ export interface FeedPost {
 
 /** Post-kind tag — OFFER carries the crimson emphasis; EVENT/NEWS are neutral. */
 export function KindTag({ kind }: { kind: FeedPost["kind"] }) {
+  const t = useTranslations("postDetail");
   const isOffer = kind === "offer";
   return (
     <span
@@ -53,26 +56,28 @@ export function KindTag({ kind }: { kind: FeedPost["kind"] }) {
         border: `1px solid ${isOffer ? "var(--crimson-tint-2)" : "var(--line)"}`,
       }}
     >
-      {kind}
+      {t(`kind.${kind}`)}
     </span>
   );
 }
 
-/** Compact relative-ish date. Localisation of the exact format is a later concern. */
-export function formatWhen(iso: string): string {
+/** Compact relative-ish date. Words come from the active catalogue; the date fallback formats
+ *  in the active locale. English output is byte-identical to the original hardcoded version. */
+export function formatWhen(t: ReturnType<typeof useTranslations>, iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diffMs = Date.now() - then;
   const day = 86_400_000;
-  if (diffMs < day) return "Today";
-  if (diffMs < 2 * day) return "Yesterday";
+  if (diffMs < day) return t("when.today");
+  if (diffMs < 2 * day) return t("when.yesterday");
   const days = Math.floor(diffMs / day);
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
+  if (days < 7) return t("when.daysAgo", { count: days });
+  return new Date(iso).toLocaleDateString(getFormatLocale());
 }
 
 /** The presentational post detail. `post` is already loaded by the caller. */
 export function PostDetail({ post }: { post: FeedPost }) {
+  const t = useTranslations("postDetail");
   const isOffer = post.kind === "offer";
   return (
     <Card>
@@ -114,7 +119,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
             style={{ flex: "0 0 auto", width: 30, height: 30, borderRadius: "50%", background: "var(--paper-2)", border: "1px solid var(--line)" }}
           />
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--muted)" }}>
-            {post.publishedAt ? `Posted ${formatWhen(post.publishedAt)}` : "Posted"}
+            {post.publishedAt ? t("postedWhen", { when: formatWhen(t, post.publishedAt) }) : t("posted")}
             {post.venueName ? (
               <>
                 {" · "}
@@ -140,7 +145,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
         {isOffer ? (
           <div style={{ marginTop: "var(--space-4)" }}>
             <Link href={venuePath(post.venueId)} style={{ textDecoration: "none" }}>
-              <Pill variant="ghost-crim">Redeem offer →</Pill>
+              <Pill variant="ghost-crim">{t("redeemOffer")} →</Pill>
             </Link>
           </div>
         ) : null}
@@ -149,11 +154,11 @@ export function PostDetail({ post }: { post: FeedPost }) {
           <CopyLinkButton
             variant="button"
             path={`/feed/${post.id}`}
-            title={post.title ?? post.venueName ?? "A post on Roam"}
+            title={post.title ?? post.venueName ?? t("shareTitleFallback")}
           />
           <Link href={venuePath(post.venueId)} style={{ textDecoration: "none", flex: 1 }}>
             <Button variant="neutral" block>
-              View Venue →
+              {t("viewVenue")} →
             </Button>
           </Link>
         </div>
@@ -167,6 +172,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
  * back link to the feed and the loading / not-found / error states.
  */
 export function PostDetailScreen({ postId, initialPost }: { postId: string; initialPost?: FeedPost | null }) {
+  const t = useTranslations("postDetail");
   const trpc = useTrpc();
   const [post, setPost] = useState<FeedPost | null | undefined>(initialPost);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +193,7 @@ export function PostDetailScreen({ postId, initialPost }: { postId: string; init
         if (!cancelled) setPost(p);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load this post.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("screen.loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -200,7 +206,7 @@ export function PostDetailScreen({ postId, initialPost }: { postId: string; init
         href="/explore"
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Feed
+        <span aria-hidden>←</span> {t("screen.back")}
       </Link>
 
       {error ? (
@@ -212,9 +218,9 @@ export function PostDetailScreen({ postId, initialPost }: { postId: string; init
       ) : post === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-            Post not found
+            {t("screen.notFoundTitle")}
           </div>
-          <p style={{ color: "var(--ink-2)", margin: 0 }}>It may have been removed, or the link is wrong.</p>
+          <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("screen.notFoundBody")}</p>
         </Card>
       ) : (
         <PostDetail post={post} />

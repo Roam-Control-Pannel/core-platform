@@ -41,9 +41,17 @@ export interface RuntimeStrings {
   minutes: string;
   hours: string;
   days: string;
+  /** Fallback display name for a deleted/anonymous author (townHallAuthor). */
+  someone: string;
 }
 
-const EN_STRINGS: RuntimeStrings = { justNow: "just now", minutes: "{n}m", hours: "{n}h", days: "{n}d" };
+const EN_STRINGS: RuntimeStrings = {
+  justNow: "just now",
+  minutes: "{n}m",
+  hours: "{n}h",
+  days: "{n}d",
+  someone: "Someone",
+};
 
 let current: { locale: string; format: string; strings: RuntimeStrings } = {
   locale: DEFAULT_LOCALE,

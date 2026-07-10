@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
@@ -66,6 +67,7 @@ export function ProfileWall({
   editable?: boolean;
   initialProfile?: PublicProfile | null;
 }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const session = useSession();
   const isOwner = session?.user?.id === userId;
@@ -109,7 +111,7 @@ export function ProfileWall({
         setPosts(ps);
       })
       .catch((e: unknown) => {
-        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Couldn't load this profile.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -140,9 +142,9 @@ export function ProfileWall({
         <div style={{ padding: "var(--space-4)" }}>
           <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
             <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-              Profile not found
+              {t("notFoundTitle")}
             </div>
-            <p style={{ color: "var(--ink-2)", margin: 0 }}>This account may have been removed, or the link is wrong.</p>
+            <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("notFoundBody")}</p>
           </Card>
         </div>
       ) : (
@@ -160,7 +162,7 @@ export function ProfileWall({
                 <ProfileEditor userId={userId} onSaved={reloadProfile} />
                 <div style={{ marginTop: "var(--space-3)", textAlign: "right" }}>
                   <Button variant="neutral" size="sm" onClick={() => setEditing(false)}>
-                    Done
+                    {t("done")}
                   </Button>
                 </div>
               </Card>
@@ -179,12 +181,12 @@ export function ProfileWall({
                   <Icon name="chat" size={20} />
                 </span>
                 <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>
-                  {isOwner ? "Your wall is quiet" : "A quiet wall"}
+                  {isOwner ? t("empty.ownerTitle") : t("empty.visitorTitle")}
                 </div>
                 <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5, fontSize: 13.5 }}>
                   {isOwner
-                    ? "Share your first post, or follow a few venues and friends to fill your feed."
-                    : `${profile.displayName ?? "This user"} hasn't posted yet.`}
+                    ? t("empty.ownerBody")
+                    : t("empty.visitorBody", { name: profile.displayName ?? t("empty.thisUser") })}
                 </p>
               </Card>
             ) : (
@@ -214,6 +216,7 @@ function ProfileHeader({
   editing: boolean;
   onToggleEdit: () => void;
 }) {
+  const t = useTranslations("profileWall");
   return (
     <div style={{ marginBottom: "var(--space-4)", padding: "var(--space-4) var(--space-4) 0" }}>
       {/* Cover photo — a rounded banner card (hi-fi mockup). Owners with no cover yet see the
@@ -231,7 +234,7 @@ function ProfileHeader({
       >
         {isOwner && !profile.headerUrl ? (
           <span style={{ position: "absolute", left: 14, bottom: 10, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>
-            Your cover photo
+            {t("header.yourCoverPhoto")}
           </span>
         ) : null}
       </div>
@@ -243,7 +246,7 @@ function ProfileHeader({
         </div>
         <div style={{ minWidth: 0, flex: 1, paddingTop: "var(--space-3)" }}>
           <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.015em", margin: 0, lineHeight: 1.15 }}>
-            {profile.displayName ?? (profile.handle ? `@${profile.handle}` : "Roam member")}
+            {profile.displayName ?? (profile.handle ? `@${profile.handle}` : t("header.roamMember"))}
           </h1>
           {profile.handle ? (
             <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", marginTop: 3 }}>@{profile.handle}</div>
@@ -259,16 +262,16 @@ function ProfileHeader({
             variant="button"
             size="sm"
             path={`/u/${profile.handle ?? profile.id}`}
-            title={profile.displayName ?? (profile.handle ? `@${profile.handle}` : "A Roam member")}
+            title={profile.displayName ?? (profile.handle ? `@${profile.handle}` : t("header.aRoamMember"))}
           />
           {isOwner ? (
             editable ? (
               <Button variant="dark" size="sm" onClick={onToggleEdit}>
-                {editing ? "Close" : "Edit profile"}
+                {editing ? t("header.close") : t("header.editProfile")}
               </Button>
             ) : (
               <Link href="/account" style={{ textDecoration: "none" }}>
-                <Button variant="dark" size="sm">Edit profile</Button>
+                <Button variant="dark" size="sm">{t("header.editProfile")}</Button>
               </Link>
             )
           ) : (
@@ -285,18 +288,18 @@ function ProfileHeader({
       {/* Owner tab chips — Wall active (this page), the rest one tap away (mockup nav). */}
       {isOwner ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
-          <span style={{ padding: "7px 15px", borderRadius: 999, background: "var(--ink-hi)", color: "#fff", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600 }}>Wall</span>
+          <span style={{ padding: "7px 15px", borderRadius: 999, background: "var(--ink-hi)", color: "#fff", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600 }}>{t("header.tabs.wall")}</span>
           {[
-            ["Friends", "/friends"],
-            ["Following", "/following"],
-            ["Plans", "/plans"],
-            ["Orders", "/orders"],
-            ["Notifications", "/notifications"],
-            ["Business dashboard", "/dashboard"],
-            ["Settings", "/settings"],
-          ].map(([label, href]) => (
+            ["friends", "/friends"],
+            ["following", "/following"],
+            ["plans", "/plans"],
+            ["orders", "/orders"],
+            ["notifications", "/notifications"],
+            ["businessDashboard", "/dashboard"],
+            ["settings", "/settings"],
+          ].map(([key, href]) => (
             <Link key={href} href={href!} style={{ padding: "7px 15px", borderRadius: 999, background: "#fff", border: "1px solid var(--line-2)", color: "var(--ink-2)", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-              {label}
+              {t(`header.tabs.${key}`)}
             </Link>
           ))}
         </div>
@@ -309,6 +312,7 @@ function ProfileHeader({
 /** The mockup's stats strip (owner only): Friends · Following · Plans — each cell loads
  *  independently from reads that already exist and simply hides if its read fails. */
 function ProfileStats() {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [stats, setStats] = useState<{ label: string; value: number }[]>([]);
 
@@ -320,9 +324,9 @@ function ProfileStats() {
     Promise.allSettled([mf.query(), fo.query(), pl.query()]).then(([f, w, p]) => {
       if (cancelled) return;
       const next: { label: string; value: number }[] = [];
-      if (f.status === "fulfilled") next.push({ label: "Friends", value: (f.value.friends ?? []).length });
-      if (w.status === "fulfilled") next.push({ label: "Following", value: (w.value.follows ?? []).length });
-      if (p.status === "fulfilled") next.push({ label: "Plans", value: (p.value.plans ?? []).length });
+      if (f.status === "fulfilled") next.push({ label: t("stats.friends"), value: (f.value.friends ?? []).length });
+      if (w.status === "fulfilled") next.push({ label: t("stats.following"), value: (w.value.follows ?? []).length });
+      if (p.status === "fulfilled") next.push({ label: t("stats.plans"), value: (p.value.plans ?? []).length });
       setStats(next);
     });
     return () => {
@@ -383,6 +387,7 @@ function Avatar({ url, name, size, ring }: { url: string | null; name: string; s
 const MAX_MEDIA = 4;
 
 function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => void }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [body, setBody] = useState("");
   const [media, setMedia] = useState<WallMedia[]>([]);
@@ -400,7 +405,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       setErr(null);
       const room = MAX_MEDIA - media.length;
       if (room <= 0) {
-        setErr(`You can add up to ${MAX_MEDIA} items.`);
+        setErr(t("composer.maxItems", { max: MAX_MEDIA }));
         return;
       }
       const chosen = Array.from(files).slice(0, room);
@@ -408,13 +413,13 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       try {
         const uploaded: WallMedia[] = [];
         for (const [i, file] of chosen.entries()) {
-          if (chosen.length > 1) setProgress(`Uploading ${i + 1} of ${chosen.length}…`);
+          if (chosen.length > 1) setProgress(t("composer.uploadingProgress", { current: i + 1, total: chosen.length }));
           const { url } = await uploadProfileImage(userId, file, "wall");
           uploaded.push({ type: "image", url });
         }
         setMedia((m) => [...m, ...uploaded]);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Couldn't upload that image.");
+        setErr(e instanceof Error ? e.message : t("composer.uploadImageFailed"));
       } finally {
         setUploading(false);
         setProgress(null);
@@ -430,7 +435,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       if (!file) return;
       setErr(null);
       if (media.length >= MAX_MEDIA) {
-        setErr(`You can add up to ${MAX_MEDIA} items.`);
+        setErr(t("composer.maxItems", { max: MAX_MEDIA }));
         return;
       }
       setUploading(true);
@@ -438,7 +443,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         const { url } = await uploadWallVideo(userId, file);
         setMedia((m) => [...m, { type: "video", url }]);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Couldn't upload that video.");
+        setErr(e instanceof Error ? e.message : t("composer.uploadVideoFailed"));
       } finally {
         setUploading(false);
         if (videoRef.current) videoRef.current.value = "";
@@ -460,7 +465,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
       setBusy(false);
       onPosted();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Couldn't post that.");
+      setErr(e instanceof Error ? e.message : t("composer.postFailed"));
       setBusy(false);
     }
   }, [trpc, body, media, onPosted]);
@@ -477,8 +482,8 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onPaste={(e) => { const fs = imageFilesFrom(e.clipboardData); if (fs.length > 0) { e.preventDefault(); void onPickFiles(fs); } }}
-        placeholder="Share something with your locals…"
-        aria-label="Write a post"
+        placeholder={t("composer.placeholder")}
+        aria-label={t("composer.writeAria")}
         rows={3}
         style={{
           width: "100%",
@@ -502,8 +507,8 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
             <div key={m.url} style={{ position: "relative" }}>
               {media.length > 1 ? (
                 <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3, zIndex: 1 }}>
-                  <button type="button" aria-label="Move earlier" disabled={i === 0} onClick={() => setMedia((cur) => moveItem(cur, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
-                  <button type="button" aria-label="Move later" disabled={i === media.length - 1} onClick={() => setMedia((cur) => moveItem(cur, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
+                  <button type="button" aria-label={t("composer.moveEarlier")} disabled={i === 0} onClick={() => setMedia((cur) => moveItem(cur, i, -1))} style={{ ...thumbButtonStyle, opacity: i === 0 ? 0.35 : 1 }}>‹</button>
+                  <button type="button" aria-label={t("composer.moveLater")} disabled={i === media.length - 1} onClick={() => setMedia((cur) => moveItem(cur, i, 1))} style={{ ...thumbButtonStyle, opacity: i === media.length - 1 ? 0.35 : 1 }}>›</button>
                 </div>
               ) : null}
               {m.type === "video" ? (
@@ -514,7 +519,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
               )}
               <button
                 type="button"
-                aria-label="Remove media"
+                aria-label={t("composer.removeMedia")}
                 onClick={() => setMedia((cur) => cur.filter((x) => x.url !== m.url))}
                 style={{
                   all: "unset", cursor: "pointer", position: "absolute", top: -6, right: -6,
@@ -522,7 +527,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
                   display: "grid", placeItems: "center",
                 }}
               >
-                <Icon name="close" size={12} aria-label="Remove image" />
+                <Icon name="close" size={12} aria-label={t("composer.removeImage")} />
               </button>
             </div>
           ))}
@@ -557,7 +562,11 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
           onClick={() => fileRef.current?.click()}
           disabled={uploading || media.length >= MAX_MEDIA}
         >
-          {uploading ? (progress ?? "Uploading…") : `＋ Photo${media.length > 0 ? ` (${media.length}/${MAX_MEDIA})` : ""}`}
+          {uploading
+            ? (progress ?? t("composer.uploading"))
+            : media.length > 0
+              ? t("composer.addPhotoCount", { count: media.length, max: MAX_MEDIA })
+              : t("composer.addPhoto")}
         </Button>
         <Button
           variant="neutral"
@@ -565,11 +574,11 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
           onClick={() => videoRef.current?.click()}
           disabled={uploading || media.length >= MAX_MEDIA}
         >
-          ＋ Video
+          {t("composer.addVideo")}
         </Button>
         <span style={{ flex: 1 }} />
         <Button variant="pri" size="sm" onClick={() => void submit()} disabled={!canPost}>
-          {busy ? "Posting…" : "Post"}
+          {busy ? t("composer.posting") : t("composer.post")}
         </Button>
       </div>
     </Card>
@@ -592,6 +601,7 @@ export function PostCard({
   myId: string | null;
   onChanged: () => void;
 }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [showComments, setShowComments] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -621,16 +631,16 @@ export function PostCard({
         {isOwner && !editing ? (
           confirming ? (
             <div className={actions.row}>
-              <span className={actions.confirm}>Delete?</span>
+              <span className={actions.confirm}>{t("post.deleteConfirm")}</span>
               <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={removing}>
-                {removing ? "Deleting…" : "Yes"}
+                {removing ? t("post.deleting") : t("post.yes")}
               </button>
-              <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={removing}>No</button>
+              <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={removing}>{t("post.no")}</button>
             </div>
           ) : (
             <div className={actions.row}>
-              <button type="button" className={actions.action} onClick={() => setEditing(true)} title="Edit post">Edit</button>
-              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)} title="Delete post">Delete</button>
+              <button type="button" className={actions.action} onClick={() => setEditing(true)} title={t("post.editPost")}>{t("post.edit")}</button>
+              <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)} title={t("post.deletePost")}>{t("post.delete")}</button>
             </div>
           )
         ) : null}
@@ -662,11 +672,11 @@ export function PostCard({
               style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-2)" }}
             >
               <Icon name="chat" size={15} />
-              {post.commentCount === 1 ? "1 comment" : `${post.commentCount} comments`}
+              {t("post.comments", { count: post.commentCount })}
             </button>
             <CopyLinkButton
               path={`/p/${post.id}`}
-              title={`${townHallAuthor(post.author)} on Roam`}
+              title={t("post.shareTitle", { name: townHallAuthor(post.author) })}
             />
           </div>
 
@@ -679,6 +689,7 @@ export function PostCard({
 
 /** Inline editor for a wall post — edits the body text; existing media is preserved (resent as-is). */
 function PostEditor({ post, onSaved, onCancel }: { post: WallPost; onSaved: () => void; onCancel: () => void }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [body, setBody] = useState(post.body ?? "");
   const [busy, setBusy] = useState(false);
@@ -694,7 +705,7 @@ function PostEditor({ post, onSaved, onCancel }: { post: WallPost; onSaved: () =
       await mut.mutate({ postId: post.id, body: body.trim() ? body : null, media: post.media });
       onSaved();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setErr(e instanceof Error ? e.message : t("editor.saveFailed"));
       setBusy(false);
     }
   }, [trpc, post.id, post.media, body, onSaved]);
@@ -706,7 +717,7 @@ function PostEditor({ post, onSaved, onCancel }: { post: WallPost; onSaved: () =
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        aria-label="Edit post"
+        aria-label={t("editor.editPostAria")}
         rows={3}
         style={{
           width: "100%", boxSizing: "border-box", padding: "10px 12px", marginBottom: "var(--space-3)",
@@ -717,8 +728,8 @@ function PostEditor({ post, onSaved, onCancel }: { post: WallPost; onSaved: () =
       {post.media.length > 0 ? <MediaGrid media={post.media} /> : null}
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, margin: "var(--space-2) 0" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
-        <Button variant="pri" size="sm" onClick={() => void save()} disabled={!canSave}>{busy ? "Saving…" : "Save"}</Button>
-        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" size="sm" onClick={() => void save()} disabled={!canSave}>{busy ? t("editor.saving") : t("editor.save")}</Button>
+        <Button variant="neutral" size="sm" onClick={onCancel} disabled={busy}>{t("editor.cancel")}</Button>
       </div>
     </div>
   );
@@ -765,6 +776,7 @@ function LikeButton({
   initialCount: number;
   canInteract: boolean;
 }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
@@ -798,7 +810,7 @@ function LikeButton({
       onClick={() => void toggle()}
       disabled={!canInteract || busy}
       aria-pressed={liked}
-      title={canInteract ? (liked ? "Unlike" : "Like") : "Sign in to like"}
+      title={canInteract ? (liked ? t("like.unlike") : t("like.like")) : t("like.signInToLike")}
       style={{
         all: "unset",
         cursor: canInteract ? "pointer" : "default",
@@ -825,6 +837,7 @@ interface WallComment {
 }
 
 function Comments({ postId, canInteract, myId, onChanged }: { postId: string; canInteract: boolean; myId: string | null; onChanged: () => void }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [comments, setComments] = useState<WallComment[] | undefined>(undefined);
   const [body, setBody] = useState("");
@@ -892,8 +905,8 @@ function Comments({ postId, canInteract, myId, onChanged }: { postId: string; ca
           <input
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Add a comment…"
-            aria-label="Add a comment"
+            placeholder={t("comments.placeholder")}
+            aria-label={t("comments.addAria")}
             style={{
               flex: 1, boxSizing: "border-box", padding: "8px 12px", background: "var(--paper-2)",
               border: "1px solid var(--line)", borderRadius: "var(--r-full)", fontFamily: "var(--ui)",
@@ -901,12 +914,16 @@ function Comments({ postId, canInteract, myId, onChanged }: { postId: string; ca
             }}
           />
           <Button variant="pri" size="sm" onClick={() => void submit()} disabled={body.trim().length === 0 || busy}>
-            {busy ? "…" : "Send"}
+            {busy ? "…" : t("comments.send")}
           </Button>
         </div>
       ) : (
         <p style={{ margin: "var(--space-3) 0 0", fontSize: 12.5, color: "var(--muted)" }}>
-          <Link href="/account" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>Sign in</Link> to like and comment.
+          {t.rich("comments.signInToInteract", {
+            link: (chunks) => (
+              <Link href="/account" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>{chunks}</Link>
+            ),
+          })}
         </p>
       )}
     </div>
@@ -915,6 +932,7 @@ function Comments({ postId, canInteract, myId, onChanged }: { postId: string; ca
 
 /** A single comment with inline edit / delete for its own author. */
 function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: boolean; onChanged: () => Promise<void> }) {
+  const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body);
@@ -958,7 +976,7 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              aria-label="Edit comment"
+              aria-label={t("comment.editAria")}
               rows={2}
               style={{
                 width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "var(--paper-2)",
@@ -967,8 +985,8 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
               }}
             />
             <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 4 }}>
-              <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
-              <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(comment.body); }} disabled={busy}>Cancel</Button>
+              <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : t("comment.save")}</Button>
+              <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(comment.body); }} disabled={busy}>{t("comment.cancel")}</Button>
             </div>
           </div>
         ) : (
@@ -977,14 +995,14 @@ function CommentRow({ comment, mine, onChanged }: { comment: WallComment; mine: 
             {mine ? (
               confirming ? (
                 <div className={actions.row} style={{ marginTop: 4 }}>
-                  <span className={actions.confirm}>Delete?</span>
-                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : "Yes"}</button>
-                  <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>No</button>
+                  <span className={actions.confirm}>{t("comment.deleteConfirm")}</span>
+                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : t("comment.yes")}</button>
+                  <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>{t("comment.no")}</button>
                 </div>
               ) : (
                 <div className={actions.row} style={{ marginTop: 4 }}>
-                  <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button>
-                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
+                  <button type="button" className={actions.action} onClick={() => setEditing(true)}>{t("comment.edit")}</button>
+                  <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>{t("comment.delete")}</button>
                 </div>
               )
             ) : null}
