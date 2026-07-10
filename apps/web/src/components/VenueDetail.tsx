@@ -33,6 +33,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
@@ -45,6 +46,7 @@ import { AddToPlan } from "./AddToPlan";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { VenueShop } from "./VenueShop";
 import { isOpenNow } from "../lib/openNow";
+import { getFormatLocale } from "../lib/i18n/runtime";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 import styles from "./VenueDetail.module.css";
 
@@ -94,6 +96,7 @@ type ClaimUiState =
 const viewedVenues = new Set<string>();
 
 export function VenueDetail({ venueId, initialVenue }: { venueId: string; initialVenue?: VenueDetailData | null }) {
+  const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const session = useSession();
   const [venue, setVenue] = useState<VenueDetailData | null | undefined>(initialVenue);
@@ -119,7 +122,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       const row = await byId.query({ venueId });
       return (row as VenueDetailData | null) ?? null;
     } catch (e: unknown) {
-      throw e instanceof Error ? e : new Error("Failed to load venue.");
+      throw e instanceof Error ? e : new Error(t("errors.loadFailed"));
     }
   }, [trpc, venueId]);
 
@@ -137,7 +140,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
         if (!cancelled) setVenue(v);
       })
       .catch((e: unknown) => {
-        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : "Failed to load venue.");
+        if (!cancelled && !seeded) setError(e instanceof Error ? e.message : t("errors.loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -206,7 +209,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       const fresh = await loadVenue();
       setVenue(fresh);
     } catch (e: unknown) {
-      setClaimError(e instanceof Error ? e.message : "Couldn't submit your claim.");
+      setClaimError(e instanceof Error ? e.message : t("errors.claimFailed"));
       setClaimUi("error");
     }
   }, [trpc, venueId, loadVenue]);
@@ -278,6 +281,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
 }
 
 function BackLink() {
+  const t = useTranslations("venueDetail");
   return (
     <Link
       href="/explore"
@@ -291,7 +295,7 @@ function BackLink() {
         marginBottom: "var(--space-4)",
       }}
     >
-      <span aria-hidden>←</span> Explore
+      <span aria-hidden>←</span> {t("back")}
     </Link>
   );
 }
@@ -487,6 +491,7 @@ function ClaimedDetail({
   initialFollowing: boolean;
   isOwner: boolean;
 }) {
+  const t = useTranslations("venueDetail");
   const links = linkEntries(venue.links);
   // Posts · Offers · Gallery · Details are live (data already exists); Shop is the one
   // remaining Stage-5 seam. Details leads — it always has something to show.
@@ -537,7 +542,7 @@ function ClaimedDetail({
                 textDecoration: "none",
               }}
             >
-              Manage this venue <span aria-hidden>→</span>
+              {t("manageVenue")} <span aria-hidden>→</span>
             </Link>
           ) : null}
 
@@ -558,12 +563,12 @@ function ClaimedDetail({
         <div className={styles.content}>
           {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop) —
               all live now that the marketplace catalogue exists. */}
-          <div className={styles.tabstrip} role="tablist" aria-label="Venue sections">
-            <TabButton label="Posts" value="posts" active={tab} onSelect={setTab} />
-            <TabButton label="Offers" value="offers" active={tab} onSelect={setTab} />
-            <TabButton label="Gallery" value="gallery" active={tab} onSelect={setTab} />
-            <TabButton label="Details" value="details" active={tab} onSelect={setTab} />
-            <TabButton label="Shop" value="shop" active={tab} onSelect={setTab} />
+          <div className={styles.tabstrip} role="tablist" aria-label={t("tabsAria")}>
+            <TabButton label={t("tabs.posts")} value="posts" active={tab} onSelect={setTab} />
+            <TabButton label={t("tabs.offers")} value="offers" active={tab} onSelect={setTab} />
+            <TabButton label={t("tabs.gallery")} value="gallery" active={tab} onSelect={setTab} />
+            <TabButton label={t("tabs.details")} value="details" active={tab} onSelect={setTab} />
+            <TabButton label={t("tabs.shop")} value="shop" active={tab} onSelect={setTab} />
           </div>
 
           {tab === "details" ? (
@@ -622,11 +627,12 @@ const panelNote = { color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5, marg
 function shortDate(iso: string): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "";
-  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return new Date(t).toLocaleDateString(getFormatLocale(), { day: "numeric", month: "short" });
 }
 
 /** A venue's published posts (Posts tab). Each row links to the post-detail screen. */
 function VenuePostsPanel({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   type PostRow = { id: string; kind: string; title: string | null; body: string | null; media: { type: "image"; url: string }[]; publishedAt: string | null };
   const [posts, setPosts] = useState<PostRow[] | undefined>(undefined);
@@ -649,7 +655,7 @@ function VenuePostsPanel({ venueId }: { venueId: string }) {
   }, [trpc, venueId]);
 
   if (posts === undefined) return <PanelSkeleton />;
-  if (posts.length === 0) return <p style={panelNote}>No posts yet — when this venue posts news, offers or events they&apos;ll show here.</p>;
+  if (posts.length === 0) return <p style={panelNote}>{t("posts.empty")}</p>;
   return (
     <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-1)" }}>
       {posts.map((p) => (
@@ -680,6 +686,7 @@ function VenuePostsPanel({ venueId }: { venueId: string }) {
 
 /** A venue's live offers (Offers tab) — each savable + redeemable in-venue. */
 function VenueOffersPanel({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const [offers, setOffers] = useState<ConsumerOffer[] | undefined>(undefined);
   useEffect(() => {
@@ -699,7 +706,7 @@ function VenueOffersPanel({ venueId }: { venueId: string }) {
   }, [trpc, venueId]);
 
   if (offers === undefined) return <PanelSkeleton />;
-  if (offers.length === 0) return <p style={panelNote}>No live offers right now — check back, or follow to be notified.</p>;
+  if (offers.length === 0) return <p style={panelNote}>{t("offers.empty")}</p>;
   return (
     <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
       {offers.map((o) => (
@@ -711,6 +718,7 @@ function VenueOffersPanel({ venueId }: { venueId: string }) {
 
 /** A venue's full photo set (Gallery tab) — a responsive grid. */
 function VenueGalleryPanel({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
   useEffect(() => {
@@ -733,7 +741,7 @@ function VenueGalleryPanel({ venueId }: { venueId: string }) {
 
   if (rows === undefined) return <PanelSkeleton />;
   const gallery = galleryOrder(rows);
-  if (gallery.length === 0) return <p style={panelNote}>No photos yet.</p>;
+  if (gallery.length === 0) return <p style={panelNote}>{t("gallery.empty")}</p>;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "var(--space-2)", marginTop: "var(--space-1)" }}>
       {gallery.map((p) => (
@@ -801,6 +809,7 @@ function UnclaimedDetail({
   onAuthed: () => void;
   venueId: string;
 }) {
+  const t = useTranslations("venueDetail");
   return (
     <>
       <VenuePhotos venueId={venueId} claimed={false} />
@@ -822,7 +831,7 @@ function UnclaimedDetail({
           marginTop: "var(--space-3)",
         }}
       >
-        {venue.source_attribution ?? "From public sources"}
+        {venue.source_attribution ?? t("fromPublicSources")}
       </div>
 
       <ClaimSection
@@ -858,6 +867,7 @@ function ClaimSection({
   onClaimPressed: () => void;
   onAuthed: () => void;
 }) {
+  const t = useTranslations("venueDetail");
   if (claimUi === "submitted") {
     return <ClaimSubmittedCard />;
   }
@@ -865,7 +875,7 @@ function ClaimSection({
   if (claimUi === "auth") {
     return (
       <AuthPanel
-        intro="Claiming is free. Sign in or create an account and this venue is yours to manage right away."
+        intro={t("claim.intro")}
         emailRedirectTo={claimReturnUrl(venueId)}
         onAuthed={onAuthed}
       />
@@ -879,11 +889,10 @@ function ClaimSection({
     <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-6)" }}>
       <Card flat style={{ padding: "var(--space-4)", background: "var(--crimson-tint)", borderColor: "var(--crimson-tint-2)" }}>
         <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-          Is this your business?
+          {t("claim.ownerTitle")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-          Claim it free to add photos, opening times, your menu and links, and post offers and
-          events to people nearby — about 90 seconds, and you can start editing straight away.
+          {t("claim.ownerBody")}
         </p>
         {claimUi === "error" && claimError ? (
           <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-3)" }} role="alert">
@@ -891,25 +900,25 @@ function ClaimSection({
           </div>
         ) : null}
         <Button variant="pri" onClick={onClaimPressed} disabled={claimUi === "submitting"}>
-          {claimUi === "submitting" ? "Claiming…" : claimUi === "error" ? "Try again" : "Claim this venue"}
+          {claimUi === "submitting" ? t("claim.claiming") : claimUi === "error" ? t("claim.tryAgain") : t("claim.cta")}
         </Button>
       </Card>
 
       <Card flat style={{ padding: "var(--space-4)" }}>
         <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-          Know this place?
+          {t("claim.knowTitle")}
         </div>
         <p style={{ color: "var(--ink-2)", lineHeight: 1.5, marginBottom: "var(--space-4)" }}>
-          Help fellow locals — suggest a photo, the opening hours, or a fix.
+          {t("claim.knowBody")}
         </p>
         <Button
           variant="neutral"
           aria-disabled
-          title="Suggesting edits is coming soon"
+          title={t("claim.suggestEditSoon")}
           onClick={(e) => e.preventDefault()}
           style={{ opacity: 0.6, cursor: "default" }}
         >
-          ＋ Suggest an edit
+          ＋ {t("claim.suggestEdit")}
         </Button>
       </Card>
     </div>
@@ -917,14 +926,14 @@ function ClaimSection({
 }
 
 function ClaimSubmittedCard() {
+  const t = useTranslations("venueDetail");
   return (
     <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-5)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-        Claim submitted
+        {t("claim.submittedTitle")}
       </div>
       <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
-        Thanks — your claim is now with us for verification. Once it&apos;s approved you&apos;ll
-        be able to manage this venue, add photos and details, and post to people nearby.
+        {t("claim.submittedBody")}
       </p>
     </Card>
   );
@@ -945,6 +954,7 @@ function PendingClaimDetail({
   venueId: string;
   mineJustSubmitted: boolean;
 }) {
+  const t = useTranslations("venueDetail");
   return (
     <>
       <VenuePhotos venueId={venueId} claimed={false} />
@@ -969,11 +979,10 @@ function PendingClaimDetail({
               marginBottom: "var(--space-2)",
             }}
           >
-            Claim under review
+            {t("claim.underReviewTitle")}
           </div>
           <p style={{ color: "var(--ink-2)", lineHeight: 1.5 }}>
-            A claim for this venue has been submitted and is being verified. Check back soon —
-            once it&apos;s approved the venue&apos;s owner can keep its details up to date.
+            {t("claim.underReviewBody")}
           </p>
         </Card>
       )}
@@ -986,13 +995,14 @@ function PendingClaimDetail({
 }
 
 function DetailsBlock({ venue }: { venue: VenueDetailData }) {
+  const t = useTranslations("venueDetail");
   const rows: Array<[string, React.ReactNode]> = [];
-  if (venue.address) rows.push(["Address", venue.address]);
-  if (venue.locality) rows.push(["Locality", venue.locality]);
-  if (venue.region) rows.push(["Region", venue.region]);
+  if (venue.address) rows.push([t("details.address"), venue.address]);
+  if (venue.locality) rows.push([t("details.locality"), venue.locality]);
+  if (venue.region) rows.push([t("details.region"), venue.region]);
   if (venue.phone) {
     rows.push([
-      "Phone",
+      t("details.phone"),
       <a key="tel" href={`tel:${venue.phone.replace(/\s+/g, "")}`} style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
         {venue.phone}
       </a>,
@@ -1006,7 +1016,7 @@ function DetailsBlock({ venue }: { venue: VenueDetailData }) {
       /* show as-is */
     }
     rows.push([
-      "Website",
+      t("details.website"),
       <a key="web" href={venue.website_url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
         {host} ↗
       </a>,
@@ -1026,7 +1036,7 @@ function DetailsBlock({ venue }: { venue: VenueDetailData }) {
               marginBottom: "var(--space-3)",
             }}
           >
-            Details
+            {t("details.title")}
           </div>
           <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-2) var(--space-4)", margin: 0 }}>
             {rows.map(([k, v]) => (
@@ -1045,109 +1055,103 @@ function DetailsBlock({ venue }: { venue: VenueDetailData }) {
 
 /* ── Good to know — the Places attribute facts as grouped chips (0065) ──────────────────── */
 
-/** Attribute key → chip label, grouped as the section renders them. Only TRUE facts show
+/** Attribute key → chip label (catalogue key under venueDetail.goodToKnow.attrs — the attribute
+ *  key doubles as the message key), grouped as the section renders them. Only TRUE facts show
  *  (a missing key is "unknown", not "no"); the one exception is cash-only, a true-only flag. */
-const GOOD_TO_KNOW_GROUPS: { title: string; keys: [string, string][] }[] = [
+const GOOD_TO_KNOW_GROUPS: { title: string; keys: string[] }[] = [
   {
-    title: "Service options",
+    title: "serviceOptions",
+    keys: ["dineIn", "takeout", "delivery", "curbsidePickup", "reservable"],
+  },
+  {
+    title: "dining",
     keys: [
-      ["dineIn", "Dine-in"],
-      ["takeout", "Takeaway"],
-      ["delivery", "Delivery"],
-      ["curbsidePickup", "Kerbside pickup"],
-      ["reservable", "Takes bookings"],
+      "servesBreakfast",
+      "servesBrunch",
+      "servesLunch",
+      "servesDinner",
+      "servesCoffee",
+      "servesDessert",
+      "servesBeer",
+      "servesWine",
+      "servesCocktails",
+      "servesVegetarianFood",
     ],
   },
   {
-    title: "Dining",
+    title: "amenities",
     keys: [
-      ["servesBreakfast", "Breakfast"],
-      ["servesBrunch", "Brunch"],
-      ["servesLunch", "Lunch"],
-      ["servesDinner", "Dinner"],
-      ["servesCoffee", "Coffee"],
-      ["servesDessert", "Dessert"],
-      ["servesBeer", "Beer"],
-      ["servesWine", "Wine"],
-      ["servesCocktails", "Cocktails"],
-      ["servesVegetarianFood", "Vegetarian options"],
-    ],
-  },
-  {
-    title: "Amenities",
-    keys: [
-      ["outdoorSeating", "Outdoor seating"],
-      ["liveMusic", "Live music"],
-      ["goodForGroups", "Good for groups"],
-      ["goodForChildren", "Good for kids"],
-      ["menuForChildren", "Children's menu"],
-      ["goodForWatchingSports", "Good for watching sport"],
-      ["allowsDogs", "Dogs welcome"],
-      ["restroom", "Toilets"],
+      "outdoorSeating",
+      "liveMusic",
+      "goodForGroups",
+      "goodForChildren",
+      "menuForChildren",
+      "goodForWatchingSports",
+      "allowsDogs",
+      "restroom",
     ],
   },
 ];
 
-const OPTION_GROUPS: { title: string; source: string; keys: [string, string][] }[] = [
+const OPTION_GROUPS: { title: string; source: string; keys: string[] }[] = [
   {
-    title: "Payments",
+    title: "payments",
     source: "paymentOptions",
-    keys: [
-      ["acceptsNfc", "Contactless"],
-      ["acceptsCreditCards", "Credit cards"],
-      ["acceptsDebitCards", "Debit cards"],
-      ["acceptsCashOnly", "Cash only"],
-    ],
+    keys: ["acceptsNfc", "acceptsCreditCards", "acceptsDebitCards", "acceptsCashOnly"],
   },
   {
-    title: "Parking",
+    title: "parking",
     source: "parkingOptions",
     keys: [
-      ["freeParkingLot", "Free car park"],
-      ["paidParkingLot", "Paid car park"],
-      ["freeStreetParking", "Free street parking"],
-      ["paidStreetParking", "Paid street parking"],
-      ["freeGarageParking", "Free garage"],
-      ["paidGarageParking", "Paid garage"],
-      ["valetParking", "Valet"],
+      "freeParkingLot",
+      "paidParkingLot",
+      "freeStreetParking",
+      "paidStreetParking",
+      "freeGarageParking",
+      "paidGarageParking",
+      "valetParking",
     ],
   },
   {
-    title: "Accessibility",
+    title: "accessibility",
     source: "accessibilityOptions",
     keys: [
-      ["wheelchairAccessibleEntrance", "Wheelchair entrance"],
-      ["wheelchairAccessibleParking", "Wheelchair parking"],
-      ["wheelchairAccessibleRestroom", "Wheelchair toilet"],
-      ["wheelchairAccessibleSeating", "Wheelchair seating"],
+      "wheelchairAccessibleEntrance",
+      "wheelchairAccessibleParking",
+      "wheelchairAccessibleRestroom",
+      "wheelchairAccessibleSeating",
     ],
   },
 ];
 
 /** Format a stored price range as "£10–20" (symbol for the common currencies, code otherwise). */
-function priceRangeLabel(pr: NonNullable<VenueDetailData["price_range"]>): string | null {
+function priceRangeLabel(
+  t: ReturnType<typeof useTranslations>,
+  pr: NonNullable<VenueDetailData["price_range"]>,
+): string | null {
   const sym = pr.currency === "GBP" ? "£" : pr.currency === "EUR" ? "€" : pr.currency === "USD" ? "$" : pr.currency ? `${pr.currency} ` : "";
   if (pr.start !== null && pr.end !== null) return `${sym}${pr.start}–${pr.end}`;
   if (pr.start !== null) return `${sym}${pr.start}+`;
-  if (pr.end !== null) return `Up to ${sym}${pr.end}`;
+  if (pr.end !== null) return t("goodToKnow.upTo", { price: `${sym}${pr.end}` });
   return null;
 }
 
 function GoodToKnow({ venue }: { venue: VenueDetailData }) {
+  const t = useTranslations("venueDetail");
   const attrs = venue.attributes ?? null;
-  const price = venue.price_range ? priceRangeLabel(venue.price_range) : null;
+  const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
 
   const groups: { title: string; labels: string[] }[] = [];
   if (attrs) {
     for (const g of GOOD_TO_KNOW_GROUPS) {
-      const labels = g.keys.filter(([k]) => attrs[k] === true).map(([, label]) => label);
-      if (labels.length > 0) groups.push({ title: g.title, labels });
+      const labels = g.keys.filter((k) => attrs[k] === true).map((k) => t(`goodToKnow.attrs.${k}`));
+      if (labels.length > 0) groups.push({ title: t(`goodToKnow.groups.${g.title}`), labels });
     }
     for (const g of OPTION_GROUPS) {
       const bag = attrs[g.source];
       if (!bag || typeof bag !== "object") continue;
-      const labels = g.keys.filter(([k]) => bag[k] === true).map(([, label]) => label);
-      if (labels.length > 0) groups.push({ title: g.title, labels });
+      const labels = g.keys.filter((k) => bag[k] === true).map((k) => t(`goodToKnow.attrs.${k}`));
+      if (labels.length > 0) groups.push({ title: t(`goodToKnow.groups.${g.title}`), labels });
     }
   }
   if (groups.length === 0 && !price) return null;
@@ -1156,11 +1160,11 @@ function GoodToKnow({ venue }: { venue: VenueDetailData }) {
     <Card flat style={{ marginTop: "var(--space-4)", padding: "var(--space-4)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
-          Good to know
+          {t("goodToKnow.title")}
         </div>
         {price ? (
           <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 999, padding: "3px 10px" }}>
-            {price} <span style={{ fontWeight: 400 }}>per person</span>
+            {price} <span style={{ fontWeight: 400 }}>{t("goodToKnow.perPerson")}</span>
           </span>
         ) : null}
       </div>
@@ -1198,26 +1202,28 @@ function DetailSkeleton() {
 }
 
 function NotFoundState() {
+  const t = useTranslations("venueDetail");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Venue not found
+        {t("notFound.title")}
       </div>
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
-        This venue may have been removed, or the link is wrong.
+        {t("notFound.body")}
       </p>
       <Link href="/explore" style={{ textDecoration: "none" }}>
-        <Pill variant="ghost-crim">← Back to Explore</Pill>
+        <Pill variant="ghost-crim">← {t("notFound.backToExplore")}</Pill>
       </Link>
     </div>
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const t = useTranslations("venueDetail");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load this venue
+        {t("errors.title")}
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>
@@ -1232,6 +1238,7 @@ function ErrorState({ message }: { message: string }) {
  * every loaded state), not claim-state facts.
  */
 function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening_times"] }) {
+  const t = useTranslations("venueDetail");
   const days = openingTimes?.weekdayDescriptions;
   if (!Array.isArray(days) || days.length === 0) return null;
   const clean = days.filter((d): d is string => typeof d === "string" && d.length > 0);
@@ -1244,9 +1251,9 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
   const open = isOpenNow(openingTimes, new Date());
   const pill =
     open.status === "open"
-      ? { text: open.nextChange ? `Open now · closes ${open.nextChange.at}` : "Open now", on: true }
+      ? { text: open.nextChange ? t("hours.openNowCloses", { time: open.nextChange.at }) : t("hours.openNow"), on: true }
       : open.status === "closed"
-        ? { text: open.nextChange ? `Closed · opens ${open.nextChange.at}` : "Closed", on: false }
+        ? { text: open.nextChange ? t("hours.closedOpens", { time: open.nextChange.at }) : t("hours.closed"), on: false }
         : null;
   return (
     <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
@@ -1260,7 +1267,7 @@ function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening
           marginBottom: "var(--space-3)",
         }}
       >
-        Opening hours
+        {t("hours.title")}
       </div>
       {pill ? (
         <div
@@ -1307,6 +1314,7 @@ function ActionRow({ venueId, name, address }: { venueId: string; name: string; 
 }
 
 function DirectionsButton({ address, block = false }: { address: string | null; block?: boolean }) {
+  const t = useTranslations("venueDetail");
   // Hand off to the device's DEFAULT maps app (iOS → Apple Maps, Android → the user's
   // default via geo:, desktop → Google web). SSR can't know the platform, so we render the
   // web URL first and swap to the device-specific one after mount. Hooks run unconditionally
@@ -1333,7 +1341,7 @@ function DirectionsButton({ address, block = false }: { address: string | null; 
       style={{ textDecoration: "none", ...(block ? { display: "block" } : {}) }}
     >
       <Button variant="neutral" block={block} size={block ? "md" : "sm"}>
-        Get Directions ↗
+        {t("getDirections")} ↗
       </Button>
     </a>
   );

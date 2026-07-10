@@ -4,6 +4,8 @@
  * same labels. Powers the offer composer's theme picker and the insights panel's row labels.
  */
 
+import { useTranslations } from "next-intl";
+
 export const OFFER_TYPES = [
   "percent_off",
   "amount_off",
@@ -44,6 +46,16 @@ export function normaliseOfferType(v: string | null | undefined): OfferType {
 /** Label for a theme (coercing unknowns). */
 export function offerTypeLabel(v: string | null | undefined): string {
   return OFFER_TYPE_LABELS[normaliseOfferType(v)];
+}
+
+/**
+ * Hook: localized label for a theme (coercing unknowns). The theme IDS are wire-contract
+ * values (never translated); OFFER_TYPE_LABELS above stays as the English source the en.json
+ * catalogue mirrors, and call sites migrate here cluster by cluster.
+ */
+export function useOfferTypeLabel(): (v: string | null | undefined) => string {
+  const t = useTranslations("offerTypes");
+  return (v) => t(normaliseOfferType(v));
 }
 
 /** Only percent_off carries a % discount value. */

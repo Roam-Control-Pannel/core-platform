@@ -9,9 +9,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Icon} from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { OFFER_TYPES, OFFER_TYPE_LABELS, offerTypeLabel, offerTypeUsesPercent } from "../lib/offerTypes";
+import { OFFER_TYPES, useOfferTypeLabel, offerTypeUsesPercent } from "../lib/offerTypes";
+import { getFormatLocale } from "../lib/i18n/runtime";
 
 interface OwnerOffer {
   id: string;
@@ -43,10 +45,12 @@ const field: React.CSSProperties = {
 
 function shortDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(getFormatLocale(), { day: "numeric", month: "short" });
 }
 
 export function VenueOffers({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueOffers");
+  const offerTypeLabel = useOfferTypeLabel();
   const trpc = useTrpc();
   const [offers, setOffers] = useState<OwnerOffer[] | undefined>(undefined);
   const [composing, setComposing] = useState(false);
@@ -78,7 +82,7 @@ export function VenueOffers({ venueId }: { venueId: string }) {
         <OfferComposer venueId={venueId} onPosted={() => { setComposing(false); reload(); }} onCancel={() => setComposing(false)} />
       ) : (
         <div style={{ marginBottom: "var(--space-4)" }}>
-          <Button variant="pri" onClick={() => setComposing(true)}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> New offer</span></Button>
+          <Button variant="pri" onClick={() => setComposing(true)}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="plus" size={14} /> {t("newOffer")}</span></Button>
         </div>
       )}
 
@@ -86,7 +90,7 @@ export function VenueOffers({ venueId }: { venueId: string }) {
         <div style={{ height: 64, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
       ) : offers.length === 0 ? (
         <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>
-          No offers yet. Publish an exclusive deal — your followers get notified, and anyone can save and redeem it in-venue.
+          {t("empty")}
         </p>
       ) : (
         <div style={{ display: "grid", gap: "var(--space-2)" }}>
@@ -118,15 +122,15 @@ export function VenueOffers({ venueId }: { venueId: string }) {
                   {o.details ? <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{o.details}</p> : null}
                   <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>
                     {o.code ? <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--crimson-700)" }}>{o.code}</span> : null}
-                    {o.endsAt ? <span>Ends {shortDate(o.endsAt)}</span> : null}
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ink-2)", fontWeight: 600 }}><Icon name="heart" size={12} /> {o.saves} saved</span>
+                    {o.endsAt ? <span>{t("ends", { date: shortDate(o.endsAt) })}</span> : null}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--ink-2)", fontWeight: 600 }}><Icon name="heart" size={12} /> {t("savedCount", { count: o.saves })}</span>
                     <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>
-                      <Icon name="redeem" size={12} /> {o.redemptions}{o.maxRedemptions != null ? ` / ${o.maxRedemptions}` : ""} redeemed
+                      <Icon name="redeem" size={12} /> {o.maxRedemptions != null ? t("redeemedOfMax", { count: o.redemptions, max: o.maxRedemptions }) : t("redeemedCount", { count: o.redemptions })}
                     </span>
                   </div>
                 </div>
-                <button type="button" onClick={() => void remove(o.id)} title="Delete offer" style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline", flexShrink: 0 }}>
-                  Delete
+                <button type="button" onClick={() => void remove(o.id)} title={t("deleteOffer")} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 12, textDecoration: "underline", flexShrink: 0 }}>
+                  {t("delete")}
                 </button>
               </div>
             </Card>
@@ -138,6 +142,8 @@ export function VenueOffers({ venueId }: { venueId: string }) {
 }
 
 function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPosted: () => void; onCancel: () => void }) {
+  const t = useTranslations("venueOffers");
+  const offerTypeLabelFor = useOfferTypeLabel();
   const trpc = useTrpc();
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -174,7 +180,7 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
       });
       onPosted();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't publish the offer.");
+      setErr(e instanceof Error ? e.message : t("composer.publishFailed"));
       setBusy(false);
     }
   }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, offerType, discountPct, onPosted]);
@@ -183,40 +189,40 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
 
   return (
     <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-      <div style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>New offer</div>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Offer — e.g. 20% off your first coffee" aria-label="Offer title" maxLength={120} style={field} />
+      <div style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-3)" }}>{t("newOffer")}</div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("composer.titlePlaceholder")} aria-label={t("composer.titleAria")} maxLength={120} style={field} />
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
         <label style={{ flex: 1, minWidth: 150 }}>
-          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Type of deal</span>
-          <select value={offerType} onChange={(e) => setOfferType(e.target.value)} aria-label="Offer type" style={field}>
-            {OFFER_TYPES.map((t) => (
-              <option key={t} value={t}>{OFFER_TYPE_LABELS[t]}</option>
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{t("composer.typeLabel")}</span>
+          <select value={offerType} onChange={(e) => setOfferType(e.target.value)} aria-label={t("composer.typeAria")} style={field}>
+            {OFFER_TYPES.map((ot) => (
+              <option key={ot} value={ot}>{offerTypeLabelFor(ot)}</option>
             ))}
           </select>
         </label>
         {offerTypeUsesPercent(offerType) ? (
           <label style={{ flex: 1, minWidth: 150 }}>
-            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Discount %</span>
-            <input type="number" min={0} max={100} value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} placeholder="e.g. 20" aria-label="Discount percent" style={field} />
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{t("composer.discountLabel")}</span>
+            <input type="number" min={0} max={100} value={discountPct} onChange={(e) => setDiscountPct(e.target.value)} placeholder={t("composer.discountPlaceholder")} aria-label={t("composer.discountAria")} style={field} />
           </label>
         ) : null}
       </div>
-      <textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="The detail — terms, what's included…" aria-label="Offer details" rows={3} maxLength={1000} style={{ ...field, resize: "vertical", minHeight: 72 }} />
-      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Redemption code (optional) — e.g. ROAM20" aria-label="Redemption code" maxLength={40} autoCapitalize="characters" style={field} />
+      <textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder={t("composer.detailsPlaceholder")} aria-label={t("composer.detailsAria")} rows={3} maxLength={1000} style={{ ...field, resize: "vertical", minHeight: 72 }} />
+      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("composer.codePlaceholder")} aria-label={t("composer.codeAria")} maxLength={40} autoCapitalize="characters" style={field} />
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
         <label style={{ flex: 1, minWidth: 150 }}>
-          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Ends (optional)</span>
-          <input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} aria-label="Offer end date" style={field} />
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{t("composer.endsLabel")}</span>
+          <input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} aria-label={t("composer.endsAria")} style={field} />
         </label>
         <label style={{ flex: 1, minWidth: 150 }}>
-          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Max redemptions (optional)</span>
-          <input type="number" min={1} value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder="Unlimited" aria-label="Max redemptions" style={field} />
+          <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{t("composer.maxLabel")}</span>
+          <input type="number" min={1} value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder={t("composer.maxPlaceholder")} aria-label={t("composer.maxAria")} style={field} />
         </label>
       </div>
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        <Button variant="pri" onClick={() => void submit()} disabled={!canPost}>{busy ? "Publishing…" : "Publish offer"}</Button>
-        <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="pri" onClick={() => void submit()} disabled={!canPost}>{busy ? t("composer.publishing") : t("composer.publish")}</Button>
+        <Button variant="neutral" onClick={onCancel} disabled={busy}>{t("composer.cancel")}</Button>
       </div>
     </Card>
   );

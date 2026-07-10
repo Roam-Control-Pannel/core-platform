@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -28,6 +29,7 @@ const field: React.CSSProperties = {
 };
 
 export function BirthdayOffer({ venueId }: { venueId: string }) {
+  const t = useTranslations("birthdayOffer");
   const trpc = useTrpc();
   const [enabled, setEnabled] = useState(false);
   const [title, setTitle] = useState("");
@@ -74,47 +76,46 @@ export function BirthdayOffer({ venueId }: { venueId: string }) {
   return (
     <div>
       <p style={{ margin: "0 0 var(--space-3)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-        Set a treat and we&apos;ll deliver it automatically to followers on their birthday — the ones
-        who&apos;ve opted in. You never see whose birthday it is, only how many were sent.
+        {t("intro")}
       </p>
 
       {stats ? (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--space-2)", marginBottom: 8 }}>
-            <StatTile label="Sent this month" value={stats.sentThisMonth} />
-            <StatTile label="Redeemed this month" value={stats.redeemedThisMonth} accent />
-            <StatTile label="Sent all time" value={stats.sentTotal} />
-            <StatTile label="Redeemed all time" value={stats.redeemedTotal} accent />
+            <StatTile label={t("sentThisMonth")} value={stats.sentThisMonth} />
+            <StatTile label={t("redeemedThisMonth")} value={stats.redeemedThisMonth} accent />
+            <StatTile label={t("sentAllTime")} value={stats.sentTotal} />
+            <StatTile label={t("redeemedAllTime")} value={stats.redeemedTotal} accent />
           </div>
           {stats.sentTotal > 0 ? (
             <p style={{ margin: "0 0 var(--space-4)", fontSize: 12.5, color: "var(--muted)" }}>
-              {Math.round((stats.redeemedTotal / stats.sentTotal) * 100)}% of birthday treats have been redeemed.
+              {t("redeemedPct", { pct: Math.round((stats.redeemedTotal / stats.sentTotal) * 100) })}
             </p>
           ) : <div style={{ marginBottom: "var(--space-4)" }} />}
         </>
       ) : null}
 
       <label style={{ display: "block", marginBottom: "var(--space-3)" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>The treat</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={!loaded || busy} placeholder="e.g. A free birthday coffee" maxLength={120} aria-label="Birthday treat title" style={field} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{t("theTreat")}</span>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={!loaded || busy} placeholder={t("titlePlaceholder")} maxLength={120} aria-label={t("titleAria")} style={field} />
       </label>
 
       <label style={{ display: "block", marginBottom: "var(--space-3)" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Details (optional)</span>
-        <textarea value={details} onChange={(e) => setDetails(e.target.value)} disabled={!loaded || busy} rows={2} maxLength={500} placeholder="Show this message in-venue on your birthday to claim." aria-label="Birthday treat details" style={{ ...field, resize: "vertical", minHeight: 56 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{t("detailsLabel")}</span>
+        <textarea value={details} onChange={(e) => setDetails(e.target.value)} disabled={!loaded || busy} rows={2} maxLength={500} placeholder={t("detailsPlaceholder")} aria-label={t("detailsAria")} style={{ ...field, resize: "vertical", minHeight: 56 }} />
       </label>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
         <Button variant="pri" onClick={() => void save(enabled)} disabled={!loaded || busy}>
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("saving") : t("save")}
         </Button>
         <Button variant="neutral" onClick={() => void save(!enabled)} disabled={!loaded || busy || !title.trim()}>
-          {enabled ? "Turn off" : "Turn on"}
+          {enabled ? t("turnOff") : t("turnOn")}
         </Button>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: enabled ? "var(--crimson-700)" : "var(--muted)" }}>
-          {enabled ? "● Live" : "Off"}
+          {enabled ? t("live") : t("off")}
         </span>
-        {saved ? <span style={{ fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>Saved ✓</span> : null}
+        {saved ? <span style={{ fontSize: 13, color: "var(--crimson-700)", fontWeight: 600 }}>{t("saved")}</span> : null}
       </div>
     </div>
   );

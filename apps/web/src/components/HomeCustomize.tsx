@@ -12,6 +12,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 
 export interface CustomizeItem {
@@ -40,6 +41,7 @@ export function HomeCustomize({
   onToggle: (id: string) => void;
   onReset: () => void;
 }) {
+  const t = useTranslations("homeCustomize");
   const cardRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -120,7 +122,7 @@ export function HomeCustomize({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Customise home"
+      aria-label={t("title")}
       onClick={onClose}
       style={{
         position: "fixed",
@@ -163,15 +165,15 @@ export function HomeCustomize({
               className="t-h3"
               style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, margin: 0 }}
             >
-              Customise home
+              {t("title")}
             </h2>
             <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--ink-2)" }}>
-              Drag the handle to reorder, or hide the sections you see.
+              {t("subtitle")}
             </p>
           </div>
           <button
             onClick={onClose}
-            aria-label="Done"
+            aria-label={t("done")}
             style={{
               all: "unset",
               cursor: "pointer",
@@ -187,7 +189,7 @@ export function HomeCustomize({
               fontWeight: 700,
             }}
           >
-            Done
+            {t("done")}
           </button>
         </header>
 
@@ -213,7 +215,7 @@ export function HomeCustomize({
               >
                 <button
                   type="button"
-                  aria-label={`Reorder ${it.label}`}
+                  aria-label={t("reorderItem", { label: it.label })}
                   onPointerDown={(e) => beginDrag(e, it.id)}
                   onPointerMove={onDragMove}
                   onPointerUp={endDrag}
@@ -257,7 +259,7 @@ export function HomeCustomize({
 
                 <button
                   type="button"
-                  aria-label={it.hidden ? `Show ${it.label}` : `Hide ${it.label}`}
+                  aria-label={it.hidden ? t("showItem", { label: it.label }) : t("hideItem", { label: it.label })}
                   onClick={() => onToggle(it.id)}
                   style={{
                     all: "unset",
@@ -303,7 +305,7 @@ export function HomeCustomize({
               color: "var(--ink-2)",
             }}
           >
-            Reset to default
+            {t("reset")}
           </button>
         </footer>
       </div>
