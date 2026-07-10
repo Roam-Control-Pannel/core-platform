@@ -20,11 +20,12 @@
 
 import { useTranslations } from "next-intl";
 
-/** The nine canonical groups, in display order — a twin of core's CATEGORIES. */
+/** The ten canonical groups, in display order — a twin of core's CATEGORIES. */
 export const CATEGORY_GROUPS = [
   "Food & Drink",
   "Shopping",
   "Entertainment & Recreation",
+  "Stadiums",
   "Automotive & Transport",
   "Finance & Business",
   "Health & Wellness",
@@ -46,6 +47,7 @@ export const CATEGORY_LABELS: Record<CategoryGroup, string> = {
   "Food & Drink": "Eateries",
   Shopping: "Shopping",
   "Entertainment & Recreation": "Attractions",
+  Stadiums: "Stadiums",
   "Automotive & Transport": "Transport",
   "Finance & Business": "Business",
   "Health & Wellness": "Health & Beauty",
@@ -72,6 +74,7 @@ const CATEGORY_KEYS: Record<CategoryGroup, string> = {
   "Food & Drink": "foodDrink",
   Shopping: "shopping",
   "Entertainment & Recreation": "entertainment",
+  Stadiums: "stadiums",
   "Automotive & Transport": "transport",
   "Finance & Business": "business",
   "Health & Wellness": "health",

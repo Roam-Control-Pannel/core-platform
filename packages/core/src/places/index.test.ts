@@ -20,9 +20,10 @@ import {
 } from "./index.js";
 
 describe("taxonomy shape", () => {
-  it("has the nine agreed groups", () => {
-    expect(CATEGORIES.length).toBe(9);
+  it("has the ten agreed groups", () => {
+    expect(CATEGORIES.length).toBe(10);
     expect(CATEGORIES).toContain("Food & Drink");
+    expect(CATEGORIES).toContain("Stadiums");
     expect(CATEGORIES).toContain("Places of Worship");
   });
 
@@ -77,6 +78,13 @@ describe("classifyPlaceTypes", () => {
 
   it("returns null when nothing is recognised", () => {
     expect(classifyPlaceTypes(["point_of_interest", "establishment"])).toBeNull();
+  });
+
+  it("classifies a stadium to its own Stadiums group (moved out of Attractions)", () => {
+    expect(classifyPlaceTypes(["stadium", "point_of_interest", "establishment"])).toBe("Stadiums");
+    expect(classifyPlaceTypes(["arena", "establishment"])).toBe("Stadiums");
+    // A leisure centre stays under Entertainment & Recreation (sports_complex did NOT move).
+    expect(classifyPlaceTypes(["sports_complex", "establishment"])).toBe("Entertainment & Recreation");
   });
 
   it("resolves a cross-group tie by precedence (wine_bar Food&Drink over Shopping)", () => {
@@ -269,8 +277,10 @@ describe("Google Places Table A validity", () => {
       "amusement_park", "aquarium", "art_gallery", "museum", "zoo",
       "movie_theater", "performing_arts_theater", "concert_hall", "opera_house",
       "casino", "night_club", "bowling_alley", "video_arcade",
-      "stadium", "sports_complex", "fitness_center", "gym", "swimming_pool",
+      "sports_complex", "fitness_center", "gym", "swimming_pool",
       "park", "dog_park", "botanical_garden", "national_park", "tourist_attraction",
+      // Stadiums
+      "stadium", "arena",
       // Automotive & Transport
       "car_dealer", "car_rental", "car_repair", "car_wash",
       "gas_station", "electric_vehicle_charging_station",

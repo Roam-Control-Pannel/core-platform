@@ -26,11 +26,12 @@
 
 import type { DayPeriods } from "../hours/index.js";
 
-/** The nine canonical groups — the top-level pill row. Order here is display order. */
+/** The ten canonical groups — the top-level pill row. Order here is display order. */
 export const CATEGORIES = [
   "Food & Drink",
   "Shopping",
   "Entertainment & Recreation",
+  "Stadiums",
   "Automotive & Transport",
   "Finance & Business",
   "Health & Wellness",
@@ -69,8 +70,15 @@ export const CATEGORY_PLACES_TYPES: Record<CategoryId, readonly string[]> = {
     "amusement_park", "aquarium", "art_gallery", "museum", "zoo",
     "movie_theater", "performing_arts_theater", "concert_hall", "opera_house",
     "casino", "night_club", "bowling_alley", "video_arcade",
-    "stadium", "sports_complex", "fitness_center", "gym", "swimming_pool",
+    "sports_complex", "fitness_center", "gym", "swimming_pool",
     "park", "dog_park", "botanical_garden", "national_park", "tourist_attraction",
+  ],
+  // Stadiums & arenas get their own top-level pill — the local football ground / big event
+  // venue is a landmark people browse for by itself, so `stadium` moves here out of
+  // Entertainment (a venue has exactly one category). `sports_complex` (leisure centres,
+  // sports parks) stays under Entertainment — it's a sports centre, not a stadium.
+  "Stadiums": [
+    "stadium", "arena",
   ],
   "Automotive & Transport": [
     "car_dealer", "car_rental", "car_repair", "car_wash",
@@ -114,6 +122,7 @@ export const CATEGORY_PRECEDENCE: readonly CategoryId[] = [
   "Food & Drink",
   "Health & Wellness",
   "Lodging",
+  "Stadiums",
   "Entertainment & Recreation",
   "Shopping",
   "Automotive & Transport",
