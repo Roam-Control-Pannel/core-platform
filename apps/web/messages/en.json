@@ -34,7 +34,85 @@
       "postToWall": "Post to your wall"
     }
   },
+  "auth": {
+    "checkEmail": "Check your email",
+    "resetSentBody": "If an account exists for <strong>{email}</strong>, we've sent a link to reset your password. Open it to choose a new one.",
+    "backToSignIn": "Back to sign in",
+    "resetTitle": "Reset your password",
+    "resetBody": "Enter your account email and we'll send you a link to set a new password.",
+    "email": "Email",
+    "emailPlaceholder": "you@business.com",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "sendResetLink": "Send reset link",
+    "pleaseWait": "Please wait…",
+    "confirmSentBody": "We've sent a confirmation link to <strong>{email}</strong>. Open it to confirm your account — you'll come straight back here, signed in.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "forgotPassword": "Forgot your password?",
+    "continueWith": "Continue with {provider}",
+    "or": "or",
+    "errors": {
+      "enterEmailPassword": "Enter your email and a password.",
+      "passwordMin": "Use a password of at least 8 characters.",
+      "signInFailed": "Couldn't sign you in. Please try again.",
+      "generic": "Something went wrong. Please try again.",
+      "startSignInFailed": "Couldn't start sign-in. Please try again.",
+      "enterEmailForReset": "Enter your email and we'll send a reset link.",
+      "invalidLogin": "That email or password doesn't match.",
+      "alreadyRegistered": "That email already has an account — try signing in instead.",
+      "rateLimit": "Too many attempts. Please wait a moment and try again.",
+      "fallback": "Couldn't complete that. Please check your details and try again."
+    }
+  },
   "settings": {
+    "back": "Account",
+    "title": "Settings",
+    "account": {
+      "title": "Account",
+      "email": "Email",
+      "signInMethod": "Sign-in method",
+      "emailPassword": "Email & password",
+      "changePassword": "Change password",
+      "checkInbox": "Check your inbox",
+      "sending": "Sending…",
+      "tryAgain": "Try again",
+      "emailMeALink": "Email me a link",
+      "editProfile": "Edit profile"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "followedVenues": "Followed venues & push",
+      "manage": "Manage",
+      "yourNotifications": "Your notifications"
+    },
+    "legal": {
+      "title": "Legal",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "subscription": "Subscription Terms",
+      "guidelines": "Community Guidelines",
+      "attributions": "Attributions"
+    },
+    "support": {
+      "title": "Support",
+      "contact": "Contact support",
+      "appVersion": "App version"
+    },
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signedOutIntro": "Sign in to manage your account settings.",
+    "danger": {
+      "title": "Danger zone",
+      "deleteAccount": "Delete account",
+      "deleteBody": "Permanently deletes your profile, posts, plans, chats and follows. This can't be undone.",
+      "modalTitle": "Delete your account?",
+      "modalBody": "This permanently removes your profile, posts, plans, chats, follows and saved offers. It can't be undone. Comments you left on others' walls stay, but no longer show your name.",
+      "typeToConfirm": "Type <strong>{word}</strong> to confirm",
+      "deleteFailed": "Couldn't delete your account. Please try again.",
+      "cancel": "Cancel",
+      "deleting": "Deleting…"
+    },
     "language": {
       "title": "Language",
       "label": "App language",

@@ -26,6 +26,7 @@ const APP_VERSION = "1.0.0";
 const SUPPORT_EMAIL = "support@roam-local.com";
 
 export function SettingsHub() {
+  const t = useTranslations("settings");
   const session = useSession();
   const router = useRouter();
   const trpc = useTrpc();
@@ -33,6 +34,7 @@ export function SettingsHub() {
   const userId = session?.user?.id ?? null;
   const email = session?.user?.email ?? null;
   const provider = providerLabel(
+    t,
     (session?.user?.app_metadata as { provider?: string } | undefined)?.provider,
   );
 
@@ -90,39 +92,39 @@ export function SettingsHub() {
           href="/account"
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
         >
-          <span aria-hidden>←</span> Account
+          <span aria-hidden>←</span> {t("back")}
         </Link>
         <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
-          Settings
+          {t("title")}
         </h1>
         <span style={{ width: 1 }} />
       </header>
 
       {userId ? (
         <>
-          <Group title="Account">
-            <ValueRow label="Email" value={email ?? "—"} />
-            <ValueRow label="Sign-in method" value={provider} />
+          <Group title={t("account.title")}>
+            <ValueRow label={t("account.email")} value={email ?? "—"} />
+            <ValueRow label={t("account.signInMethod")} value={provider} />
             <ActionRow
-              label="Change password"
+              label={t("account.changePassword")}
               value={
                 pwState === "sent"
-                  ? "Check your inbox"
+                  ? t("account.checkInbox")
                   : pwState === "sending"
-                    ? "Sending…"
+                    ? t("account.sending")
                     : pwState === "error"
-                      ? "Try again"
-                      : "Email me a link"
+                      ? t("account.tryAgain")
+                      : t("account.emailMeALink")
               }
               onClick={() => void changePassword()}
               disabled={pwState === "sending" || !email}
             />
-            <LinkRow href="/account" label="Edit profile" />
+            <LinkRow href="/account" label={t("account.editProfile")} />
           </Group>
 
-          <Group title="Notifications">
-            <LinkRow href="/following" label="Followed venues & push" value="Manage" />
-            <LinkRow href="/notifications" label="Your notifications" />
+          <Group title={t("notifications.title")}>
+            <LinkRow href="/following" label={t("notifications.followedVenues")} value={t("notifications.manage")} />
+            <LinkRow href="/notifications" label={t("notifications.yourNotifications")} />
           </Group>
 
           <BirthdaySettings />
@@ -131,17 +133,17 @@ export function SettingsHub() {
 
       <LanguageGroup />
 
-      <Group title="Legal">
-        <LinkRow href="/legal/terms" label="Terms of Service" />
-        <LinkRow href="/legal/privacy" label="Privacy Policy" />
-        <LinkRow href="/legal/subscription" label="Subscription Terms" />
-        <LinkRow href="/legal/community-guidelines" label="Community Guidelines" />
-        <LinkRow href="/legal/attributions" label="Attributions" />
+      <Group title={t("legal.title")}>
+        <LinkRow href="/legal/terms" label={t("legal.terms")} />
+        <LinkRow href="/legal/privacy" label={t("legal.privacy")} />
+        <LinkRow href="/legal/subscription" label={t("legal.subscription")} />
+        <LinkRow href="/legal/community-guidelines" label={t("legal.guidelines")} />
+        <LinkRow href="/legal/attributions" label={t("legal.attributions")} />
       </Group>
 
-      <Group title="Support">
-        <ExternalRow href={`mailto:${SUPPORT_EMAIL}`} label="Contact support" value={SUPPORT_EMAIL} />
-        <ValueRow label="App version" value={APP_VERSION} />
+      <Group title={t("support.title")}>
+        <ExternalRow href={`mailto:${SUPPORT_EMAIL}`} label={t("support.contact")} value={SUPPORT_EMAIL} />
+        <ValueRow label={t("support.appVersion")} value={APP_VERSION} />
       </Group>
 
       {userId ? (
@@ -168,7 +170,7 @@ export function SettingsHub() {
                 cursor: signingOut ? "default" : "pointer",
               }}
             >
-              {signingOut ? "Signing out…" : "Sign out"}
+              {signingOut ? t("signingOut") : t("signOut")}
             </button>
           </div>
 
@@ -185,15 +187,14 @@ export function SettingsHub() {
                 paddingLeft: 4,
               }}
             >
-              Danger zone
+              {t("danger.title")}
             </h2>
             <Card style={{ padding: "var(--space-4)", borderColor: "var(--crimson-tint-2)" }}>
               <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>
-                Delete account
+                {t("danger.deleteAccount")}
               </div>
               <p style={{ margin: "4px 0 var(--space-3)", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>
-                Permanently deletes your profile, posts, plans, chats and follows. This can&apos;t be
-                undone.
+                {t("danger.deleteBody")}
               </p>
               <button
                 type="button"
@@ -214,7 +215,7 @@ export function SettingsHub() {
                   fontWeight: 700,
                 }}
               >
-                Delete account
+                {t("danger.deleteAccount")}
               </button>
             </Card>
           </section>
@@ -222,7 +223,7 @@ export function SettingsHub() {
       ) : (
         <div style={{ marginTop: "var(--space-4)" }}>
           <AuthPanel
-            intro="Sign in to manage your account settings."
+            intro={t("signedOutIntro")}
             emailRedirectTo={typeof window !== "undefined" ? `${window.location.origin}/settings` : "/settings"}
             onAuthed={() => {
               /* session change re-renders signed-in */
@@ -388,6 +389,7 @@ function ValueRow({ label, value }: { label: string; value: string }) {
 /* ── delete confirmation ─────────────────────────────────────────────────────────────────── */
 
 function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => Promise<void> }) {
+  const t = useTranslations("settings.danger");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -413,7 +415,7 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
     try {
       await onConfirm();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't delete your account. Please try again.");
+      setError(e instanceof Error ? e.message : t("deleteFailed"));
       setBusy(false);
     }
   }, [armed, busy, onConfirm]);
@@ -422,7 +424,7 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Delete account"
+      aria-label={t("deleteAccount")}
       onClick={() => !busy && onClose()}
       style={{
         position: "fixed",
@@ -448,15 +450,14 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
         }}
       >
         <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, margin: 0, color: "var(--ink)" }}>
-          Delete your account?
+          {t("modalTitle")}
         </h2>
         <p style={{ margin: "var(--space-2) 0 0", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.55 }}>
-          This permanently removes your profile, posts, plans, chats, follows and saved offers. It
-          can&apos;t be undone. Comments you left on others&apos; walls stay, but no longer show your
-          name.
+          {t("modalBody")}
         </p>
         <label style={{ display: "block", margin: "var(--space-4) 0 6px", fontSize: 12.5, color: "var(--ink-2)" }}>
-          Type <strong style={{ color: "var(--ink)" }}>DELETE</strong> to confirm
+          {/* The confirmation word itself stays DELETE in every language (it's what armed checks). */}
+          {t.rich("typeToConfirm", { word: "DELETE", strong: (chunks) => <strong style={{ color: "var(--ink)" }}>{chunks}</strong> })}
         </label>
         <input
           value={text}
@@ -501,7 +502,7 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
               cursor: busy ? "default" : "pointer",
             }}
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -523,7 +524,7 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
               cursor: armed && !busy ? "pointer" : "default",
             }}
           >
-            {busy ? "Deleting…" : "Delete account"}
+            {busy ? t("deleting") : t("deleteAccount")}
           </button>
         </div>
       </div>
@@ -531,15 +532,15 @@ function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onCon
   );
 }
 
-function providerLabel(p?: string): string {
+function providerLabel(t: ReturnType<typeof useTranslations>, p?: string): string {
   switch (p) {
     case "google":
       return "Google";
     case "apple":
       return "Apple";
     case "email":
-      return "Email & password";
+      return t("account.emailPassword");
     default:
-      return p ? p.charAt(0).toUpperCase() + p.slice(1) : "Email & password";
+      return p ? p.charAt(0).toUpperCase() + p.slice(1) : t("account.emailPassword");
   }
 }
