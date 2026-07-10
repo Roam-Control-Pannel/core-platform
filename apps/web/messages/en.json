@@ -1,0 +1,44 @@
+{
+  "common": {
+    "time": {
+      "justNow": "just now",
+      "minutes": "{n}m",
+      "hours": "{n}h",
+      "days": "{n}d"
+    }
+  },
+  "chrome": {
+    "brandHome": "Roam home",
+    "primaryNav": "Primary",
+    "nav": {
+      "home": "Home",
+      "explore": "Explore",
+      "townHall": "Town Hall",
+      "plans": "Plans",
+      "chat": "Chat",
+      "you": "You"
+    },
+    "forBusinesses": "For businesses",
+    "create": "Create",
+    "sell": "Sell",
+    "sellOnRoam": "Sell on Roam",
+    "yourOrders": "Your orders",
+    "yourAccount": "Your account",
+    "signIn": "Sign in",
+    "signInIntro": "Sign in to follow venues and manage notifications.",
+    "close": "Close",
+    "createMenu": {
+      "open": "Create",
+      "close": "Close create menu",
+      "newPlan": "New plan",
+      "postToWall": "Post to your wall"
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "label": "App language",
+      "hint": "More languages are on the way. Posts and community content stay in the language they were written in — your browser can translate those."
+    }
+  }
+}

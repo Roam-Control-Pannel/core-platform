@@ -4,6 +4,8 @@
  * degrades to "Someone") and format timestamps as a calm relative label.
  */
 
+import { getFormatLocale, runtimeStrings } from "./i18n/runtime";
+
 export interface TownHallAuthor {
   id: string | null;
   handle: string | null;
@@ -29,18 +31,24 @@ export function authorInitial(author: TownHallAuthor | null | undefined): string
 /**
  * A calm relative time label from an ISO timestamp: "just now", "5m", "3h", "2d", else a date.
  * Tolerant: returns "" for an unparseable input rather than throwing into the UI.
+ *
+ * Locale-aware via lib/i18n/runtime: the words come from the active catalogue's compact
+ * duration templates and the date fallback formats in the active locale. English output is
+ * byte-identical to the original hardcoded version.
  */
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return "";
+  const t = runtimeStrings();
+  const unit = (template: string, n: number) => template.replace("{n}", String(n));
   const secs = Math.max(0, Math.round((now.getTime() - then) / 1000));
-  if (secs < 45) return "just now";
+  if (secs < 45) return t.justNow;
   const mins = Math.round(secs / 60);
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return unit(t.minutes, mins);
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return unit(t.hours, hours);
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d`;
+  if (days < 7) return unit(t.days, days);
   const d = new Date(then);
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return d.toLocaleDateString(getFormatLocale(), { day: "numeric", month: "short" });
 }

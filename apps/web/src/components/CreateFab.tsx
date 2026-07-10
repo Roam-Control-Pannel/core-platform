@@ -8,11 +8,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import styles from "./CreateFab.module.css";
 
 export function CreateFab() {
+  const t = useTranslations("chrome.createMenu");
   const session = useSession();
   const [open, setOpen] = useState(false);
   const userId = session?.user?.id ?? null;
@@ -21,22 +23,22 @@ export function CreateFab() {
 
   return (
     <>
-      {open ? <button aria-label="Close create menu" className={styles.backdrop} onClick={() => setOpen(false)} /> : null}
+      {open ? <button aria-label={t("close")} className={styles.backdrop} onClick={() => setOpen(false)} /> : null}
       <div className={styles.wrap}>
         {open ? (
           <div className={styles.sheet} role="menu">
             <Link href="/plans" role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
-              ＋ New plan
+              {`＋ ${t("newPlan")}`}
             </Link>
             <Link href={`/u/${userId}`} role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
-              <Icon name="edit" size={15} /> Post to your wall
+              <Icon name="edit" size={15} /> {t("postToWall")}
             </Link>
           </div>
         ) : null}
         <button
           type="button"
           className={styles.fab}
-          aria-label={open ? "Close create menu" : "Create"}
+          aria-label={open ? t("close") : t("open")}
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
         >

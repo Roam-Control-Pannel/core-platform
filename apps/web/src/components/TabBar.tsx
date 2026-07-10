@@ -12,6 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import styles from "./TabBar.module.css";
 
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
@@ -61,35 +62,36 @@ const icons = {
 };
 
 export function TabBar() {
+  const t = useTranslations("chrome");
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
 
   return (
     <>
       <div className={styles.spacer} aria-hidden />
-      <nav className={styles.bar} aria-label="Primary">
+      <nav className={styles.bar} aria-label={t("primaryNav")}>
         <Link href="/" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
           {icons.home}
-          Home
+          {t("nav.home")}
         </Link>
         <Link href="/explore" className={`${styles.tab} ${active === "explore" ? styles.active : ""}`}>
           {icons.explore}
-          Explore
+          {t("nav.explore")}
         </Link>
         <Link href="/town-hall" className={`${styles.tab} ${active === "townhall" ? styles.active : ""}`}>
           {icons.townhall}
-          Town Hall
+          {t("nav.townHall")}
         </Link>
         <Link href="/threads" className={`${styles.tab} ${active === "chat" ? styles.active : ""}`}>
           {icons.chat}
-          Chat
+          {t("nav.chat")}
         </Link>
         <Link
           href="/account"
           className={`${styles.tab} ${active === "you" ? styles.active : ""}`}
         >
           {icons.you}
-          You
+          {t("nav.you")}
         </Link>
       </nav>
     </>
