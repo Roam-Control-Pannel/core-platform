@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Seg, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -33,6 +34,7 @@ interface FollowRow {
 }
 
 export function Following() {
+  const t = useTranslations("following");
   const trpc = useTrpc();
   const session = useSession();
   const [rows, setRows] = useState<FollowRow[] | null>(null);
@@ -60,7 +62,7 @@ export function Following() {
       .then((res) => {
         if (cancelled) return;
         if (!res.ok) {
-          setError(res.error ?? "Failed to load your follows.");
+          setError(res.error ?? t("loadFailed"));
           return;
         }
         setRows(
@@ -72,7 +74,7 @@ export function Following() {
         );
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load your follows.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
@@ -114,10 +116,10 @@ export function Following() {
             textDecoration: "none",
           }}
         >
-          <span aria-hidden>←</span> Explore
+          <span aria-hidden>←</span> {t("back")}
         </Link>
         <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 22 }}>
-          Following
+          {t("title")}
         </h1>
         <span style={{ width: 1 }} />
       </header>
@@ -127,8 +129,7 @@ export function Following() {
       ) : (
         <>
           <p style={{ marginTop: 0, marginBottom: "var(--space-4)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            Following a business opts you into its exclusive offers &amp; promotions. Mute any of them
-            below without unfollowing — you stay following, you just stop the notifications.
+            {t("intro")}
           </p>
           <div style={{ marginBottom: "var(--space-4)" }}>
             <EnableNotifications />
@@ -153,8 +154,9 @@ export function Following() {
 }
 
 function FollowRowCard({ row }: { row: FollowRow }) {
+  const t = useTranslations("following");
   const trpc = useTrpc();
-  const name = row.venue?.name ?? "Unknown venue";
+  const name = row.venue?.name ?? t("unknownVenue");
   const [pushEnabled, setPushEnabled] = useState(row.pushEnabled);
   const [busy, setBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -189,13 +191,13 @@ function FollowRowCard({ row }: { row: FollowRow }) {
         })) as { ok: boolean; error?: string; pushEnabled?: boolean };
         if (!res.ok) {
           setPushEnabled(!next); // revert to the pre-toggle value
-          setPushError(res.error ?? "Couldn't update notifications.");
+          setPushError(res.error ?? t("pushUpdateFailed"));
         } else if (typeof res.pushEnabled === "boolean") {
           setPushEnabled(res.pushEnabled); // reconcile to the server's confirmed value
         }
       } catch (e: unknown) {
         setPushEnabled(!next); // revert
-        setPushError(e instanceof Error ? e.message : "Couldn't update notifications.");
+        setPushError(e instanceof Error ? e.message : t("pushUpdateFailed"));
       } finally {
         inFlightRef.current = false;
         setBusy(false);
@@ -244,17 +246,17 @@ function FollowRowCard({ row }: { row: FollowRow }) {
               color: "var(--muted)",
             }}
           >
-            Offers &amp; promotions
+            {t("offersPromotions")}
           </span>
           <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
-            {pushEnabled ? "You'll be notified of new deals" : "Notifications muted — you still follow"}
+            {pushEnabled ? t("pushOnHint") : t("pushOffHint")}
           </span>
         </span>
         <div style={{ opacity: busy ? 0.7 : 1 }}>
           <Seg
             options={[
-              { value: "on", label: "On" },
-              { value: "off", label: "Off" },
+              { value: "on", label: t("on") },
+              { value: "off", label: t("off") },
             ]}
             value={pushEnabled ? "on" : "off"}
             onChange={(v) => void setPush(v === "on")}
@@ -279,9 +281,10 @@ function FollowRowCard({ row }: { row: FollowRow }) {
 }
 
 function SignedOut() {
+  const t = useTranslations("following");
   return (
     <AuthPanel
-      intro="Your follows are private. Sign in to see the venues you follow and manage their notifications."
+      intro={t("signedOutIntro")}
       emailRedirectTo={signedOutReturnUrl()}
       onAuthed={() => {
         // The session change re-runs the list effect automatically; nothing to do.
@@ -324,6 +327,7 @@ function ListSkeleton() {
 }
 
 function EmptyState() {
+  const t = useTranslations("following");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", maxWidth: 420, margin: "0 auto" }}>
       <div
@@ -342,20 +346,21 @@ function EmptyState() {
         <Icon name="heart" size={24} />
       </div>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Not following anything yet
+        {t("empty.title")}
       </div>
       <p style={{ color: "var(--muted)", lineHeight: 1.55 }}>
-        Follow a venue from Explore to get a heads-up when it posts. The venues you follow show up here.
+        {t("empty.body")}
       </p>
     </div>
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const t = useTranslations("following");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        Couldn&apos;t load your follows
+        {t("errorTitle")}
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>

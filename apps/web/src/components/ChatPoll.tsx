@@ -8,6 +8,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import type { PollPayload } from "../lib/chatKinds";
@@ -20,6 +21,7 @@ interface Vote {
 }
 
 export function PollMessage({ messageId, payload, mine }: { messageId: string; payload: PollPayload; mine: boolean }) {
+  const t = useTranslations("chatPoll");
   const trpc = useTrpc();
   const session = useSession();
   const myId = session?.user?.id ?? null;
@@ -85,7 +87,7 @@ export function PollMessage({ messageId, payload, mine }: { messageId: string; p
         <span style={{ fontFamily: "var(--ui)", fontWeight: 700, fontSize: 14.5, color: "var(--ink-hi)", lineHeight: 1.3 }}>{payload.question}</span>
       </div>
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, fontFamily: "var(--ui)" }}>
-        {closed ? "Poll closed" : payload.multi ? "Select one or more" : "Select one"} · {totalVoters} {totalVoters === 1 ? "vote" : "votes"}
+        {closed ? t("closed") : payload.multi ? t("selectMulti") : t("selectOne")} · {t("votes", { count: totalVoters })}
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
@@ -126,7 +128,7 @@ export function PollMessage({ messageId, payload, mine }: { messageId: string; p
 
       {mine && !closed ? (
         <button type="button" onClick={() => void closePoll()} disabled={busy} style={{ all: "unset", cursor: "pointer", marginTop: 10, fontSize: 12, color: "var(--crimson-700)", fontWeight: 600 }}>
-          Close poll
+          {t("closePoll")}
         </button>
       ) : null}
     </div>
@@ -135,7 +137,8 @@ export function PollMessage({ messageId, payload, mine }: { messageId: string; p
 
 /** A tiny voter avatar (image or monogram) with the name in a tooltip. */
 function VoterDot({ name, avatar }: { name: string | null; avatar: string | null }) {
-  const label = name?.trim() || "Roam member";
+  const t = useTranslations("chatPoll");
+  const label = name?.trim() || t("roamMember");
   const initial = label.replace(/^@/, "").charAt(0).toUpperCase() || "?";
   return (
     <span title={label} style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", background: "var(--crimson-tint)", display: "inline-grid", placeItems: "center", color: "var(--crimson-700)", fontFamily: "var(--ui)", fontWeight: 700, fontSize: 9 }}>

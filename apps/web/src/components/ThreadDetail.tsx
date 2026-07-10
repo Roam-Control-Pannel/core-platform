@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Button, AvatarStack, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { MeetupPanel } from "./MeetupPanel";
@@ -24,6 +25,7 @@ import { MessageCard } from "./ChatCards";
 import { ChatShareMenu } from "./ChatShareMenu";
 import type { MessageKind } from "../lib/chatKinds";
 import { useThreadRealtime } from "../lib/useThreadRealtime";
+import { getFormatLocale } from "../lib/i18n/runtime";
 import actions from "./inlineActions.module.css";
 import styles from "./Chat.module.css";
 
@@ -52,44 +54,45 @@ interface Friend {
   avatarUrl: string | null;
 }
 
-function friendName(f: Friend): string {
+function friendName(t: ReturnType<typeof useTranslations>, f: Friend): string {
   if (f.displayName && f.displayName.trim()) return f.displayName.trim();
   if (f.handle && f.handle.trim()) return `@${f.handle.trim()}`;
-  return "Roam member";
+  return t("roamMember");
 }
 
 /** Heading for the thread: its title for group/plan; the OTHER person for a 1:1 DM. */
-function threadHeading(thread: ThreadData, myId: string | null): string {
+function threadHeading(t: ReturnType<typeof useTranslations>, thread: ThreadData, myId: string | null): string {
   if (thread.title?.trim()) return thread.title.trim();
   if (!thread.isGroup) {
     const other = thread.participants.find((p) => p.profileId !== myId) ?? thread.participants[0];
-    if (other) return other.displayName?.trim() || (other.handle ? `@${other.handle}` : "Direct chat");
-    return "Direct chat";
+    if (other) return other.displayName?.trim() || (other.handle ? `@${other.handle}` : t("directChat"));
+    return t("directChat");
   }
-  return "Untitled group";
+  return t("untitledGroup");
 }
 
 /** One-line context under the heading: "4 people · Sarah, Tom, Grace, you" (mockup style). */
-function threadSubtitle(thread: ThreadData, myId: string | null): string {
+function threadSubtitle(t: ReturnType<typeof useTranslations>, thread: ThreadData, myId: string | null): string {
   if (!thread.isGroup) {
     const other = thread.participants.find((p) => p.profileId !== myId) ?? thread.participants[0];
-    return other?.handle ? `@${other.handle}` : "Direct chat";
+    return other?.handle ? `@${other.handle}` : t("directChat");
   }
   const n = thread.participants.length;
   // First names, self shown as "you" (last), capped so long groups stay one line.
   const others = thread.participants
     .filter((p) => p.profileId !== myId)
-    .map((p) => (p.displayName?.trim() || (p.handle ? `@${p.handle}` : "Someone")).split(/\s+/)[0]!)
+    .map((p) => (p.displayName?.trim() || (p.handle ? `@${p.handle}` : t("someone"))).split(/\s+/)[0]!)
     .slice(0, 3);
   const hasMe = thread.participants.some((p) => p.profileId === myId);
-  const shown = [...others, ...(hasMe ? ["you"] : [])];
+  const shown = [...others, ...(hasMe ? [t("youLower")] : [])];
   const more = n - others.length - (hasMe ? 1 : 0);
   const names = shown.join(", ") + (more > 0 ? ` +${more}` : "");
-  const kind = thread.planId ? "Plan chat" : `${n} ${n === 1 ? "person" : "people"}`;
+  const kind = thread.planId ? t("planChat") : t("people", { count: n });
   return names ? `${kind} · ${names}` : kind;
 }
 
 export function ThreadDetail({ threadId }: { threadId: string }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
   const session = useSession();
   const myId = session?.user?.id ?? null;
@@ -108,7 +111,7 @@ export function ThreadDetail({ threadId }: { threadId: string }) {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        const msg = e instanceof Error ? e.message : "Failed to load this chat.";
+        const msg = e instanceof Error ? e.message : t("errors.loadChat");
         // getThread throws NOT_FOUND for "no such thread, or not yours" — treat as null.
         if (/not found/i.test(msg)) setThread(null);
         else setError(msg);
@@ -163,6 +166,7 @@ function ConversationView({
   myId: string | null;
   onOpenInfo: () => void;
 }) {
+  const t = useTranslations("threadDetail");
   return (
     <>
       {/* Mobile back to the list — the desktop shell shows the list beside us. */}
@@ -171,22 +175,22 @@ function ConversationView({
         className={styles.mobileBack}
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-2)" }}
       >
-        <span aria-hidden>←</span> Chats
+        <span aria-hidden>←</span> {t("chats")}
       </Link>
 
-      <button type="button" className={styles.headerBtn} onClick={onOpenInfo} aria-label="Open chat info">
-        <ChatAvatar label={threadHeading(thread, myId)} />
+      <button type="button" className={styles.headerBtn} onClick={onOpenInfo} aria-label={t("openChatInfo")}>
+        <ChatAvatar label={threadHeading(t, thread, myId)} />
         <span style={{ display: "grid", gap: 1, minWidth: 0, flex: 1 }}>
           <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", minWidth: 0 }}>
             <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 19, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {threadHeading(thread, myId)}
+              {threadHeading(t, thread, myId)}
             </span>
             <Pill variant={thread.planId ? "ghost-crim" : "neutral"} size="sm">
-              {thread.planId ? "Plan" : thread.isGroup ? "Group" : "Direct"}
+              {thread.planId ? t("kind.plan") : thread.isGroup ? t("kind.group") : t("kind.direct")}
             </Pill>
           </span>
           <span style={{ fontSize: 12.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {threadSubtitle(thread, myId)}
+            {threadSubtitle(t, thread, myId)}
           </span>
         </span>
         <Icon name="chevronRight" size={20} style={{ color: "var(--faint)", flexShrink: 0 }} />
@@ -206,6 +210,7 @@ function ConversationView({
  * the conversation stays lean; tapping opens Chat info where the full poll controls live.
  */
 function MeetupBar({ threadId, onOpen }: { threadId: string; onOpen: () => void }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
   const session = useSession();
   const [meetup, setMeetup] = useState<{ state: string } | null | undefined>(undefined);
@@ -227,12 +232,12 @@ function MeetupBar({ threadId, onOpen }: { threadId: string; onOpen: () => void 
   }, [trpc, threadId, session]);
 
   if (!meetup || meetup.state === "ended") return null;
-  const label = meetup.state === "voting" ? "Meet-up · voting open" : "Meet-up · winner decided";
+  const label = meetup.state === "voting" ? t("meetupBar.voting") : t("meetupBar.winner");
   return (
     <button type="button" className={styles.meetupBar} onClick={onOpen}>
       <Icon name="place" size={15} style={{ flexShrink: 0 }} />
       <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 2, opacity: 0.85 }}>Open <Icon name="chevronRight" size={13} /></span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 2, opacity: 0.85 }}>{t("meetupBar.open")} <Icon name="chevronRight" size={13} /></span>
     </button>
   );
 }
@@ -250,6 +255,7 @@ function ChatInfoView({
   onBack: () => void;
   onChanged: () => void;
 }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
 
   const [adding, setAdding] = useState<string | null>(null);
@@ -277,7 +283,7 @@ function ChatInfoView({
         await trpc.chat.addThreadParticipant.mutate({ threadId: thread.id, profileId });
         onChanged(); // refresh participants from server-truth
       } catch (e: unknown) {
-        setAddError(e instanceof Error ? e.message : "Couldn't add that person.");
+        setAddError(e instanceof Error ? e.message : t("errors.addPerson"));
       } finally {
         setAdding(null);
       }
@@ -292,21 +298,21 @@ function ChatInfoView({
         onClick={onBack}
         style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Back to chat
+        <span aria-hidden>←</span> {t("backToChat")}
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
-        <ChatAvatar label={threadHeading(thread, myId)} size={44} />
+        <ChatAvatar label={threadHeading(t, thread, myId)} size={44} />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
             <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, margin: 0 }}>
-              {threadHeading(thread, myId)}
+              {threadHeading(t, thread, myId)}
             </h1>
             <Pill variant={thread.planId ? "ghost-crim" : "neutral"} size="sm">
-              {thread.planId ? "Plan chat" : thread.isGroup ? "Group" : "Direct"}
+              {thread.planId ? t("planChat") : thread.isGroup ? t("kind.group") : t("kind.direct")}
             </Pill>
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 2 }}>Created {formatWhen(thread.createdAt)}</div>
+          <div style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 2 }}>{t("createdWhen", { when: formatWhen(t, thread.createdAt) })}</div>
         </div>
       </div>
 
@@ -315,13 +321,13 @@ function ChatInfoView({
           href={`/plans/${thread.planId}`}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none", marginBottom: "var(--space-4)" }}
         >
-          <Icon name="plan" size={15} /> View the plan <span aria-hidden>→</span>
+          <Icon name="plan" size={15} /> {t("viewThePlan")} <span aria-hidden>→</span>
         </Link>
       ) : null}
 
       <div style={{ marginTop: "var(--space-5)" }}>
         <SectionLabel>
-          {thread.participants.length} {thread.participants.length === 1 ? "person" : "people"}
+          {t("people", { count: thread.participants.length })}
         </SectionLabel>
         <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
           <div style={{ display: "grid", gap: "var(--space-3)" }}>
@@ -337,9 +343,9 @@ function ChatInfoView({
           {showAdd ? (
             <Card flat style={{ padding: "var(--space-4)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
-                <SectionLabel>Add a friend</SectionLabel>
+                <SectionLabel>{t("addFriend")}</SectionLabel>
                 <button type="button" onClick={() => { setShowAdd(false); setAddError(null); }} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13 }}>
-                  Done
+                  {t("done")}
                 </button>
               </div>
               {(() => {
@@ -349,8 +355,8 @@ function ChatInfoView({
                   return (
                     <p style={{ color: "var(--ink-2)", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
                       {friends.length === 0
-                        ? "No friends to add yet. Add friends from their profile walls, then bring them in here."
-                        : "All your friends are already in this chat."}
+                        ? t("noFriendsToAdd")
+                        : t("allFriendsHere")}
                     </p>
                   );
                 }
@@ -358,9 +364,9 @@ function ChatInfoView({
                   <div style={{ display: "grid", gap: "var(--space-2)" }}>
                     {addable.map((f) => (
                       <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friendName(f)}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friendName(t, f)}</span>
                         <Button variant="neutral" size="sm" onClick={() => void addParticipant(f.id)} disabled={adding === f.id}>
-                          {adding === f.id ? "…" : "Add"}
+                          {adding === f.id ? "…" : t("add")}
                         </Button>
                       </div>
                     ))}
@@ -375,7 +381,7 @@ function ChatInfoView({
             </Card>
           ) : (
             <Button variant="neutral" onClick={() => void openAdd()}>
-              Add someone
+              {t("addSomeone")}
             </Button>
           )}
         </div>
@@ -394,6 +400,7 @@ function ChatInfoView({
  * to the inbox.
  */
 function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: () => void }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
   const router = useRouter();
   const canRename = thread.isGroup && !thread.planId;
@@ -405,11 +412,11 @@ function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: (
   const [busy, setBusy] = useState(false);
 
   const save = useCallback(async () => {
-    const t = title.trim();
-    if (!t) return;
+    const trimmed = title.trim();
+    if (!trimmed) return;
     setBusy(true);
     try {
-      await trpc.chat.renameThread.mutate({ threadId: thread.id, title: t });
+      await trpc.chat.renameThread.mutate({ threadId: thread.id, title: trimmed });
       setRenaming(false);
       onRenamed();
     } catch {
@@ -441,25 +448,25 @@ function ThreadActions({ thread, onRenamed }: { thread: ThreadData; onRenamed: (
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            aria-label="Group name"
+            aria-label={t("groupNameAria")}
             maxLength={200}
             style={{ flex: 1, minWidth: 180, fontFamily: "var(--ui)", fontSize: 14, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--line-2)", background: "#fff", color: "var(--ink)", outline: "none" }}
           />
-          <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0}>{busy ? "…" : "Save"}</Button>
-          <Button variant="neutral" size="sm" onClick={() => { setRenaming(false); setTitle(thread.title ?? ""); }} disabled={busy}>Cancel</Button>
+          <Button variant="pri" size="sm" onClick={() => void save()} disabled={busy || title.trim().length === 0}>{busy ? "…" : t("save")}</Button>
+          <Button variant="neutral" size="sm" onClick={() => { setRenaming(false); setTitle(thread.title ?? ""); }} disabled={busy}>{t("cancel")}</Button>
         </div>
       ) : (
         <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
-          {canRename ? <button type="button" onClick={() => setRenaming(true)} style={linkStyle}>Rename chat</button> : null}
+          {canRename ? <button type="button" onClick={() => setRenaming(true)} style={linkStyle}>{t("renameChat")}</button> : null}
           {canLeave ? (
             confirmLeave ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", fontSize: 12.5, color: "var(--ink-2)" }}>
-                Leave this chat?
-                <button type="button" onClick={() => void leave()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? "Leaving…" : "Yes, leave"}</button>
-                <button type="button" onClick={() => setConfirmLeave(false)} disabled={busy} style={linkStyle}>Cancel</button>
+                {t("leaveConfirm")}
+                <button type="button" onClick={() => void leave()} disabled={busy} style={{ ...linkStyle, color: "var(--crimson-700)", fontWeight: 600 }}>{busy ? t("leaving") : t("yesLeave")}</button>
+                <button type="button" onClick={() => setConfirmLeave(false)} disabled={busy} style={linkStyle}>{t("cancel")}</button>
               </span>
             ) : (
-              <button type="button" onClick={() => setConfirmLeave(true)} style={{ ...linkStyle, color: "var(--crimson-700)" }}>Leave chat</button>
+              <button type="button" onClick={() => setConfirmLeave(true)} style={{ ...linkStyle, color: "var(--crimson-700)" }}>{t("leaveChat")}</button>
             )
           ) : null}
         </div>
@@ -490,6 +497,7 @@ interface ThreadMessage {
  * Only kind='text' renders; a non-text kind shows a neutral placeholder (the rich-kind seam).
  */
 function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolean }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
   const session = useSession();
   const [messages, setMessages] = useState<ThreadMessage[] | undefined>(undefined);
@@ -520,7 +528,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
         })
         .catch((e: unknown) => {
           if (cancelled) return;
-          if (!silent) setError(e instanceof Error ? e.message : "Failed to load messages.");
+          if (!silent) setError(e instanceof Error ? e.message : t("errors.loadMessages"));
         });
       return () => {
         cancelled = true;
@@ -553,7 +561,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
   const send = useCallback(async () => {
     const body = draft.trim();
     if (!body) {
-      setSendError("Type a message to send.");
+      setSendError(t("errors.emptyMessage"));
       return;
     }
     setSending(true);
@@ -564,7 +572,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
       stickRef.current = true; // sending always snaps you to your new message
       fetchMessages(true); // refetch server-truth (includes the just-sent message)
     } catch (e: unknown) {
-      setSendError(e instanceof Error ? e.message : "Couldn't send your message.");
+      setSendError(e instanceof Error ? e.message : t("errors.send"));
     } finally {
       setSending(false);
     }
@@ -582,7 +590,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
         stickRef.current = true;
         fetchMessages(true);
       } catch (e: unknown) {
-        setSendError(e instanceof Error ? e.message : "Couldn't share that.");
+        setSendError(e instanceof Error ? e.message : t("errors.share"));
       }
     },
     [trpc, threadId, fetchMessages],
@@ -610,10 +618,10 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
         <div className={styles.scrollInner}>
           {messages.length === 0 ? (
             <p style={{ color: "var(--muted)", fontSize: 13, margin: "var(--space-2) 0" }}>
-              No messages yet — say something to get this chat going.
+              {t("noMessages")}
             </p>
           ) : (
-            buildRenderItems(messages, myId).map((it) =>
+            buildRenderItems(t, messages, myId).map((it) =>
               it.type === "date" ? (
                 <div key={it.key} className={styles.dateChip}>{it.label}</div>
               ) : (
@@ -643,7 +651,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
               void send();
             }
           }}
-          placeholder="Write a message…"
+          placeholder={t("composerPlaceholder")}
           rows={2}
           maxLength={4000}
           style={{
@@ -661,7 +669,7 @@ function MessagePanel({ threadId, isGroup }: { threadId: string; isGroup: boolea
           }}
         />
         <Button variant="pri" onClick={() => void send()} disabled={sending}>
-          {sending ? "Sending…" : "Send"}
+          {sending ? t("sending") : t("send")}
         </Button>
       </div>
       {sendError ? (
@@ -684,7 +692,7 @@ type RenderItem =
  * different sender than the previous, or more than 5 minutes after it. Grouped continuations hide
  * the name/time and tuck under the same avatar gutter — the WhatsApp read.
  */
-function buildRenderItems(messages: ThreadMessage[], myId: string | null): RenderItem[] {
+function buildRenderItems(t: ReturnType<typeof useTranslations>, messages: ThreadMessage[], myId: string | null): RenderItem[] {
   const items: RenderItem[] = [];
   let lastDay = "";
   let prev: ThreadMessage | null = null;
@@ -692,7 +700,7 @@ function buildRenderItems(messages: ThreadMessage[], myId: string | null): Rende
     const d = new Date(m.createdAt);
     const dayKey = Number.isNaN(d.getTime()) ? "" : d.toDateString();
     if (dayKey !== lastDay) {
-      items.push({ type: "date", key: `date-${m.id}`, label: dayLabel(m.createdAt) });
+      items.push({ type: "date", key: `date-${m.id}`, label: dayLabel(t, m.createdAt) });
       lastDay = dayKey;
       prev = null;
     }
@@ -705,11 +713,12 @@ function buildRenderItems(messages: ThreadMessage[], myId: string | null): Rende
 }
 
 function MessageRow({ message, mine, isGroup, showHeader, onChanged }: { message: ThreadMessage; mine: boolean; isGroup: boolean; showHeader: boolean; onChanged: () => void }) {
+  const t = useTranslations("threadDetail");
   const trpc = useTrpc();
   const name =
     message.senderName?.trim() ||
     (message.senderHandle ? `@${message.senderHandle}` : null) ||
-    (mine ? "You" : "Roam member");
+    (mine ? t("you") : t("roamMember"));
 
   const isText = message.kind === "text";
   const showAvatarGutter = isGroup && !mine; // avatars only for OTHERS in a group
@@ -764,12 +773,12 @@ function MessageRow({ message, mine, isGroup, showHeader, onChanged }: { message
                 onChange={(e) => setDraft(e.target.value)}
                 rows={2}
                 maxLength={4000}
-                aria-label="Edit message"
+                aria-label={t("editMessageAria")}
                 style={{ width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "var(--ui)", fontSize: 14, lineHeight: 1.45, padding: "8px 12px", borderRadius: 12, border: "1px solid var(--line-2)", background: "#fff", color: "var(--ink)", outline: "none" }}
               />
               <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                <Button variant="pri" size="sm" onClick={() => void saveEdit()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : "Save"}</Button>
-                <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(message.body ?? ""); }} disabled={busy}>Cancel</Button>
+                <Button variant="pri" size="sm" onClick={() => void saveEdit()} disabled={busy || draft.trim().length === 0}>{busy ? "…" : t("save")}</Button>
+                <Button variant="neutral" size="sm" onClick={() => { setEditing(false); setDraft(message.body ?? ""); }} disabled={busy}>{t("cancel")}</Button>
               </div>
             </div>
           ) : isText ? (
@@ -801,14 +810,14 @@ function MessageRow({ message, mine, isGroup, showHeader, onChanged }: { message
           {mine && !editing ? (
             confirming ? (
               <div className={`${actions.row} ${styles.msgActions}`}>
-                <span className={actions.confirm}>Delete?</span>
-                <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : "Yes"}</button>
-                <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>No</button>
+                <span className={actions.confirm}>{t("deleteConfirm")}</span>
+                <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => void remove()} disabled={busy}>{busy ? "…" : t("yes")}</button>
+                <button type="button" className={actions.action} onClick={() => setConfirming(false)} disabled={busy}>{t("no")}</button>
               </div>
             ) : (
               <div className={`${actions.row} ${styles.msgActions}`}>
-                {isText ? <button type="button" className={actions.action} onClick={() => setEditing(true)}>Edit</button> : null}
-                <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>Delete</button>
+                {isText ? <button type="button" className={actions.action} onClick={() => setEditing(true)}>{t("edit")}</button> : null}
+                <button type="button" className={`${actions.action} ${actions.danger}`} onClick={() => setConfirming(true)}>{t("delete")}</button>
               </div>
             )
           ) : null}
@@ -842,22 +851,22 @@ function withinMinutes(a: string, b: string, mins: number): boolean {
 }
 
 /** Day separator label: Today / Yesterday / a full date. */
-function dayLabel(iso: string): string {
+function dayLabel(t: ReturnType<typeof useTranslations>, iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const today = new Date();
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((startOf(today) - startOf(d)) / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  if (days <= 0) return t("day.today");
+  if (days === 1) return t("day.yesterday");
+  return d.toLocaleDateString(getFormatLocale(), { weekday: "short", day: "numeric", month: "short" });
 }
 
 /** Clock time for a message header, e.g. "14:32". */
 function formatClock(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(getFormatLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function MessagesSkeleton() {
@@ -898,7 +907,8 @@ function ChatAvatar({ label, size = 38 }: { label: string; size?: number }) {
 }
 
 function ParticipantRow({ participant }: { participant: Participant }) {
-  const name = participant.displayName?.trim() || participant.handle?.trim() || "Roam member";
+  const t = useTranslations("threadDetail");
+  const name = participant.displayName?.trim() || participant.handle?.trim() || t("roamMember");
   const initial = name.charAt(0).toUpperCase();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
@@ -930,25 +940,26 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function formatWhen(iso: string): string {
+function formatWhen(t: ReturnType<typeof useTranslations>, iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diffMs = Date.now() - then;
   const day = 86_400_000;
-  if (diffMs < day) return "today";
-  if (diffMs < 2 * day) return "yesterday";
+  if (diffMs < day) return t("when.today");
+  if (diffMs < 2 * day) return t("when.yesterday");
   const days = Math.floor(diffMs / day);
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
+  if (days < 7) return t("when.daysAgo", { count: days });
+  return new Date(iso).toLocaleDateString(getFormatLocale());
 }
 
 function SignedOut() {
+  const t = useTranslations("threadDetail");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Sign in to view this chat</div>
-      <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>Chats are private to their members.</p>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>{t("signedOut.title")}</div>
+      <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>{t("signedOut.body")}</p>
       <Link href="/threads" style={{ textDecoration: "none" }}>
-        <Pill variant="ghost-crim">← Back to Chats</Pill>
+        <Pill variant="ghost-crim">← {t("backToChats")}</Pill>
       </Link>
     </div>
   );
@@ -965,23 +976,25 @@ function DetailSkeleton() {
 }
 
 function NotFoundState() {
+  const t = useTranslations("threadDetail");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Chat not found</div>
+      <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>{t("notFound.title")}</div>
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
-        This chat may have been removed, or you don&apos;t have access to it.
+        {t("notFound.body")}
       </p>
       <Link href="/threads" style={{ textDecoration: "none" }}>
-        <Pill variant="ghost-crim">← Back to Chats</Pill>
+        <Pill variant="ghost-crim">← {t("backToChats")}</Pill>
       </Link>
     </div>
   );
 }
 
 function ErrorState({ message }: { message: string }) {
+  const t = useTranslations("threadDetail");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
-      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>Couldn&apos;t load this chat</div>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>{t("errorTitle")}</div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>
   );

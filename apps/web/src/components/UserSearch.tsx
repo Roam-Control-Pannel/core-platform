@@ -19,6 +19,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { runtimeStrings } from "../lib/i18n/runtime";
 import { Seg } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 
@@ -33,7 +35,7 @@ export interface SearchedPerson {
 export function personName(p: { displayName: string | null; handle: string | null }): string {
   if (p.displayName && p.displayName.trim()) return p.displayName.trim();
   if (p.handle && p.handle.trim()) return `@${p.handle.trim()}`;
-  return "Roam member";
+  return runtimeStrings().roamMember;
 }
 
 export function PersonAvatar({ p, size }: { p: { displayName: string | null; handle: string | null; avatarUrl: string | null }; size: number }) {
@@ -68,6 +70,7 @@ export function UserSearch({
   /** Friends-first: show a Friends/Everyone toggle, defaulting to the caller's friends. */
   friendsFirst?: boolean;
 }) {
+  const t = useTranslations("userSearch");
   const trpc = useTrpc();
   const [q, setQ] = useState("");
   const [mode, setMode] = useState<"friends" | "everyone">(friendsFirst ? "friends" : "everyone");
@@ -135,7 +138,7 @@ export function UserSearch({
   );
   const searchRows = (results ?? []).filter((p) => !exclude.has(p.id));
 
-  const boxPlaceholder = placeholder ?? (mode === "friends" ? "Search your friends" : "Search everyone by name or @handle");
+  const boxPlaceholder = placeholder ?? (mode === "friends" ? t("placeholderFriends") : t("placeholderEveryone"));
 
   const row = (p: SearchedPerson) => (
     <PersonRow
@@ -154,8 +157,8 @@ export function UserSearch({
         <div style={{ marginBottom: "var(--space-2)" }}>
           <Seg
             options={[
-              { value: "friends", label: "Friends" },
-              { value: "everyone", label: "Everyone" },
+              { value: "friends", label: t("modeFriends") },
+              { value: "everyone", label: t("modeEveryone") },
             ]}
             value={mode}
             onChange={(v) => setMode(v as "friends" | "everyone")}
@@ -195,11 +198,11 @@ export function UserSearch({
             <div style={{ margin: "var(--space-2) 2px" }}>
               <p style={{ color: "var(--ink-2)", fontSize: 13.5, margin: 0, lineHeight: 1.5 }}>
                 {(friends?.length ?? 0) === 0
-                  ? "You haven't added any friends yet."
-                  : `None of your friends match “${q.trim()}”.`}
+                  ? t("noFriendsYet")
+                  : t("noFriendMatches", { query: q.trim() })}
               </p>
               <button type="button" onClick={() => setMode("everyone")} style={{ all: "unset", cursor: "pointer", marginTop: 6, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)" }}>
-                Search everyone →
+                {t("searchEveryone")}
               </button>
             </div>
           )}
@@ -213,7 +216,7 @@ export function UserSearch({
             </div>
           ) : searchRows.length === 0 ? (
             <p style={{ color: "var(--ink-2)", fontSize: 13.5, margin: "var(--space-2) 2px", lineHeight: 1.5 }}>
-              No one found for “{q.trim()}”. Try a different name or @handle.
+              {t("noResults", { query: q.trim() })}
             </p>
           ) : (
             <div style={{ display: "grid", gap: "var(--space-1)" }}>{searchRows.map(row)}</div>
@@ -221,7 +224,7 @@ export function UserSearch({
         </div>
       ) : friendsFirst ? (
         <p style={{ color: "var(--muted)", fontSize: 12.5, margin: "var(--space-3) 2px 0", lineHeight: 1.5 }}>
-          Search everyone on Roam by name or @handle.
+          {t("hint")}
         </p>
       ) : null}
     </div>

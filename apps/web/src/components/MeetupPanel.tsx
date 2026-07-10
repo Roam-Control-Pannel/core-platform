@@ -24,6 +24,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button, Card, Pill, PollCard } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
@@ -53,6 +54,7 @@ interface VenueRow {
 }
 
 export function MeetupPanel({ threadId }: { threadId: string }) {
+  const t = useTranslations("meetupPanel");
   const trpc = useTrpc();
   const session = useSession();
 
@@ -83,7 +85,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setMeetupError(e instanceof Error ? e.message : "Couldn't load the meet-up.");
+        setMeetupError(e instanceof Error ? e.message : t("errors.load"));
       });
     return () => {
       cancelled = true;
@@ -116,9 +118,9 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
               unknown.map(async (vid) => {
                 try {
                   const v = (await trpc.venues.byId.query({ venueId: vid })) as VenueRow | null;
-                  return [vid, v?.name ?? "Unknown venue"] as const;
+                  return [vid, v?.name ?? t("unknownVenue")] as const;
                 } catch {
-                  return [vid, "Unknown venue"] as const;
+                  return [vid, t("unknownVenue")] as const;
                 }
               }),
             );
@@ -134,7 +136,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         .catch((e: unknown) => {
           if (cancelled) return;
           setResolution(null);
-          setActionError(e instanceof Error ? e.message : "Couldn't load the poll.");
+          setActionError(e instanceof Error ? e.message : t("errors.poll"));
         });
       return () => {
         cancelled = true;
@@ -162,7 +164,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
       const m = (await trpc.meetup.createMeetup.mutate({ threadId })) as { id: string; state: string };
       setMeetup({ id: m.id, state: "voting" });
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Couldn't start the meet-up.");
+      setActionError(e instanceof Error ? e.message : t("errors.start"));
     } finally {
       setBusy(false);
     }
@@ -178,7 +180,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         setVenueNames((prev) => ({ ...prev, [venue.id]: venue.name }));
         refresh();
       } catch (e: unknown) {
-        setActionError(e instanceof Error ? e.message : "Couldn't add that venue.");
+        setActionError(e instanceof Error ? e.message : t("errors.addVenue"));
       } finally {
         setBusy(false);
       }
@@ -195,7 +197,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         await trpc.meetup.castVote.mutate({ meetupId: meetup.id, optionId });
         refresh();
       } catch (e: unknown) {
-        setActionError(e instanceof Error ? e.message : "Couldn't record your vote.");
+        setActionError(e instanceof Error ? e.message : t("errors.vote"));
       } finally {
         setBusy(false);
       }
@@ -212,7 +214,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
       setResolution(r);
       if (r.resolved) setMeetup({ id: meetup.id, state: "resolved" });
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Couldn't resolve the meet-up.");
+      setActionError(e instanceof Error ? e.message : t("errors.resolve"));
     } finally {
       setBusy(false);
     }
@@ -226,7 +228,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
       await trpc.meetup.end.mutate({ meetupId: meetup.id });
       setMeetup({ id: meetup.id, state: "ended" });
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Couldn't end the meet-up.");
+      setActionError(e instanceof Error ? e.message : t("errors.end"));
     } finally {
       setBusy(false);
     }
@@ -234,10 +236,10 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
 
   const pollOptions = useMemo(
     () =>
-      (resolution?.tally ?? []).map((t) => ({
-        optionId: t.optionId,
-        label: venueNames[t.venueId] ?? "Loading…",
-        count: t.count,
+      (resolution?.tally ?? []).map((tally) => ({
+        optionId: tally.optionId,
+        label: venueNames[tally.venueId] ?? t("loading"),
+        count: tally.count,
       })),
     [resolution, venueNames],
   );
@@ -246,7 +248,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
 
   return (
     <section style={{ marginTop: "var(--space-8)" }}>
-      <SectionLabel>Meet-up</SectionLabel>
+      <SectionLabel>{t("title")}</SectionLabel>
 
       {meetupError ? (
         <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
@@ -260,20 +262,20 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
         <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-2)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
             <Pill variant={meetup.state === "ended" ? "neutral" : "ghost-crim"} size="sm">
-              {meetup.state === "voting" ? "Voting" : meetup.state === "resolved" ? "Resolved" : "Ended"}
+              {meetup.state === "voting" ? t("stateVoting") : meetup.state === "resolved" ? t("stateResolved") : t("stateEnded")}
             </Pill>
             {resolution?.reason === "tie" && meetup.state === "voting" ? (
-              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>It&apos;s a tie — switch a vote to break it.</span>
+              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{t("tie")}</span>
             ) : null}
           </div>
 
           {resolution === undefined ? (
             <PollSkeleton />
           ) : resolution === null ? (
-            <p style={{ color: "var(--muted)", fontSize: 13 }}>Couldn&apos;t load the poll.</p>
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>{t("errors.poll")}</p>
           ) : resolution.tally.length === 0 ? (
             <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>
-              No venues yet{meetup.state === "voting" ? " — add one to get the poll going." : "."}
+              {meetup.state === "voting" ? t("noVenuesVoting") : t("noVenues")}
             </p>
           ) : (
             <>
@@ -282,7 +284,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
                 <div style={{ display: "grid", gap: 6, marginTop: "var(--space-3)" }}>
                   {pollOptions.map((o) => (
                     <Button key={o.optionId} variant="neutral" onClick={() => castVote(o.optionId)} disabled={busy}>
-                      Vote · {o.label}
+                      {t("voteFor", { venue: o.label })}
                     </Button>
                   ))}
                 </div>
@@ -294,7 +296,10 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
 
           {resolution?.resolved && meetup.state !== "ended" ? (
             <div style={{ marginTop: "var(--space-3)", fontSize: 13 }}>
-              Meeting at <strong>{venueNames[resolution.winner?.venueId ?? ""] ?? "the winning venue"}</strong>.
+              {t.rich("meetingAt", {
+                venueName: venueNames[resolution.winner?.venueId ?? ""] ?? t("winningVenue"),
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </div>
           ) : null}
 
@@ -307,15 +312,15 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
           <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)", flexWrap: "wrap" }}>
             {meetup.state === "voting" ? (
               <Button variant="pri" onClick={tryResolve} disabled={busy}>
-                {busy ? "Working…" : "Resolve to a winner"}
+                {busy ? t("working") : t("resolve")}
               </Button>
             ) : null}
             {meetup.state !== "ended" ? (
               <Button variant="neutral" onClick={endMeetup} disabled={busy}>
-                End meet-up
+                {t("endMeetup")}
               </Button>
             ) : (
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>This meet-up has ended.</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>{t("ended")}</span>
             )}
           </div>
         </Card>
@@ -325,6 +330,7 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
 }
 
 function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: boolean }) {
+  const t = useTranslations("meetupPanel");
   const trpc = useTrpc();
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
@@ -351,7 +357,7 @@ function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: bo
     return (
       <div style={{ marginTop: "var(--space-3)" }}>
         <Button variant="neutral" onClick={() => setOpen(true)} disabled={busy}>
-          Add a venue
+          {t("addVenue")}
         </Button>
       </div>
     );
@@ -367,11 +373,11 @@ function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: bo
         ))}
       </div>
       {venues === undefined ? (
-        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Loading venues near {place.name}…</p>
+        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>{t("venuesLoading", { place: place.name })}</p>
       ) : venues === null ? (
-        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Couldn&apos;t load venues.</p>
+        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>{t("venuesLoadFailed")}</p>
       ) : venues.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>No venues near {place.name} yet.</p>
+        <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>{t("venuesEmpty", { place: place.name })}</p>
       ) : (
         <div style={{ display: "grid", gap: 6, maxHeight: 260, overflowY: "auto" }}>
           {venues.map((v) => (
@@ -383,7 +389,7 @@ function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: bo
       )}
       <div style={{ marginTop: "var(--space-3)" }}>
         <Button variant="neutral" onClick={() => setOpen(false)}>
-          Done
+          {t("done")}
         </Button>
       </div>
     </Card>
@@ -391,10 +397,11 @@ function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: bo
 }
 
 function StartCard({ onStart, busy, error }: { onStart: () => void; busy: boolean; error: string | null }) {
+  const t = useTranslations("meetupPanel");
   return (
     <Card flat style={{ padding: "var(--space-5)", marginTop: "var(--space-2)" }}>
       <p style={{ margin: 0, marginBottom: "var(--space-3)", color: "var(--muted)", fontSize: 13.5 }}>
-        Put a few venues to a vote and let the group settle on where to meet.
+        {t("startBody")}
       </p>
       {error ? (
         <div style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }} role="alert">
@@ -402,7 +409,7 @@ function StartCard({ onStart, busy, error }: { onStart: () => void; busy: boolea
         </div>
       ) : null}
       <Button variant="pri" onClick={onStart} disabled={busy}>
-        {busy ? "Starting…" : "Start a meet-up"}
+        {busy ? t("starting") : t("start")}
       </Button>
     </Card>
   );

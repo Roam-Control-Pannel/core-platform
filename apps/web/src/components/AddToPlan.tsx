@@ -7,6 +7,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
@@ -17,6 +18,7 @@ interface PlanRow {
 }
 
 export function AddToPlan({ venueId, block = false }: { venueId: string; block?: boolean }) {
+  const t = useTranslations("addToPlan");
   const trpc = useTrpc();
   const session = useSession();
   const [open, setOpen] = useState(false);
@@ -48,7 +50,7 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
         await addVenue.mutate({ planId, venueId });
         setAdded((s) => new Set(s).add(planId));
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Couldn't add to that plan.");
+        setErr(e instanceof Error ? e.message : t("errors.add"));
       }
     },
     [trpc, venueId],
@@ -66,7 +68,7 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
       setNewTitle("");
       await loadPlans();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't create the plan.");
+      setErr(e instanceof Error ? e.message : t("errors.create"));
     } finally {
       setBusy(false);
     }
@@ -76,8 +78,8 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
   if (!session) {
     return (
       <Link href="/account" style={{ textDecoration: "none", ...(block ? { display: "block" } : {}) }}>
-        <Button variant="neutral" block={block} title="Sign in to save to a plan">
-          ＋ Add to Plan
+        <Button variant="neutral" block={block} title={t("signInTitle")}>
+          {t("addToPlan")}
         </Button>
       </Link>
     );
@@ -86,19 +88,19 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
   return (
     <div style={{ position: "relative", ...(block ? { width: "100%" } : {}) }}>
       <Button variant="neutral" block={block} onClick={onToggleOpen} aria-expanded={open}>
-        ＋ Add to Plan
+        {t("addToPlan")}
       </Button>
 
       {open ? (
         <Card style={{ position: "absolute", zIndex: 30, marginTop: 6, width: 280, maxWidth: "90vw", padding: "var(--space-3)", boxShadow: "var(--shadow-pop)" }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-2)" }}>
-            Add to a plan
+            {t("addToAPlan")}
           </div>
 
           {plans === undefined ? (
             <div style={{ height: 36, borderRadius: "var(--r-md)", background: "var(--paper-2)" }} />
           ) : plans.length === 0 ? (
-            <p style={{ margin: "0 0 var(--space-2)", fontSize: 13, color: "var(--ink-2)" }}>No plans yet — make your first below.</p>
+            <p style={{ margin: "0 0 var(--space-2)", fontSize: 13, color: "var(--ink-2)" }}>{t("empty")}</p>
           ) : (
             <div style={{ display: "grid", gap: 2, marginBottom: "var(--space-2)", maxHeight: 200, overflowY: "auto" }}>
               {plans.map((p) => {
@@ -124,7 +126,7 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
                   >
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
                     <span style={{ fontSize: 12, color: done ? "var(--success)" : "var(--crimson-700)", fontWeight: 600, flexShrink: 0 }}>
-                      {done ? "Added ✓" : "Add"}
+                      {done ? t("added") : t("add")}
                     </span>
                   </button>
                 );
@@ -136,13 +138,13 @@ export function AddToPlan({ venueId, block = false }: { venueId: string; block?:
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="New plan…"
-              aria-label="New plan title"
+              placeholder={t("newPlanPlaceholder")}
+              aria-label={t("newPlanAria")}
               maxLength={120}
               style={{ flex: 1, boxSizing: "border-box", padding: "8px 10px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 16, color: "var(--ink)", outline: "none" }}
             />
             <Button variant="pri" size="sm" onClick={() => void createAndAdd()} disabled={newTitle.trim().length === 0 || busy}>
-              {busy ? "…" : "Add"}
+              {busy ? "…" : t("add")}
             </Button>
           </div>
 

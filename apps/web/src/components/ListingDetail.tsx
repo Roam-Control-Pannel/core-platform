@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ interface Listing {
 const viewedListings = new Set<string>();
 
 export function ListingDetail({ listingId, initial }: { listingId: string; initial?: Listing | null }) {
+  const t = useTranslations("listingDetail");
   const trpc = useTrpc();
   const session = useSession();
   // Seeded from the server render when the route resolved the listing (SEO path): the full
@@ -61,18 +63,18 @@ export function ListingDetail({ listingId, initial }: { listingId: string; initi
   if (listing === null) {
     return (
       <main style={pageStyle}>
-        <p style={{ color: "var(--ink-2)" }}>This listing is gone — it may have been sold or removed. <Link href="/market" style={{ color: "var(--crimson-700)" }}>Back to Market</Link></p>
+        <p style={{ color: "var(--ink-2)" }}>{t.rich("gone", { link: (chunks) => <Link href="/market" style={{ color: "var(--crimson-700)" }}>{chunks}</Link> })}</p>
       </main>
     );
   }
 
-  const sellerName = listing.seller.displayName?.trim() || (listing.seller.handle ? `@${listing.seller.handle}` : "A local");
+  const sellerName = listing.seller.displayName?.trim() || (listing.seller.handle ? `@${listing.seller.handle}` : t("sellerFallback"));
   const isOwn = session?.user?.id === listing.seller.id;
 
   return (
     <main style={pageStyle}>
       <Link href="/market" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-3)" }}>
-        <Icon name="arrowLeft" size={14} /> Market
+        <Icon name="arrowLeft" size={14} /> {t("back")}
       </Link>
 
       <div style={{ display: "grid", gap: "var(--space-4)", gridTemplateColumns: "minmax(0, 1fr)" }}>
@@ -102,12 +104,12 @@ export function ListingDetail({ listingId, initial }: { listingId: string; initi
               <div>
                 <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, margin: 0 }}>{listing.title}</h1>
                 <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)" }}>
-                  {listing.locality ?? "Nearby"} · {timeAgo(listing.createdAt)} · {listing.category}
+                  {listing.locality ?? t("nearby")} · {timeAgo(listing.createdAt)} · {listing.category}
                   {listing.status !== "live" ? ` · ${listing.status.toUpperCase()}` : ""}
                 </div>
               </div>
               <strong style={{ fontFamily: "var(--display)", fontSize: 24, color: "var(--ink-hi)" }}>
-                {listing.mode === "free" ? "Free" : listing.mode === "swap" ? "Swap" : listing.pricePence != null ? formatPence(listing.pricePence) : ""}
+                {listing.mode === "free" ? t("price.free") : listing.mode === "swap" ? t("price.swap") : listing.pricePence != null ? formatPence(listing.pricePence) : ""}
               </strong>
             </div>
             {listing.description ? (
@@ -128,16 +130,16 @@ export function ListingDetail({ listingId, initial }: { listingId: string; initi
             )}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{sellerName}</div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>Seller · meets in {listing.locality ?? "your town"}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("seller")} · {t("meetsIn", { place: listing.locality ?? t("yourTown") })}</div>
             </div>
           </Link>
           {isOwn ? (
-            <Pill variant="neutral" size="sm">Your listing</Pill>
+            <Pill variant="neutral" size="sm">{t("yourListing")}</Pill>
           ) : session ? (
             <MessageSeller listing={listing} />
           ) : (
             <Link href="/account" style={{ textDecoration: "none" }}>
-              <Button variant="neutral" size="sm">Sign in to message</Button>
+              <Button variant="neutral" size="sm">{t("signInToMessage")}</Button>
             </Link>
           )}
         </Card>
@@ -145,8 +147,7 @@ export function ListingDetail({ listingId, initial }: { listingId: string; initi
         {!isOwn && session ? <ReportListing listingId={listing.id} /> : null}
 
         <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-          Roam doesn&apos;t handle payment for local listings — agree the details in chat and meet
-          somewhere public. Never send money to someone you haven&apos;t met.
+          {t("safetyNote")}
         </p>
       </div>
     </main>
@@ -158,6 +159,7 @@ export function ListingDetail({ listingId, initial }: { listingId: string; initi
  * seller knows exactly what the enquiry is about (the Facebook "Is this available?" moment).
  */
 function MessageSeller({ listing }: { listing: { id: string; title: string; seller: { id: string } } }) {
+  const t = useTranslations("listingDetail");
   const trpc = useTrpc();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -169,7 +171,7 @@ function MessageSeller({ listing }: { listing: { id: string; title: string; sell
       const { threadId } = await dt.mutate({ profileId: listing.seller.id });
       const send = trpc.chat.sendMessage as unknown as { mutate: (i: { threadId: string; body: string }) => Promise<unknown> };
       const url = `${window.location.origin}/market/${listing.id}`;
-      await send.mutate({ threadId, body: `About your listing “${listing.title}” — is it still available? ${url}` }).catch(() => {});
+      await send.mutate({ threadId, body: t("enquiryMessage", { title: listing.title, url }) }).catch(() => {});
       router.push(`/threads/${threadId}`);
     } catch {
       setBusy(false);
@@ -178,24 +180,25 @@ function MessageSeller({ listing }: { listing: { id: string; title: string; sell
 
   return (
     <Button variant="pri" size="sm" onClick={() => void go()} disabled={busy}>
-      {busy ? "Opening chat…" : "Message seller"}
+      {busy ? t("openingChat") : t("messageSeller")}
     </Button>
   );
 }
 
 /** ReportListing — a quiet flag-for-review affordance (moderation.reportListing). */
 function ReportListing({ listingId }: { listingId: string }) {
+  const t = useTranslations("listingDetail");
   const trpc = useTrpc();
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
   if (state === "done") {
-    return <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Reported — thanks, we’ll take a look.</p>;
+    return <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{t("reported")}</p>;
   }
   return (
     <button
       type="button"
       disabled={state === "busy"}
       onClick={() => {
-        const detail = window.prompt("What’s wrong with this listing? (optional)") ?? undefined;
+        const detail = window.prompt(t("reportPrompt")) ?? undefined;
         setState("busy");
         const rep = trpc.moderation.reportListing as unknown as { mutate: (i: { listingId: string; detail?: string }) => Promise<{ ok: boolean }> };
         rep.mutate({ listingId, ...(detail?.trim() ? { detail: detail.trim() } : {}) })
@@ -204,7 +207,7 @@ function ReportListing({ listingId }: { listingId: string }) {
       }}
       style={{ all: "unset", cursor: "pointer", fontSize: 12, color: "var(--muted)", textDecoration: "underline" }}
     >
-      Report this listing
+      {t("reportListing")}
     </button>
   );
 }

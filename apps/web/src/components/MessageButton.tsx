@@ -10,6 +10,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
@@ -17,13 +18,14 @@ export function MessageButton({
   profileId,
   size = "sm",
   variant = "neutral",
-  label = "Message",
+  label,
 }: {
   profileId: string;
   size?: "sm" | "md";
   variant?: "pri" | "neutral" | "ghost";
   label?: string;
 }) {
+  const t = useTranslations("messageButton");
   const trpc = useTrpc();
   const session = useSession();
   const router = useRouter();
@@ -47,7 +49,7 @@ export function MessageButton({
 
   return (
     <Button variant={variant} size={size} onClick={() => void open()} disabled={busy}>
-      {busy ? "Opening…" : label}
+      {busy ? t("opening") : label ?? t("message")}
     </Button>
   );
 }

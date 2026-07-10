@@ -15,10 +15,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Pill, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { formatPence } from "../lib/money";
-import { categoryLabel } from "../lib/categories";
+import { useCategoryLabel } from "../lib/categories";
 import { useWishlist } from "../lib/wishlist";
 
 interface FeedProduct {
@@ -34,6 +35,8 @@ interface FeedProduct {
 }
 
 export function MarketShops({ localityName, query }: { localityName: string; query: string }) {
+  const t = useTranslations("marketShops");
+  const categoryLabel = useCategoryLabel();
   const trpc = useTrpc();
   const [products, setProducts] = useState<FeedProduct[] | undefined>(undefined);
   const [category, setCategory] = useState<string | null>(null);
@@ -79,10 +82,10 @@ export function MarketShops({ localityName, query }: { localityName: string; que
   if (products.length === 0) {
     return (
       <p style={{ color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
-        {/* One template literal, not `{name} text` JSX: Turbopack's JSX transform drops the
+        {/* One message string, not `{name} text` JSX: Turbopack's JSX transform drops the
             space after an expression when the following text wraps to the next source line
-            (rendered "Darlingtonhave"). The literal keeps the spacing compiler-proof. */}
-        {`No shops in ${localityName} have stocked up yet — businesses add products from their dashboard, and they'll appear here the moment they do.`}
+            (rendered "Darlingtonhave"). The single string keeps the spacing compiler-proof. */}
+        {t("empty", { place: localityName })}
       </p>
     );
   }
@@ -91,7 +94,7 @@ export function MarketShops({ localityName, query }: { localityName: string; que
     <div>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
         <button onClick={() => { setCategory(null); setSavedOnly(false); }} style={{ all: "unset", cursor: "pointer" }}>
-          <Pill variant={category === null && !savedOnly ? "on" : "neutral"} size="sm">All</Pill>
+          <Pill variant={category === null && !savedOnly ? "on" : "neutral"} size="sm">{t("all")}</Pill>
         </button>
         {categories.map((c) => (
           <button key={c} onClick={() => { setCategory(c); setSavedOnly(false); }} style={{ all: "unset", cursor: "pointer" }}>
@@ -100,22 +103,22 @@ export function MarketShops({ localityName, query }: { localityName: string; que
         ))}
         {saved.size > 0 ? (
           <button onClick={() => { setSavedOnly((v) => !v); setCategory(null); }} style={{ all: "unset", cursor: "pointer" }}>
-            <Pill variant={savedOnly ? "crim" : "neutral"} size="sm">♥ Saved · {saved.size}</Pill>
+            <Pill variant={savedOnly ? "crim" : "neutral"} size="sm">♥ {t("saved")} · {saved.size}</Pill>
           </button>
         ) : null}
       </div>
 
       {shown.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontSize: 13.5 }}>Nothing matches — try another category or search.</p>
+        <p style={{ color: "var(--muted)", fontSize: 13.5 }}>{t("noMatches")}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "var(--space-4)" }}>
           {shown.map((p) => {
             const soldOut = p.stock === 0;
             const badge = soldOut
-              ? { label: "Sold out", icon: "ban" as const, color: "var(--muted)" }
+              ? { label: t("badge.soldOut"), icon: "ban" as const, color: "var(--muted)" }
               : p.kind === "service"
-                ? { label: "Gift card", icon: "card" as const, color: "var(--gold)" }
-                : { label: "Collect", icon: "check" as const, color: "var(--crimson-700)" };
+                ? { label: t("badge.giftCard"), icon: "card" as const, color: "var(--gold)" }
+                : { label: t("badge.collect"), icon: "check" as const, color: "var(--crimson-700)" };
             return (
               <div key={p.id} style={{ position: "relative" }}>
                 <Link href={`/venue/${p.venue.id}?tab=shop`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
@@ -142,7 +145,7 @@ export function MarketShops({ localityName, query }: { localityName: string; que
                           {p.venue.name.charAt(0).toUpperCase()}
                         </span>
                         <span style={{ fontSize: 13, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.venue.name}</span>
-                        <Icon name="check" size={12} strokeWidth={3} style={{ color: "var(--success)", flexShrink: 0 }} aria-label="Claimed venue" />
+                        <Icon name="check" size={12} strokeWidth={3} style={{ color: "var(--success)", flexShrink: 0 }} aria-label={t("claimedVenue")} />
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
                         <strong style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 20, color: "var(--ink-hi)" }}>
@@ -169,10 +172,11 @@ export function MarketShops({ localityName, query }: { localityName: string; que
 
 /** The save-heart — a white circle over the photo's top-right; crimson-filled when saved. */
 export function HeartButton({ saved, onToggle, label }: { saved: boolean; onToggle: () => void; label: string }) {
+  const t = useTranslations("marketShops");
   return (
     <button
       type="button"
-      aria-label={saved ? `Remove ${label} from saved` : `Save ${label}`}
+      aria-label={saved ? t("removeFromSaved", { title: label }) : t("saveItem", { title: label })}
       aria-pressed={saved}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
       style={{

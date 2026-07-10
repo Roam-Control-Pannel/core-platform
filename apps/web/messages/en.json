@@ -6,7 +6,8 @@
       "hours": "{n}h",
       "days": "{n}d"
     },
-    "someone": "Someone"
+    "someone": "Someone",
+    "roamMember": "Roam member"
   },
   "categories": {
     "foodDrink": "Eateries",
@@ -1025,5 +1026,541 @@
     "profile": "Profile",
     "notFoundTitle": "Post not found",
     "notFoundBody": "It may have been removed, or the link is wrong."
+  },
+  "threadDetail": {
+    "roamMember": "Roam member",
+    "directChat": "Direct chat",
+    "untitledGroup": "Untitled group",
+    "someone": "Someone",
+    "youLower": "you",
+    "you": "You",
+    "planChat": "Plan chat",
+    "people": "{count, plural, one {# person} other {# people}}",
+    "chats": "Chats",
+    "openChatInfo": "Open chat info",
+    "kind": {
+      "plan": "Plan",
+      "group": "Group",
+      "direct": "Direct"
+    },
+    "meetupBar": {
+      "voting": "Meet-up · voting open",
+      "winner": "Meet-up · winner decided",
+      "open": "Open"
+    },
+    "backToChat": "Back to chat",
+    "createdWhen": "Created {when}",
+    "viewThePlan": "View the plan",
+    "addFriend": "Add a friend",
+    "done": "Done",
+    "noFriendsToAdd": "No friends to add yet. Add friends from their profile walls, then bring them in here.",
+    "allFriendsHere": "All your friends are already in this chat.",
+    "add": "Add",
+    "addSomeone": "Add someone",
+    "groupNameAria": "Group name",
+    "save": "Save",
+    "cancel": "Cancel",
+    "renameChat": "Rename chat",
+    "leaveConfirm": "Leave this chat?",
+    "leaving": "Leaving…",
+    "yesLeave": "Yes, leave",
+    "leaveChat": "Leave chat",
+    "noMessages": "No messages yet — say something to get this chat going.",
+    "composerPlaceholder": "Write a message…",
+    "sending": "Sending…",
+    "send": "Send",
+    "editMessageAria": "Edit message",
+    "deleteConfirm": "Delete?",
+    "yes": "Yes",
+    "no": "No",
+    "edit": "Edit",
+    "delete": "Delete",
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "when": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    },
+    "signedOut": {
+      "title": "Sign in to view this chat",
+      "body": "Chats are private to their members."
+    },
+    "backToChats": "Back to Chats",
+    "notFound": {
+      "title": "Chat not found",
+      "body": "This chat may have been removed, or you don't have access to it."
+    },
+    "errorTitle": "Couldn't load this chat",
+    "errors": {
+      "loadChat": "Failed to load this chat.",
+      "addPerson": "Couldn't add that person.",
+      "loadMessages": "Failed to load messages.",
+      "emptyMessage": "Type a message to send.",
+      "send": "Couldn't send your message.",
+      "share": "Couldn't share that."
+    }
+  },
+  "threadList": {
+    "title": "Chats",
+    "cancel": "Cancel",
+    "new": "＋ New",
+    "removePerson": "Remove {name}",
+    "groupNamePlaceholder": "Group name — e.g. Friday night out",
+    "groupNameAria": "Group name",
+    "starting": "Starting…",
+    "messagePerson": "Message {name}",
+    "createGroup": "Create group · {count}",
+    "pickHint": "Pick one person for a direct chat, or several for a group.",
+    "kindLabel": {
+      "plan": "Plan chat",
+      "group": "Group",
+      "direct": "Direct"
+    },
+    "fallback": {
+      "plan": "Plan chat",
+      "group": "Untitled group",
+      "direct": "Direct chat"
+    },
+    "preview": {
+      "noMessages": "No messages yet",
+      "you": "You: {text}",
+      "message": "Message",
+      "sharedPlace": "Shared a place",
+      "sharedPlan": "Shared a plan",
+      "sharedContact": "Shared a contact",
+      "photo": "Photo",
+      "poll": "Poll"
+    },
+    "unreadAria": "{count} unread",
+    "when": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+    },
+    "signedOutIntro": "Your chats are private. Sign in to see them and start new ones.",
+    "empty": {
+      "title": "No chats yet",
+      "body": "Tap “New chat”, then search for someone — pick one person for a direct message, or several for a group. You can also message a friend from their profile, or open a plan to chat with everyone on it."
+    },
+    "errorTitle": "Couldn't load your chats",
+    "errors": {
+      "load": "Failed to load your chats.",
+      "groupName": "Give your group a name.",
+      "start": "Couldn't start that chat."
+    }
+  },
+  "chatShareMenu": {
+    "shareSomethingAria": "Share something",
+    "shareTitle": "Share a place, plan, person or photo",
+    "sharePlace": "Share a place",
+    "sharePlan": "Share a plan",
+    "sharePerson": "Share a person",
+    "poll": "Poll",
+    "photo": "Photo",
+    "createPollTitle": "Create a poll",
+    "close": "Close",
+    "venuesLoading": "Loading venues near {place}…",
+    "venuesLoadFailed": "Couldn't load venues.",
+    "venuesEmpty": "No venues near {place} yet.",
+    "plansLoading": "Loading your plans…",
+    "plansLoadFailed": "Couldn't load your plans.",
+    "plansEmpty": "You have no plans yet. Create one from the Plans tab, then share it here.",
+    "roamMember": "Roam member",
+    "friendsLoading": "Loading friends…",
+    "friendsLoadFailed": "Couldn't load your friends.",
+    "friendsEmpty": "No friends yet. Add friends from their profile walls, then share them here.",
+    "questionPlaceholder": "Ask a question…",
+    "questionAria": "Poll question",
+    "optionN": "Option {n}",
+    "removeOption": "Remove option",
+    "addOption": "+ Add option",
+    "allowMultiple": "Allow multiple answers",
+    "createPoll": "Create poll",
+    "errors": {
+      "uploadPhoto": "Couldn't upload that photo."
+    }
+  },
+  "chatCards": {
+    "aPlace": "A place",
+    "viewVenue": "View venue",
+    "aPlan": "A plan",
+    "viewPlan": "View plan",
+    "someone": "Someone",
+    "viewProfile": "View profile",
+    "photoUnavailable": "Photo unavailable",
+    "sharedPhotoAlt": "Shared photo",
+    "unsupportedMessage": "Unsupported message"
+  },
+  "chatPoll": {
+    "closed": "Poll closed",
+    "selectMulti": "Select one or more",
+    "selectOne": "Select one",
+    "votes": "{count, plural, one {# vote} other {# votes}}",
+    "closePoll": "Close poll",
+    "roamMember": "Roam member"
+  },
+  "chatShell": {
+    "emptyTitle": "Pick a conversation",
+    "emptyBody": "Choose a chat from the left, or start a new one."
+  },
+  "messageButton": {
+    "message": "Message",
+    "opening": "Opening…"
+  },
+  "planDetail": {
+    "roamMember": "Roam member",
+    "back": "Plans",
+    "signedOutIntro": "Sign in to see the full plan and join in.",
+    "notMemberBody": "You're not in this plan yet — ask whoever shared it to invite you, and it'll appear in your <plansLink>Plans</plansLink>.",
+    "notFound": {
+      "title": "Plan not found",
+      "body": "It may have been removed, or you don't have access."
+    },
+    "opening": "Opening…",
+    "groupChat": "Group chat",
+    "edit": "Edit",
+    "venues": "{count, plural, one {# venue} other {# venues}}",
+    "emptyVenues": "No venues yet. Open any venue and tap <strong>＋ Add to Plan</strong> to add it here.",
+    "findVenues": "Find venues",
+    "removeFromPlanTitle": "Remove from plan",
+    "remove": "Remove",
+    "places": "{count, plural, one {# place} other {# places}}",
+    "going": "{count} going",
+    "uploading": "Uploading…",
+    "change": "Change",
+    "addImage": "＋ Add image",
+    "tapToAddHeader": "Tap to add a header image",
+    "changeHeaderAria": "Change header image",
+    "addHeaderAria": "Add header image",
+    "cropTitle": "Position your plan header",
+    "removeImage": "Remove image",
+    "planTitleAria": "Plan title",
+    "plannedDateAria": "Planned date",
+    "notesAria": "Notes",
+    "notesPlaceholder": "Notes (optional)",
+    "saving": "Saving…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "deletePlan": "Delete plan",
+    "members": "{count, plural, one {Just you} other {# people}}",
+    "done": "Done",
+    "inviteFriends": "＋ Invite friends",
+    "host": "host",
+    "removeMemberAria": "Remove {name} from plan",
+    "noFriendsToInvite": "No friends to invite yet. Add friends from their profile walls, then invite them here.",
+    "allFriendsOnPlan": "All your friends are already on this plan.",
+    "add": "Add",
+    "errors": {
+      "load": "Couldn't load this plan.",
+      "signInImage": "You need to be signed in to add an image.",
+      "upload": "Couldn't upload that image.",
+      "save": "Couldn't save the plan."
+    }
+  },
+  "plansList": {
+    "kicker": "Together in {place}",
+    "title": "Plans",
+    "subtitle": "Line up an outing, add venues, and let the group decide where to meet.",
+    "newPlan": "＋ New plan",
+    "signedOutIntro": "Sign in to make plans and save venues to them.",
+    "noDate": "No date yet",
+    "going": "{count} going",
+    "venues": "{count, plural, one {# venue} other {# venues}}",
+    "startNewPlan": "Start a new plan",
+    "startNewPlanHint": "Pick a date, invite friends",
+    "titlePlaceholder": "Plan title — e.g. Friday night out",
+    "titleAria": "Plan title",
+    "dateAria": "Planned date",
+    "notesPlaceholder": "Notes (optional)",
+    "notesAria": "Notes",
+    "creating": "Creating…",
+    "create": "Create plan",
+    "cancel": "Cancel",
+    "errors": {
+      "load": "Couldn't load your plans.",
+      "create": "Couldn't create the plan."
+    }
+  },
+  "meetupPanel": {
+    "title": "Meet-up",
+    "unknownVenue": "Unknown venue",
+    "loading": "Loading…",
+    "stateVoting": "Voting",
+    "stateResolved": "Resolved",
+    "stateEnded": "Ended",
+    "tie": "It's a tie — switch a vote to break it.",
+    "noVenuesVoting": "No venues yet — add one to get the poll going.",
+    "noVenues": "No venues yet.",
+    "voteFor": "Vote · {venue}",
+    "meetingAt": "Meeting at <strong>{venueName}</strong>.",
+    "winningVenue": "the winning venue",
+    "working": "Working…",
+    "resolve": "Resolve to a winner",
+    "endMeetup": "End meet-up",
+    "ended": "This meet-up has ended.",
+    "addVenue": "Add a venue",
+    "venuesLoading": "Loading venues near {place}…",
+    "venuesLoadFailed": "Couldn't load venues.",
+    "venuesEmpty": "No venues near {place} yet.",
+    "done": "Done",
+    "startBody": "Put a few venues to a vote and let the group settle on where to meet.",
+    "starting": "Starting…",
+    "start": "Start a meet-up",
+    "errors": {
+      "load": "Couldn't load the meet-up.",
+      "poll": "Couldn't load the poll.",
+      "start": "Couldn't start the meet-up.",
+      "addVenue": "Couldn't add that venue.",
+      "vote": "Couldn't record your vote.",
+      "resolve": "Couldn't resolve the meet-up.",
+      "end": "Couldn't end the meet-up."
+    }
+  },
+  "addToPlan": {
+    "signInTitle": "Sign in to save to a plan",
+    "addToPlan": "＋ Add to Plan",
+    "addToAPlan": "Add to a plan",
+    "empty": "No plans yet — make your first below.",
+    "added": "Added ✓",
+    "add": "Add",
+    "newPlanPlaceholder": "New plan…",
+    "newPlanAria": "New plan title",
+    "errors": {
+      "add": "Couldn't add to that plan.",
+      "create": "Couldn't create the plan."
+    }
+  },
+  "market": {
+    "toggle": {
+      "shops": "Shops",
+      "marketplace": "Marketplace",
+      "aria": "Market mode"
+    },
+    "kicker": {
+      "shops": "Roam Market",
+      "marketplace": "Roam Marketplace"
+    },
+    "headline": {
+      "shops": "Buy from your high street",
+      "marketplace": "Buy, sell & swap with neighbours"
+    },
+    "sub": {
+      "shops": "Products, vouchers & experiences from local businesses in <strong>{place}</strong>.",
+      "marketplace": "Second-hand and handmade from real locals near <strong>{place}</strong>."
+    },
+    "searchPlaceholder": {
+      "shops": "Search products & local shops…",
+      "marketplace": "Search bikes, furniture, clothes…"
+    },
+    "searchAria": "Search the market",
+    "sellOnRoam": "＋ Sell on Roam",
+    "view": {
+      "browse": "Browse",
+      "mine": "Your listings"
+    },
+    "listAnItem": "＋ List an item",
+    "signInToPost": "<link>Sign in</link> to post a listing — it takes a minute.",
+    "filter": {
+      "all": "All",
+      "forSale": "For sale",
+      "swap": "Open to swap",
+      "free": "Free"
+    },
+    "allCategories": "All categories",
+    "categories": {
+      "furniture": "Furniture",
+      "electronics": "Electronics",
+      "clothing": "Clothing",
+      "kids": "Kids",
+      "home": "Home",
+      "garden": "Garden",
+      "sports": "Sports",
+      "books": "Books",
+      "vehicles": "Vehicles",
+      "other": "Other"
+    },
+    "saved": "Saved",
+    "badge": {
+      "sold": "Sold",
+      "removed": "Removed",
+      "free": "Free",
+      "swapOk": "Swap ok",
+      "newIn": "New in",
+      "forSale": "For sale"
+    },
+    "price": {
+      "free": "Free",
+      "swap": "Swap"
+    },
+    "miles": "{miles} mi",
+    "nearby": "Nearby",
+    "views": "{count, plural, one {# view} other {# views}}",
+    "emptyMine": "You haven't listed anything yet.",
+    "emptyBrowse": "Nothing listed in {place} yet — be the first.",
+    "markSold": "Mark sold",
+    "remove": "Remove",
+    "relist": "Relist",
+    "composer": {
+      "title": "New listing in {place}",
+      "modeSell": "Sell",
+      "modeSwap": "Open to swap",
+      "modeFree": "Free",
+      "titlePlaceholder": "What are you listing?",
+      "titleAria": "Title",
+      "pricePlaceholder": "Price (£)",
+      "priceAria": "Price",
+      "categoryAria": "Category",
+      "descriptionPlaceholder": "Condition, size, pickup details…",
+      "descriptionAria": "Description",
+      "photoRules": "Photos must be JPEG/PNG/WebP under 10 MB.",
+      "uploadingProgress": "Uploading {current} of {total}…",
+      "uploadFailed": "Upload failed: {message}",
+      "titleMin": "Give it a title (at least 3 characters).",
+      "priceInvalid": "Enter a price like 25 or 12.50.",
+      "postFailedRetry": "Couldn't post that — try again.",
+      "postFailed": "Couldn't post that.",
+      "cover": "Cover",
+      "removePhoto": "Remove photo",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "uploading": "Uploading…",
+      "addPhotos": "Add photos",
+      "posting": "Posting…",
+      "post": "Post listing",
+      "cancel": "Cancel"
+    }
+  },
+  "marketShops": {
+    "empty": "No shops in {place} have stocked up yet — businesses add products from their dashboard, and they'll appear here the moment they do.",
+    "all": "All",
+    "saved": "Saved",
+    "noMatches": "Nothing matches — try another category or search.",
+    "badge": {
+      "soldOut": "Sold out",
+      "giftCard": "Gift card",
+      "collect": "Collect"
+    },
+    "claimedVenue": "Claimed venue",
+    "removeFromSaved": "Remove {title} from saved",
+    "saveItem": "Save {title}"
+  },
+  "listingDetail": {
+    "gone": "This listing is gone — it may have been sold or removed. <link>Back to Market</link>",
+    "back": "Market",
+    "sellerFallback": "A local",
+    "nearby": "Nearby",
+    "price": {
+      "free": "Free",
+      "swap": "Swap"
+    },
+    "seller": "Seller",
+    "meetsIn": "meets in {place}",
+    "yourTown": "your town",
+    "yourListing": "Your listing",
+    "signInToMessage": "Sign in to message",
+    "safetyNote": "Roam doesn't handle payment for local listings — agree the details in chat and meet somewhere public. Never send money to someone you haven't met.",
+    "enquiryMessage": "About your listing “{title}” — is it still available? {url}",
+    "openingChat": "Opening chat…",
+    "messageSeller": "Message seller",
+    "reported": "Reported — thanks, we’ll take a look.",
+    "reportPrompt": "What’s wrong with this listing? (optional)",
+    "reportListing": "Report this listing"
+  },
+  "venueShop": {
+    "checkoutFailed": "Couldn't start checkout.",
+    "empty": "This venue hasn't stocked its Roam shop yet — check back soon.",
+    "kind": {
+      "voucher": "Voucher / service",
+      "soldOut": "Sold out",
+      "collect": "Collect in venue"
+    },
+    "quantityAria": "Quantity",
+    "openingCheckout": "Opening checkout…",
+    "buy": "Buy",
+    "signInToBuy": "Sign in to buy",
+    "payoutPending": "Buying through Roam opens once this venue finishes its payout setup — for now, visit or message the venue to purchase.",
+    "paymentsNote": "Payments are handled securely by Stripe. Products are collected in venue; vouchers come with a redeem code in <link>your orders</link>."
+  },
+  "myOrders": {
+    "signedOutIntro": "Sign in to see your orders.",
+    "title": "Your orders",
+    "placedNote": "Order placed — it'll show as Paid here within a few seconds of Stripe confirming.",
+    "empty": "Nothing yet — venue shops across Roam are stocking up. Find something in <link>Explore</link>.",
+    "status": {
+      "pending": "Awaiting payment",
+      "paid": "Paid",
+      "collected": "Collected",
+      "redeemed": "Redeemed",
+      "refunded": "Refunded",
+      "canceled": "Canceled"
+    },
+    "showCode": "Show this code in venue to redeem:"
+  },
+  "friendsList": {
+    "fallbackName": "Someone",
+    "home": "Home",
+    "title": "Friends",
+    "signedOutIntro": "Sign in to see your friends and requests.",
+    "findPeople": "Find people",
+    "searchPlaceholder": "Search by name or @handle",
+    "requests": "Requests",
+    "accept": "Accept",
+    "decline": "Decline",
+    "empty": "No friends yet. Open someone's wall and tap <strong>＋ Add friend</strong> to connect.",
+    "friendCount": "{count, plural, one {# friend} other {# friends}}"
+  },
+  "userSearch": {
+    "placeholderFriends": "Search your friends",
+    "placeholderEveryone": "Search everyone by name or @handle",
+    "modeFriends": "Friends",
+    "modeEveryone": "Everyone",
+    "noFriendsYet": "You haven't added any friends yet.",
+    "noFriendMatches": "None of your friends match “{query}”.",
+    "searchEveryone": "Search everyone →",
+    "noResults": "No one found for “{query}”. Try a different name or @handle.",
+    "hint": "Search everyone on Roam by name or @handle."
+  },
+  "addFriendButton": {
+    "friends": "Friends ✓",
+    "requested": "Requested",
+    "acceptRequest": "Accept request",
+    "addFriend": "＋ Add friend"
+  },
+  "following": {
+    "back": "Explore",
+    "title": "Following",
+    "intro": "Following a business opts you into its exclusive offers & promotions. Mute any of them below without unfollowing — you stay following, you just stop the notifications.",
+    "loadFailed": "Failed to load your follows.",
+    "signedOutIntro": "Your follows are private. Sign in to see the venues you follow and manage their notifications.",
+    "unknownVenue": "Unknown venue",
+    "pushUpdateFailed": "Couldn't update notifications.",
+    "offersPromotions": "Offers & promotions",
+    "pushOnHint": "You'll be notified of new deals",
+    "pushOffHint": "Notifications muted — you still follow",
+    "on": "On",
+    "off": "Off",
+    "empty": {
+      "title": "Not following anything yet",
+      "body": "Follow a venue from Explore to get a heads-up when it posts. The venues you follow show up here."
+    },
+    "errorTitle": "Couldn't load your follows"
+  },
+  "reportVenue": {
+    "cta": "Report this venue",
+    "signInToReport": "Sign in to report this venue.",
+    "detailLabel": "What's wrong with this venue?",
+    "detailPlaceholder": "e.g. wrongly claimed, closed, incorrect or abusive content…",
+    "sending": "Sending…",
+    "send": "Send report",
+    "cancel": "Cancel",
+    "thanks": "Thanks — your report has been sent for review.",
+    "submitFailed": "Couldn't submit your report."
+  },
+  "copyLinkButton": {
+    "share": "Share",
+    "copied": "Copied!"
   }
 }

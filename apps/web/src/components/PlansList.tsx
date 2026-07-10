@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Card, Button, AvatarStack } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
@@ -39,6 +40,7 @@ interface PlanRow {
 const PLAN_GRADIENT = "linear-gradient(135deg, var(--crimson) 0%, var(--crimson-700) 55%, #7a0c28 100%)";
 
 export function PlansList() {
+  const t = useTranslations("plansList");
   const trpc = useTrpc();
   const session = useSession();
   const { place } = useCurrentPlace();
@@ -63,7 +65,7 @@ export function PlansList() {
         if (!cancelled) setPlans(p);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load your plans.");
+        if (!cancelled) setError(e instanceof Error ? e.message : t("errors.load"));
       });
     return () => {
       cancelled = true;
@@ -80,18 +82,18 @@ export function PlansList() {
       <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-4)", marginBottom: "var(--space-6)", flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
-            Together in {place.name}
+            {t("kicker", { place: place.name })}
           </div>
           <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
-            Plans
+            {t("title")}
           </h1>
           <p style={{ margin: "6px 0 0", color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.5 }}>
-            Line up an outing, add venues, and let the group decide where to meet.
+            {t("subtitle")}
           </p>
         </div>
         {hasSession && !composing ? (
           <Button variant="pri" onClick={() => setComposing(true)} style={{ flexShrink: 0 }}>
-            ＋ New plan
+            {t("newPlan")}
           </Button>
         ) : null}
       </header>
@@ -99,7 +101,7 @@ export function PlansList() {
       {!hasSession ? (
         <Card style={{ padding: "var(--space-4)" }}>
           <AuthPanel
-            intro="Sign in to make plans and save venues to them."
+            intro={t("signedOutIntro")}
             emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
             onAuthed={() => {}}
           />
@@ -142,6 +144,7 @@ const grid: React.CSSProperties = {
 /** A plan card per the mockup: date chip over the header image, title over the scrim, and a
  *  white footer with the avatar stack + "N going" and the plan's locality. */
 function PlanCard({ plan }: { plan: PlanRow }) {
+  const t = useTranslations("plansList");
   return (
     <Link href={`/plans/${plan.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Card style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -177,7 +180,7 @@ function PlanCard({ plan }: { plan: PlanRow }) {
               padding: "4px 12px",
             }}
           >
-            {plan.plannedFor ? planDateLabel(plan.plannedFor) : "No date yet"}
+            {plan.plannedFor ? planDateLabel(plan.plannedFor) : t("noDate")}
           </span>
           <div style={{ position: "relative", padding: "var(--space-4)", width: "100%" }}>
             <div className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 23, color: "#fff", textShadow: "0 1px 14px rgba(0,0,0,.4)", lineHeight: 1.25, letterSpacing: "-.015em" }}>
@@ -204,11 +207,11 @@ function PlanCard({ plan }: { plan: PlanRow }) {
               </AvatarStack>
             ) : null}
             <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>
-              {plan.goingCount} going
+              {t("going", { count: plan.goingCount })}
             </span>
           </span>
           <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {plan.locality ?? (plan.venueCount === 1 ? "1 venue" : `${plan.venueCount} venues`)}
+            {plan.locality ?? t("venues", { count: plan.venueCount })}
           </span>
         </div>
       </Card>
@@ -218,6 +221,7 @@ function PlanCard({ plan }: { plan: PlanRow }) {
 
 /** The ghost "Start a new plan" card closing the grid — the mockup's soft call to action. */
 function NewPlanCard({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("plansList");
   return (
     <button
       type="button"
@@ -243,13 +247,14 @@ function NewPlanCard({ onClick }: { onClick: () => void }) {
       <span aria-hidden style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: 12, background: "var(--crimson-tint)", color: "var(--crimson-700)", fontSize: 22, fontWeight: 600 }}>
         +
       </span>
-      <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, color: "var(--ink)" }}>Start a new plan</span>
-      <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted)" }}>Pick a date, invite friends</span>
+      <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 16, color: "var(--ink)" }}>{t("startNewPlan")}</span>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted)" }}>{t("startNewPlanHint")}</span>
     </button>
   );
 }
 
 function PlanComposer({ onCreated, onCancel }: { onCreated: () => void; onCancel: () => void }) {
+  const t = useTranslations("plansList");
   const trpc = useTrpc();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -269,7 +274,7 @@ function PlanComposer({ onCreated, onCancel }: { onCreated: () => void; onCancel
       await create.mutate({ title, notes: notes.trim() ? notes : null, plannedFor });
       onCreated();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't create the plan.");
+      setErr(e instanceof Error ? e.message : t("errors.create"));
       setBusy(false);
     }
   }, [trpc, title, date, notes, onCreated]);
@@ -279,19 +284,19 @@ function PlanComposer({ onCreated, onCancel }: { onCreated: () => void; onCancel
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Plan title — e.g. Friday night out"
-        aria-label="Plan title"
+        placeholder={t("titlePlaceholder")}
+        aria-label={t("titleAria")}
         maxLength={120}
         style={inputStyle}
       />
-      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Planned date" style={inputStyle} />
-      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" aria-label="Notes" rows={2} style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} />
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t("dateAria")} style={inputStyle} />
+      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("notesPlaceholder")} aria-label={t("notesAria")} rows={2} style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} />
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
         <Button variant="pri" onClick={() => void submit()} disabled={title.trim().length === 0 || busy}>
-          {busy ? "Creating…" : "Create plan"}
+          {busy ? t("creating") : t("create")}
         </Button>
-        <Button variant="neutral" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="neutral" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
       </div>
     </Card>
   );
