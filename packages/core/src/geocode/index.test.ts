@@ -91,6 +91,38 @@ describe("parsePhoton", () => {
     expect(parsePhoton({ features: many }, 3).length).toBe(3);
   });
 
+  it("ranks the settlement node above an admin boundary so a city centres correctly (Liverpool)", () => {
+    // Photon returns the administrative boundary (centroid ~2km SE, in Wavertree) FIRST, then a
+    // name-sharing POI, then the place=city node (the real centre). The node must win.
+    const boundary = feat([-2.917, 53.393], {
+      osm_type: "R", osm_id: 172987, name: "Liverpool",
+      osm_key: "boundary", osm_value: "administrative", county: "Merseyside", state: "England",
+    });
+    const station = feat([-0.0865, 51.5175], {
+      osm_type: "N", osm_id: 999, name: "Liverpool Street", osm_key: "railway", osm_value: "station", city: "London",
+    });
+    const cityNode = feat([-2.9916, 53.4084], {
+      osm_type: "N", osm_id: 12345, name: "Liverpool",
+      osm_key: "place", osm_value: "city", county: "Merseyside", state: "England",
+    });
+    const out = parsePhoton({ features: [boundary, station, cityNode] });
+    expect(out[0]!.name).toBe("Liverpool");
+    expect(out[0]!.lat).toBeCloseTo(53.4084); // the city node, not the boundary centroid
+    expect(out[0]!.lng).toBeCloseTo(-2.9916);
+  });
+
+  it("preserves Photon order for equally-ranked (unranked) features", () => {
+    // No place/boundary/type signals → all default rank → original order is kept.
+    const raw = {
+      features: [
+        feat([-1.0, 54.0], { osm_type: "N", osm_id: 1, name: "First" }),
+        feat([-2.0, 55.0], { osm_type: "N", osm_id: 2, name: "Second" }),
+      ],
+    };
+    const out = parsePhoton(raw);
+    expect(out.map((r) => r.name)).toEqual(["First", "Second"]);
+  });
+
   it("returns [] for non-feature input", () => {
     expect(parsePhoton(null)).toEqual([]);
     expect(parsePhoton({})).toEqual([]);

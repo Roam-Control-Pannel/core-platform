@@ -33,6 +33,11 @@ export interface PhotonFeature {
     | {
         osm_id?: number | string;
         osm_type?: string;
+        /** OSM tag of the matched object, e.g. "place"/"city", "boundary"/"administrative". */
+        osm_key?: string;
+        osm_value?: string;
+        /** Photon's normalized kind: city/town/village/locality/district/street/house/… */
+        type?: string;
         name?: string;
         postcode?: string;
         street?: string;
@@ -43,6 +48,32 @@ export interface PhotonFeature {
         country?: string;
       }
     | undefined;
+}
+
+/**
+ * How suitable a Photon feature is as a BROWSE CENTRE, higher = better. A populated-place NODE
+ * (place=city/town/…) is anchored by OSM at the settlement's centre, so it's the best centre. An
+ * administrative BOUNDARY resolves to the boundary centroid, which for a city with an asymmetric
+ * boundary can sit well off the civic centre (Liverpool's centroid lands ~2 km SE, in Wavertree),
+ * so it ranks below the node. Streets/houses/other POIs that merely share the name rank lowest.
+ * Signals come from either the OSM tag (osm_key/osm_value) or Photon's normalized `type`. Used
+ * ONLY to order candidates — it never changes a result's coordinate.
+ */
+function placeRank(f: PhotonFeature): number {
+  const p = f?.properties ?? {};
+  const key = clean(p.osm_key).toLowerCase();
+  const value = clean(p.osm_value).toLowerCase();
+  const type = clean(p.type).toLowerCase();
+
+  const isPlace = key === "place";
+  if (isPlace && (value === "city" || value === "town" || value === "borough")) return 100;
+  if (type === "city" || type === "town") return 95;
+  if (isPlace && (value === "village" || value === "suburb" || value === "municipality" || value === "township")) return 80;
+  if (type === "village" || type === "suburb" || type === "district" || type === "locality") return 75;
+  if (isPlace) return 70; // some other place=*
+  if (key === "boundary") return 40; // admin boundary centroid — can miss the civic centre
+  if (type === "street" || type === "house") return 10;
+  return 30; // unknown / other
 }
 
 /** Address-ish keys, broad → broadest, that compose the region hint (after the name). */
@@ -65,10 +96,18 @@ export function parsePhoton(raw: unknown, limit = 6): GeocodeResult[] {
     Array.isArray(raw) ? raw : (raw as { features?: unknown } | null)?.features;
   if (!Array.isArray(features)) return [];
 
+  // Order candidates so the best browse centre leads: a settlement node above an admin-boundary
+  // centroid above a name-sharing POI. Stable within a rank (index tiebreak), so Photon's own
+  // relevance order is preserved for equally-ranked features and unranked queries are unchanged.
+  const ordered = (features as PhotonFeature[])
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => placeRank(b.f) - placeRank(a.f) || a.i - b.i)
+    .map((x) => x.f);
+
   const out: GeocodeResult[] = [];
   const seen = new Set<string>();
 
-  for (const f of features as PhotonFeature[]) {
+  for (const f of ordered) {
     const coords = f?.geometry?.coordinates;
     if (!Array.isArray(coords) || coords.length < 2) continue;
     const lng = Number(coords[0]);
