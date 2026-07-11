@@ -14,6 +14,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { venuePath } from "../lib/routes";
+import { CATEGORY_GROUPS, useCategoryLabel } from "../lib/categories";
 import { planDateLabel, planDateInput } from "../lib/planDate";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import { ImageCropper } from "./ImageCropper";
@@ -134,9 +135,12 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
       return;
     }
     let cancelled = false;
-    const sug = trpc.plans.suggestions as unknown as { query: (i: { planId: string }) => Promise<{ venues: Suggestion[] }> };
+    // Fetch a broader set (up to the RPC's cap) so the category chips below have real substance —
+    // one chip per canonical category that actually has a nearby suggestion. The "All" view still
+    // shows just the nearest few; a chip reveals that category's nearby venues.
+    const sug = trpc.plans.suggestions as unknown as { query: (i: { planId: string; limit: number }) => Promise<{ venues: Suggestion[] }> };
     sug
-      .query({ planId })
+      .query({ planId, limit: 20 })
       .then((res) => {
         if (!cancelled) setSuggestions(res.venues ?? []);
       })
@@ -147,6 +151,17 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
       cancelled = true;
     };
   }, [trpc, planId, hasSession, hasVenues]);
+
+  // Category filter for the suggestions strip (chips, like Explore). null = "All". Only categories
+  // that actually appear among the nearby suggestions get a chip; when the active one empties out
+  // (e.g. its last venue was added), fall back to "All" so the strip never looks broken.
+  const categoryLabel = useCategoryLabel();
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeCategory && !suggestions.some((s) => s.category === activeCategory)) {
+      setActiveCategory(null);
+    }
+  }, [suggestions, activeCategory]);
 
   const addSuggestion = useCallback(
     async (s: Suggestion) => {
@@ -276,14 +291,25 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
             </div>
           )}
 
-          {suggestions.length > 0 ? (
+          {suggestions.length > 0 ? (() => {
+            const available = CATEGORY_GROUPS.filter((c) => suggestions.some((s) => s.category === c));
+            const visible = activeCategory ? suggestions.filter((s) => s.category === activeCategory) : suggestions.slice(0, 6);
+            return (
             <section style={{ marginTop: "var(--space-6)" }}>
               <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
                 {t("suggestions.title")}
               </div>
               <p style={{ margin: "4px 0 var(--space-3)", fontSize: 13, color: "var(--ink-2)" }}>{t("suggestions.hint")}</p>
+              {available.length >= 2 ? (
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: "var(--space-2)", scrollbarWidth: "none" }}>
+                  <SuggestChip label={t("suggestions.all")} active={activeCategory === null} onClick={() => setActiveCategory(null)} />
+                  {available.map((c) => (
+                    <SuggestChip key={c} label={categoryLabel(c)} active={activeCategory === c} onClick={() => setActiveCategory(c)} />
+                  ))}
+                </div>
+              ) : null}
               <div style={{ display: "grid", gap: "var(--space-2)" }}>
-                {suggestions.map((s) => (
+                {visible.map((s) => (
                   <Card key={s.venueId} style={{ padding: "var(--space-3) var(--space-4)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                       <Link href={venuePath(s.venueId)} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
@@ -300,10 +326,37 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
                 ))}
               </div>
             </section>
-          ) : null}
+            );
+          })() : null}
         </>
       )}
     </main>
+  );
+}
+
+/** A pill filter chip for the suggestions strip — crimson-filled when active (mirrors Explore). */
+function SuggestChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        all: "unset",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        padding: "5px 12px",
+        borderRadius: 999,
+        fontSize: 12.5,
+        fontWeight: 600,
+        border: active ? "1px solid var(--crimson-700)" : "1px solid var(--line)",
+        background: active ? "var(--crimson-700)" : "var(--paper-2)",
+        color: active ? "#fff" : "var(--ink-2)",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

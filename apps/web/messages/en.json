@@ -1275,6 +1275,7 @@
     "suggestions": {
       "title": "You might add",
       "hint": "Nearby venues you haven't added yet.",
+      "all": "All",
       "add": "Add"
     }
   },
