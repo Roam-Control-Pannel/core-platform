@@ -147,7 +147,15 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
     }
     loadVenue()
       .then((v) => {
-        if (!cancelled) setVenue(v);
+        if (cancelled) return;
+        setVenue((cur) => {
+          // A silent refresh must not clobber enrichment we merged locally moments ago: this
+          // read is anonymous/cached and may have been issued BEFORE the enrichment write
+          // committed, so if the current row is already enriched and the fresh read isn't,
+          // keep ours. (The enrichment effect below is the source of truth for those fields.)
+          if (cur && v && cur.id === v.id && cur.details_fetched_at && !v.details_fetched_at) return cur;
+          return v;
+        });
       })
       .catch((e: unknown) => {
         if (!cancelled && !seeded) setError(e instanceof Error ? e.message : t("errors.loadFailed"));
@@ -176,11 +184,19 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
   // once and merge them in so the "Good to know" + contact rows appear without a reload. One
   // attempt per venue per page lifetime; the server is idempotent (details_fetched_at) and the
   // Details call is budget-capped. Best-effort — a failure just leaves the lean profile.
+  // Gate on PRIMITIVES, not the whole `venue` object: the silent refresh above replaces `venue`
+  // with a fresh (same-id, still-un-enriched) row, and keying this effect on the object would
+  // tear down the in-flight enrichment before its slow Places call returns — losing the merge.
+  // Same id + still un-enriched => same deps => this effect (and its POST) is left untouched.
+  const enrichId = venue?.id ?? null;
+  const enrichSource = venue?.source ?? null;
+  const enrichOwnerId = venue?.owner_id ?? null;
+  const enrichFetchedAt = venue?.details_fetched_at ?? null;
   useEffect(() => {
-    if (!venue || venue.source !== "google_places" || venue.owner_id !== null || venue.details_fetched_at) return;
-    if (enrichAttempted.has(venue.id)) return;
-    enrichAttempted.add(venue.id);
-    const targetId = venue.id;
+    if (!enrichId || enrichSource !== "google_places" || enrichOwnerId !== null || enrichFetchedAt) return;
+    if (enrichAttempted.has(enrichId)) return;
+    enrichAttempted.add(enrichId);
+    const targetId = enrichId;
     let cancelled = false;
     void (async () => {
       try {
@@ -213,7 +229,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
     return () => {
       cancelled = true;
     };
-  }, [venue]);
+  }, [enrichId, enrichSource, enrichOwnerId, enrichFetchedAt]);
 
   // Read whether the caller already follows this venue. Signed-out → not following.
   // We load the full myFollows set and check membership: one extra query on a detail
