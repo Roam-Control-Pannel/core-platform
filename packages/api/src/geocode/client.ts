@@ -18,8 +18,13 @@ const PHOTON_SEARCH_URL = "https://photon.komoot.io/api";
 /** Identifies the app to the provider. */
 const USER_AGENT = "Roam/0.1 (+https://roam-everywhere.com)";
 
-/** How many results we ask for (and cap to). A short, scannable list. */
-const SEARCH_LIMIT = 6;
+/** How many candidates we ask Photon for. Wider than the list we show so the parser's ranking
+ *  (settlement node over boundary/POI, in @roam/core parsePhoton) has the right feature to
+ *  promote even when Photon returns it a few rows down. */
+const FETCH_LIMIT = 10;
+
+/** How many results we return — a short, scannable list after ranking. */
+const OUTPUT_LIMIT = 6;
 
 /** Injectable fetch so the unit test drives this without a network. */
 export type FetchImpl = typeof fetch;
@@ -35,7 +40,7 @@ export async function geocodeSearch(
 ): Promise<coreGeocode.GeocodeResult[]> {
   const params = new URLSearchParams({
     q: query,
-    limit: String(SEARCH_LIMIT),
+    limit: String(FETCH_LIMIT),
     lang: "en",
   });
 
@@ -60,5 +65,5 @@ export async function geocodeSearch(
   }
 
   const json = (await res.json()) as unknown;
-  return coreGeocode.parsePhoton(json, SEARCH_LIMIT);
+  return coreGeocode.parsePhoton(json, OUTPUT_LIMIT);
 }

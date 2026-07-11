@@ -28,7 +28,7 @@ describe("geocodeSearch", () => {
     const { url, init } = calls[0]!;
     expect(url.startsWith("https://photon.komoot.io/api?")).toBe(true);
     expect(url).toContain("q=Darlington");
-    expect(url).toContain("limit=6");
+    expect(url).toContain("limit=10");
     const headers = init.headers as Record<string, string>;
     expect(headers["User-Agent"]).toContain("Roam");
   });
