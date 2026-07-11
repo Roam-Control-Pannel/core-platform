@@ -242,6 +242,43 @@ export const plansRouter = router({
       };
     }),
 
+  /**
+   * Protected: venues to suggest adding to this plan — nearest to the centroid of the plan's
+   * current venues, excluding ones already in it (plan_venue_suggestions, 0082). RLS gates it to
+   * members (a non-member gets an empty anchor → no rows). Returns light cards for the strip.
+   */
+  suggestions: protectedProcedure
+    .input(z.object({ planId: z.string().uuid(), limit: z.number().int().min(1).max(20).default(6) }))
+    .query(async ({ ctx, input }) => {
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      const { data, error } = await rpc("plan_venue_suggestions", {
+        plan_id_param: input.planId,
+        max_results: input.limit,
+      });
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load suggestions: ${error.message}` });
+      }
+      const rows = (data ?? []) as {
+        id: string;
+        name: string;
+        category: string | null;
+        primary_type_label: string | null;
+        rating: number | null;
+      }[];
+      return {
+        venues: rows.map((r) => ({
+          venueId: r.id,
+          name: r.name,
+          category: r.category,
+          primaryTypeLabel: r.primary_type_label,
+          rating: r.rating,
+        })),
+      };
+    }),
+
   /** Protected: create a plan owned by the caller. */
   create: protectedProcedure
     .input(

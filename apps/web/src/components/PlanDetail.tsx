@@ -26,6 +26,14 @@ interface PlanVenue {
   name: string;
   category: string | null;
 }
+/** A "you might add" suggestion (plans.suggestions) — a light venue card for the strip. */
+interface Suggestion {
+  venueId: string;
+  name: string;
+  category: string | null;
+  primaryTypeLabel: string | null;
+  rating: number | null;
+}
 interface Plan {
   id: string;
   title: string;
@@ -112,6 +120,51 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
       }
     },
     [trpc, planId],
+  );
+
+  // Venue suggestions — nearby venues to add, anchored on the plan's current venues (0082).
+  // Loaded once the plan has >=1 venue (an empty plan has no anchor). Keyed on hasVenues (a
+  // boolean), so adding more venues doesn't re-fetch — the optimistic filter in addSuggestion
+  // keeps the strip in sync without a race against the server commit.
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const hasVenues = (plan?.venues.length ?? 0) > 0;
+  useEffect(() => {
+    if (!hasSession || !hasVenues) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const sug = trpc.plans.suggestions as unknown as { query: (i: { planId: string }) => Promise<{ venues: Suggestion[] }> };
+    sug
+      .query({ planId })
+      .then((res) => {
+        if (!cancelled) setSuggestions(res.venues ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, planId, hasSession, hasVenues]);
+
+  const addSuggestion = useCallback(
+    async (s: Suggestion) => {
+      const mut = trpc.plans.addVenue as unknown as { mutate: (i: { planId: string; venueId: string }) => Promise<unknown> };
+      // Optimistic: drop it from the strip and append it to the plan's venues.
+      setSuggestions((list) => list.filter((x) => x.venueId !== s.venueId));
+      setPlan((p) =>
+        p && !p.venues.some((v) => v.venueId === s.venueId)
+          ? { ...p, venues: [...p.venues, { venueId: s.venueId, name: s.name, category: s.category }] }
+          : p,
+      );
+      try {
+        await mut.mutate({ planId, venueId: s.venueId });
+      } catch {
+        reload(); // reconcile from the server on failure
+      }
+    },
+    [trpc, planId, reload],
   );
 
   const deletePlan = useCallback(async () => {
@@ -222,6 +275,32 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
               ))}
             </div>
           )}
+
+          {suggestions.length > 0 ? (
+            <section style={{ marginTop: "var(--space-6)" }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
+                {t("suggestions.title")}
+              </div>
+              <p style={{ margin: "4px 0 var(--space-3)", fontSize: 13, color: "var(--ink-2)" }}>{t("suggestions.hint")}</p>
+              <div style={{ display: "grid", gap: "var(--space-2)" }}>
+                {suggestions.map((s) => (
+                  <Card key={s.venueId} style={{ padding: "var(--space-3) var(--space-4)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                      <Link href={venuePath(s.venueId)} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                        {s.primaryTypeLabel || s.category ? (
+                          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{s.primaryTypeLabel || s.category}</div>
+                        ) : null}
+                      </Link>
+                      <Button variant="pri" size="sm" onClick={() => void addSuggestion(s)}>
+                        {t("suggestions.add")}
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </>
       )}
     </main>
