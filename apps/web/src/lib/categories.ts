@@ -1,5 +1,5 @@
 /**
- * Browser-side canonical venue category groups — the nine top-level pills.
+ * Browser-side canonical venue category groups — the ten top-level pills.
  *
  * This file deliberately does NOT import @roam/core: core can't be browser-bundled
  * under Turbopack (Node-ESM .js-suffix resolution breaks), which is why @roam/core is

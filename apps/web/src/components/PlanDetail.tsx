@@ -176,7 +176,11 @@ export function PlanDetail({ planId, preview }: { planId: string; preview?: Plan
       try {
         await mut.mutate({ planId, venueId: s.venueId });
       } catch {
-        reload(); // reconcile from the server on failure
+        // Add failed: reconcile the plan from the server AND put the suggestion back on the
+        // strip (reload() only refetches the plan, not suggestions, and hasVenues is unchanged
+        // so the suggestions effect won't re-run — without this the venue vanishes for good).
+        setSuggestions((list) => (list.some((x) => x.venueId === s.venueId) ? list : [s, ...list]));
+        reload();
       }
     },
     [trpc, planId, reload],
