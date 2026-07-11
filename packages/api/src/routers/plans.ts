@@ -34,7 +34,6 @@ interface EmbeddedVenue {
   id: string;
   name: string;
   category: string | null;
-  cover_photo_id: string | null;
 }
 
 export const plansRouter = router({
@@ -207,12 +206,17 @@ export const plansRouter = router({
       if (pvErr) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan's venues: ${pvErr.message}` });
       }
+      // Select ONLY real venue columns. `cover_photo_id` is NOT a stored column — it's a value
+      // computed inside the venues_near/search RPCs (a subquery over venue_photos). Selecting it
+      // here raised "column venues.cover_photo_id does not exist", which errored the whole read
+      // (and is why the plan showed no venues). The plan venue card renders name + category only
+      // (PlanVenue carries no cover), so there is nothing to compute — just drop the field.
       const pvList = pvRows ?? [];
       const venueById = new Map<string, EmbeddedVenue>();
       if (pvList.length > 0) {
         const { data: vRows, error: vErr } = (await db
           .from("venues")
-          .select("id, name, category, cover_photo_id")
+          .select("id, name, category")
           .in("id", pvList.map((r) => r.venue_id))) as PgResult<EmbeddedVenue[] | null>;
         if (vErr) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load this plan's venues: ${vErr.message}` });
@@ -225,7 +229,6 @@ export const plansRouter = router({
           venueId: r.venue_id,
           name: v?.name ?? "Venue",
           category: v?.category ?? null,
-          coverPhotoId: v?.cover_photo_id ?? null,
         };
       });
       return {
