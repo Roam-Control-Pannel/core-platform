@@ -1271,6 +1271,11 @@
       "signInImage": "You need to be signed in to add an image.",
       "upload": "Couldn't upload that image.",
       "save": "Couldn't save the plan."
+    },
+    "suggestions": {
+      "title": "You might add",
+      "hint": "Nearby venues you haven't added yet.",
+      "add": "Add"
     }
   },
   "plansList": {
