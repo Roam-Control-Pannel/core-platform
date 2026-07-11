@@ -1344,7 +1344,9 @@
     "errors": {
       "add": "Couldn't add to that plan.",
       "create": "Couldn't create the plan."
-    }
+    },
+    "close": "Close",
+    "signIn": "Sign in"
   },
   "market": {
     "toggle": {

@@ -35,6 +35,7 @@ import styles from "./VenueCard.module.css";
 import Link from "next/link";
 import { Card, Pill, Rate, Icon } from "@roam/design";
 import { FollowButton } from "./FollowButton";
+import { AddToPlanIconButton } from "./AddToPlan";
 import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
 
@@ -238,6 +239,9 @@ const claimedChip: CSSProperties = {
 };
 
 const actionWrap: CSSProperties = { flexShrink: 0 };
+
+// The footer's right-hand controls: the add-to-plan icon + the card's primary action.
+const actionCluster: CSSProperties = { display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0 };
 
 const coverImg: CSSProperties = { display: "block", width: "100%", height: 168, objectFit: "cover" };
 
@@ -452,16 +456,18 @@ function ClaimedCard({
         <span style={claimedChip}>
           <Icon name="check" size={11} strokeWidth={2.5} /> {t("claimed")}
         </span>
-        {/* Follow control. Wrapped in a click-isolating span: the card is a <Link>, so
-            without stopPropagation/preventDefault a follow tap would navigate to the
-            detail page. This keeps FollowButton host-agnostic (no Link awareness). */}
-        <span onClick={isolateClick} style={actionWrap}>
-          <FollowButton
-            venueId={venue.id}
-            initialFollowing={initialFollowing}
-            emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
-          />
-        </span>
+        {/* Right cluster: quick "add to a plan" + the follow action. Both isolate their own
+            clicks (the card is a <Link>), so a tap acts on the control, not the navigation. */}
+        <div style={actionCluster}>
+          <AddToPlanIconButton venueId={venue.id} />
+          <span onClick={isolateClick} style={actionWrap}>
+            <FollowButton
+              venueId={venue.id}
+              initialFollowing={initialFollowing}
+              emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+            />
+          </span>
+        </div>
       </div>
     </Card>
   );
@@ -479,14 +485,17 @@ function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: st
         </div>
         <CardMeta venue={venue} />
       </div>
-      {/* Footer strip: provenance on the left, the single unclaimed signal on the right. */}
+      {/* Footer strip: provenance on the left; add-to-plan + the "claim it free" signal right. */}
       <div style={footerRow}>
         <span style={provenance}>{t("fromPublicSources")}</span>
-        <span style={actionWrap}>
-          <Pill variant="ghost-crim" size="sm">
-            {t("claimItFree")}
-          </Pill>
-        </span>
+        <div style={actionCluster}>
+          <AddToPlanIconButton venueId={venue.id} />
+          <span style={actionWrap}>
+            <Pill variant="ghost-crim" size="sm">
+              {t("claimItFree")}
+            </Pill>
+          </span>
+        </div>
       </div>
     </Card>
   );
