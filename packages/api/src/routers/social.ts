@@ -211,7 +211,7 @@ export const socialRouter = router({
       const follower_id = await callerId(ctx.db);
       const { data, error } = await ctx.db
         .from("follows")
-        .select("venue_id, push_enabled, created_at, venues(id, name, category)")
+        .select("venue_id, push_enabled, created_at, venues(id, name, category, locality, rating, rating_count)")
         .eq("follower_id", follower_id)
         .order("created_at", { ascending: false });
       if (error) return { ok: false as const, error: error.message };

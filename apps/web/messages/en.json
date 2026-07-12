@@ -967,8 +967,11 @@
         "orders": "Orders",
         "notifications": "Notifications",
         "businessDashboard": "Business dashboard",
-        "settings": "Settings"
-      }
+        "settings": "Settings",
+        "photos": "Photos"
+      },
+      "editCover": "Edit cover",
+      "joinedYear": "Joined {year}"
     },
     "stats": {
       "friends": "Friends",
@@ -1033,6 +1036,20 @@
       "no": "No",
       "edit": "Edit",
       "delete": "Delete"
+    },
+    "sidebar": {
+      "about": "About",
+      "joined": "Joined {date}",
+      "following": "Following",
+      "friendsCount": "Friends · {count}",
+      "seeAll": "See all {count}",
+      "seeAllShort": "See all"
+    },
+    "views": {
+      "noPhotos": "No photos yet — photos from wall posts show up here.",
+      "noFollowing": "Not following any venues yet.",
+      "noFriends": "No friends yet.",
+      "noPlans": "No plans yet."
     }
   },
   "feedList": {
