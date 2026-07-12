@@ -660,6 +660,8 @@ function ClaimedDetail({
           ) : null}
         </div>
       </div>
+
+      <VenueReviews venueId={venueId} />
     </>
   );
 }
@@ -915,6 +917,8 @@ function UnclaimedDetail({
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
       <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
+
+      <VenueReviews venueId={venueId} />
     </>
   );
 }
@@ -1060,6 +1064,8 @@ function PendingClaimDetail({
       <OpeningHours openingTimes={venue.opening_times} />
       <DetailsBlock venue={venue} />
       <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
+
+      <VenueReviews venueId={venueId} />
     </>
   );
 }
@@ -1441,4 +1447,238 @@ function claimReturnUrl(venueId: string): string {
     process.env.NEXT_PUBLIC_SITE_URL ??
     "http://localhost:3000";
   return `${origin}/venue/${venueId}?claim=1`;
+}
+
+/* ── Reviews ──────────────────────────────────────────────────────────────────────────────────
+ * Roam's own reviews on a venue (migration 0085): a rating headline that PREFERS the Roam score
+ * once the venue has enough Roam reviews (else falls back to Google), the caller's own editable
+ * review, and everyone else's. This is the surface where Roam reviews begin to supersede Google.
+ */
+
+/** How many Roam reviews a venue needs before its Roam rating replaces Google's in the headline. */
+const ROAM_RATING_OVERRIDE_MIN = 3;
+
+interface RoamReview {
+  id: string;
+  rating: number;
+  body: string | null;
+  createdAt: string;
+  authorId: string;
+  authorName: string | null;
+  authorHandle: string | null;
+  authorAvatar: string | null;
+}
+interface ReviewSummary {
+  roamRating: number | null;
+  roamCount: number;
+  googleRating: number | null;
+  googleCount: number;
+}
+
+function VenueReviews({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueDetail");
+  const trpc = useTrpc();
+  const session = useSession();
+  const me = session?.user?.id ?? null;
+
+  const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  const [reviews, setReviews] = useState<RoamReview[]>([]);
+  const [mine, setMine] = useState<{ rating: number; body: string | null } | null>(null);
+
+  const [draftRating, setDraftRating] = useState(0);
+  const [draftBody, setDraftBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const sumQ = trpc.reviews.summary as unknown as { query: (i: { venueId: string }) => Promise<ReviewSummary> };
+    const listQ = trpc.reviews.list as unknown as { query: (i: { venueId: string; limit: number; offset: number }) => Promise<{ reviews: RoamReview[] }> };
+    const [s, l] = await Promise.all([sumQ.query({ venueId }), listQ.query({ venueId, limit: 20, offset: 0 })]);
+    setSummary(s);
+    setReviews(l.reviews ?? []);
+    if (me) {
+      const mineQ = trpc.reviews.mine as unknown as { query: (i: { venueId: string }) => Promise<{ review: { rating: number; body: string | null } | null }> };
+      const r = await mineQ.query({ venueId });
+      setMine(r.review);
+      setDraftRating(r.review?.rating ?? 0);
+      setDraftBody(r.review?.body ?? "");
+    } else {
+      setMine(null);
+    }
+  }, [trpc, venueId, me]);
+
+  useEffect(() => {
+    let cancelled = false;
+    load().catch(() => {
+      if (!cancelled) setErr(t("reviews.loadError"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [load, t]);
+
+  const submit = useCallback(async () => {
+    if (draftRating < 1) {
+      setErr(t("reviews.ratingRequired"));
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const save = trpc.reviews.save as unknown as { mutate: (i: { venueId: string; rating: number; body: string | null }) => Promise<unknown> };
+    try {
+      await save.mutate({ venueId, rating: draftRating, body: draftBody.trim() || null });
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("reviews.saveError"));
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, venueId, draftRating, draftBody, load, t]);
+
+  const remove = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    const del = trpc.reviews.remove as unknown as { mutate: (i: { venueId: string }) => Promise<unknown> };
+    try {
+      await del.mutate({ venueId });
+      setDraftRating(0);
+      setDraftBody("");
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("reviews.saveError"));
+    } finally {
+      setBusy(false);
+    }
+  }, [trpc, venueId, load, t]);
+
+  const others = reviews.filter((r) => r.authorId !== me);
+  const roamPrimary = !!summary && summary.roamRating != null && summary.roamCount >= ROAM_RATING_OVERRIDE_MIN;
+
+  return (
+    <section style={{ marginTop: "var(--space-8)" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
+        {t("reviews.title")}
+      </div>
+
+      {/* Rating headline — Roam once it has enough reviews, else Google (the "supersede" switch). */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+        {roamPrimary ? (
+          <>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22 }}>★ {summary!.roamRating!.toFixed(1)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>{t("reviews.countOnRoam", { count: summary!.roamCount })}</span>
+            {summary!.googleRating != null ? (
+              <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· {t("reviews.googleFigure", { rating: summary!.googleRating.toFixed(1), count: summary!.googleCount })}</span>
+            ) : null}
+          </>
+        ) : summary && summary.googleRating != null ? (
+          <>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22 }}>★ {summary.googleRating.toFixed(1)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>{t("reviews.googleCount", { count: summary.googleCount })}</span>
+            {summary.roamCount > 0 && summary.roamRating != null ? (
+              <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· {t("reviews.roamFigure", { rating: summary.roamRating.toFixed(1), count: summary.roamCount })}</span>
+            ) : null}
+          </>
+        ) : summary && summary.roamCount > 0 && summary.roamRating != null ? (
+          <>
+            <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22 }}>★ {summary.roamRating.toFixed(1)}</span>
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>{t("reviews.countOnRoam", { count: summary.roamCount })}</span>
+          </>
+        ) : (
+          <span style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{t("reviews.none")}</span>
+        )}
+      </div>
+
+      {/* Write / edit the caller's own review. */}
+      {me ? (
+        <Card flat style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: "var(--space-2)" }}>{mine ? t("reviews.yourReview") : t("reviews.write")}</div>
+          <StarInput value={draftRating} onChange={setDraftRating} label={t("reviews.ratingAria")} />
+          <textarea
+            value={draftBody}
+            onChange={(e) => setDraftBody(e.target.value)}
+            placeholder={t("reviews.placeholder")}
+            rows={3}
+            maxLength={4000}
+            style={{ width: "100%", boxSizing: "border-box", marginTop: "var(--space-2)", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)", outline: "none", resize: "vertical" }}
+          />
+          {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{err}</div> : null}
+          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)", alignItems: "center" }}>
+            <Button variant="pri" size="sm" onClick={() => void submit()} disabled={busy || draftRating < 1}>
+              {busy ? t("reviews.saving") : mine ? t("reviews.update") : t("reviews.post")}
+            </Button>
+            {mine ? (
+              <button type="button" onClick={() => void remove()} disabled={busy} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13, textDecoration: "underline" }}>
+                {t("reviews.remove")}
+              </button>
+            ) : null}
+          </div>
+        </Card>
+      ) : (
+        <div style={{ fontSize: 13.5, color: "var(--ink-2)", marginBottom: "var(--space-4)" }}>{t("reviews.signInToReview")}</div>
+      )}
+
+      {/* Everyone else's reviews. */}
+      {others.length > 0 ? (
+        <div style={{ display: "grid", gap: "var(--space-3)" }}>
+          {others.map((r) => (
+            <Card key={r.id} flat style={{ padding: "var(--space-3) var(--space-4)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 6 }}>
+                <ReviewAvatar name={r.authorName} handle={r.authorHandle} avatar={r.authorAvatar} />
+                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{r.authorName || (r.authorHandle ? `@${r.authorHandle}` : t("reviews.someone"))}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>{shortDate(r.createdAt)}</span>
+              </div>
+              <Stars n={r.rating} />
+              {r.body ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.body}</p> : null}
+            </Card>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** A 1–5 star picker (radiogroup) for writing a review. */
+function StarInput({ value, onChange, label }: { value: number; onChange: (n: number) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} style={{ display: "inline-flex", gap: 4 }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="radio"
+          aria-checked={value === n}
+          aria-label={String(n)}
+          onClick={() => onChange(n)}
+          style={{ all: "unset", cursor: "pointer", fontSize: 26, lineHeight: 1, color: n <= value ? "var(--gold)" : "var(--faint)" }}
+        >
+          {n <= value ? "★" : "☆"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A read-only 5-star rating display. */
+function Stars({ n }: { n: number }) {
+  return (
+    <span aria-label={`${n} / 5`} style={{ letterSpacing: 1, fontSize: 13 }}>
+      <span style={{ color: "var(--gold)" }}>{"★".repeat(Math.max(0, Math.min(5, n)))}</span>
+      <span style={{ color: "var(--faint)" }}>{"★".repeat(Math.max(0, 5 - n))}</span>
+    </span>
+  );
+}
+
+function ReviewAvatar({ name, handle, avatar }: { name: string | null; handle: string | null; avatar: string | null }) {
+  const size = 26;
+  if (avatar) {
+    // eslint-disable-next-line @next/next/no-img-element -- public bucket URL; next/image adds no value here
+    return <img src={avatar} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
+  }
+  const ch = (name || handle || "·").replace(/^@/, "").charAt(0).toUpperCase() || "·";
+  return (
+    <span aria-hidden style={{ width: size, height: size, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+      {ch}
+    </span>
+  );
 }

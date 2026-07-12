@@ -638,6 +638,27 @@
       "loadFailed": "Failed to load venue.",
       "claimFailed": "Couldn't submit your claim.",
       "title": "Couldn't load this venue"
+    },
+    "reviews": {
+      "title": "Reviews",
+      "none": "No reviews yet — be the first.",
+      "countOnRoam": "{count} on Roam",
+      "googleCount": "{count} on Google",
+      "googleFigure": "Google ★ {rating} ({count})",
+      "roamFigure": "Roam ★ {rating} ({count})",
+      "yourReview": "Your review",
+      "write": "Write a review",
+      "post": "Post review",
+      "update": "Update review",
+      "remove": "Remove",
+      "saving": "Saving…",
+      "placeholder": "Share what you thought…",
+      "signInToReview": "Sign in to write a review.",
+      "ratingRequired": "Pick a star rating first.",
+      "ratingAria": "Your rating, 1 to 5 stars",
+      "someone": "A Roam member",
+      "saveError": "Couldn't save your review. Please try again.",
+      "loadError": "Couldn't load reviews."
     }
   },
   "venueCard": {
