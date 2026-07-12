@@ -1004,6 +1004,10 @@
       "addPhoto": "＋ Photo",
       "addPhotoCount": "＋ Photo ({count}/{max})",
       "addVideo": "＋ Video",
+      "checkIn": "Check in",
+      "checkInPlaceholder": "Where are you? e.g. Babul's, Newcastle",
+      "checkInAria": "Check in at a place",
+      "checkInClear": "Remove check-in",
       "posting": "Posting…",
       "post": "Post"
     },

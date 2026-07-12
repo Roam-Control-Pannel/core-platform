@@ -48,7 +48,7 @@ interface AuthorEmbed {
 
 const POST_AUTHOR = "author:profiles!profile_posts_author_id_fkey(id, handle, display_name, avatar_url)";
 const COMMENT_AUTHOR = "author:profiles!profile_post_comments_author_id_fkey(id, handle, display_name, avatar_url)";
-const POST_COLS = `id, author_id, body, media, like_count, comment_count, created_at, ${POST_AUTHOR}`;
+const POST_COLS = `id, author_id, body, media, location, like_count, comment_count, created_at, ${POST_AUTHOR}`;
 const COMMENT_COLS = `id, post_id, body, created_at, ${COMMENT_AUTHOR}`;
 
 interface RawPost {
@@ -56,6 +56,7 @@ interface RawPost {
   author_id: string;
   body: string | null;
   media: unknown;
+  location: string | null;
   like_count: number;
   comment_count: number;
   created_at: string;
@@ -95,12 +96,21 @@ function shapeMedia(media: unknown): { type: "image" | "video"; url: string }[] 
   return out;
 }
 
+/** A check-in label: trimmed, capped, empty → null. Free text (not a venue FK). */
+const LOCATION_MAX = 120;
+function normaliseLocation(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim().replace(/\s+/g, " ");
+  return trimmed ? trimmed.slice(0, LOCATION_MAX) : null;
+}
+
 function shapePost(p: RawPost, viewerLiked: boolean) {
   return {
     id: p.id,
     authorId: p.author_id,
     body: p.body,
     media: shapeMedia(p.media),
+    location: p.location ?? null,
     likeCount: p.like_count,
     commentCount: p.comment_count,
     createdAt: p.created_at,
@@ -182,6 +192,7 @@ export const profileWallRouter = router({
       z.object({
         body: z.string().max(WALL_BODY_MAX + 1000).nullish(),
         media: z.array(z.object({ type: z.enum(["image", "video"]), url: z.string().max(4096) })).max(8).optional(),
+        location: z.string().max(LOCATION_MAX + 500).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -189,16 +200,17 @@ export const profileWallRouter = router({
       const author_id = await callerId(db);
       let body: string | null;
       let media: { type: "image" | "video"; url: string }[];
+      const location = normaliseLocation(input.location);
       try {
         body = normaliseWallBody(input.body ?? null);
         media = normaliseWallMedia(input.media);
-        assertPostNotEmpty(body, media);
+        assertPostNotEmpty(body, media, location);
       } catch (e) {
         throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid post." });
       }
       const { data, error } = (await db
         .from("profile_posts")
-        .insert({ author_id, body, media })
+        .insert({ author_id, body, media, location })
         .select("id")
         .single()) as PgResult<{ id: string } | null>;
       if (error || !data) {
