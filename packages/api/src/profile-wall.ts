@@ -60,9 +60,9 @@ export function normaliseWallMedia(media: unknown): WallMediaItem[] {
   });
 }
 
-/** Ensure a post carries something: non-empty body OR at least one media item. */
-export function assertPostNotEmpty(body: string | null, media: WallMediaItem[]): void {
-  if ((body == null || body.length === 0) && media.length === 0) {
+/** Ensure a post carries something: non-empty body OR at least one media item OR a check-in. */
+export function assertPostNotEmpty(body: string | null, media: WallMediaItem[], location?: string | null): void {
+  if ((body == null || body.length === 0) && media.length === 0 && !location) {
     throw new Error("Write something or add an image.");
   }
 }

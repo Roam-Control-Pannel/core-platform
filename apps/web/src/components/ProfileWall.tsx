@@ -51,6 +51,7 @@ export interface WallPost {
   authorId: string;
   body: string | null;
   media: WallMedia[];
+  location: string | null;
   likeCount: number;
   commentCount: number;
   createdAt: string;
@@ -383,7 +384,7 @@ function ProfileHeader({
         </div>
       </div>
 
-      {(isOwner && counts) || (profile.wallViews ?? 0) > 0 ? (
+      {(isOwner && counts) || profile.wallViews != null ? (
         <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)", flexWrap: "wrap" }}>
           {isOwner && counts ? (
             <>
@@ -392,7 +393,7 @@ function ProfileHeader({
               <StatCell value={compactNumber(counts.plans)} label={t("stats.plans")} />
             </>
           ) : null}
-          {(profile.wallViews ?? 0) > 0 ? <StatCell value={compactNumber(profile.wallViews ?? 0)} label={t("stats.wallViews")} /> : null}
+          {profile.wallViews != null ? <StatCell value={compactNumber(profile.wallViews)} label={t("stats.wallViews")} /> : null}
         </div>
       ) : null}
 
@@ -728,11 +729,14 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
   const trpc = useTrpc();
   const [body, setBody] = useState("");
   const [media, setMedia] = useState<WallMedia[]>([]);
+  const [location, setLocation] = useState("");
+  const [checkingIn, setCheckingIn] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
+  const locationRef = useRef<HTMLInputElement | null>(null);
 
   const [progress, setProgress] = useState<string | null>(null);
 
@@ -793,21 +797,23 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
     setBusy(true);
     setErr(null);
     const create = trpc.profileWall.create as unknown as {
-      mutate: (input: { body: string | null; media: WallMedia[] }) => Promise<{ id: string }>;
+      mutate: (input: { body: string | null; media: WallMedia[]; location: string | null }) => Promise<{ id: string }>;
     };
     try {
-      await create.mutate({ body: body.trim() ? body : null, media });
+      await create.mutate({ body: body.trim() ? body : null, media, location: location.trim() ? location.trim() : null });
       setBody("");
       setMedia([]);
+      setLocation("");
+      setCheckingIn(false);
       setBusy(false);
       onPosted();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t("composer.postFailed"));
       setBusy(false);
     }
-  }, [trpc, body, media, onPosted]);
+  }, [trpc, body, media, location, onPosted]);
 
-  const canPost = (body.trim().length > 0 || media.length > 0) && !busy && !uploading;
+  const canPost = (body.trim().length > 0 || media.length > 0 || location.trim().length > 0) && !busy && !uploading;
 
   return (
     <Card
@@ -871,6 +877,29 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         </div>
       ) : null}
 
+      {checkingIn ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-2)", padding: "8px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)" }}>
+          <Icon name="place" size={15} style={{ color: "var(--crimson-700)", flexShrink: 0 }} />
+          <input
+            ref={locationRef}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder={t("composer.checkInPlaceholder")}
+            aria-label={t("composer.checkInAria")}
+            maxLength={120}
+            style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)", outline: "none" }}
+          />
+          <button
+            type="button"
+            aria-label={t("composer.checkInClear")}
+            onClick={() => { setLocation(""); setCheckingIn(false); }}
+            style={{ all: "unset", cursor: "pointer", display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: "50%", color: "var(--muted)", flexShrink: 0 }}
+          >
+            <Icon name="close" size={13} />
+          </button>
+        </div>
+      ) : null}
+
       {err ? (
         <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>
           {err}
@@ -912,6 +941,16 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
           disabled={uploading || media.length >= MAX_MEDIA}
         >
           {t("composer.addVideo")}
+        </Button>
+        <Button
+          variant={checkingIn || location.trim() ? "pri" : "neutral"}
+          size="sm"
+          onClick={() => {
+            setCheckingIn(true);
+            setTimeout(() => locationRef.current?.focus(), 0);
+          }}
+        >
+          <Icon name="place" size={14} /> {t("composer.checkIn")}
         </Button>
         <span style={{ flex: 1 }} />
         <Button variant="pri" size="sm" onClick={() => void submit()} disabled={!canPost}>
@@ -963,7 +1002,15 @@ export function PostCard({
         <Avatar url={post.author.avatarUrl} name={townHallAuthor(post.author)} size={32} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <AuthorLink author={post.author} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }} />
-          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{timeAgo(post.createdAt)}</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+            <span>{timeAgo(post.createdAt)}</span>
+            {post.location ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "var(--crimson-700)", fontWeight: 600 }}>
+                <span aria-hidden>·</span>
+                <Icon name="place" size={12} /> {post.location}
+              </span>
+            ) : null}
+          </div>
         </div>
         {isOwner && !editing ? (
           confirming ? (
