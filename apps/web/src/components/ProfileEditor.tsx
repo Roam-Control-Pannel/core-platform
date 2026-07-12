@@ -49,6 +49,7 @@ interface ProfileState {
   displayName: string;
   handle: string;
   bio: string;
+  homeLocality: string;
   avatarUrl: string | null;
   headerUrl: string | null;
   links: Record<string, string>;
@@ -59,6 +60,7 @@ type MeQuery = {
     displayName: string | null;
     handle: string | null;
     bio: string | null;
+    homeLocality: string | null;
     avatarUrl: string | null;
     headerUrl: string | null;
     socialLinks: Record<string, string>;
@@ -69,6 +71,7 @@ type UpdateMeMutation = {
     displayName: string | null;
     handle: string | null;
     bio: string | null;
+    homeLocality: string | null;
     avatarUrl: string | null;
     headerUrl: string | null;
     socialLinks: Record<string, string> | null;
@@ -109,6 +112,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
           displayName: p.displayName ?? "",
           handle: p.handle ?? "",
           bio: p.bio ?? "",
+          homeLocality: p.homeLocality ?? "",
           avatarUrl: p.avatarUrl,
           headerUrl: p.headerUrl,
           links: p.socialLinks ?? {},
@@ -200,6 +204,7 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
         displayName: state.displayName.trim() || null,
         handle: state.handle.trim(),
         bio: state.bio.trim() || null,
+        homeLocality: state.homeLocality.trim() || null,
         avatarUrl: state.avatarUrl,
         headerUrl: state.headerUrl,
         socialLinks: Object.keys(links).length > 0 ? links : null,
@@ -309,6 +314,18 @@ export function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (
           maxLength={600}
           placeholder={t("bioPlaceholder")}
           onChange={(e) => patch({ bio: e.target.value })}
+        />
+      </div>
+
+      <div style={fieldWrap}>
+        <label style={labelStyle} htmlFor="pf-hometown">{t("homeTown")}</label>
+        <input
+          id="pf-hometown"
+          style={fieldStyle}
+          value={state.homeLocality}
+          maxLength={120}
+          placeholder={t("homeTownPlaceholder")}
+          onChange={(e) => patch({ homeLocality: e.target.value })}
         />
       </div>
 
