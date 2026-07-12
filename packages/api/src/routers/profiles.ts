@@ -36,6 +36,19 @@ interface ProfileRow {
   social_links: Record<string, unknown> | null;
 }
 
+/** Pull a single displayable website URL out of the free-form social_links bag (a "website"/"url"
+ *  key first, else the first http(s) value). Returns null when there's nothing usable. */
+function firstWebsite(links: unknown): string | null {
+  if (!links || typeof links !== "object") return null;
+  const bag = links as Record<string, unknown>;
+  const isHttp = (v: unknown): v is string => typeof v === "string" && /^https?:\/\//i.test(v.trim());
+  for (const key of ["website", "url", "site", "web", "homepage"]) {
+    if (isHttp(bag[key])) return (bag[key] as string).trim();
+  }
+  for (const v of Object.values(bag)) if (isHttp(v)) return v.trim();
+  return null;
+}
+
 /**
  * A client Place as stored in profiles.place_prefs — the web PlaceSwitcher's shape, kept in
  * lockstep by contract (the client owns the shape; the API bounds and echoes it). `hint` is
@@ -87,7 +100,7 @@ export const profilesRouter = router({
       const db = ctx.db as unknown as LooseProfileRead;
       const { data, error } = await db
         .from("profiles")
-        .select("id, handle, display_name, avatar_url, header_url, bio, social_links")
+        .select("id, handle, display_name, avatar_url, header_url, bio, social_links, created_at")
         .eq("id", input.userId)
         .maybeSingle();
       if (error) {
@@ -101,6 +114,10 @@ export const profilesRouter = router({
         avatarUrl: data.avatar_url ?? null,
         headerUrl: data.header_url ?? null,
         bio: data.bio ?? null,
+        // When the profile joined (for the "Joined {month year}" facts) + the website from their
+        // social links (About card). Both already stored; just surfaced now for the profile redesign.
+        joinedAt: (data as { created_at?: string | null }).created_at ?? null,
+        website: firstWebsite((data as { social_links?: unknown }).social_links),
       };
     }),
 

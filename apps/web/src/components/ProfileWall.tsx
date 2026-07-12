@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Card, Button, Icon } from "@roam/design";
+import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
@@ -24,7 +24,9 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { uploadProfileImage, uploadWallVideo } from "../lib/uploadProfileImage";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import actions from "./inlineActions.module.css";
+import styles from "./ProfileWall.module.css";
 import { linkifyHashtags } from "../lib/hashtags";
+import { venuePath } from "../lib/routes";
 import { imageFilesFrom, moveItem, thumbButtonStyle } from "../lib/composerMedia";
 
 export interface PublicProfile {
@@ -34,6 +36,8 @@ export interface PublicProfile {
   avatarUrl: string | null;
   headerUrl: string | null;
   bio: string | null;
+  joinedAt?: string | null;
+  website?: string | null;
 }
 interface WallMedia {
   type: "image" | "video";
@@ -49,6 +53,27 @@ export interface WallPost {
   createdAt: string;
   author: TownHallAuthor;
   viewerLiked: boolean;
+}
+
+/* ── Owner-only social data (drives the stat row, the sidebar, and the tab views) ───────────── */
+type ProfileView = "wall" | "photos" | "following" | "friends" | "plans";
+interface FollowVenue { id: string; name: string; category: string | null; locality: string | null; rating: number | null }
+interface FriendLite { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null }
+interface PlanLite { id: string; title: string; plannedFor: string | null; headerUrl: string | null }
+interface OwnerData { follows: FollowVenue[]; friends: FriendLite[]; plans: PlanLite[] }
+
+/** Normalise the loose myFollows rows (PostgREST embeds a joined row as object OR array). */
+function normalizeFollows(rows: unknown): FollowVenue[] {
+  if (!Array.isArray(rows)) return [];
+  const out: FollowVenue[] = [];
+  for (const r of rows as { venues?: unknown }[]) {
+    const v = Array.isArray(r.venues) ? r.venues[0] : r.venues;
+    const venue = v as { id?: string; name?: string; category?: string | null; locality?: string | null; rating?: number | null } | null;
+    if (venue?.id && venue.name) {
+      out.push({ id: venue.id, name: venue.name, category: venue.category ?? null, locality: venue.locality ?? null, rating: typeof venue.rating === "number" ? venue.rating : null });
+    }
+  }
+  return out;
 }
 
 /**
@@ -126,8 +151,31 @@ export function ProfileWall({
     void loadPosts().then((ps) => setPosts(ps)).catch(() => {});
   }, [loadPosts]);
 
+  const [view, setView] = useState<ProfileView>("wall");
+
+  // Owner-only social data — the stat counts, the sidebar previews and the tab views all read it.
+  // A visitor can't see another person's follows/friends (those reads are caller-scoped), so they
+  // get the Wall + Photos tabs and an About-only sidebar.
+  const [owner, setOwner] = useState<OwnerData | null>(null);
+  useEffect(() => {
+    if (!isOwner) { setOwner(null); return; }
+    let cancelled = false;
+    const fo = trpc.social.myFollows as unknown as { query: () => Promise<{ follows?: unknown[] }> };
+    const mf = trpc.social.myFriends as unknown as { query: () => Promise<{ friends?: FriendLite[] }> };
+    const pl = trpc.plans.list as unknown as { query: () => Promise<{ plans?: PlanLite[] }> };
+    Promise.allSettled([fo.query(), mf.query(), pl.query()]).then(([f, fr, p]) => {
+      if (cancelled) return;
+      setOwner({
+        follows: f.status === "fulfilled" ? normalizeFollows(f.value.follows) : [],
+        friends: fr.status === "fulfilled" ? (fr.value.friends ?? []) : [],
+        plans: p.status === "fulfilled" ? (p.value.plans ?? []) : [],
+      });
+    });
+    return () => { cancelled = true; };
+  }, [trpc, isOwner]);
+
   return (
-    <main style={{ maxWidth: 680, margin: "0 auto", padding: "0 0 var(--space-12)" }}>
+    <main style={{ maxWidth: 980, margin: "0 auto", padding: "0 0 var(--space-12)" }}>
       {error ? (
         <div style={{ padding: "var(--space-4)" }}>
           <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
@@ -155,6 +203,9 @@ export function ProfileWall({
             editable={editable}
             editing={editing}
             onToggleEdit={() => setEditing((e) => !e)}
+            counts={owner ? { friends: owner.friends.length, following: owner.follows.length, plans: owner.plans.length } : null}
+            view={view}
+            onView={setView}
           />
           <div style={{ padding: "0 var(--space-4)" }}>
             {isOwner && editable && editing ? (
@@ -167,35 +218,24 @@ export function ProfileWall({
                 </div>
               </Card>
             ) : null}
-            {isOwner ? <WallComposer userId={userId} onPosted={onPosted} /> : null}
 
-            {posts === undefined ? (
-              <div style={{ display: "grid", gap: "var(--space-3)" }}>
-                {[0, 1].map((i) => (
-                  <div key={i} style={{ height: 120, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
-                ))}
-              </div>
-            ) : posts.length === 0 ? (
-              <Card style={{ padding: "var(--space-8)", textAlign: "center" }}>
-                <span aria-hidden style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--paper-2)", color: "var(--muted)" }}>
-                  <Icon name="chat" size={20} />
-                </span>
-                <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>
-                  {isOwner ? t("empty.ownerTitle") : t("empty.visitorTitle")}
+            {view === "wall" ? (
+              <div className={styles.profileGrid}>
+                <div style={{ minWidth: 0, display: "grid", gap: "var(--space-4)" }}>
+                  {isOwner ? <WallComposer userId={userId} onPosted={onPosted} /> : null}
+                  <WallPosts posts={posts} isOwner={isOwner} displayName={profile.displayName} canInteract={!!session} myId={session?.user?.id ?? null} onChanged={onPosted} />
                 </div>
-                <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5, fontSize: 13.5 }}>
-                  {isOwner
-                    ? t("empty.ownerBody")
-                    : t("empty.visitorBody", { name: profile.displayName ?? t("empty.thisUser") })}
-                </p>
-              </Card>
-            ) : (
-              <div style={{ display: "grid", gap: "var(--space-4)" }}>
-                {posts.map((p) => (
-                  <PostCard key={p.id} post={p} canInteract={!!session} isOwner={isOwner} myId={session?.user?.id ?? null} onChanged={onPosted} />
-                ))}
+                <ProfileSidebar profile={profile} owner={owner} onView={setView} />
               </div>
-            )}
+            ) : view === "photos" ? (
+              <PhotosGrid posts={posts} />
+            ) : view === "following" && owner ? (
+              <FollowingList follows={owner.follows} />
+            ) : view === "friends" && owner ? (
+              <FriendsGrid friends={owner.friends} />
+            ) : view === "plans" && owner ? (
+              <PlansList plans={owner.plans} />
+            ) : null}
           </div>
         </>
       )}
@@ -209,14 +249,22 @@ function ProfileHeader({
   editable,
   editing,
   onToggleEdit,
+  counts,
+  view,
+  onView,
 }: {
   profile: PublicProfile;
   isOwner: boolean;
   editable: boolean;
   editing: boolean;
   onToggleEdit: () => void;
+  counts: { friends: number; following: number; plans: number } | null;
+  view: ProfileView;
+  onView: (v: ProfileView) => void;
 }) {
   const t = useTranslations("profileWall");
+  const joinedYear = profile.joinedAt ? new Date(profile.joinedAt).getFullYear() : null;
+  const tabs: ProfileView[] = isOwner ? ["wall", "photos", "following", "friends", "plans"] : ["wall", "photos"];
   return (
     <div style={{ marginBottom: "var(--space-4)", padding: "var(--space-4) var(--space-4) 0" }}>
       {/* Cover photo — a rounded banner card (hi-fi mockup). Owners with no cover yet see the
@@ -232,10 +280,20 @@ function ProfileHeader({
             : "linear-gradient(120deg, var(--crimson-tint) 0%, var(--paper-2) 55%, var(--crimson-tint-2) 100%)",
         }}
       >
-        {isOwner && !profile.headerUrl ? (
-          <span style={{ position: "absolute", left: 14, bottom: 10, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>
-            {t("header.yourCoverPhoto")}
-          </span>
+        {isOwner ? (
+          editable ? (
+            <button
+              type="button"
+              onClick={onToggleEdit}
+              style={{ position: "absolute", right: 12, bottom: 12, display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", fontFamily: "var(--ui)", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", background: "rgba(255,255,255,.9)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "7px 13px" }}
+            >
+              <Icon name="edit" size={13} /> {t("header.editCover")}
+            </button>
+          ) : (
+            <Link href="/account" style={{ position: "absolute", right: 12, bottom: 12, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", fontFamily: "var(--ui)", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", background: "rgba(255,255,255,.9)", backdropFilter: "blur(6px)", borderRadius: 999, padding: "7px 13px" }}>
+              <Icon name="edit" size={13} /> {t("header.editCover")}
+            </Link>
+          )
         ) : null}
       </div>
 
@@ -255,6 +313,13 @@ function ProfileHeader({
             <p style={{ margin: "6px 0 0", color: "var(--ink-2)", lineHeight: 1.5, fontSize: 14, whiteSpace: "pre-wrap" }}>
               {linkifyHashtags(profile.bio)}
             </p>
+          ) : null}
+          {joinedYear ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-3)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 11px" }}>
+                <Icon name="clock" size={13} /> {t("header.joinedYear", { year: joinedYear })}
+              </span>
+            </div>
           ) : null}
         </div>
         <div style={{ display: "flex", gap: "var(--space-2)", paddingTop: "var(--space-3)", flexShrink: 0 }}>
@@ -283,72 +348,255 @@ function ProfileHeader({
         </div>
       </div>
 
-      {isOwner ? <ProfileStats /> : null}
-
-      {/* Owner tab chips — Wall active (this page), the rest one tap away (mockup nav). */}
-      {isOwner ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
-          <span style={{ padding: "7px 15px", borderRadius: 999, background: "var(--ink-hi)", color: "#fff", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600 }}>{t("header.tabs.wall")}</span>
-          {[
-            ["friends", "/friends"],
-            ["following", "/following"],
-            ["plans", "/plans"],
-            ["orders", "/orders"],
-            ["notifications", "/notifications"],
-            ["businessDashboard", "/dashboard"],
-            ["settings", "/settings"],
-          ].map(([key, href]) => (
-            <Link key={href} href={href!} style={{ padding: "7px 15px", borderRadius: 999, background: "#fff", border: "1px solid var(--line-2)", color: "var(--ink-2)", fontFamily: "var(--ui)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-              {t(`header.tabs.${key}`)}
-            </Link>
-          ))}
+      {isOwner && counts ? (
+        <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)", flexWrap: "wrap" }}>
+          <StatCell value={counts.friends} label={t("stats.friends")} />
+          <StatCell value={counts.following} label={t("stats.following")} />
+          <StatCell value={counts.plans} label={t("stats.plans")} />
         </div>
       ) : null}
 
+      {/* Underline tabs — a client view switch (Wall · Photos, plus the owner's Following · Friends
+          · Plans). */}
+      <div className={styles.tabbar} style={{ marginTop: "var(--space-4)" }} role="tablist">
+        {tabs.map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => onView(v)}
+            className={`${styles.tab} ${view === v ? styles.tabActive : ""}`}
+          >
+            {t(`header.tabs.${v}`)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-/** The mockup's stats strip (owner only): Friends · Following · Plans — each cell loads
- *  independently from reads that already exist and simply hides if its read fails. */
-function ProfileStats() {
-  const t = useTranslations("profileWall");
-  const trpc = useTrpc();
-  // Store the stat KEY (not a pre-translated label) so the labels re-localize on a
-  // language switch. Baking t("…") into state here would freeze the mount-time
-  // (English) label for the page's lifetime — the client-first catalogue swaps in
-  // place without remounting — so a non-English owner would see English stat labels.
-  const [stats, setStats] = useState<{ key: "friends" | "following" | "plans"; value: number }[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const mf = trpc.social.myFriends as unknown as { query: () => Promise<{ friends?: unknown[] }> };
-    const fo = trpc.social.myFollows as unknown as { query: () => Promise<{ follows?: unknown[] }> };
-    const pl = trpc.plans.list as unknown as { query: () => Promise<{ plans?: unknown[] }> };
-    Promise.allSettled([mf.query(), fo.query(), pl.query()]).then(([f, w, p]) => {
-      if (cancelled) return;
-      const next: { key: "friends" | "following" | "plans"; value: number }[] = [];
-      if (f.status === "fulfilled") next.push({ key: "friends", value: (f.value.friends ?? []).length });
-      if (w.status === "fulfilled") next.push({ key: "following", value: (w.value.follows ?? []).length });
-      if (p.status === "fulfilled") next.push({ key: "plans", value: (p.value.plans ?? []).length });
-      setStats(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc]);
-
-  if (stats.length === 0) return null;
-  const label = { friends: t("stats.friends"), following: t("stats.following"), plans: t("stats.plans") };
+function StatCell({ value, label }: { value: number; label: string }) {
   return (
-    <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)" }}>
-      {stats.map((s) => (
-        <span key={s.key}>
-          <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{s.value}</span>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>{label[s.key]}</span>
+    <span>
+      <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{value.toLocaleString()}</span>
+      <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>
+    </span>
+  );
+}
+
+/* ── Wall posts (the feed), extracted so the "wall" view and its states are one component ─────── */
+function WallPosts({
+  posts,
+  isOwner,
+  displayName,
+  canInteract,
+  myId,
+  onChanged,
+}: {
+  posts: WallPost[] | undefined;
+  isOwner: boolean;
+  displayName: string | null;
+  canInteract: boolean;
+  myId: string | null;
+  onChanged: () => void;
+}) {
+  const t = useTranslations("profileWall");
+  if (posts === undefined) {
+    return (
+      <div style={{ display: "grid", gap: "var(--space-3)" }}>
+        {[0, 1].map((i) => (
+          <div key={i} style={{ height: 120, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
+        ))}
+      </div>
+    );
+  }
+  if (posts.length === 0) {
+    return (
+      <Card style={{ padding: "var(--space-8)", textAlign: "center" }}>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--paper-2)", color: "var(--muted)" }}>
+          <Icon name="chat" size={20} />
         </span>
+        <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>
+          {isOwner ? t("empty.ownerTitle") : t("empty.visitorTitle")}
+        </div>
+        <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5, fontSize: 13.5 }}>
+          {isOwner ? t("empty.ownerBody") : t("empty.visitorBody", { name: displayName ?? t("empty.thisUser") })}
+        </p>
+      </Card>
+    );
+  }
+  return (
+    <div style={{ display: "grid", gap: "var(--space-4)" }}>
+      {posts.map((p) => (
+        <PostCard key={p.id} post={p} canInteract={canInteract} isOwner={isOwner} myId={myId} onChanged={onChanged} />
       ))}
     </div>
+  );
+}
+
+/** The sticky right column on the Wall view: About + Following/Friends previews (owner only). */
+function ProfileSidebar({ profile, owner, onView }: { profile: PublicProfile; owner: OwnerData | null; onView: (v: ProfileView) => void }) {
+  const t = useTranslations("profileWall");
+  const joined = profile.joinedAt
+    ? new Date(profile.joinedAt).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : null;
+  let host: string | null = null;
+  if (profile.website) {
+    try { host = new URL(profile.website).hostname.replace(/^www\./, ""); } catch { host = profile.website; }
+  }
+  const card: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 16, padding: "var(--space-4)", background: "var(--paper)" };
+  const cardTitle: React.CSSProperties = { fontWeight: 700, fontSize: 14, marginBottom: "var(--space-3)" };
+
+  return (
+    <aside className={styles.sidebar}>
+      {joined || host || profile.bio ? (
+        <div style={card}>
+          <div style={cardTitle}>{t("sidebar.about")}</div>
+          <div style={{ display: "grid", gap: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
+            {joined ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Icon name="clock" size={14} style={{ color: "var(--muted)" }} /> {t("sidebar.joined", { date: joined })}
+              </div>
+            ) : null}
+            {host ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <Icon name="link" size={14} style={{ color: "var(--muted)" }} />
+                <a href={profile.website!} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{host}</a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {owner && owner.follows.length > 0 ? (
+        <div style={card}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{t("sidebar.following")}</span>
+            <button type="button" onClick={() => onView("following")} style={{ all: "unset", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--crimson-700)" }}>{t("sidebar.seeAll", { count: owner.follows.length })}</button>
+          </div>
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            {owner.follows.slice(0, 3).map((v) => <MiniVenue key={v.id} venue={v} />)}
+          </div>
+        </div>
+      ) : null}
+
+      {owner && owner.friends.length > 0 ? (
+        <div style={card}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{t("sidebar.friendsCount", { count: owner.friends.length })}</span>
+            <button type="button" onClick={() => onView("friends")} style={{ all: "unset", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--crimson-700)" }}>{t("sidebar.seeAllShort")}</button>
+          </div>
+          <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
+            {owner.friends.slice(0, 4).map((f) => (
+              <Link key={f.id} href={`/u/${f.handle ?? f.id}`} style={{ textDecoration: "none", textAlign: "center", width: 56 }}>
+                <Avatar url={f.avatarUrl} name={f.displayName ?? f.handle ?? "·"} size={48} />
+                <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(f.displayName ?? f.handle ?? "").split(" ")[0]}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
+/** A single followed-venue row (name · category · ★rating), links to the venue. */
+function MiniVenue({ venue }: { venue: FollowVenue }) {
+  return (
+    <Link href={venuePath(venue.id)} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", minWidth: 0 }}>
+      <span aria-hidden style={{ width: 38, height: 38, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name="place" size={17} />
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venue.name}</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{[venue.category, venue.locality].filter(Boolean).join(" · ")}</span>
+      </span>
+      {venue.rating != null ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12.5, fontWeight: 700, color: "var(--ink-2)", flexShrink: 0 }}>
+          <Icon name="star" size={12} style={{ color: "var(--gold, #e0a855)" }} /> {venue.rating.toFixed(1)}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+/* ── Tab views (full-width, shown when their tab is active) ──────────────────────────────────── */
+
+function PhotosGrid({ posts }: { posts: WallPost[] | undefined }) {
+  const t = useTranslations("profileWall");
+  const media = (posts ?? []).flatMap((p) => p.media.filter((m) => m.type === "image").map((m) => ({ url: m.url, postId: p.id })));
+  if (posts === undefined) return <div style={{ height: 160, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />;
+  if (media.length === 0) return <EmptyView icon="photo" text={t("views.noPhotos")} />;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "var(--space-2)" }}>
+      {media.map((m, i) => (
+        // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
+        <img key={`${m.postId}-${i}`} src={m.url} alt="" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 12, display: "block", background: "var(--paper-2)" }} />
+      ))}
+    </div>
+  );
+}
+
+function FollowingList({ follows }: { follows: FollowVenue[] }) {
+  const t = useTranslations("profileWall");
+  if (follows.length === 0) return <EmptyView icon="heart" text={t("views.noFollowing")} />;
+  return (
+    <div style={{ display: "grid", gap: "var(--space-2)" }}>
+      {follows.map((v) => (
+        <Card key={v.id} style={{ padding: "var(--space-3) var(--space-4)" }}><MiniVenue venue={v} /></Card>
+      ))}
+    </div>
+  );
+}
+
+function FriendsGrid({ friends }: { friends: FriendLite[] }) {
+  const t = useTranslations("profileWall");
+  if (friends.length === 0) return <EmptyView icon="users" text={t("views.noFriends")} />;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "var(--space-3)" }}>
+      {friends.map((f) => (
+        <Link key={f.id} href={`/u/${f.handle ?? f.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <Card style={{ padding: "var(--space-4)", textAlign: "center" }}>
+            <div style={{ display: "grid", placeItems: "center" }}><Avatar url={f.avatarUrl} name={f.displayName ?? f.handle ?? "·"} size={64} /></div>
+            <div style={{ marginTop: "var(--space-2)", fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.displayName ?? (f.handle ? `@${f.handle}` : "")}</div>
+            {f.handle ? <div style={{ fontSize: 12, color: "var(--muted)" }}>@{f.handle}</div> : null}
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function PlansList({ plans }: { plans: PlanLite[] }) {
+  const t = useTranslations("profileWall");
+  if (plans.length === 0) return <EmptyView icon="plan" text={t("views.noPlans")} />;
+  return (
+    <div style={{ display: "grid", gap: "var(--space-2)" }}>
+      {plans.map((p) => (
+        <Link key={p.id} href={`/plans/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <Card style={{ padding: "var(--space-3) var(--space-4)", display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <span aria-hidden style={{ width: 40, height: 40, borderRadius: 10, background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="plan" size={18} /></span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
+              {p.plannedFor ? <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{new Date(p.plannedFor).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</span> : null}
+            </span>
+            <span aria-hidden style={{ color: "var(--muted)" }}>→</span>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function EmptyView({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <Card style={{ padding: "var(--space-8)", textAlign: "center" }}>
+      <span aria-hidden style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--paper-2)", color: "var(--muted)" }}>
+        <Icon name={icon} size={20} />
+      </span>
+      <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5, fontSize: 13.5 }}>{text}</p>
+    </Card>
   );
 }
 
