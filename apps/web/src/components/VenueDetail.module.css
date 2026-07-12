@@ -69,3 +69,170 @@
     min-width: 0;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+ * Redesigned venue profile (unclaimed): full-width hero + claim banner, then a main column beside
+ * a sticky info/rating/claim sidebar. Mobile-first single column; two columns from 900px up.
+ * ───────────────────────────────────────────────────────────────────────────────────────────── */
+.profileGrid {
+  display: block;
+  margin-top: var(--space-4);
+}
+.profileMain {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-6);
+}
+.sidebar {
+  margin-top: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 900px) {
+  .profileGrid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .sidebar {
+    margin-top: 0;
+    position: sticky;
+    top: 84px;
+  }
+}
+
+/* Hero — the photo (or gradient) with the title/kicker/chips over a dark scrim. */
+.hero {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 260px;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(135deg, var(--crimson-tint), var(--paper-2));
+}
+@media (min-width: 700px) {
+  .hero {
+    min-height: 320px;
+  }
+}
+.heroImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.heroScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(24, 12, 10, 0.82) 0%, rgba(24, 12, 10, 0.32) 48%, rgba(24, 12, 10, 0.04) 78%);
+}
+.heroBody {
+  position: relative;
+  padding: var(--space-5);
+  width: 100%;
+  box-sizing: border-box;
+}
+.heroKicker {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+.heroTitle {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 6px 0 0;
+  color: #fff;
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.4);
+}
+@media (min-width: 700px) {
+  .heroTitle {
+    font-size: 32px;
+  }
+}
+.heroChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--space-3);
+}
+.heroBtn {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(24, 12, 10, 0.55);
+  backdrop-filter: blur(6px);
+  border-radius: 999px;
+  padding: 7px 12px;
+}
+.heroBack {
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+.heroPhotos {
+  bottom: var(--space-4);
+  right: var(--space-4);
+}
+
+/* Thumbnail strip under the hero. */
+.thumbs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin-top: var(--space-3);
+  padding-bottom: 4px;
+}
+.thumb {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 70px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--crimson-tint);
+}
+
+/* "Where to find it" — the embedded map. */
+.locMap {
+  height: 220px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  margin-bottom: var(--space-2);
+}
+
+/* "Good to know" grouped rows: label column + chips column, collapsing on narrow screens. */
+.gtkRow {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  align-items: start;
+}
+.gtkRow + .gtkRow {
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 560px) {
+  .gtkRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
