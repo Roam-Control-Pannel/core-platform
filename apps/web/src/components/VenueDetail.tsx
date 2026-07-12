@@ -48,6 +48,8 @@ import { VenueShop } from "./VenueShop";
 import { isOpenNow } from "../lib/openNow";
 import { getFormatLocale } from "../lib/i18n/runtime";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
+import { effectiveRating, ROAM_RATING_MIN } from "../lib/rating";
+import { VenueMap } from "./VenueMap";
 import styles from "./VenueDetail.module.css";
 
 /**
@@ -90,6 +92,12 @@ export interface VenueDetailData {
   /** When the on-demand Places Details enrichment last ran (0080). null/undefined => never
    *  enriched, so the client fires one /api/enrich-venue call to fill the rich facts in. */
   details_fetched_at?: string | null;
+  /** Roam's own rollup (0085) — our reviews' average + count, for the effective-rating logic. */
+  roam_rating?: number | null;
+  roam_rating_count?: number | null;
+  /** Coordinates, generated from geo (0086) — for the "Where to find it" map. */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 /** Where the claim CTA currently stands, locally. Drives which affordance shows. */
@@ -940,7 +948,7 @@ function VenueProfileShell({
         </div>
         <aside className={styles.sidebar}>
           <InfoSidebar venue={venue} venueId={venueId} />
-          <RatingCard rating={venue.rating} ratingCount={venue.rating_count} />
+          <RatingCard venueId={venueId} />
           {sidebarEntry}
         </aside>
       </div>
@@ -1150,24 +1158,82 @@ function OpenHoursRow({ openingTimes }: { openingTimes: VenueDetailData["opening
   );
 }
 
-/** The Google rating card — the number, stars, count, and a jump to the review box. Google's API
- *  does not expose a rating breakdown, so no distribution bars are shown (we don't fabricate one). */
-function RatingCard({ rating, ratingCount }: { rating: number | null; ratingCount: number }) {
+interface RatingSummary {
+  roamRating: number | null;
+  roamCount: number;
+  googleRating: number | null;
+  googleCount: number;
+  distribution: { stars: number; count: number }[];
+}
+
+/**
+ * The rating card. The headline follows the SHARED effective-rating rule (effectiveRating) so it
+ * matches the venue profile AND the owner dashboard — Roam once it has enough reviews, else Google
+ * — with the source labelled. The distribution bars are REAL, built from our own reviews' per-star
+ * counts (Google's API returns no breakdown, so we never fabricate one); they appear only once the
+ * venue has Roam reviews. The non-headline source is shown as a quiet "also" line.
+ */
+function RatingCard({ venueId }: { venueId: string }) {
   const t = useTranslations("venueDetail");
-  if (rating == null) return null;
+  const trpc = useTrpc();
+  const [sum, setSum] = useState<RatingSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = trpc.reviews.summary as unknown as { query: (i: { venueId: string }) => Promise<RatingSummary> };
+    q.query({ venueId }).then((s) => { if (!cancelled) setSum(s); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [trpc, venueId]);
+
+  if (!sum) return null;
+  const eff = effectiveRating(sum);
+  if (eff.value == null) return null;
+
+  const totalRoam = sum.distribution.reduce((a, d) => a + d.count, 0);
+  const sourceLabel = eff.source === "roam" ? t("ratingCard.roam") : t("ratingCard.google");
+  const other =
+    eff.source === "roam"
+      ? sum.googleRating != null ? { label: t("ratingCard.google"), rating: sum.googleRating, count: sum.googleCount } : null
+      : sum.roamCount > 0 && sum.roamRating != null ? { label: t("ratingCard.roam"), rating: sum.roamRating, count: sum.roamCount } : null;
+
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 16, padding: "var(--space-4)", background: "var(--paper)" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-2)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{t("ratingCard.title")}</div>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>{t("ratingCard.google")}</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--faint)" }}>{sourceLabel}</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
-        <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 34, lineHeight: 1 }}>{rating.toFixed(1)}</span>
+        <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 34, lineHeight: 1 }}>{eff.value.toFixed(1)}</span>
         <div>
-          <Stars n={Math.round(rating)} />
-          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{t("ratingCard.count", { count: ratingCount })}</div>
+          <Stars n={Math.round(eff.value)} />
+          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{t("ratingCard.count", { count: eff.count.toLocaleString() })}</div>
         </div>
       </div>
+
+      {totalRoam > 0 ? (
+        <div style={{ marginTop: "var(--space-3)", display: "grid", gap: 5 }}>
+          {sum.distribution.map((d) => {
+            const pct = totalRoam ? Math.round((d.count / totalRoam) * 100) : 0;
+            return (
+              <div key={d.stars} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 10, fontSize: 12, color: "var(--muted)", textAlign: "right" }}>{d.stars}</span>
+                <div style={{ flex: 1, height: 8, borderRadius: 999, background: "var(--paper-2)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: "var(--gold, #e0a855)" }} />
+                </div>
+                <span style={{ width: 34, fontSize: 11.5, color: "var(--muted)", textAlign: "right" }}>{pct}%</span>
+              </div>
+            );
+          })}
+          <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{t("ratingCard.roamBasis", { count: totalRoam })}</div>
+        </div>
+      ) : null}
+
+      {other ? (
+        <div style={{ marginTop: "var(--space-2)", fontSize: 12, color: "var(--muted)" }}>
+          {t("ratingCard.alsoLine", { label: other.label, rating: other.rating.toFixed(1), count: other.count.toLocaleString() })}
+        </div>
+      ) : null}
+
       <a href="#reviews" style={{ display: "block", marginTop: "var(--space-3)", textDecoration: "none" }}>
         <Button variant="neutral" size="sm" block>{t("ratingCard.write")}</Button>
       </a>
@@ -1191,12 +1257,20 @@ function ClaimCard({ onClaimPressed }: { onClaimPressed: () => void }) {
  *  seam. A live map is a follow-up (venue coordinates aren't exposed on this read yet). */
 function WhereToFind({ venue }: { venue: VenueDetailData }) {
   const t = useTranslations("venueDetail");
-  if (!venue.address && !venue.locality) return null;
+  const hasCoords = typeof venue.lat === "number" && typeof venue.lng === "number";
+  if (!venue.address && !venue.locality && !hasCoords) return null;
   return (
     <section>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
         {t("whereToFind")}
       </div>
+      {hasCoords ? (
+        <VenueMap
+          venues={[{ id: venue.id, name: venue.name, lat: venue.lat as number, lng: venue.lng as number, claimed: venue.owner_id !== null }]}
+          center={{ lat: venue.lat as number, lng: venue.lng as number }}
+          className={styles.locMap}
+        />
+      ) : null}
       <Card flat style={{ padding: "var(--space-4)" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <span aria-hidden style={{ width: 40, height: 40, borderRadius: 12, background: "var(--crimson-tint)", color: "var(--crimson-700)", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -1720,7 +1794,7 @@ function claimReturnUrl(venueId: string): string {
  */
 
 /** How many Roam reviews a venue needs before its Roam rating replaces Google's in the headline. */
-const ROAM_RATING_OVERRIDE_MIN = 3;
+const ROAM_RATING_OVERRIDE_MIN = ROAM_RATING_MIN;
 
 interface RoamReview {
   id: string;

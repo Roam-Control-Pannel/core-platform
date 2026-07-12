@@ -210,6 +210,15 @@
   background: var(--crimson-tint);
 }
 
+/* "Where to find it" — the embedded map. */
+.locMap {
+  height: 220px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  margin-bottom: var(--space-2);
+}
+
 /* "Good to know" grouped rows: label column + chips column, collapsing on narrow screens. */
 .gtkRow {
   display: grid;

@@ -30,6 +30,7 @@ import { Button } from "@roam/design";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
 import { OwnerHoursEditor } from "./OwnerHoursEditor";
+import { effectiveRating } from "../lib/rating";
 import { LocalPosts } from "./LocalPosts";
 import { VenueNotify } from "./VenueNotify";
 import { VenueOffers } from "./VenueOffers";
@@ -64,6 +65,8 @@ interface OwnerVenue {
   opening_times: { periods?: unknown[] | null } | null;
   rating: number | null;
   rating_count: number | null;
+  roam_rating: number | null;
+  roam_rating_count: number | null;
   locality: string | null;
   region: string | null;
   category: string | null;
@@ -519,14 +522,36 @@ function StatRow({ venue, data }: { venue: OwnerVenue; data: DashData }) {
         delta={data.salesCount != null ? t("stats.ordersAllTime", { count: data.salesCount }) : undefined}
         up={!!data.revenuePence && data.revenuePence > 0}
       />
-      <StatCard
-        glyph="star"
-        label={t("stats.rating")}
-        value={venue.rating != null ? venue.rating.toFixed(1) : "–"}
-        delta={venue.rating_count ? t("stats.reviews", { count: venue.rating_count.toLocaleString() }) : t("stats.noReviews")}
-        gold
-      />
+      <RatingStat venue={venue} />
     </div>
+  );
+}
+
+/**
+ * The dashboard rating tile. Uses the SHARED effective-rating rule (Roam once it has enough
+ * reviews, else Google) so the owner sees exactly the rating a local sees on the public profile —
+ * with the source in the sublabel, so a Roam takeover reads clearly rather than as a mystery drop.
+ */
+function RatingStat({ venue }: { venue: OwnerVenue }) {
+  const t = useTranslations("venueOwnerEditor");
+  const eff = effectiveRating({
+    googleRating: venue.rating,
+    googleCount: venue.rating_count ?? 0,
+    roamRating: venue.roam_rating ?? null,
+    roamCount: venue.roam_rating_count ?? 0,
+  });
+  const delta =
+    eff.value == null
+      ? t("stats.noReviews")
+      : `${t("stats.reviews", { count: eff.count.toLocaleString() })} · ${eff.source === "roam" ? t("stats.viaRoam") : t("stats.viaGoogle")}`;
+  return (
+    <StatCard
+      glyph="star"
+      label={t("stats.rating")}
+      value={eff.value != null ? eff.value.toFixed(1) : "–"}
+      delta={delta}
+      gold
+    />
   );
 }
 

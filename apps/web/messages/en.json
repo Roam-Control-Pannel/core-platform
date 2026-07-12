@@ -684,7 +684,10 @@
       "title": "Rating",
       "google": "Google",
       "count": "{count} ratings",
-      "write": "Write a review"
+      "write": "Write a review",
+      "roam": "Roam",
+      "roamBasis": "Based on {count} Roam reviews",
+      "alsoLine": "{label}: ★ {rating} ({count})"
     }
   },
   "venueCard": {
@@ -1672,7 +1675,9 @@
       "savesAllTime": "{count} saves · all time",
       "ordersAllTime": "{count, plural, one {# order} other {# orders}} · all time",
       "reviews": "{count} reviews",
-      "noReviews": "No reviews yet"
+      "noReviews": "No reviews yet",
+      "viaRoam": "Roam",
+      "viaGoogle": "Google"
     },
     "quickActions": {
       "title": "Quick actions",

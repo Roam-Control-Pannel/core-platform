@@ -52,11 +52,24 @@ export const reviewsRouter = router({
       if (error) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load the rating summary: ${error.message}` });
       }
+      // Real per-star breakdown from OUR reviews (Google gives no distribution). Best-effort: if
+      // the histogram RPC isn't present yet (migration 0086 unapplied), fall back to all-zeros so
+      // the rating card still renders.
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+      let histRows: { stars: number; cnt: number }[] = [];
+      try {
+        const { data: hist, error: histErr } = await rpc("venue_review_histogram", { venue_id_param: input.venueId });
+        if (!histErr && Array.isArray(hist)) histRows = hist as { stars: number; cnt: number }[];
+      } catch {
+        /* leave histRows empty → zero-filled distribution below */
+      }
+      const distribution = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: histRows.find((r) => r.stars === stars)?.cnt ?? 0 }));
       return {
         roamRating: data?.roam_rating ?? null,
         roamCount: data?.roam_rating_count ?? 0,
         googleRating: data?.rating ?? null,
         googleCount: data?.rating_count ?? 0,
+        distribution,
       };
     }),
 
