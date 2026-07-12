@@ -658,7 +658,14 @@
       "ratingAria": "Your rating, 1 to 5 stars",
       "someone": "A Roam member",
       "saveError": "Couldn't save your review. Please try again.",
-      "loadError": "Couldn't load reviews."
+      "loadError": "Couldn't load reviews.",
+      "googleTitle": "From Google",
+      "showGoogle": "Show reviews from Google",
+      "googleLoading": "Loading…",
+      "googleEmpty": "No Google reviews to show.",
+      "writeGoogle": "Write a Google review",
+      "poweredByGoogle": "Reviews powered by Google",
+      "viewOnGoogle": "View on Google Maps"
     }
   },
   "venueCard": {

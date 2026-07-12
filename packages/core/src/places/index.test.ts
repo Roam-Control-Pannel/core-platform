@@ -13,6 +13,7 @@ import {
   placeOpeningTimes,
   placePhotos,
   placeRichFields,
+  parsePlaceReviews,
   snapToIngestGrid,
   INGEST_SNAP_DEGREES,
   type CategoryId,
@@ -577,5 +578,56 @@ describe("hub venue ranking helpers", () => {
     const many = weightedVenueRating(5.0, 5000);
     expect(many).toBeGreaterThan(few);
     expect(many).toBeCloseTo(5.0, 1);
+  });
+});
+
+describe("parsePlaceReviews", () => {
+  const place = (reviews: unknown): PlaceResult => ({ id: "p", reviews } as unknown as PlaceResult);
+
+  it("maps author attribution, rating, text and relative time; caps to the limit", () => {
+    const out = parsePlaceReviews(
+      place([
+        {
+          name: "places/X/reviews/1",
+          rating: 5,
+          text: { text: "Lovely spot" },
+          relativePublishTimeDescription: "2 weeks ago",
+          authorAttribution: { displayName: "Sam", uri: "https://maps.google.com/u/sam", photoUri: "https://p/sam.jpg" },
+          publishTime: "2026-06-01T00:00:00Z",
+        },
+        { rating: 4, text: { text: "Good" }, authorAttribution: { displayName: "Alex" } },
+        { rating: 3, text: { text: "OK" }, authorAttribution: { displayName: "Jo" } },
+      ]),
+      2,
+    );
+    expect(out.length).toBe(2);
+    expect(out[0]).toMatchObject({
+      id: "places/X/reviews/1",
+      authorName: "Sam",
+      authorUri: "https://maps.google.com/u/sam",
+      authorPhotoUri: "https://p/sam.jpg",
+      rating: 5,
+      text: "Lovely spot",
+      relativeTime: "2 weeks ago",
+    });
+    expect(out[1]!.authorPhotoUri).toBeNull();
+    expect(out[1]!.authorUri).toBeNull();
+  });
+
+  it("falls back to originalText, and drops reviews with no rating or no author", () => {
+    const out = parsePlaceReviews(
+      place([
+        { rating: 4, originalText: { text: "En français" }, authorAttribution: { displayName: "Marie" } },
+        { text: { text: "no rating" }, authorAttribution: { displayName: "Nobody" } }, // no rating → dropped
+        { rating: 5, text: { text: "no author" } }, // no author → dropped
+      ]),
+    );
+    expect(out.length).toBe(1);
+    expect(out[0]).toMatchObject({ authorName: "Marie", text: "En français", relativeTime: null });
+  });
+
+  it("returns [] when there are no reviews", () => {
+    expect(parsePlaceReviews({ id: "p" } as PlaceResult)).toEqual([]);
+    expect(parsePlaceReviews(place([]))).toEqual([]);
   });
 });

@@ -413,6 +413,66 @@ export interface PlaceResult {
   goodForWatchingSports?: boolean | undefined;
   allowsDogs?: boolean | undefined;
   restroom?: boolean | undefined;
+
+  /** Places (New) up-to-5 reviews (Details Atmosphere tier). Shown read-only WITH attribution and
+   *  never persisted (Google Maps Platform terms) — mapped by parsePlaceReviews. */
+  reviews?:
+    | readonly {
+        name?: string;
+        relativePublishTimeDescription?: string;
+        rating?: number;
+        text?: { text?: string } | undefined;
+        originalText?: { text?: string } | undefined;
+        authorAttribution?: { displayName?: string; uri?: string; photoUri?: string } | undefined;
+        publishTime?: string;
+      }[]
+    | undefined;
+  /** Canonical Google Maps URL for the place — the required "View on Google" attribution link. */
+  googleMapsUri?: string | undefined;
+}
+
+/** A single Google review, mapped to a minimal display shape (author attribution preserved). */
+export interface GoogleReview {
+  /** Stable key — the review resource name. */
+  id: string;
+  authorName: string;
+  authorPhotoUri: string | null;
+  /** The author's Google profile/contribution URL (attribution). */
+  authorUri: string | null;
+  rating: number;
+  text: string | null;
+  /** Google's human relative time, e.g. "2 weeks ago". */
+  relativeTime: string | null;
+  publishTime: string | null;
+}
+
+/**
+ * Map a Places Details result's `reviews` into our minimal display shape (up to `limit`, Google
+ * only ever returns 5). PURE and tolerant of missing fields. We keep the author attribution
+ * (name/photo/uri) because Google's terms require reviews be shown WITH attribution, and we never
+ * store the result — the caller fetches it live per view and shows it read-only.
+ */
+export function parsePlaceReviews(place: PlaceResult, limit = 5): GoogleReview[] {
+  const raw = Array.isArray(place?.reviews) ? place.reviews : [];
+  const txt = (s: string | undefined): string => (s ?? "").trim();
+  const out: GoogleReview[] = [];
+  for (const r of raw) {
+    const rating = typeof r?.rating === "number" ? r.rating : null;
+    const authorName = txt(r?.authorAttribution?.displayName);
+    if (rating === null || !authorName) continue; // a review needs at least a rating + an author
+    out.push({
+      id: txt(r?.name) || `${authorName}:${txt(r?.publishTime)}`,
+      authorName,
+      authorPhotoUri: txt(r?.authorAttribution?.photoUri) || null,
+      authorUri: txt(r?.authorAttribution?.uri) || null,
+      rating,
+      text: txt(r?.text?.text) || txt(r?.originalText?.text) || null,
+      relativeTime: txt(r?.relativePublishTimeDescription) || null,
+      publishTime: txt(r?.publishTime) || null,
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /** The boolean attribute keys we lift verbatim from a Places Details result into the

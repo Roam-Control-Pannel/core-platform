@@ -79,6 +79,8 @@ export interface VenueDetailData {
   /** Provenance: "google_places" for a Places-sourced venue, "owner" once claimed, etc.
    *  Gates on-demand enrichment (only unclaimed Places venues are enriched). */
   source?: string | null;
+  /** The venue's Places id — the deep-link key for "Write a Google review" (no API cost). */
+  source_ref?: string | null;
   /* Rich Places facts (0065) — absent until the migration + enrichment have run, so every
      read below is defensive: missing/undefined just hides the section. */
   phone?: string | null;
@@ -661,7 +663,7 @@ function ClaimedDetail({
         </div>
       </div>
 
-      <VenueReviews venueId={venueId} />
+      <VenueReviews venueId={venueId} placeId={venue.source === "google_places" ? venue.source_ref ?? null : null} />
     </>
   );
 }
@@ -918,7 +920,7 @@ function UnclaimedDetail({
       <DetailsBlock venue={venue} />
       <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
 
-      <VenueReviews venueId={venueId} />
+      <VenueReviews venueId={venueId} placeId={venue.source === "google_places" ? venue.source_ref ?? null : null} />
     </>
   );
 }
@@ -1065,7 +1067,7 @@ function PendingClaimDetail({
       <DetailsBlock venue={venue} />
       <ActionRow venueId={venueId} name={venue.name} address={venue.address} />
 
-      <VenueReviews venueId={venueId} />
+      <VenueReviews venueId={venueId} placeId={venue.source === "google_places" ? venue.source_ref ?? null : null} />
     </>
   );
 }
@@ -1475,7 +1477,17 @@ interface ReviewSummary {
   googleCount: number;
 }
 
-function VenueReviews({ venueId }: { venueId: string }) {
+interface GoogleReviewView {
+  id: string;
+  authorName: string;
+  authorPhotoUri: string | null;
+  authorUri: string | null;
+  rating: number;
+  text: string | null;
+  relativeTime: string | null;
+}
+
+function VenueReviews({ venueId, placeId }: { venueId: string; placeId: string | null }) {
   const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const session = useSession();
@@ -1489,6 +1501,30 @@ function VenueReviews({ venueId }: { venueId: string }) {
   const [draftBody, setDraftBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Google reviews: fetched on demand (a paid Places call), not on mount. null = not yet asked.
+  const [googleReviews, setGoogleReviews] = useState<GoogleReviewView[] | null>(null);
+  const [googleMapsUri, setGoogleMapsUri] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const writeReviewUrl = placeId ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}` : null;
+
+  const loadGoogle = useCallback(async () => {
+    setGoogleLoading(true);
+    try {
+      const res = await fetch("/api/google-reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ venueId }),
+      });
+      const data = res.ok ? ((await res.json()) as { reviews?: GoogleReviewView[]; googleMapsUri?: string | null }) : { reviews: [] };
+      setGoogleReviews(data.reviews ?? []);
+      setGoogleMapsUri(data.googleMapsUri ?? null);
+    } catch {
+      setGoogleReviews([]);
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [venueId]);
 
   const load = useCallback(async () => {
     const sumQ = trpc.reviews.summary as unknown as { query: (i: { venueId: string }) => Promise<ReviewSummary> };
@@ -1632,6 +1668,54 @@ function VenueReviews({ venueId }: { venueId: string }) {
               {r.body ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.body}</p> : null}
             </Card>
           ))}
+        </div>
+      ) : null}
+
+      {/* Google reviews — read-only, fetched on demand, shown with attribution (never stored). */}
+      {placeId ? (
+        <div style={{ marginTop: "var(--space-6)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--line)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{t("reviews.googleTitle")}</span>
+            <span style={{ flex: 1 }} />
+            {writeReviewUrl ? (
+              <a href={writeReviewUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none" }}>
+                {t("reviews.writeGoogle")} <span aria-hidden>↗</span>
+              </a>
+            ) : null}
+          </div>
+
+          {googleReviews === null ? (
+            <Button variant="neutral" size="sm" onClick={() => void loadGoogle()} disabled={googleLoading}>
+              {googleLoading ? t("reviews.googleLoading") : t("reviews.showGoogle")}
+            </Button>
+          ) : googleReviews.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: "var(--ink-2)" }}>{t("reviews.googleEmpty")}</div>
+          ) : (
+            <div style={{ display: "grid", gap: "var(--space-3)" }}>
+              {googleReviews.map((r) => (
+                <Card key={r.id} flat style={{ padding: "var(--space-3) var(--space-4)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 6 }}>
+                    <ReviewAvatar name={r.authorName} handle={null} avatar={r.authorPhotoUri} />
+                    {r.authorUri ? (
+                      <a href={r.authorUri} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, fontSize: 13.5, color: "var(--ink)", textDecoration: "none" }}>{r.authorName}</a>
+                    ) : (
+                      <span style={{ fontWeight: 600, fontSize: 13.5 }}>{r.authorName}</span>
+                    )}
+                    <span style={{ flex: 1 }} />
+                    {r.relativeTime ? <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.relativeTime}</span> : null}
+                  </div>
+                  <Stars n={r.rating} />
+                  {r.text ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.text}</p> : null}
+                </Card>
+              ))}
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: 12, color: "var(--muted)" }}>
+                <span>{t("reviews.poweredByGoogle")}</span>
+                {googleMapsUri ? (
+                  <a href={googleMapsUri} target="_blank" rel="noopener noreferrer" style={{ color: "var(--muted)", textDecoration: "underline" }}>{t("reviews.viewOnGoogle")}</a>
+                ) : null}
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
     </section>
