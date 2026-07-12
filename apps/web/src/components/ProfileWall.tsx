@@ -38,6 +38,9 @@ export interface PublicProfile {
   bio: string | null;
   joinedAt?: string | null;
   website?: string | null;
+  homeLocality?: string | null;
+  verifiedLocal?: boolean;
+  wallViews?: number;
 }
 interface WallMedia {
   type: "image" | "video";
@@ -61,6 +64,16 @@ interface FollowVenue { id: string; name: string; category: string | null; local
 interface FriendLite { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null }
 interface PlanLite { id: string; title: string; plannedFor: string | null; headerUrl: string | null }
 interface OwnerData { follows: FollowVenue[]; friends: FriendLite[]; plans: PlanLite[] }
+
+/** Profiles already counted as viewed this session (guards SPA re-mount recounts). */
+const viewedProfiles = new Set<string>();
+
+/** "1600" → "1.6k", "2400000" → "2.4m". Whole numbers under 1000 stay as-is. */
+function compactNumber(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`.replace(".0k", "k");
+  return `${(n / 1_000_000).toFixed(1)}m`.replace(".0m", "m");
+}
 
 /** Normalise the loose myFollows rows (PostgREST embeds a joined row as object OR array). */
 function normalizeFollows(rows: unknown): FollowVenue[] {
@@ -173,6 +186,15 @@ export function ProfileWall({
     });
     return () => { cancelled = true; };
   }, [trpc, isOwner]);
+
+  // Count a wall view — fire-and-forget, once per profile per session (module-level guard), and
+  // never for the owner viewing their own wall. No viewer identity is sent or stored.
+  useEffect(() => {
+    if (isOwner || viewedProfiles.has(userId)) return;
+    viewedProfiles.add(userId);
+    const rec = trpc.profiles.recordView as unknown as { mutate: (i: { userId: string }) => Promise<{ ok: boolean }> };
+    rec.mutate({ userId }).catch(() => {});
+  }, [trpc, userId, isOwner]);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "0 0 var(--space-12)" }}>
@@ -314,11 +336,23 @@ function ProfileHeader({
               {linkifyHashtags(profile.bio)}
             </p>
           ) : null}
-          {joinedYear ? (
+          {profile.homeLocality || joinedYear || profile.verifiedLocal ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-3)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 11px" }}>
-                <Icon name="clock" size={13} /> {t("header.joinedYear", { year: joinedYear })}
-              </span>
+              {profile.homeLocality ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint)", borderRadius: 999, padding: "4px 11px" }}>
+                  <Icon name="place" size={13} /> {profile.homeLocality}
+                </span>
+              ) : null}
+              {joinedYear ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 11px" }}>
+                  <Icon name="clock" size={13} /> {t("header.joinedYear", { year: joinedYear })}
+                </span>
+              ) : null}
+              {profile.verifiedLocal ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 999, padding: "4px 11px" }}>
+                  <Icon name="check" size={13} style={{ color: "var(--success, #2ea056)" }} /> {t("header.verifiedLocal")}
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -345,14 +379,20 @@ function ProfileHeader({
               <AddFriendButton userId={profile.id} />
             </>
           )}
+          {isOwner ? <OverflowMenu /> : null}
         </div>
       </div>
 
-      {isOwner && counts ? (
+      {(isOwner && counts) || (profile.wallViews ?? 0) > 0 ? (
         <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)", flexWrap: "wrap" }}>
-          <StatCell value={counts.friends} label={t("stats.friends")} />
-          <StatCell value={counts.following} label={t("stats.following")} />
-          <StatCell value={counts.plans} label={t("stats.plans")} />
+          {isOwner && counts ? (
+            <>
+              <StatCell value={compactNumber(counts.friends)} label={t("stats.friends")} />
+              <StatCell value={compactNumber(counts.following)} label={t("stats.following")} />
+              <StatCell value={compactNumber(counts.plans)} label={t("stats.plans")} />
+            </>
+          ) : null}
+          {(profile.wallViews ?? 0) > 0 ? <StatCell value={compactNumber(profile.wallViews ?? 0)} label={t("stats.wallViews")} /> : null}
         </div>
       ) : null}
 
@@ -376,12 +416,51 @@ function ProfileHeader({
   );
 }
 
-function StatCell({ value, label }: { value: number; label: string }) {
+function StatCell({ value, label }: { value: string; label: string }) {
   return (
     <span>
-      <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{value.toLocaleString()}</span>
+      <span style={{ display: "block", fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, lineHeight: 1.1, color: "var(--ink-hi)" }}>{value}</span>
       <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>
     </span>
+  );
+}
+
+/** The "…" overflow — owner quick-nav (settings · notifications · orders), outside-click to close. */
+function OverflowMenu() {
+  const t = useTranslations("profileWall");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const items: [string, string][] = [
+    ["/settings", t("header.menu.settings")],
+    ["/notifications", t("header.menu.notifications")],
+    ["/orders", t("header.menu.orders")],
+  ];
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-label={t("header.menu.more")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        style={{ all: "unset", cursor: "pointer", width: 38, height: 38, borderRadius: 999, border: "1px solid var(--line-2)", display: "grid", placeItems: "center", background: "#fff", color: "var(--ink-2)", boxSizing: "border-box" }}
+      >
+        <span aria-hidden style={{ fontSize: 20, lineHeight: 1, letterSpacing: 1 }}>···</span>
+      </button>
+      {open ? (
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, minWidth: 190, zIndex: 20 }}>
+          {items.map(([href, label]) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)} style={{ display: "block", padding: "9px 11px", borderRadius: 8, fontSize: 13.5, fontWeight: 600, color: "var(--ink)", textDecoration: "none" }}>{label}</Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -450,10 +529,15 @@ function ProfileSidebar({ profile, owner, onView }: { profile: PublicProfile; ow
 
   return (
     <aside className={styles.sidebar}>
-      {joined || host || profile.bio ? (
+      {profile.homeLocality || joined || host ? (
         <div style={card}>
           <div style={cardTitle}>{t("sidebar.about")}</div>
           <div style={{ display: "grid", gap: "var(--space-2)", fontSize: 13.5, color: "var(--ink-2)" }}>
+            {profile.homeLocality ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Icon name="place" size={14} style={{ color: "var(--muted)" }} /> {t("sidebar.livesIn", { place: profile.homeLocality })}
+              </div>
+            ) : null}
             {joined ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Icon name="clock" size={14} style={{ color: "var(--muted)" }} /> {t("sidebar.joined", { date: joined })}

@@ -100,7 +100,7 @@ export const profilesRouter = router({
       const db = ctx.db as unknown as LooseProfileRead;
       const { data, error } = await db
         .from("profiles")
-        .select("id, handle, display_name, avatar_url, header_url, bio, social_links, created_at")
+        .select("id, handle, display_name, avatar_url, header_url, bio, social_links, created_at, home_locality, verified_local, wall_view_count")
         .eq("id", input.userId)
         .maybeSingle();
       if (error) {
@@ -118,7 +118,20 @@ export const profilesRouter = router({
         // social links (About card). Both already stored; just surfaced now for the profile redesign.
         joinedAt: (data as { created_at?: string | null }).created_at ?? null,
         website: firstWebsite((data as { social_links?: unknown }).social_links),
+        homeLocality: (data as { home_locality?: string | null }).home_locality ?? null,
+        verifiedLocal: (data as { verified_local?: boolean | null }).verified_local ?? false,
+        wallViews: (data as { wall_view_count?: number | null }).wall_view_count ?? 0,
       };
+    }),
+
+  /** Public, fire-and-forget: count a profile view (record_profile_view; no viewer identity
+   *  stored). The wall page calls this once per profile per session. Never throws into the page. */
+  recordView: publicProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
+      const { error } = await db.rpc("record_profile_view", { p_profile: input.userId });
+      return { ok: !error };
     }),
 
   /**
@@ -264,7 +277,7 @@ export const profilesRouter = router({
     const db = ctx.db as unknown as LooseProfileRead;
     const { data, error } = await db
       .from("profiles")
-      .select("id, handle, display_name, avatar_url, header_url, bio, social_links")
+      .select("id, handle, display_name, avatar_url, header_url, bio, social_links, home_locality")
       .eq("id", uid)
       .maybeSingle();
     if (error) {
@@ -272,6 +285,7 @@ export const profilesRouter = router({
     }
     // Build an inline-typed result (anonymous structural — no named-type leak into AppRouter).
     return {
+      homeLocality: (data as { home_locality?: string | null } | null)?.home_locality ?? null,
       id: uid,
       handle: data?.handle ?? null,
       displayName: data?.display_name ?? null,
@@ -292,6 +306,7 @@ export const profilesRouter = router({
         avatarUrl: z.string().max(4096).nullable().optional(),
         headerUrl: z.string().max(4096).nullable().optional(),
         socialLinks: z.record(z.unknown()).nullable().optional(),
+        homeLocality: z.string().max(120).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -308,6 +323,7 @@ export const profilesRouter = router({
           patch["handle"] = h;
         }
         if ("bio" in input) patch["bio"] = normaliseBio(input.bio);
+        if ("homeLocality" in input) patch["home_locality"] = input.homeLocality?.trim() || null;
         if ("avatarUrl" in input) patch["avatar_url"] = normaliseImageUrl(input.avatarUrl);
         if ("headerUrl" in input) patch["header_url"] = normaliseImageUrl(input.headerUrl);
         if ("socialLinks" in input) {

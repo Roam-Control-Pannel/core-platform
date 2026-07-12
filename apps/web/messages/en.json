@@ -177,7 +177,9 @@
       "uploadFailed": "Upload failed.",
       "saveFailedRetry": "Couldn't save your profile. Please try again.",
       "saveFailed": "Couldn't save your profile."
-    }
+    },
+    "homeTown": "Home town",
+    "homeTownPlaceholder": "e.g. Newcastle upon Tyne"
   },
   "accountHub": {
     "explore": "Explore",
@@ -971,12 +973,20 @@
         "photos": "Photos"
       },
       "editCover": "Edit cover",
-      "joinedYear": "Joined {year}"
+      "joinedYear": "Joined {year}",
+      "verifiedLocal": "Verified local",
+      "menu": {
+        "more": "More",
+        "settings": "Settings",
+        "notifications": "Notifications",
+        "orders": "Orders"
+      }
     },
     "stats": {
       "friends": "Friends",
       "following": "Following",
-      "plans": "Plans"
+      "plans": "Plans",
+      "wallViews": "Wall views"
     },
     "composer": {
       "maxItems": "You can add up to {max} items.",
@@ -1043,7 +1053,8 @@
       "following": "Following",
       "friendsCount": "Friends · {count}",
       "seeAll": "See all {count}",
-      "seeAllShort": "See all"
+      "seeAllShort": "See all",
+      "livesIn": "Lives in {place}"
     },
     "views": {
       "noPhotos": "No photos yet — photos from wall posts show up here.",
