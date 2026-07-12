@@ -284,3 +284,42 @@ export async function getPlaceDetails(
   // Details returns the place object directly (not wrapped in a `places` array).
   return (await res.json()) as places.PlaceResult;
 }
+
+/** Reviews-only Details mask — the Atmosphere-tier `reviews` field plus the place's Maps URL for
+ *  the required attribution link. Separate from DETAILS_BACKFILL so the reviews fetch (live, never
+ *  persisted per Google's terms) is independent of the once-per-venue enrichment backfill. */
+const REVIEWS_FIELD_MASK = ["id", "googleMapsUri", "reviews"].join(",");
+
+/**
+ * Fetch a place's up-to-5 Google reviews live (Place Details, Atmosphere tier), by its stored
+ * Places id. Returns the raw PlaceResult (mapped by core's parsePlaceReviews in the caller). We
+ * do NOT persist the result — Google's terms require reviews be shown fresh, with attribution.
+ * Throws on a transport/HTTP failure so the caller can degrade to just the write-review link.
+ */
+export async function getPlaceReviews(
+  placeId: string,
+  apiKey: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<places.PlaceResult> {
+  const res = await fetchImpl(`${PLACE_DETAILS_BASE}${encodeURIComponent(placeId)}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": REVIEWS_FIELD_MASK,
+    },
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      detail = "(no response body)";
+    }
+    throw new Error(
+      `Places getPlaceReviews(${placeId}) failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
+    );
+  }
+
+  return (await res.json()) as places.PlaceResult;
+}

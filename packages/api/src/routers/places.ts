@@ -36,6 +36,7 @@ import {
   searchNearby as defaultSearchNearby,
   searchText as defaultSearchText,
   getPlaceDetails as defaultGetPlaceDetails,
+  getPlaceReviews as defaultGetPlaceReviews,
   type FetchImpl,
 } from "../places/client.js";
 
@@ -636,6 +637,54 @@ export const placesRouter = router({
         });
       }
     }),
+
+  /**
+   * Internal: a venue's up-to-5 Google reviews, fetched live and returned for read-only display
+   * WITH attribution (never persisted). Reached via the /api/google-reviews hop, on explicit user
+   * action, so paid Details calls stay off the anonymous path and behind the shared Details wallet
+   * + the 12h process cache. Always returns the write-a-review deep link for a Google venue, even
+   * when the paid fetch is capped or fails.
+   */
+  googleReviews: internalProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      const svc = ctx.service as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (col: string, v: string) => {
+              maybeSingle: () => Promise<{ data: { source: string | null; source_ref: string | null } | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+      const { data: v, error } = await svc.from("venues").select("source, source_ref").eq("id", input.venueId).maybeSingle();
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Venue read failed: ${error.message}` });
+
+      if (!v || v.source !== "google_places" || !v.source_ref) {
+        return { available: false as const, reviews: [], writeReviewUrl: null, googleMapsUri: null };
+      }
+      const placeId = v.source_ref;
+      const writeReviewUrl = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
+      try {
+        const res = await googleReviewsCore(rpc, productionGetReviews, ctx.env.places.apiKey, { placeId, clientKey: ctx.clientKey });
+        // Map to an INLINE-typed shape (not the named GoogleReview) so the inferred AppRouter
+        // output stays structural/portable — same idiom as geo.search (avoids TS2883).
+        const reviews = res.reviews.map((r) => ({
+          id: r.id,
+          authorName: r.authorName,
+          authorPhotoUri: r.authorPhotoUri,
+          authorUri: r.authorUri,
+          rating: r.rating,
+          text: r.text,
+          relativeTime: r.relativeTime,
+        }));
+        return { available: true as const, reviews, googleMapsUri: res.googleMapsUri, writeReviewUrl };
+      } catch {
+        // Budget-capped or the Details call failed — still hand back the write-a-review link.
+        return { available: true as const, reviews: [], googleMapsUri: null, writeReviewUrl };
+      }
+    }),
 });
 
 /** The eligibility columns read before an enrichment (loose — details_fetched_at is new). */
@@ -644,6 +693,64 @@ interface VenueEligibilityRow {
   source_ref: string | null;
   owner_id: string | null;
   details_fetched_at: string | null;
+}
+
+/* ── Google reviews (read-only display) ────────────────────────────────────────────────────────
+ * Google's up-to-5 reviews, fetched LIVE per view and shown with attribution. Unlike the
+ * enrichment facts, review CONTENT is never persisted (Google Maps Platform terms), so this path
+ * is a fetch-on-demand with a short process cache (below) — not a DB write. Same paid Details
+ * (Atmosphere) tier + budget wallet as enrichment, and internal-only (the web reaches it via the
+ * /api/google-reviews hop) so anonymous users can't trigger paid calls directly. */
+
+/** A Place reviews fetcher with getPlaceReviews' signature — injected so tests fake it. */
+export type GetReviewsFn = (placeId: string, apiKey: string) => Promise<corePlaces.PlaceResult>;
+const productionGetReviews: GetReviewsFn = defaultGetPlaceReviews;
+
+/** Process cache for a place's reviews — shown fresh but change slowly, so a short TTL bounds the
+ *  paid calls WITHOUT persisting content. Single-replica caveat as the geocode cache. */
+const reviewsCache = new Map<string, { reviews: corePlaces.GoogleReview[]; googleMapsUri: string | null; expires: number }>();
+const REVIEWS_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+const REVIEWS_CACHE_MAX = 1000;
+
+export interface GoogleReviewsArgs {
+  placeId: string;
+  clientKey: string | null;
+}
+
+/**
+ * PURE orchestration for the reviews fetch: serve from the process cache, else claim the DETAILS
+ * budget (the same spend ceiling as enrichment) and pull the place's reviews live, mapping via the
+ * pure parser. Throws on budget denial or transport failure so the caller degrades to just the
+ * write-a-review link. Collaborators injected (rpc, getReviews) so it unit-tests with fakes.
+ */
+export async function googleReviewsCore(
+  rpc: LooseRpc,
+  getReviews: GetReviewsFn,
+  apiKey: string,
+  args: GoogleReviewsArgs,
+): Promise<{ reviews: corePlaces.GoogleReview[]; googleMapsUri: string | null }> {
+  const cached = reviewsCache.get(args.placeId);
+  if (cached && cached.expires > Date.now()) {
+    return { reviews: cached.reviews, googleMapsUri: cached.googleMapsUri };
+  }
+
+  const { data: quotaData, error: quotaErr } = await rpc("claim_places_detail_quota", {
+    p_client_key: args.clientKey,
+    p_daily_cap: corePlaces.PLACES_DETAILS_DAILY_BUDGET,
+    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+  });
+  if (quotaErr) throw new Error(`Detail-quota check failed: ${quotaErr.message}`);
+  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as { allowed?: boolean } | undefined;
+  if (!quota?.allowed) throw new Error("reviews-budget-exhausted");
+
+  const place = await getReviews(args.placeId, apiKey);
+  const reviews = corePlaces.parsePlaceReviews(place, 5);
+  const googleMapsUri = typeof place.googleMapsUri === "string" ? place.googleMapsUri : null;
+
+  if (reviewsCache.size >= REVIEWS_CACHE_MAX) reviewsCache.clear();
+  reviewsCache.set(args.placeId, { reviews, googleMapsUri, expires: Date.now() + REVIEWS_TTL_MS });
+  return { reviews, googleMapsUri };
 }
 
 /** The venues_near / venues_search_by_name row shape, and its projection to a venue card. */

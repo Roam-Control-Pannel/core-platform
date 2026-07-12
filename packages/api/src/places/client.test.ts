@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { searchNearby, searchText, getPlaceDetails, type FetchImpl } from "./client.js";
+import { searchNearby, searchText, getPlaceDetails, getPlaceReviews, type FetchImpl } from "./client.js";
 
 /** Build a fake fetch that records the call and returns a canned response. */
 function fakeFetch(
@@ -171,5 +171,28 @@ describe("getPlaceDetails (photo backfill)", () => {
       { ok: false, status: 404, statusText: "Not Found" },
     );
     await expect(getPlaceDetails("missing", "test-key", impl)).rejects.toThrow(/404/);
+  });
+});
+
+describe("getPlaceReviews", () => {
+  it("GETs /v1/places/{id} with the reviews-only field mask", async () => {
+    const { impl, calls } = fakeFetch({ id: "ChIJ_abc", reviews: [] });
+    await getPlaceReviews("ChIJ_abc", "test-key", impl);
+
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places/ChIJ_abc");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe("test-key");
+    const mask = headers["X-Goog-FieldMask"]!;
+    expect(mask).toContain("reviews");
+    expect(mask).toContain("googleMapsUri");
+    // The heavy amenity fields must NOT ride this call — reviews are a separate, live fetch.
+    expect(mask).not.toContain("paymentOptions");
+    expect(mask).not.toContain("photos");
+  });
+
+  it("throws on a non-ok response so the caller can degrade to the write-review link", async () => {
+    const { impl } = fakeFetch("rate limited", { ok: false, status: 429, statusText: "Too Many Requests" });
+    await expect(getPlaceReviews("x", "test-key", impl)).rejects.toThrow(/429/);
   });
 });
