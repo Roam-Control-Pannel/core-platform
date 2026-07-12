@@ -37,7 +37,7 @@ import { useTranslations } from "next-intl";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
-import { Card, Pill, Rate, Button, Icon } from "@roam/design";
+import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
@@ -381,83 +381,6 @@ function BackLink() {
 }
 
 /**
- * VenuePhotos — the photo surface for a venue: a hero (replacing the CSS-gradient
- * placeholder when photos exist) plus a gallery strip. Fetches the venue's photo rows
- * ONCE via venues.photosByVenue, then derives the hero (selectHero) and ordered gallery
- * (galleryOrder) from @roam/core/photos. Falls back to the gradient Hero when there are
- * no photos — the honest empty state (unclaimed venues Google had no photos for, or a
- * claimed venue whose owner has not uploaded yet).
- *
- * Photos are venue FACTS, shown in every loaded state regardless of claim (same
- * principle as opening hours): owner content outranks scraped, both render here.
- */
-function VenuePhotos({ venueId, claimed }: { venueId: string; claimed: boolean }) {
-  const trpc = useTrpc();
-  const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    const photosByVenue = trpc.venues.photosByVenue as unknown as {
-      query: (input: { venueId: string }) => Promise<PhotoRow[]>;
-    };
-    photosByVenue
-      .query({ venueId })
-      .then((res) => {
-        if (!cancelled) setRows(Array.isArray(res) ? res : []);
-      })
-      .catch(() => {
-        if (!cancelled) setRows([]); // a photo-load failure must not break the page
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, venueId]);
-
-  // Until loaded, or when there are no photos, show the existing gradient Hero — the
-  // page never waits on photos and degrades to exactly today's look.
-  if (rows === undefined || rows.length === 0) {
-    return <Hero claimed={claimed} />;
-  }
-
-  const hero = selectHero(rows);
-  const gallery = galleryOrder(rows);
-
-  return (
-    <>
-      {hero ? (
-        <div style={{ borderRadius: 16, overflow: "hidden", marginBottom: "var(--space-4)" }}>
-          <VenuePhoto photoId={hero.id} alt="" heightPx={220} />
-        </div>
-      ) : (
-        <Hero claimed={claimed} />
-      )}
-      {gallery.length > 1 ? (
-        <div
-          style={{
-            display: "flex",
-            gap: "var(--space-2)",
-            overflowX: "auto",
-            marginBottom: "var(--space-4)",
-            paddingBottom: 4,
-          }}
-        >
-          {gallery
-            .filter((p: PhotoRow) => p.id !== hero?.id)
-            .map((p: PhotoRow) => (
-              <div
-                key={p.id}
-                style={{ flex: "0 0 auto", width: 120, borderRadius: 12, overflow: "hidden" }}
-              >
-                <VenuePhoto photoId={p.id} alt="" heightPx={90} />
-              </div>
-            ))}
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-/**
  * VenuePhoto — resolves ONE photo to a renderable url via venues.photoMediaUrl (public;
  * the API holds the Google key and returns a short-lived, keyless googleusercontent url)
  * and renders it. Resolves lazily on mount, so only photos actually shown are resolved.
@@ -511,48 +434,6 @@ function VenuePhoto({
   );
 }
 
-function Hero({ claimed }: { claimed: boolean }) {
-  return (
-    <div
-      aria-hidden
-      style={{
-        height: 200,
-        borderRadius: 16,
-        marginBottom: "var(--space-4)",
-        ...(claimed
-          ? {
-              background:
-                "radial-gradient(120% 90% at 20% 10%, #e7b48a 0%, transparent 55%)," +
-                "radial-gradient(120% 120% at 90% 90%, #7c3a2a 0%, transparent 60%)," +
-                "linear-gradient(150deg, #c96b43, #8f3f29)",
-            }
-          : {
-              // Calm "locality tile" (design): a soft warm gradient, not a dashed
-              // placeholder — an intentional stand-in when there's no photo.
-              background: "linear-gradient(135deg, var(--crimson-tint), var(--paper-2))",
-              display: "grid",
-              placeItems: "center",
-            }),
-      }}
-    >
-      {claimed ? null : (
-        <Icon name="place" size={40} style={{ color: "var(--crimson-700)", opacity: 0.5 }} />
-      )}
-    </div>
-  );
-}
-
-function TitleRow({ name }: { name: string }) {
-  return (
-    <h1
-      className="t-h1"
-      style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 24, letterSpacing: "-.02em", margin: 0 }}
-    >
-      {name}
-    </h1>
-  );
-}
-
 /**
  * The claimed venue content tabs. "Details" is the only real tab today (description, hours,
  * the facts block); Posts · Offers · Shop are dormant seams (Stage-2 surfaces) — visible so
@@ -586,63 +467,10 @@ function ClaimedDetail({
 
   return (
     <>
-      <VenuePhotos venueId={venueId} claimed />
-      <div className={styles.layout}>
-        {/* Sticky info/action column on web; the first block on mobile. */}
-        <aside className={styles.aside}>
-          <TitleRow name={venue.name} />
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-3)",
-              marginTop: "var(--space-2)",
-              fontSize: 13.5,
-              color: "var(--ink-2)",
-            }}
-          >
-            {/* Claimed shows ★rating (gold) — the sanctioned confidence signal on a verified venue. */}
-            {venue.rating != null ? (
-              <Rate value={`${venue.rating.toFixed(1)}${venue.rating_count ? ` (${venue.rating_count})` : ""}`} />
-            ) : null}
-            {venue.category ? <span>{venue.category}</span> : null}
-          </div>
-
-          {isOwner ? (
-            <Link
-              href={`/dashboard/${venueId}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                marginTop: "var(--space-3)",
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--crimson-700)",
-                textDecoration: "none",
-              }}
-            >
-              {t("manageVenue")} <span aria-hidden>→</span>
-            </Link>
-          ) : null}
-
-          <VenueActions venueId={venueId} name={venue.name} initialFollowing={initialFollowing} address={venue.address} />
-
-          {links.length > 0 ? (
-            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
-              {links.map(([label, url]) => (
-                <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                  <Pill variant="crim">{capitalise(label)}</Pill>
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </aside>
-
-        {/* Scrolling tabbed content column on web. */}
-        <div className={styles.content}>
-          {/* Tab order mirrors the venue design (Posts · Offers · Gallery · Details · Shop) —
-              all live now that the marketplace catalogue exists. */}
+      <VenueHero venue={venue} venueId={venueId} claimed />
+      <div className={styles.profileGrid}>
+        {/* Main column: the owner-content tabs, then reviews. */}
+        <div className={styles.profileMain}>
           <div className={styles.tabstrip} role="tablist" aria-label={t("tabsAria")}>
             <TabButton label={t("tabs.posts")} value="posts" active={tab} onSelect={setTab} />
             <TabButton label={t("tabs.offers")} value="offers" active={tab} onSelect={setTab} />
@@ -652,13 +480,20 @@ function ClaimedDetail({
           </div>
 
           {tab === "details" ? (
-            <>
-              {venue.description ? (
-                <p style={{ marginTop: 0, lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p>
+            <div style={{ display: "grid", gap: "var(--space-5)" }}>
+              {venue.description ? <p style={{ margin: 0, lineHeight: 1.6, color: "var(--ink-2)" }}>{venue.description}</p> : null}
+              {links.length > 0 ? (
+                <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                  {links.map(([label, url]) => (
+                    <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                      <Pill variant="crim">{capitalise(label)}</Pill>
+                    </a>
+                  ))}
+                </div>
               ) : null}
-              <OpeningHours openingTimes={venue.opening_times} />
-              <DetailsBlock venue={venue} />
-            </>
+              <GoodToKnow venue={venue} />
+              <WhereToFind venue={venue} />
+            </div>
           ) : tab === "posts" ? (
             <VenuePostsPanel venueId={venueId} />
           ) : tab === "offers" ? (
@@ -668,11 +503,38 @@ function ClaimedDetail({
           ) : tab === "shop" ? (
             <VenueShop venueId={venueId} />
           ) : null}
-        </div>
-      </div>
 
-      <VenueReviews venueId={venueId} placeId={venue.source === "google_places" ? venue.source_ref ?? null : null} />
+          <div id="reviews">
+            <VenueReviews venueId={venueId} placeId={venue.source === "google_places" ? venue.source_ref ?? null : null} venueName={venue.name} />
+          </div>
+        </div>
+
+        {/* Sticky sidebar: actions + contact + rating, and the owner's Manage jump. */}
+        <aside className={styles.sidebar}>
+          <InfoSidebar
+            venue={venue}
+            venueId={venueId}
+            followSlot={<FollowButton venueId={venueId} initialFollowing={initialFollowing} emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""} />}
+          />
+          <RatingCard venueId={venueId} />
+          {isOwner ? <ManageCard venueId={venueId} /> : null}
+        </aside>
+      </div>
     </>
+  );
+}
+
+/** Owner-only sidebar card: a jump into the venue's dashboard. */
+function ManageCard({ venueId }: { venueId: string }) {
+  const t = useTranslations("venueDetail");
+  return (
+    <div style={{ border: "1px solid var(--line)", borderRadius: 16, padding: "var(--space-4)", background: "var(--crimson-tint)" }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", marginBottom: 6 }}>{t("manageCardTitle")}</div>
+      <p style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, margin: "0 0 var(--space-3)" }}>{t("manageCardBody")}</p>
+      <Link href={`/dashboard/${venueId}`} style={{ textDecoration: "none", display: "block" }}>
+        <Button variant="pri" size="sm" block>{t("manageVenue")} <span aria-hidden>→</span></Button>
+      </Link>
+    </div>
   );
 }
 
@@ -844,38 +706,6 @@ function PanelSkeleton() {
   );
 }
 
-/**
- * The claimed-venue action cluster (venue design): Follow · ＋Add to Plan · Get Directions,
- * STACKED full-width in the sticky aside (matching the design's left action column). Follow is
- * the live primary; Add to Plan is a dormant Stage-2 (Social) seam; Directions hands off to the
- * device maps app.
- */
-function VenueActions({
-  venueId,
-  name,
-  initialFollowing,
-  address,
-}: {
-  venueId: string;
-  name: string;
-  initialFollowing: boolean;
-  address: string | null;
-}) {
-  return (
-    <div style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
-      <FollowButton
-        venueId={venueId}
-        initialFollowing={initialFollowing}
-        emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
-      />
-      <AddToPlan venueId={venueId} block />
-      <DirectionsButton address={address} block />
-      {/* Shares the current canonical /venue/<slug> URL (the page redirects UUID → slug). */}
-      <CopyLinkButton variant="button" block title={name} />
-    </div>
-  );
-}
-
 function UnclaimedDetail({
   venue,
   claimUi,
@@ -958,7 +788,7 @@ function VenueProfileShell({
 
 /** The hero: the venue's best photo (or a warm gradient) under a dark scrim, with a back button,
  *  a "see all N photos" affordance, and the kicker / title / status chips overlaid. */
-function VenueHero({ venue, venueId }: { venue: VenueDetailData; venueId: string }) {
+function VenueHero({ venue, venueId, claimed = false }: { venue: VenueDetailData; venueId: string; claimed?: boolean }) {
   const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
@@ -1012,7 +842,7 @@ function VenueHero({ venue, venueId }: { venue: VenueDetailData; venueId: string
         <div className={styles.heroBody}>
           {venue.category ? <div className={styles.heroKicker}>{venue.category}</div> : null}
           <h1 className={styles.heroTitle}>{venue.name}</h1>
-          <HeroChips venue={venue} />
+          <HeroChips venue={venue} claimed={claimed} />
         </div>
       </div>
       {gallery.length > 0 ? (
@@ -1029,7 +859,7 @@ function VenueHero({ venue, venueId }: { venue: VenueDetailData; venueId: string
 }
 
 /** The status/locality/price/new chips over the hero. */
-function HeroChips({ venue }: { venue: VenueDetailData }) {
+function HeroChips({ venue, claimed = false }: { venue: VenueDetailData; claimed?: boolean }) {
   const t = useTranslations("venueDetail");
   const open = venue.opening_times ? isOpenNow(venue.opening_times, new Date()) : null;
   const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
@@ -1047,7 +877,8 @@ function HeroChips({ venue }: { venue: VenueDetailData }) {
   }
   if (venue.locality) chips.push(<span key="loc" style={base}>◍ {venue.locality}</span>);
   if (price) chips.push(<span key="price" style={base}>{price}{t("goodToKnow.perPersonShort")}</span>);
-  chips.push(<span key="new" style={{ ...base, background: "rgba(230,168,85,.95)", color: "#3a2408" }}>{t("newToRoam")}</span>);
+  // "New to Roam" is an unclaimed-venue badge — a claimed venue has an owner, so drop it.
+  if (!claimed) chips.push(<span key="new" style={{ ...base, background: "rgba(230,168,85,.95)", color: "#3a2408" }}>{t("newToRoam")}</span>);
 
   return <div className={styles.heroChips}>{chips}</div>;
 }
@@ -1072,7 +903,7 @@ function ClaimBanner({ onClaimPressed }: { onClaimPressed: () => void }) {
 }
 
 /** The sticky sidebar: price, primary actions, hours, and contact. */
-function InfoSidebar({ venue, venueId }: { venue: VenueDetailData; venueId: string }) {
+function InfoSidebar({ venue, venueId, followSlot }: { venue: VenueDetailData; venueId: string; followSlot?: React.ReactNode }) {
   const t = useTranslations("venueDetail");
   const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
   let host: string | null = null;
@@ -1093,6 +924,7 @@ function InfoSidebar({ venue, venueId }: { venue: VenueDetailData; venueId: stri
         <div style={{ flex: 1 }}><DirectionsButton address={venue.address} block /></div>
         <div style={{ flex: 1 }}><CopyLinkButton variant="button" size="md" title={venue.name} block /></div>
       </div>
+      {followSlot ? <div style={{ marginTop: "var(--space-2)" }}>{followSlot}</div> : null}
 
       <OpenHoursRow openingTimes={venue.opening_times} />
 
@@ -1420,65 +1252,6 @@ function PendingClaimDetail({
   );
 }
 
-function DetailsBlock({ venue }: { venue: VenueDetailData }) {
-  const t = useTranslations("venueDetail");
-  const rows: Array<[string, React.ReactNode]> = [];
-  if (venue.address) rows.push([t("details.address"), venue.address]);
-  if (venue.locality) rows.push([t("details.locality"), venue.locality]);
-  if (venue.region) rows.push([t("details.region"), venue.region]);
-  if (venue.phone) {
-    rows.push([
-      t("details.phone"),
-      <a key="tel" href={`tel:${venue.phone.replace(/\s+/g, "")}`} style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
-        {venue.phone}
-      </a>,
-    ]);
-  }
-  if (venue.website_url) {
-    let host = venue.website_url;
-    try {
-      host = new URL(venue.website_url).hostname.replace(/^www\./, "");
-    } catch {
-      /* show as-is */
-    }
-    rows.push([
-      t("details.website"),
-      <a key="web" href={venue.website_url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--crimson-700)", textDecoration: "none", fontWeight: 600 }}>
-        {host} ↗
-      </a>,
-    ]);
-  }
-  return (
-    <>
-      {rows.length > 0 ? (
-        <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
-          <div
-            style={{
-              fontFamily: "var(--mono)",
-              fontSize: 10,
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              color: "var(--muted)",
-              marginBottom: "var(--space-3)",
-            }}
-          >
-            {t("details.title")}
-          </div>
-          <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "var(--space-2) var(--space-4)", margin: 0 }}>
-            {rows.map(([k, v]) => (
-              <div key={k} style={{ display: "contents" }}>
-                <dt style={{ color: "var(--muted)", fontSize: 13 }}>{k}</dt>
-                <dd style={{ margin: 0, fontSize: 13.5, color: "var(--ink-2)" }}>{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </Card>
-      ) : null}
-      <GoodToKnow venue={venue} />
-    </>
-  );
-}
-
 /* ── Good to know — the Places attribute facts as grouped chips (0065) ──────────────────── */
 
 /** Attribute key → chip label (catalogue key under venueDetail.goodToKnow.attrs — the attribute
@@ -1565,7 +1338,6 @@ function priceRangeLabel(
 function GoodToKnow({ venue, unclaimed = false }: { venue: VenueDetailData; unclaimed?: boolean }) {
   const t = useTranslations("venueDetail");
   const attrs = venue.attributes ?? null;
-  const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
 
   const groups: { title: string; labels: string[] }[] = [];
   if (attrs) {
@@ -1580,7 +1352,7 @@ function GoodToKnow({ venue, unclaimed = false }: { venue: VenueDetailData; uncl
       if (labels.length > 0) groups.push({ title: t(`goodToKnow.groups.${g.title}`), labels });
     }
   }
-  if (groups.length === 0 && !price) return null;
+  if (groups.length === 0) return null;
 
   return (
     <section>
@@ -1590,10 +1362,6 @@ function GoodToKnow({ venue, unclaimed = false }: { venue: VenueDetailData; uncl
         </div>
         {unclaimed ? (
           <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{venue.source_attribution ?? t("fromPublicSources")}</span>
-        ) : price ? (
-          <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--crimson-700)", background: "var(--crimson-tint)", borderRadius: 999, padding: "3px 10px" }}>
-            {price} <span style={{ fontWeight: 400 }}>{t("goodToKnow.perPerson")}</span>
-          </span>
         ) : null}
       </div>
       {groups.length > 0 ? (
@@ -1657,73 +1425,6 @@ function ErrorState({ message }: { message: string }) {
       </div>
       <p style={{ color: "var(--muted)" }}>{message}</p>
     </div>
-  );
-}
-
-/**
- * Opening hours — renders the 7 human-readable day strings our ingest stores
- * (OpeningTimes.weekdayDescriptions from @roam/core/places). Tolerant by design:
- * renders nothing when hours are absent or malformed, so a venue without hours simply
- * omits the block rather than showing an empty shell. Hours are venue facts (shown in
- * every loaded state), not claim-state facts.
- */
-function OpeningHours({ openingTimes }: { openingTimes: VenueDetailData["opening_times"] }) {
-  const t = useTranslations("venueDetail");
-  const days = openingTimes?.weekdayDescriptions;
-  if (!Array.isArray(days) || days.length === 0) return null;
-  const clean = days.filter((d): d is string => typeof d === "string" && d.length > 0);
-  if (clean.length === 0) return null;
-
-  // "Open now" status — computed at render from structured periods + timezone (owner
-  // venues only). Returns status 'unknown' for legacy Places string-only hours, in
-  // which case we show no pill and render exactly as before. Evaluated once at render
-  // (accurate on load); a live-ticking clock is intentionally deferred.
-  const open = isOpenNow(openingTimes, new Date());
-  const pill =
-    open.status === "open"
-      ? { text: open.nextChange ? t("hours.openNowCloses", { time: open.nextChange.at }) : t("hours.openNow"), on: true }
-      : open.status === "closed"
-        ? { text: open.nextChange ? t("hours.closedOpens", { time: open.nextChange.at }) : t("hours.closed"), on: false }
-        : null;
-  return (
-    <Card flat style={{ marginTop: "var(--space-6)", padding: "var(--space-4)" }}>
-      <div
-        style={{
-          fontFamily: "var(--mono)",
-          fontSize: 10,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "var(--space-3)",
-        }}
-      >
-        {t("hours.title")}
-      </div>
-      {pill ? (
-        <div
-          style={{
-            display: "inline-block",
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: "2px 10px",
-            borderRadius: 999,
-            marginBottom: "var(--space-3)",
-            color: pill.on ? "var(--ink)" : "var(--ink-2)",
-            background: pill.on ? "var(--line)" : "transparent",
-            border: pill.on ? "none" : "1px solid var(--line-2)",
-          }}
-        >
-          {pill.text}
-        </div>
-      ) : null}
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-1)" }}>
-        {clean.map((line) => (
-          <li key={line} style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-            {line}
-          </li>
-        ))}
-      </ul>
-    </Card>
   );
 }
 

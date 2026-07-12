@@ -688,7 +688,9 @@
       "roam": "Roam",
       "roamBasis": "Based on {count} Roam reviews",
       "alsoLine": "{label}: ★ {rating} ({count})"
-    }
+    },
+    "manageCardTitle": "Your venue",
+    "manageCardBody": "Post updates, publish offers and manage your page."
   },
   "venueCard": {
     "priceFree": "Free",
