@@ -558,7 +558,12 @@
       "submittedTitle": "Claim submitted",
       "submittedBody": "Thanks — your claim is now with us for verification. Once it's approved you'll be able to manage this venue, add photos and details, and post to people nearby.",
       "underReviewTitle": "Claim under review",
-      "underReviewBody": "A claim for this venue has been submitted and is being verified. Check back soon — once it's approved the venue's owner can keep its details up to date."
+      "underReviewBody": "A claim for this venue has been submitted and is being verified. Check back soon — once it's approved the venue's owner can keep its details up to date.",
+      "bannerTitle": "Is this your business?",
+      "bannerBody": "Claim it free to add photos, offers, your menu & links — about 90 seconds.",
+      "claimThis": "Claim this venue",
+      "ownTitle": "Own this business?",
+      "ownBody": "Claim it to reply to reviews, post offers and reach every local following."
     },
     "details": {
       "title": "Details",
@@ -619,7 +624,8 @@
         "wheelchairAccessibleParking": "Wheelchair parking",
         "wheelchairAccessibleRestroom": "Wheelchair toilet",
         "wheelchairAccessibleSeating": "Wheelchair seating"
-      }
+      },
+      "perPersonShort": "pp"
     },
     "hours": {
       "title": "Opening hours",
@@ -665,7 +671,20 @@
       "googleEmpty": "No Google reviews to show.",
       "writeGoogle": "Write a Google review",
       "poweredByGoogle": "Reviews powered by Google",
-      "viewOnGoogle": "View on Google Maps"
+      "viewOnGoogle": "View on Google Maps",
+      "promptNamed": "Been to {name}?",
+      "promptSub": "Rate it and help fellow locals decide."
+    },
+    "seeAllPhotos": "See all {count} photos",
+    "newToRoam": "New to Roam",
+    "whereToFind": "Where to find it",
+    "suggestEditPrompt": "Know this place? Help fellow locals — suggest a photo, the opening hours or a fix.",
+    "suggestEdit": "Suggest an edit",
+    "ratingCard": {
+      "title": "Rating",
+      "google": "Google",
+      "count": "{count} ratings",
+      "write": "Write a review"
     }
   },
   "venueCard": {
