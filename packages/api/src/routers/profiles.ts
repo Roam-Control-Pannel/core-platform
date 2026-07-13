@@ -84,6 +84,10 @@ export const profilesRouter = router({
    * Public: read another user's public profile by id (for their wall header etc.).
    * profiles_read RLS is `using (true)`, so this surfaces only the public-facing columns —
    * the same fields shown wherever a user appears. Returns null if no such profile.
+   *
+   * Wall views is the one OWNER-ONLY field here: it's a private insight (how many people viewed
+   * your wall), so the count is included in the response only when the caller IS the profile's
+   * owner. Every other viewer — signed-in or anonymous — never receives the number at all.
    */
   byId: publicProcedure
     .input(z.object({ userId: z.string().uuid() }))
@@ -107,6 +111,15 @@ export const profilesRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load profile: ${error.message}` });
       }
       if (!data) return null;
+      // Resolve the caller (best-effort; anonymous stays null) to gate the owner-only wall-view count.
+      let viewerId: string | null = null;
+      try {
+        const { data: u } = await ctx.db.auth.getUser();
+        viewerId = u.user?.id ?? null;
+      } catch {
+        viewerId = null;
+      }
+      const isOwner = viewerId != null && viewerId === data.id;
       return {
         id: data.id,
         handle: data.handle ?? null,
@@ -120,7 +133,8 @@ export const profilesRouter = router({
         website: firstWebsite((data as { social_links?: unknown }).social_links),
         homeLocality: (data as { home_locality?: string | null }).home_locality ?? null,
         verifiedLocal: (data as { verified_local?: boolean | null }).verified_local ?? false,
-        wallViews: (data as { wall_view_count?: number | null }).wall_view_count ?? 0,
+        // Owner-only: absent from the payload for every other viewer (privacy, not just UI hiding).
+        wallViews: isOwner ? ((data as { wall_view_count?: number | null }).wall_view_count ?? 0) : null,
       };
     }),
 
