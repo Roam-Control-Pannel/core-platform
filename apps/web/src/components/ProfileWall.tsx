@@ -40,7 +40,8 @@ export interface PublicProfile {
   website?: string | null;
   homeLocality?: string | null;
   verifiedLocal?: boolean;
-  wallViews?: number;
+  /** Owner-only: a number for you on your own profile, null/absent for every other viewer. */
+  wallViews?: number | null;
 }
 interface WallMedia {
   type: "image" | "video";
@@ -385,9 +386,12 @@ function ProfileHeader({
         </div>
       </div>
 
-      {(isOwner && counts) || profile.wallViews != null ? (
+      {/* Stat row is owner-only: friends/following/plans and the private Wall-views insight are
+          shown to you on your own profile, never to visitors. (The API also withholds wallViews
+          from non-owners, so the count isn't even sent to them.) */}
+      {isOwner && (counts || profile.wallViews != null) ? (
         <div style={{ display: "flex", gap: "var(--space-6)", marginTop: "var(--space-4)", padding: "0 var(--space-2)", flexWrap: "wrap" }}>
-          {isOwner && counts ? (
+          {counts ? (
             <>
               <StatCell value={compactNumber(counts.friends)} label={t("stats.friends")} />
               <StatCell value={compactNumber(counts.following)} label={t("stats.following")} />
