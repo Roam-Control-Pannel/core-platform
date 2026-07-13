@@ -906,7 +906,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         </div>
       ) : null}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)", rowGap: "var(--space-2)", marginTop: "var(--space-3)" }}>
         <input
           ref={fileRef}
           type="file"
@@ -952,8 +952,7 @@ function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => vo
         >
           <Icon name="place" size={14} /> {t("composer.checkIn")}
         </Button>
-        <span style={{ flex: 1 }} />
-        <Button variant="pri" size="sm" onClick={() => void submit()} disabled={!canPost}>
+        <Button variant="pri" size="sm" onClick={() => void submit()} disabled={!canPost} style={{ marginLeft: "auto" }}>
           {busy ? t("composer.posting") : t("composer.post")}
         </Button>
       </div>
