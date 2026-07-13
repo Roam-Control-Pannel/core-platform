@@ -143,8 +143,8 @@ export async function ingestCategoryCore(
 
   // (1) Freshness check — skip the paid call if we already have fresh coverage.
   const { data: freshData, error: freshErr } = await rpc("count_fresh_places_venues", {
-    lat: snapped.lat,
-    lng: snapped.lng,
+    origin_lat: snapped.lat,
+    origin_lng: snapped.lng,
     radius_m: args.radiusMetres,
     cat: args.category,
   });
@@ -559,8 +559,8 @@ export const placesRouter = router({
       const readByName = async () => {
         const { data, error } = await rpc("venues_search_by_name", {
           q: input.q,
-          lat: input.lat,
-          lng: input.lng,
+          origin_lat: input.lat,
+          origin_lng: input.lng,
           max_results: 20,
         });
         if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Name search failed: ${error.message}` });

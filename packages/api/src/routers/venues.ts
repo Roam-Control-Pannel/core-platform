@@ -416,8 +416,8 @@ export const venuesRouter = router({
     .query(async ({ ctx, input }) => {
       const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
       const { data, error } = await rpc("venues_near", {
-        lat: input.lat,
-        lng: input.lng,
+        origin_lat: input.lat,
+        origin_lng: input.lng,
         max_results: input.limit,
       });
       if (error) throw new Error(`Failed to load nearby venues: ${error.message}`);
@@ -468,8 +468,8 @@ export const venuesRouter = router({
       const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
       const { data, error } = await rpc("venues_in_category_near", {
         filter_category: input.category,
-        lat: input.lat,
-        lng: input.lng,
+        origin_lat: input.lat,
+        origin_lng: input.lng,
         page_size: input.pageSize,
         page_offset: input.pageOffset,
       });
