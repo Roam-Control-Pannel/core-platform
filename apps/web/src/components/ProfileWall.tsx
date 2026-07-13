@@ -320,12 +320,13 @@ function ProfileHeader({
         ) : null}
       </div>
 
-      {/* Identity row: overlapping avatar · name/handle/bio · Share + owner-or-visitor actions. */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-4)", flexWrap: "wrap", padding: "0 var(--space-2)" }}>
-        <div style={{ marginTop: -44, position: "relative" }}>
+      {/* Identity row: overlapping avatar · name/handle/bio · Share + owner-or-visitor actions.
+          Reflows on mobile (see .identityRow in the module) so the actions never squeeze the name. */}
+      <div className={styles.identityRow}>
+        <div style={{ marginTop: -44, position: "relative", flexShrink: 0 }}>
           <Avatar url={profile.avatarUrl} name={townHallAuthor(profileToAuthor(profile))} size={96} ring />
         </div>
-        <div style={{ minWidth: 0, flex: 1, paddingTop: "var(--space-3)" }}>
+        <div className={styles.identityMain}>
           <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 26, letterSpacing: "-.015em", margin: 0, lineHeight: 1.15 }}>
             {profile.displayName ?? (profile.handle ? `@${profile.handle}` : t("header.roamMember"))}
           </h1>
@@ -357,7 +358,7 @@ function ProfileHeader({
             </div>
           ) : null}
         </div>
-        <div style={{ display: "flex", gap: "var(--space-2)", paddingTop: "var(--space-3)", flexShrink: 0 }}>
+        <div className={styles.identityActions}>
           <CopyLinkButton
             variant="button"
             size="sm"
