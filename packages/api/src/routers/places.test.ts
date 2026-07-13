@@ -246,8 +246,8 @@ describe("ingestCategoryCore — cost control (budget + per-client limit + snapp
     // 54.5253 -> 54.525, -1.5849 -> -1.585 on the 0.005° grid; both the freshness RPC and
     // the searchNearby centre must use the SNAPPED point (so they share one cache key).
     const fresh = calls.find((c) => c.fn === "count_fresh_places_venues");
-    expect(fresh!.args.lat).toBeCloseTo(54.525, 6);
-    expect(fresh!.args.lng).toBeCloseTo(-1.585, 6);
+    expect(fresh!.args.origin_lat).toBeCloseTo(54.525, 6);
+    expect(fresh!.args.origin_lng).toBeCloseTo(-1.585, 6);
     expect(center!.lat).toBeCloseTo(54.525, 6);
     expect(center!.lng).toBeCloseTo(-1.585, 6);
   });
