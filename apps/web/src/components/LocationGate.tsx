@@ -22,6 +22,7 @@ import { Button, Icon } from "@roam/design";
 import { useSession } from "./TrpcProvider";
 import { useCurrentPlace, hasStoredPlace } from "../lib/currentPlace";
 import { detectPlaceFromIp } from "../lib/detectPlace";
+import styles from "./LocationGate.module.css";
 
 const SNOOZE_KEY = "roam:locationPrompt:snooze";
 const SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -104,34 +105,9 @@ export function LocationGate() {
   if (!show) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        left: "var(--space-3)",
-        right: "var(--space-3)",
-        bottom: "calc(84px + env(safe-area-inset-bottom))",
-        zIndex: 60,
-        display: "grid",
-        placeItems: "center",
-        pointerEvents: "none",
-      }}
-    >
-      <div
-        role="dialog"
-        aria-label={t("title")}
-        style={{
-          pointerEvents: "auto",
-          width: "100%",
-          maxWidth: 420,
-          display: "grid",
-          gap: "var(--space-3)",
-          background: "var(--paper)",
-          border: "1px solid var(--line)",
-          borderRadius: 16,
-          boxShadow: "var(--shadow-pop, 0 8px 30px rgba(0,0,0,.16))",
-          padding: "var(--space-4)",
-        }}
-      >
+    <div className={styles.wrap}>
+      <div className={styles.inner}>
+      <div role="dialog" aria-label={t("title")} className={styles.card}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)" }}>
           <span
             aria-hidden
@@ -156,6 +132,7 @@ export function LocationGate() {
             {locating ? t("locating") : t("allow")}
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
