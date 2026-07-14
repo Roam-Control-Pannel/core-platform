@@ -516,7 +516,9 @@
       "title": "Nothing here yet",
       "body": "No venues match this view. Try another category or place, or check back as Roam grows in your area.",
       "searchTitle": "No match found",
-      "searchBody": "We couldn't find that place on Roam or the web. Check the spelling, or try a shorter name."
+      "searchBody": "We couldn't find that place on Roam or the web. Check the spelling, or try a shorter name.",
+      "outOfAreaTitle": "Roam isn't live in {place} yet",
+      "outOfAreaBody": "We're expanding across the UK. Search for your town, or pick one of our live areas from the place menu above."
     },
     "errors": {
       "loadFailed": "Failed to load venues.",
@@ -2136,5 +2138,14 @@
       "startFailed": "Couldn't start payout setup.",
       "openStripeFailed": "Couldn't open Stripe."
     }
+  },
+  "locationGate": {
+    "title": "See what's near you",
+    "body": "Share your location for local venues, plans and news.",
+    "allow": "Use my location",
+    "dismiss": "Not now",
+    "locating": "Locating…",
+    "nearMe": "Near me",
+    "yourLocation": "Your location"
   }
 }
