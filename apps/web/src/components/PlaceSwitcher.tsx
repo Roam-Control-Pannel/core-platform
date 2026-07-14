@@ -33,7 +33,7 @@ function PinIcon() {
 
 /** How a place came to be the active one — drives the anonymous discovery meter (only `search`
  *  counts; the user's own location + the suggested/saved/default centres are always free). */
-export type PlaceSource = "search" | "current" | "suggested" | "saved" | "default";
+export type PlaceSource = "search" | "current" | "suggested" | "saved" | "default" | "detected";
 
 export interface Place {
   id: string;

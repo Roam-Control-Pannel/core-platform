@@ -597,7 +597,13 @@ export function Explore() {
             ) : venues === null ? (
               discovering ? <DiscoveringState placeName={place.name} /> : <VenueGridSkeleton />
             ) : shown.length === 0 ? (
-              webSearching ? <SearchingWebState query={query.trim()} /> : <EmptyState searched={query.trim().length >= 3} />
+              webSearching ? <SearchingWebState query={query.trim()} /> : (
+                <EmptyState
+                  searched={query.trim().length >= 3}
+                  outOfArea={query.trim().length < 3 && (!place.source || place.source === "detected" || place.source === "default")}
+                  placeName={place.name}
+                />
+              )
             ) : (
               <>
                 <div className={styles.grid}>
@@ -769,15 +775,19 @@ function VenueGridSkeleton() {
   );
 }
 
-function EmptyState({ searched }: { searched?: boolean }) {
+function EmptyState({ searched, outOfArea, placeName }: { searched?: boolean; outOfArea?: boolean; placeName?: string }) {
   const t = useTranslations("explore");
+  // Out-of-area: the place is a GUESS (IP/default) and has no venues yet — be honest that Roam
+  // isn't live there rather than implying the town is simply quiet. Points them to search/switch.
+  const title = outOfArea ? t("empty.outOfAreaTitle", { place: placeName ?? "" }) : searched ? t("empty.searchTitle") : t("empty.title");
+  const body = outOfArea ? t("empty.outOfAreaBody") : searched ? t("empty.searchBody") : t("empty.body");
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)", color: "var(--ink-2)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
-        {searched ? t("empty.searchTitle") : t("empty.title")}
+        {title}
       </div>
       <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>
-        {searched ? t("empty.searchBody") : t("empty.body")}
+        {body}
       </p>
     </div>
   );
