@@ -1,0 +1,52 @@
+/*
+ * Location card positioning. It's a fixed overlay, but should sit over the MAIN CONTENT / feed
+ * column — not centred across the whole viewport, where on desktop it drifts under the right rail.
+ * So the inner box mirrors the app's content shell (max-width 1180) and, from 1000px, the home
+ * feed+rail split (1fr / 360px), placing the card centred within the feed column. Mobile: a
+ * centred bottom card that clears the tab bar.
+ */
+.wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 60;
+  pointer-events: none;
+  padding: 0 var(--space-4);
+}
+.inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+.card {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  gap: var(--space-3);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop, 0 8px 30px rgba(0, 0, 0, 0.16));
+  padding: var(--space-4);
+}
+
+/* Desktop: no tab bar to clear, and the content is a feed + 360px rail — centre the card within
+   the feed column (the "wall space") so it isn't crowding the right-hand sidebar. */
+@media (min-width: 1000px) {
+  .wrap {
+    bottom: var(--space-6);
+  }
+  .inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: var(--space-6);
+    align-items: end;
+  }
+  .card {
+    grid-column: 1;
+    justify-self: center;
+  }
+}
