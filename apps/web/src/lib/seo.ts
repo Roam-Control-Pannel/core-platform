@@ -215,6 +215,27 @@ export function profileMetadata(profile: ProfileSeo | null, id: string): Metadat
   };
 }
 
+/**
+ * Personal invite link (/i/<handle>) — a warm, shareable card that names the inviter. noindex
+ * (it's a personal invite, not a discovery page), but a rich branded OG image so the share preview
+ * in a chat/DM reads "<Name> is inviting you to Roam".
+ */
+export function inviteMetadata(profile: ProfileSeo | null, handle: string): Metadata {
+  const url = absUrl(`/i/${profile?.handle ?? handle}`);
+  const name = profile
+    ? (profile.displayName && profile.displayName.trim()) || (profile.handle ? `@${profile.handle}` : "A Roam member")
+    : "A friend";
+  const title = `${name} is inviting you to Roam`;
+  const description = "Your town's local guide — discover places, plans and the people near you. Join and connect.";
+  return {
+    title,
+    description,
+    robots: { index: false, follow: true },
+    alternates: { canonical: url },
+    ...social({ title, description, url, badge: "You're invited" }),
+  };
+}
+
 export function postMetadata(post: PostSeo | null, id: string): Metadata {
   const path = `/feed/${id}`;
   if (!post) return notFoundMeta(path);
