@@ -447,6 +447,10 @@ export async function enrichVenueCore(
     p_website: rich.website_url,
     p_price_range: rich.price_range,
     p_attributes: rich.attributes,
+    // Marks a since-closed venue (Details still reports closure even when search hides it); reads
+    // then filter out the permanently closed (migration 0096). Backward-compatible: the DB param
+    // has a default, so this key is ignored by the pre-0096 5-arg function.
+    p_business_status: rich.business_status,
   });
   if (writeErr) throw new Error(`Venue detail write failed: ${writeErr.message}`);
 
