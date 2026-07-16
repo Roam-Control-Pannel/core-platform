@@ -2178,6 +2178,7 @@
     "shareCta": "Share location",
     "sharing": "Sharing…",
     "sharingUntil": "Sharing your location until {time}",
-    "stopSharing": "Stop"
+    "stopSharing": "Stop",
+    "alertHint": "While you're sharing your location, nearby friends get a heads-up that you're free."
   }
 }

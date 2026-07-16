@@ -4,6 +4,8 @@ import {
   buildPresenceRow,
   isLive,
   isLocationLive,
+  alertName,
+  buildNearbyAlert,
   NOTE_MAX,
   DEFAULT_TTL_HOURS,
   type PresenceRow,
@@ -102,5 +104,28 @@ describe("isLocationLive", () => {
   it("false when there's no share (null / undefined)", () => {
     expect(isLocationLive(null, NOW)).toBe(false);
     expect(isLocationLive(undefined, NOW)).toBe(false);
+  });
+});
+
+describe("alertName", () => {
+  it("prefers a trimmed display name", () => {
+    expect(alertName("  Alex Rivera ", "arivera")).toBe("Alex Rivera");
+  });
+  it("falls back to @handle when no display name", () => {
+    expect(alertName(null, "arivera")).toBe("@arivera");
+    expect(alertName("   ", "arivera")).toBe("@arivera");
+  });
+  it("neutral fallback when neither is set", () => {
+    expect(alertName(null, null)).toBe("A friend");
+    expect(alertName(undefined, undefined)).toBe("A friend");
+  });
+});
+
+describe("buildNearbyAlert", () => {
+  it("names the friend in the body and deep-links to /friends, no venueId", () => {
+    const p = buildNearbyAlert("Alex");
+    expect(p.body).toContain("Alex");
+    expect(p.url).toBe("/friends");
+    expect(p).not.toHaveProperty("venueId");
   });
 });

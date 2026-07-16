@@ -17,19 +17,55 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
-import { router, protectedProcedure } from "../trpc.js";
+import { router, protectedProcedure, escalateToService } from "../trpc.js";
+import type { Context } from "../context.js";
+import { pushToProfileIds } from "../push/dispatch.js";
 import {
   AVAILABILITY,
   DEFAULT_LOCATION_TTL_HOURS,
   MAX_LOCATION_TTL_HOURS,
   MAX_TTL_HOURS,
   NOTE_MAX,
+  alertName,
+  buildNearbyAlert,
   buildPresenceRow,
   isLive,
   isLocationLive,
   type Availability,
   type PresenceRow,
 } from "../presence.js";
+
+/** Radius + cooldown for proximity alerts. 5 km catches "in the same town"; 3 h stops re-nagging. */
+const ALERT_RADIUS_M = 5000;
+const ALERT_COOLDOWN_SECS = 3 * 60 * 60;
+
+/**
+ * Best-effort proximity ping (PR 3): if the caller is currently free_to_meet AND sharing a live
+ * location, notify their nearby location-sharing friends ("{name} is nearby and free"). The DB
+ * function claim_nearby_alert_targets does the whole gate — caller-state check, are_friends filter,
+ * radius, and per-pair throttle — atomically, and returns only the ids to notify. We then fan the
+ * web-push out via the service client. NEVER throws into the mutation: a push problem must not fail
+ * "set my status". Fire-and-forget from the caller (this is a persistent Node service).
+ */
+async function pingNearbyFriends(ctx: Context, callerId: string): Promise<void> {
+  const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+  const { data, error } = await rpc("claim_nearby_alert_targets", {
+    radius_m: ALERT_RADIUS_M,
+    cooldown_secs: ALERT_COOLDOWN_SECS,
+  });
+  if (error || !data) return;
+  const targetIds = (data as { profile_id: string }[]).map((r) => r.profile_id).filter(Boolean);
+  if (targetIds.length === 0) return;
+
+  const service = escalateToService(ctx.env);
+  const { data: prof } = await service
+    .from("profiles")
+    .select("display_name, handle")
+    .eq("id", callerId)
+    .single();
+  const name = alertName(prof?.display_name ?? null, prof?.handle ?? null);
+  await pushToProfileIds(service, ctx.env.vapid, targetIds, buildNearbyAlert(name));
+}
 
 /** A row from the friends_availability() RPC — a friend's live status plus their profile basics.
  *  Internal: procedures map it to an inline literal so the inferred AppRouter type stays portable. */
@@ -137,6 +173,12 @@ export const presenceRouter = router({
         });
       }
       const saved = data as PresenceRow;
+      // Proximity ping: only when the new status is "free to meet". The DB re-checks that the caller
+      // is also sharing a live location, so setting a status without sharing simply notifies no one.
+      // Fire-and-forget — it must never block or fail the "set status" response.
+      if (saved.availability === "free_to_meet") {
+        void pingNearbyFriends(ctx, profile_id).catch(() => {});
+      }
       return { availability: saved.availability, note: saved.note, expires_at: saved.expires_at };
     }),
 
@@ -185,6 +227,7 @@ export const presenceRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const uid = await callerId(ctx.db);
       const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
       const { data, error } = await rpc("set_my_location", {
         p_lat: input.lat,
@@ -198,6 +241,9 @@ export const presenceRouter = router({
           message: `Failed to share your location: ${error.message}`,
         });
       }
+      // Now sharing a live location — if the caller is also free_to_meet, this pings nearby friends
+      // (the DB gate no-ops otherwise). Fire-and-forget; never blocks the response.
+      void pingNearbyFriends(ctx, uid).catch(() => {});
       return { expiresAt: (data ?? null) as string | null };
     }),
 

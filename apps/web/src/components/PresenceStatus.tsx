@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Card, Button } from "@roam/design";
+import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 
 type Availability = "free_to_meet" | "out_and_about" | "heads_down";
@@ -152,6 +152,14 @@ export function PresenceStatus() {
           );
         })}
       </div>
+
+      {/* Disclosure: "free to meet" is the signal that triggers proximity pings to nearby friends. */}
+      {selected === "free_to_meet" ? (
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 12.5, color: "var(--muted)", marginBottom: "var(--space-3)", lineHeight: 1.4 }}>
+          <Icon name="locate" size={14} />
+          <span>{t("alertHint")}</span>
+        </div>
+      ) : null}
 
       {/* Optional note — only relevant when a state is chosen */}
       {selected ? (

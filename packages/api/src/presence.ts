@@ -87,3 +87,22 @@ export function isLocationLive(geoExpiresAt: string | null | undefined, nowMs: n
   if (!geoExpiresAt) return false;
   return new Date(geoExpiresAt).getTime() > nowMs;
 }
+
+/** Pick the human name for a proximity alert: display name, else @handle, else a neutral fallback. */
+export function alertName(displayName: string | null | undefined, handle: string | null | undefined): string {
+  const d = displayName?.trim();
+  if (d) return d;
+  const h = handle?.trim();
+  if (h) return `@${h}`;
+  return "A friend";
+}
+
+/** The web-push payload for a "friend is nearby and free" alert (PR 3). No venueId — deep-links to
+ *  /friends. Kept pure + here so the copy is unit-tested (push text is English server-side today). */
+export function buildNearbyAlert(name: string): { title: string; body: string; url: string } {
+  return {
+    title: "A friend's nearby",
+    body: `${name} is nearby and free to meet up`,
+    url: "/friends",
+  };
+}
