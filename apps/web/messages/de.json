@@ -2030,5 +2030,54 @@
       "startFailed": "Auszahlungs-Einrichtung konnte nicht gestartet werden.",
       "openStripeFailed": "Stripe konnte nicht geöffnet werden."
     }
+  },
+  "presence": {
+    "yourStatus": "Dein Status",
+    "hint": "Nur deine Freunde sehen das, und es verschwindet von selbst.",
+    "choosePrompt": "Zeig deinen Freunden, dass du da bist",
+    "notePlaceholder": "Notiz hinzufügen — z. B. Zeit für einen Kaffee ☕",
+    "share": "Teilen",
+    "update": "Aktualisieren",
+    "clear": "Löschen",
+    "saving": "Wird gespeichert…",
+    "activeNote": "Für deine Freunde sichtbar",
+    "friendsFree": "Gerade in der Nähe",
+    "labels": {
+      "free_to_meet": "Zeit zum Treffen",
+      "out_and_about": "Unterwegs",
+      "heads_down": "Konzentriert"
+    },
+    "someone": "Jemand",
+    "nearbyTitle": "In deiner Nähe",
+    "seeNearby": "Sieh, wer in der Nähe ist",
+    "locating": "Standort wird ermittelt…",
+    "locError": "Dein Standort konnte nicht ermittelt werden. Prüfe die Standortfreigabe deines Browsers und versuch es erneut.",
+    "noneNearby": "Gerade teilt keiner deiner Freunde seinen Standort.",
+    "refresh": "Aktualisieren",
+    "distanceAway": "{distance} entfernt",
+    "shareBlurb": "Teile deinen Standort, damit Freunde dich finden. Er ist präzise, nur deine Freunde sehen ihn, und er stoppt von selbst.",
+    "shareDuration": "Wie lange teilen",
+    "hoursShort": "{h}h",
+    "shareCta": "Standort teilen",
+    "sharing": "Wird geteilt…",
+    "sharingUntil": "Du teilst deinen Standort bis {time}",
+    "stopSharing": "Stopp",
+    "alertHint": "Während du deinen Standort teilst, bekommen Freunde in der Nähe einen Hinweis, dass du Zeit hast.",
+    "mapAria": "Karte mit Freunden, die ihren Standort in der Nähe teilen",
+    "youAreHere": "Du bist hier"
+  },
+  "presenceAlertSettings": {
+    "title": "Freunde in der Nähe",
+    "label": "Freunde dürfen mich benachrichtigen, wenn sie in der Nähe und frei sind",
+    "hint": "Wenn ein Freund in deiner Nähe unterwegs und frei für ein Treffen ist, bekommst du einen Hinweis. Schalte das aus, um diese Hinweise zu stoppen — deine Freunde siehst du weiterhin unter Freunde."
+  },
+  "locationGate": {
+    "title": "Sieh, was in deiner Nähe ist",
+    "body": "Teile deinen Standort für lokale Locations, Pläne und News.",
+    "allow": "Meinen Standort verwenden",
+    "dismiss": "Jetzt nicht",
+    "locating": "Standort wird ermittelt…",
+    "nearMe": "In meiner Nähe",
+    "yourLocation": "Dein Standort"
   }
 }

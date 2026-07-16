@@ -2030,5 +2030,54 @@
       "startFailed": "Impossibile avviare la configurazione degli incassi.",
       "openStripeFailed": "Impossibile aprire Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Il tuo stato",
+    "hint": "Solo i tuoi amici possono vederlo, e si cancella da solo.",
+    "choosePrompt": "Fai sapere agli amici che ci sei",
+    "notePlaceholder": "Aggiungi una nota — es. Libero per un caffè ☕",
+    "share": "Condividi",
+    "update": "Aggiorna",
+    "clear": "Cancella",
+    "saving": "Salvataggio…",
+    "activeNote": "Visibile ai tuoi amici",
+    "friendsFree": "In giro adesso",
+    "labels": {
+      "free_to_meet": "Libero per vedersi",
+      "out_and_about": "In giro",
+      "heads_down": "Concentrato"
+    },
+    "someone": "Qualcuno",
+    "nearbyTitle": "Vicino a te",
+    "seeNearby": "Guarda chi è nei paraggi",
+    "locating": "Localizzazione…",
+    "locError": "Non siamo riusciti a rilevare la tua posizione. Controlla i permessi di localizzazione del browser e riprova.",
+    "noneNearby": "Nessun amico sta condividendo la propria posizione al momento.",
+    "refresh": "Aggiorna",
+    "distanceAway": "A {distance}",
+    "shareBlurb": "Condividi la tua posizione così gli amici possono trovarti. È precisa, la vedono solo i tuoi amici e si interrompe da sola.",
+    "shareDuration": "Per quanto condividere",
+    "hoursShort": "{h}h",
+    "shareCta": "Condividi posizione",
+    "sharing": "Condivisione…",
+    "sharingUntil": "Condividi la tua posizione fino alle {time}",
+    "stopSharing": "Interrompi",
+    "alertHint": "Mentre condividi la tua posizione, gli amici nei paraggi ricevono un avviso che sei libero.",
+    "mapAria": "Mappa degli amici che condividono la posizione qui vicino",
+    "youAreHere": "Sei qui"
+  },
+  "presenceAlertSettings": {
+    "title": "Amici nei paraggi",
+    "label": "Permetti agli amici di avvisarmi quando sono nei paraggi e liberi",
+    "hint": "Quando un amico è in giro e libero per vedersi vicino a te, riceverai un avviso. Disattiva per non ricevere più questi avvisi — vedrai comunque gli amici nella pagina Amici."
+  },
+  "locationGate": {
+    "title": "Scopri cosa c'è vicino a te",
+    "body": "Condividi la tua posizione per locali, programmi e notizie della zona.",
+    "allow": "Usa la mia posizione",
+    "dismiss": "Non ora",
+    "locating": "Localizzazione…",
+    "nearMe": "Vicino a me",
+    "yourLocation": "La tua posizione"
   }
 }

@@ -2030,5 +2030,54 @@
       "startFailed": "Impossible de lancer la configuration des virements.",
       "openStripeFailed": "Impossible d'ouvrir Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Ton statut",
+    "hint": "Seuls tes amis peuvent le voir, et ça disparaît tout seul.",
+    "choosePrompt": "Dis à tes amis que tu es dans le coin",
+    "notePlaceholder": "Ajoute un mot — ex. Dispo pour un café ☕",
+    "share": "Partager",
+    "update": "Mettre à jour",
+    "clear": "Effacer",
+    "saving": "Enregistrement…",
+    "activeNote": "Visible par tes amis",
+    "friendsFree": "Dans le coin en ce moment",
+    "labels": {
+      "free_to_meet": "Dispo pour se voir",
+      "out_and_about": "En vadrouille",
+      "heads_down": "Occupé"
+    },
+    "someone": "Quelqu'un",
+    "nearbyTitle": "Autour de toi",
+    "seeNearby": "Vois qui est à proximité",
+    "locating": "Localisation…",
+    "locError": "Impossible d'obtenir ta position. Vérifie l'autorisation de localisation de ton navigateur et réessaie.",
+    "noneNearby": "Aucun ami ne partage sa position pour l'instant.",
+    "refresh": "Actualiser",
+    "distanceAway": "à {distance}",
+    "shareBlurb": "Partage ta position pour que tes amis te trouvent. Elle est précise, seuls tes amis la voient, et ça s'arrête tout seul.",
+    "shareDuration": "Durée du partage",
+    "hoursShort": "{h}h",
+    "shareCta": "Partager ma position",
+    "sharing": "Partage…",
+    "sharingUntil": "Tu partages ta position jusqu'à {time}",
+    "stopSharing": "Arrêter",
+    "alertHint": "Pendant que tu partages ta position, tes amis à proximité sont prévenus que tu es dispo.",
+    "mapAria": "Carte des amis qui partagent leur position à proximité",
+    "youAreHere": "Tu es ici"
+  },
+  "presenceAlertSettings": {
+    "title": "Amis à proximité",
+    "label": "Laisser mes amis me prévenir quand ils sont à proximité et dispos",
+    "hint": "Quand un ami est de sortie et dispo pour se voir près de toi, tu es prévenu. Désactive pour ne plus recevoir ces alertes — tu verras toujours tes amis sur la page Amis."
+  },
+  "locationGate": {
+    "title": "Vois ce qu'il y a près de toi",
+    "body": "Partage ta position pour les lieux, sorties et actus du coin.",
+    "allow": "Utiliser ma position",
+    "dismiss": "Plus tard",
+    "locating": "Localisation…",
+    "nearMe": "Autour de moi",
+    "yourLocation": "Ta position"
   }
 }

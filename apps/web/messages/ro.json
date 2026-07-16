@@ -2030,5 +2030,54 @@
       "startFailed": "Nu am putut porni configurarea încasărilor.",
       "openStripeFailed": "Nu am putut deschide Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Statusul tău",
+    "hint": "Doar prietenii tăi pot vedea asta și se șterge singur automat.",
+    "choosePrompt": "Anunță-ți prietenii că ești prin preajmă",
+    "notePlaceholder": "Adaugă o notă — ex. Liber de o cafea ☕",
+    "share": "Distribuie",
+    "update": "Actualizează",
+    "clear": "Șterge",
+    "saving": "Se salvează…",
+    "activeNote": "Vizibil pentru prietenii tăi",
+    "friendsFree": "Prin preajmă acum",
+    "labels": {
+      "free_to_meet": "Liber de o întâlnire",
+      "out_and_about": "Prin oraș",
+      "heads_down": "Concentrat"
+    },
+    "someone": "Cineva",
+    "nearbyTitle": "În jurul tău",
+    "seeNearby": "Vezi cine e prin apropiere",
+    "locating": "Se localizează…",
+    "locError": "Nu ți-am putut afla locația. Verifică permisiunea de locație a browserului și încearcă din nou.",
+    "noneNearby": "Niciun prieten nu-și distribuie locația acum.",
+    "refresh": "Reîmprospătează",
+    "distanceAway": "la {distance}",
+    "shareBlurb": "Distribuie-ți locația ca prietenii să te găsească. E precisă, doar prietenii tăi o văd și se oprește singură.",
+    "shareDuration": "Cât timp distribui",
+    "hoursShort": "{h}h",
+    "shareCta": "Distribuie locația",
+    "sharing": "Se distribuie…",
+    "sharingUntil": "Îți distribui locația până la {time}",
+    "stopSharing": "Oprește",
+    "alertHint": "Cât timp îți distribui locația, prietenii din apropiere sunt anunțați că ești liber.",
+    "mapAria": "Harta prietenilor care își distribuie locația în apropiere",
+    "youAreHere": "Ești aici"
+  },
+  "presenceAlertSettings": {
+    "title": "Prieteni în apropiere",
+    "label": "Lasă prietenii să mă anunțe când sunt în apropiere și liberi",
+    "hint": "Când un prieten e prin oraș și liber de o întâlnire lângă tine, primești o alertă. Dezactivează asta ca să oprești acele alerte — tot îți vei vedea prietenii pe pagina Prieteni."
+  },
+  "locationGate": {
+    "title": "Vezi ce e lângă tine",
+    "body": "Distribuie-ți locația pentru localuri, planuri și noutăți locale.",
+    "allow": "Folosește locația mea",
+    "dismiss": "Nu acum",
+    "locating": "Se localizează…",
+    "nearMe": "Lângă mine",
+    "yourLocation": "Locația ta"
   }
 }
