@@ -18,6 +18,7 @@ import { Card } from "@roam/design";
 import { useSession, useTrpc } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { BirthdaySettings } from "./BirthdaySettings";
+import { PresenceAlertSettings } from "./PresenceAlertSettings";
 import { getSupabaseBrowser } from "../lib/supabase";
 import { useLocaleSetting } from "../lib/i18n/LocaleProvider";
 import type { Locale } from "../lib/i18n/runtime";
@@ -128,6 +129,7 @@ export function SettingsHub() {
           </Group>
 
           <BirthdaySettings />
+          <PresenceAlertSettings />
         </>
       ) : null}
 

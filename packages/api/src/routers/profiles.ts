@@ -545,15 +545,17 @@ export const profilesRouter = router({
     const db = ctx.db as unknown as Loose;
     const { data, error } = (await db
       .from("user_private")
-      .select("birth_date, birthday_offers_enabled")
+      .select("birth_date, birthday_offers_enabled, presence_alerts_enabled")
       .eq("user_id", uid)
-      .maybeSingle()) as { data: { birth_date: string | null; birthday_offers_enabled: boolean } | null; error: { message: string } | null };
+      .maybeSingle()) as { data: { birth_date: string | null; birthday_offers_enabled: boolean; presence_alerts_enabled: boolean } | null; error: { message: string } | null };
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your details: ${error.message}` });
     }
     return {
       birthDate: data?.birth_date ?? null,
       birthdayOffersEnabled: data?.birthday_offers_enabled ?? false,
+      // Default TRUE: proximity alerts are opt-OUT (friend-only + throttled + push-consent-gated).
+      presenceAlertsEnabled: data?.presence_alerts_enabled ?? true,
     };
   }),
 
@@ -570,6 +572,7 @@ export const profilesRouter = router({
           .nullable()
           .optional(),
         birthdayOffersEnabled: z.boolean().optional(),
+        presenceAlertsEnabled: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -587,6 +590,7 @@ export const profilesRouter = router({
         }
       }
       if (input.birthdayOffersEnabled !== undefined) patch["birthday_offers_enabled"] = input.birthdayOffersEnabled;
+      if (input.presenceAlertsEnabled !== undefined) patch["presence_alerts_enabled"] = input.presenceAlertsEnabled;
 
       type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       const db = ctx.db as unknown as Loose;
