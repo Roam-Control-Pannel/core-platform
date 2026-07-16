@@ -440,6 +440,7 @@ describe("placeRichFields", () => {
         startPrice: { currencyCode: "GBP", units: "10" },
         endPrice: { currencyCode: "GBP", units: "20" },
       },
+      businessStatus: "OPERATIONAL",
       outdoorSeating: true,
       servesVegetarianFood: true,
       liveMusic: false, // false is signal ("no live music"), not absence
@@ -448,6 +449,7 @@ describe("placeRichFields", () => {
     });
     expect(rich.phone).toBe("028 9024 1100");
     expect(rich.website_url).toBe("https://example.com/");
+    expect(rich.business_status).toBe("OPERATIONAL");
     expect(rich.price_range).toEqual({ start: 10, end: 20, currency: "GBP" });
     expect(rich.attributes).toEqual({
       outdoorSeating: true,
@@ -460,7 +462,13 @@ describe("placeRichFields", () => {
 
   it("returns all-null when Places gives no signal (never writes an empty bag)", () => {
     const rich = placeRichFields({ id: "p2" });
-    expect(rich).toEqual({ phone: null, website_url: null, price_range: null, attributes: null });
+    expect(rich).toEqual({ phone: null, website_url: null, price_range: null, attributes: null, business_status: null });
+  });
+
+  it("carries business_status so a since-closed venue gets marked on its next Details fetch", () => {
+    expect(placeRichFields({ id: "p5", businessStatus: "CLOSED_PERMANENTLY" }).business_status).toBe("CLOSED_PERMANENTLY");
+    expect(placeRichFields({ id: "p6", businessStatus: " OPERATIONAL " }).business_status).toBe("OPERATIONAL");
+    expect(placeRichFields({ id: "p7" }).business_status).toBeNull();
   });
 
   it("handles an open-ended price range and unparseable units", () => {

@@ -406,6 +406,7 @@ const richDetailsPlace: corePlaces.PlaceResult = {
   outdoorSeating: true,
   goodForChildren: true,
   paymentOptions: { acceptsCreditCards: true },
+  businessStatus: "OPERATIONAL",
 };
 
 const barePlace: corePlaces.PlaceResult = { id: "ChIJ_bare", displayName: { text: "No Facts" } };
@@ -439,6 +440,7 @@ describe("enrichVenueCore — on-demand venue enrichment", () => {
     expect(write!.args.p_phone).toBe("0151 227 4444"); // trimmed
     expect(write!.args.p_website).toBe("https://atlantictower.example/");
     expect(write!.args.p_price_range).toEqual({ start: 80, end: 150, currency: "GBP" });
+    expect(write!.args.p_business_status).toBe("OPERATIONAL"); // carried so a since-closed venue gets marked
     expect((write!.args.p_attributes as Record<string, unknown>).outdoorSeating).toBe(true);
     // And handed back to the caller for immediate render.
     expect(out.fields?.phone).toBe("0151 227 4444");

@@ -517,6 +517,11 @@ export interface PlaceRichFields {
   /** Boolean facts + option-group sub-objects; ONLY keys Places actually returned. Null
    *  when it returned none, so enrichment never overwrites data with an empty bag. */
   attributes: Record<string, boolean | Record<string, boolean>> | null;
+  /** "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null. Carried on enrichment so a
+   *  venue that has CLOSED since first ingest is marked on its next Details fetch (Places search
+   *  hides closed venues, but Details still reports them) — reads then filter out the permanently
+   *  closed. See migration 0096. */
+  business_status: string | null;
 }
 
 /** Parse a Places money `units` decimal string to a number, or null. */
@@ -556,6 +561,7 @@ export function placeRichFields(place: PlaceResult): PlaceRichFields {
     website_url: place.websiteUri?.trim() || null,
     price_range: start !== null || end !== null ? { start, end, currency } : null,
     attributes: Object.keys(attributes).length > 0 ? attributes : null,
+    business_status: place.businessStatus?.trim() || null,
   };
 }
 
