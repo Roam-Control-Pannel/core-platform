@@ -40,9 +40,11 @@ export interface VapidConfig {
   privateKey: string;
 }
 
-/** The notification content fanned out to every follower device. */
+/** The notification content fanned out to every target device. */
 export interface PushDispatchPayload {
-  venueId: string;
+  /** Optional — present for venue follower pushes, absent for non-venue pushes (e.g. friend
+   *  proximity alerts). The service worker already treats it as `venueId || null`. */
+  venueId?: string;
   /** Deep-link target the service worker opens on notificationclick. */
   url: string;
   title: string;
@@ -85,6 +87,11 @@ export async function dispatchFollowerPush(
   vapid: VapidConfig,
   payload: PushDispatchPayload,
 ): Promise<DispatchResult> {
+  // Follower push is venue-scoped by definition; venueId is required here (unlike the generic
+  // pushToProfileIds payload, where it's optional for non-venue alerts).
+  if (!payload.venueId) {
+    throw new Error("dispatchFollowerPush requires payload.venueId");
+  }
   // Followers of this venue who haven't muted its push, then fan out to their devices.
   const { data: followRows, error: followErr } = await service
     .from("follows")
@@ -129,7 +136,8 @@ export async function pushToProfileIds(
     title: payload.title,
     body: payload.body,
     url: payload.url,
-    venueId: payload.venueId,
+    // Only venue pushes carry a venueId; omit it entirely for non-venue payloads.
+    ...(payload.venueId ? { venueId: payload.venueId } : {}),
   });
 
   const result: DispatchResult = {
