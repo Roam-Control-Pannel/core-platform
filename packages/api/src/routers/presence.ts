@@ -20,10 +20,13 @@ import type { RoamClient } from "@roam/db";
 import { router, protectedProcedure } from "../trpc.js";
 import {
   AVAILABILITY,
+  DEFAULT_LOCATION_TTL_HOURS,
+  MAX_LOCATION_TTL_HOURS,
   MAX_TTL_HOURS,
   NOTE_MAX,
   buildPresenceRow,
   isLive,
+  isLocationLive,
   type Availability,
   type PresenceRow,
 } from "../presence.js";
@@ -41,13 +44,28 @@ interface FriendAvailabilityRow {
   updated_at: string;
 }
 
+/** A row from the friends_nearby() RPC — a friend sharing a live location, plus optional status. */
+interface FriendNearbyRow {
+  profile_id: string;
+  handle: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  availability: Availability | null;
+  note: string | null;
+  lat: number;
+  lng: number;
+  distance_m: number;
+  geo_expires_at: string | null;
+}
+
 /**
- * Widened surfaces — friend_presence and friends_availability() aren't in the generated DB types
- * until `pnpm db:types` is re-run, so the typed client rejects the table name / rpc name. We widen
+ * Widened surfaces — the friend_presence table and its functions aren't in the generated DB types
+ * until `pnpm db:types` is re-run, so the typed client rejects the table name / rpc names. We widen
  * JUST these calls (the rest of the client stays fully typed) — the same idiom proven in venues.ts.
  */
 type LooseRpc = (
   fn: string,
+  args?: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose table read, same idiom as venues.ts
 type LooseFrom = (t: string) => any;
@@ -148,4 +166,113 @@ export const presenceRouter = router({
       expires_at: r.expires_at,
     }));
   }),
+
+  // ── Live location sharing (PR 2) — ephemeral, precise, time-boxed ──────────────────────────────
+
+  /**
+   * Share my precise location with my friends for a bounded window (default 1h, capped 8h). Writes
+   * via the set_my_location definer function (constructs the point in SQL, scoped to auth.uid());
+   * touches only the geo_* columns, so an availability status is left intact. Returns when the share
+   * expires.
+   */
+  shareLocation: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        accuracyM: z.number().min(0).max(100_000).nullish(),
+        ttlHours: z.number().int().min(1).max(MAX_LOCATION_TTL_HOURS).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+      const { data, error } = await rpc("set_my_location", {
+        p_lat: input.lat,
+        p_lng: input.lng,
+        p_accuracy_m: input.accuracyM ?? null,
+        p_ttl_hours: input.ttlHours ?? DEFAULT_LOCATION_TTL_HOURS,
+      });
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to share your location: ${error.message}`,
+        });
+      }
+      return { expiresAt: (data ?? null) as string | null };
+    }),
+
+  /** Stop sharing my location — nulls the coordinate outright. No-op if I wasn't sharing. */
+  stopSharingLocation: protectedProcedure.mutation(async ({ ctx }) => {
+    const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+    const { error } = await rpc("stop_my_location", {});
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to stop sharing: ${error.message}`,
+      });
+    }
+    return { stopped: true as const };
+  }),
+
+  /** Whether I'm currently sharing my location, and until when. Reads my OWN row under RLS. */
+  myLocationShare: protectedProcedure.query(async ({ ctx }) => {
+    const profile_id = await callerId(ctx.db);
+    const from = ctx.db.from.bind(ctx.db) as unknown as LooseFrom;
+    const { data, error } = await from("friend_presence")
+      .select("geo_expires_at")
+      .eq("profile_id", profile_id)
+      .maybeSingle();
+    if (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to load your location share: ${error.message}`,
+      });
+    }
+    const geoExpiresAt = ((data as { geo_expires_at?: string | null } | null)?.geo_expires_at ?? null);
+    return isLocationLive(geoExpiresAt, Date.now())
+      ? { sharing: true as const, expiresAt: geoExpiresAt }
+      : { sharing: false as const, expiresAt: null };
+  }),
+
+  /**
+   * My accepted friends currently sharing a live location within `radiusM` of the given origin
+   * (my current position, passed by the client — never stored by this read). Near→far. Reads ONLY
+   * through the friends_nearby() definer function (are_friends inside). Returns [] when none.
+   */
+  friendsNearby: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusM: z.number().min(100).max(50_000).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+      const { data, error } = await rpc("friends_nearby", {
+        origin_lat: input.lat,
+        origin_lng: input.lng,
+        radius_m: input.radiusM ?? 5000,
+      });
+      if (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to load nearby friends: ${error.message}`,
+        });
+      }
+      const rows = (data ?? []) as FriendNearbyRow[];
+      // Inline literals keep the inferred AppRouter type portable for the web client.
+      return rows.map((r) => ({
+        profile_id: r.profile_id,
+        handle: r.handle,
+        display_name: r.display_name,
+        avatar_url: r.avatar_url,
+        availability: r.availability,
+        note: r.note,
+        lat: r.lat,
+        lng: r.lng,
+        distance_m: r.distance_m,
+        geo_expires_at: r.geo_expires_at,
+      }));
+    }),
 });

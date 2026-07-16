@@ -2163,6 +2163,21 @@
       "free_to_meet": "Free to meet",
       "out_and_about": "Out & about",
       "heads_down": "Heads down"
-    }
+    },
+    "someone": "Someone",
+    "nearbyTitle": "Around you",
+    "seeNearby": "See who's nearby",
+    "locating": "Locating…",
+    "locError": "We couldn't get your location. Check your browser's location permission and try again.",
+    "noneNearby": "No friends are sharing their location right now.",
+    "refresh": "Refresh",
+    "distanceAway": "{distance} away",
+    "shareBlurb": "Share your location so friends can find you. It's precise, only your friends see it, and it stops on its own.",
+    "shareDuration": "How long to share",
+    "hoursShort": "{h}h",
+    "shareCta": "Share location",
+    "sharing": "Sharing…",
+    "sharingUntil": "Sharing your location until {time}",
+    "stopSharing": "Stop"
   }
 }

@@ -15,6 +15,12 @@ export const NOTE_MAX = 80;
 export const DEFAULT_TTL_HOURS = 4;
 export const MAX_TTL_HOURS = 24;
 
+// Location share windows (PR 2). Deliberately short — precise location is only ever ephemeral.
+// The DB clamps to the same 1–8h range (set_my_location) as a second line of defence.
+export const LOCATION_TTL_CHOICES = [1, 4, 8] as const;
+export const DEFAULT_LOCATION_TTL_HOURS = 1;
+export const MAX_LOCATION_TTL_HOURS = 8;
+
 const HOUR_MS = 3_600_000;
 
 /** The friend_presence row shape (not in generated DB types until `pnpm db:types`). */
@@ -73,4 +79,11 @@ export function isLive(
   if (!row.availability) return false;
   if (row.expires_at && new Date(row.expires_at).getTime() <= nowMs) return false;
   return true;
+}
+
+/** True while a location share is active — a geo-expiry that's set and still in the future.
+ *  (The coordinate itself is nulled on stop, so a present, future geo_expires_at means "sharing".) */
+export function isLocationLive(geoExpiresAt: string | null | undefined, nowMs: number): boolean {
+  if (!geoExpiresAt) return false;
+  return new Date(geoExpiresAt).getTime() > nowMs;
 }

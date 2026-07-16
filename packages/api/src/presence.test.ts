@@ -3,6 +3,7 @@ import {
   normaliseNote,
   buildPresenceRow,
   isLive,
+  isLocationLive,
   NOTE_MAX,
   DEFAULT_TTL_HOURS,
   type PresenceRow,
@@ -84,5 +85,22 @@ describe("isLive", () => {
   });
   it("true when set with no expiry at all", () => {
     expect(isLive({ ...live, expires_at: null }, NOW)).toBe(true);
+  });
+});
+
+describe("isLocationLive", () => {
+  const until = new Date(NOW + HOUR).toISOString();
+  it("true while the geo-expiry is in the future", () => {
+    expect(isLocationLive(until, NOW)).toBe(true);
+  });
+  it("false once the geo-expiry has elapsed", () => {
+    expect(isLocationLive(until, NOW + 2 * HOUR)).toBe(false);
+  });
+  it("false at the exact expiry boundary", () => {
+    expect(isLocationLive(until, NOW + HOUR)).toBe(false);
+  });
+  it("false when there's no share (null / undefined)", () => {
+    expect(isLocationLive(null, NOW)).toBe(false);
+    expect(isLocationLive(undefined, NOW)).toBe(false);
   });
 });

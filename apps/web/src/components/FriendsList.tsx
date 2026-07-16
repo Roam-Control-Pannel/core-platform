@@ -14,6 +14,7 @@ import { MessageButton } from "./MessageButton";
 import { AddFriendButton } from "./AddFriendButton";
 import { UserSearch } from "./UserSearch";
 import { PresenceStatus, PresencePill } from "./PresenceStatus";
+import { NearbyFriends } from "./NearbyFriends";
 import rowStyles from "./listRow.module.css";
 
 interface Person {
@@ -125,6 +126,9 @@ export function FriendsList() {
         <>
           {/* Your availability — a self-expiring status only your friends can see. */}
           <PresenceStatus />
+
+          {/* Around you — share your live location + see friends nearby (both friend-only, ephemeral). */}
+          <NearbyFriends />
 
           {/* Find people — search by name / @handle, then connect or message. */}
           <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-5)" }}>
