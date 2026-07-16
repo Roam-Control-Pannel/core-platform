@@ -19,6 +19,8 @@ import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PresencePill } from "./PresenceStatus";
+import { FriendsMap } from "./FriendsMap";
+import styles from "./NearbyFriends.module.css";
 
 type Availability = "free_to_meet" | "out_and_about" | "heads_down";
 
@@ -81,6 +83,7 @@ export function NearbyFriends() {
   const hasSession = !!session;
 
   const [nearby, setNearby] = useState<FriendNearby[] | undefined>(undefined);
+  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [share, setShare] = useState<{ sharing: boolean; expiresAt: string | null }>({ sharing: false, expiresAt: null });
@@ -123,7 +126,10 @@ export function NearbyFriends() {
     try {
       const pos = await getPosition();
       const rows = await queryNearby(pos.coords.latitude, pos.coords.longitude);
-      if (!cancelled.current) setNearby(rows);
+      if (!cancelled.current) {
+        setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearby(rows);
+      }
     } catch {
       if (!cancelled.current) setError(t("locError"));
     } finally {
@@ -149,7 +155,10 @@ export function NearbyFriends() {
       setShare({ sharing: true, expiresAt: res.expiresAt });
       // We have a fresh fix — surface who's around too, so sharing immediately shows value.
       const rows = await queryNearby(pos.coords.latitude, pos.coords.longitude);
-      if (!cancelled.current) setNearby(rows);
+      if (!cancelled.current) {
+        setOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearby(rows);
+      }
     } catch {
       if (!cancelled.current) setError(t("locError"));
     } finally {
@@ -195,7 +204,16 @@ export function NearbyFriends() {
           </button>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: "var(--space-1)" }}>
+        <div>
+          {/* A small live map of who's around, above the distance-sorted list. */}
+          {origin ? (
+            <FriendsMap
+              className={styles.map}
+              me={origin}
+              friends={nearby.map((p) => ({ id: p.profile_id, name: displayName(t, p), lat: p.lat, lng: p.lng, handle: p.handle }))}
+            />
+          ) : null}
+          <div style={{ display: "grid", gap: "var(--space-1)" }}>
           {nearby.map((p) => (
             <div key={p.profile_id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "6px 4px" }}>
               <Link href={`/u/${p.handle ?? p.profile_id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
@@ -208,6 +226,7 @@ export function NearbyFriends() {
               {p.availability ? <PresencePill availability={p.availability} note={p.note} /> : null}
             </div>
           ))}
+          </div>
         </div>
       )}
 

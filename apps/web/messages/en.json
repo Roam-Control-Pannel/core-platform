@@ -2179,6 +2179,8 @@
     "sharing": "Sharing…",
     "sharingUntil": "Sharing your location until {time}",
     "stopSharing": "Stop",
-    "alertHint": "While you're sharing your location, nearby friends get a heads-up that you're free."
+    "alertHint": "While you're sharing your location, nearby friends get a heads-up that you're free.",
+    "mapAria": "Map of friends sharing their location nearby",
+    "youAreHere": "You are here"
   }
 }
