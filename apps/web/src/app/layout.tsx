@@ -19,6 +19,7 @@ import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
 import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
+import { InviteApply } from "../components/InviteApply";
 import { LocationGate } from "../components/LocationGate";
 import { PlacePrefsSync } from "../components/PlacePrefsSync";
 import { siteUrl, ogCardUrl } from "../lib/seo";
@@ -89,6 +90,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <CreateFab />
             <TabBar />
             <FirstRunProfilePrompt />
+            {/* Invite loop: connect a new user to whoever's /i/<handle> link brought them in. */}
+            <InviteApply />
             {/* First-visit location: IP default for fresh signed-out visitors + precise-location card. */}
             <LocationGate />
             {/* Headless: syncs saved/current place to the account (cross-device). */}

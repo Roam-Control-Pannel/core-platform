@@ -263,6 +263,55 @@ export const socialRouter = router({
     }),
 
   /**
+   * Apply an invite link (growth loop #1): the caller just signed up via someone's /i/<handle>
+   * link. Records the inviter for attribution (profiles.invited_by, set ONCE — 0097) and sends a
+   * friend request from the caller TO the inviter, so the graph fills itself (the inviter just taps
+   * Accept; the existing friend-event notification tells them). Best-effort + idempotent: a
+   * self-invite, an unknown handle, or an already-existing edge is a graceful no-op, never an error.
+   */
+  applyInvite: protectedProcedure
+    .input(z.object({ inviterHandle: z.string().min(1).max(80) }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await callerId(ctx.db);
+      const handle = input.inviterHandle.trim().replace(/^@+/, "");
+      if (!handle) return { applied: false as const };
+
+      // Resolve the inviter by handle (profiles are world-readable). Unknown / self → no-op.
+      const { data: inviter } = await ctx.db
+        .from("profiles")
+        .select("id, handle, display_name")
+        .eq("handle", handle)
+        .maybeSingle();
+      if (!inviter || inviter.id === me) return { applied: false as const };
+
+      // Attribution: set ONCE on the caller's OWN row (profiles_update RLS enforces id = auth.uid();
+      // the `is null` filter makes it set-once). invited_by isn't in the generated types yet, so
+      // widen just this write — same idiom as venues.ts.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose write for a not-yet-typed column
+      await (ctx.db as unknown as { from: (t: string) => any })
+        .from("profiles")
+        .update({ invited_by: inviter.id })
+        .eq("id", me)
+        .is("invited_by", null);
+
+      // Friend request caller → inviter, unless an edge already exists in either direction.
+      const { data: existing } = await ctx.db
+        .from("friendships")
+        .select("requester_id")
+        .or(`and(requester_id.eq.${me},addressee_id.eq.${inviter.id}),and(requester_id.eq.${inviter.id},addressee_id.eq.${me})`)
+        .limit(1)
+        .maybeSingle();
+      if (!existing) {
+        await ctx.db
+          .from("friendships")
+          .insert({ requester_id: me, addressee_id: inviter.id, status: "pending" });
+      }
+
+      const inviterName = inviter.display_name?.trim() || `@${inviter.handle ?? handle}`;
+      return { applied: true as const, inviterId: inviter.id, inviterName };
+    }),
+
+  /**
    * The caller's accepted friends — the OTHER profile in each accepted friendship. RLS scopes
    * friendships to the two parties; we embed both ends and pick the one that isn't the caller.
    */

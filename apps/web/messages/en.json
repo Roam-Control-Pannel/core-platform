@@ -2187,5 +2187,22 @@
     "title": "Nearby friends",
     "label": "Let friends notify me when they're nearby and free",
     "hint": "When a friend is out and free to meet near you, you'll get a heads-up. Turn this off to stop those alerts — you'll still see friends on the Friends page."
+  },
+  "invite": {
+    "aFriend": "A friend",
+    "titleNamed": "{name} is inviting you to Roam",
+    "titleGeneric": "You're invited to Roam",
+    "blurb": "Your town's local guide — discover places, plans and the people near you.",
+    "authIntro": "Create your account to join and connect.",
+    "alreadyIn": "You're already signed in on Roam.",
+    "goToFriends": "Go to Friends",
+    "justBrowse": "Just browse for now",
+    "connected": "You're now connected with {name}.",
+    "dismiss": "Dismiss",
+    "cardTitle": "Invite friends",
+    "cardBlurb": "Roam is better with friends. Share your personal link — when someone joins through it, you're connected.",
+    "copyCta": "Copy my invite link",
+    "shareTitle": "Join me on Roam",
+    "shareText": "I'm on Roam — our town's local guide. Join me:"
   }
 }
