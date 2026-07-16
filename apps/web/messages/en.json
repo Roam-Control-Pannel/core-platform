@@ -2182,5 +2182,10 @@
     "alertHint": "While you're sharing your location, nearby friends get a heads-up that you're free.",
     "mapAria": "Map of friends sharing their location nearby",
     "youAreHere": "You are here"
+  },
+  "presenceAlertSettings": {
+    "title": "Nearby friends",
+    "label": "Let friends notify me when they're nearby and free",
+    "hint": "When a friend is out and free to meet near you, you'll get a heads-up. Turn this off to stop those alerts — you'll still see friends on the Friends page."
   }
 }
