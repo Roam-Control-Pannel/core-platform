@@ -1,0 +1,10 @@
+/* Leaflet needs an explicit height on its container; contain the stacking so map controls never
+   bleed over sibling cards. Mirrors Explore's .mobileMapEmbed. */
+.map {
+  height: 240px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  isolation: isolate;
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--line);
+}
