@@ -2147,5 +2147,22 @@
     "locating": "Locating…",
     "nearMe": "Near me",
     "yourLocation": "Your location"
+  },
+  "presence": {
+    "yourStatus": "Your status",
+    "hint": "Only your friends can see this, and it clears itself automatically.",
+    "choosePrompt": "Let friends know you're around",
+    "notePlaceholder": "Add a note — e.g. Free for a coffee ☕",
+    "share": "Share",
+    "update": "Update",
+    "clear": "Clear",
+    "saving": "Saving…",
+    "activeNote": "Visible to your friends",
+    "friendsFree": "Around right now",
+    "labels": {
+      "free_to_meet": "Free to meet",
+      "out_and_about": "Out & about",
+      "heads_down": "Heads down"
+    }
   }
 }

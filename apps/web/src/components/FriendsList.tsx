@@ -13,6 +13,7 @@ import { AuthPanel } from "./AuthPanel";
 import { MessageButton } from "./MessageButton";
 import { AddFriendButton } from "./AddFriendButton";
 import { UserSearch } from "./UserSearch";
+import { PresenceStatus, PresencePill } from "./PresenceStatus";
 import rowStyles from "./listRow.module.css";
 
 interface Person {
@@ -21,6 +22,15 @@ interface Person {
   displayName: string | null;
   avatarUrl: string | null;
 }
+
+type Availability = "free_to_meet" | "out_and_about" | "heads_down";
+interface FriendAvailabilityRow {
+  profile_id: string;
+  availability: Availability;
+  note: string | null;
+}
+/** profile_id → live status, for the availability pill on each friend row. */
+type AvailabilityMap = Record<string, { availability: Availability; note: string | null }>;
 
 function name(t: ReturnType<typeof useTranslations>, p: Person): string {
   if (p.displayName && p.displayName.trim()) return p.displayName.trim();
@@ -48,22 +58,28 @@ export function FriendsList() {
   const hasSession = !!session;
   const [requests, setRequests] = useState<Person[] | undefined>(undefined);
   const [friends, setFriends] = useState<Person[] | undefined>(undefined);
+  const [availability, setAvailability] = useState<AvailabilityMap>({});
 
   const load = useCallback(async () => {
     const reqQ = trpc.social.friendRequests as unknown as { query: () => Promise<{ ok: boolean; requests?: Person[] }> };
     const friQ = trpc.social.myFriends as unknown as { query: () => Promise<{ ok: boolean; friends?: Person[] }> };
-    const [r, f] = await Promise.all([reqQ.query(), friQ.query()]);
-    return { requests: r.ok ? r.requests ?? [] : [], friends: f.ok ? f.friends ?? [] : [] };
+    const availQ = trpc.presence.friendsAvailability as unknown as { query: () => Promise<FriendAvailabilityRow[]> };
+    // friendsAvailability is best-effort: a failure here must never blank the friends list.
+    const [r, f, a] = await Promise.all([reqQ.query(), friQ.query(), availQ.query().catch(() => [])]);
+    const availMap: AvailabilityMap = {};
+    for (const row of a) availMap[row.profile_id] = { availability: row.availability, note: row.note };
+    return { requests: r.ok ? r.requests ?? [] : [], friends: f.ok ? f.friends ?? [] : [], availability: availMap };
   }, [trpc]);
 
   useEffect(() => {
     if (!hasSession) return;
     let cancelled = false;
     load()
-      .then(({ requests: r, friends: f }) => {
+      .then(({ requests: r, friends: f, availability: a }) => {
         if (cancelled) return;
         setRequests(r);
         setFriends(f);
+        setAvailability(a);
       })
       .catch(() => {
         if (!cancelled) {
@@ -81,9 +97,10 @@ export function FriendsList() {
       const m = trpc.social.respondToFriend as unknown as { mutate: (i: { requesterId: string; accept: boolean }) => Promise<{ ok: boolean }> };
       try {
         await m.mutate({ requesterId, accept });
-        const { requests: r, friends: f } = await load();
+        const { requests: r, friends: f, availability: a } = await load();
         setRequests(r);
         setFriends(f);
+        setAvailability(a);
       } catch {
         /* no-op */
       }
@@ -106,6 +123,9 @@ export function FriendsList() {
         </Card>
       ) : (
         <>
+          {/* Your availability — a self-expiring status only your friends can see. */}
+          <PresenceStatus />
+
           {/* Find people — search by name / @handle, then connect or message. */}
           <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-5)" }}>
             <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-3)" }}>
@@ -166,15 +186,19 @@ export function FriendsList() {
                 {t("friendCount", { count: friends.length })}
               </div>
               <div style={{ display: "grid", gap: "var(--space-1)" }}>
-                {friends.map((p) => (
+                {friends.map((p) => {
+                  const av = availability[p.id];
+                  return (
                   <div key={p.id} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "8px 8px", borderRadius: "var(--r-md)" }}>
                     <Link href={`/u/${p.handle ?? p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                       <Avatar p={p} size={32} />
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name(t, p)}</span>
                     </Link>
+                    {av ? <PresencePill availability={av.availability} note={av.note} /> : null}
                     <MessageButton profileId={p.id} />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           ) : null}

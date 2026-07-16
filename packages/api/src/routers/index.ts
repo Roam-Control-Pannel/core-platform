@@ -10,6 +10,7 @@ import { postsRouter } from "./posts.js";
 import { venuesRouter } from "./venues.js";
 import { socialRouter } from "./social.js";
 import { meetupRouter } from "./meetup.js";
+import { presenceRouter } from "./presence.js";
 import { chatRouter } from "./chat.js";
 import { placesRouter } from "./places.js";
 import { geoRouter } from "./geo.js";
@@ -43,6 +44,7 @@ export const appRouter = router({
   venues: venuesRouter,
   social: socialRouter,
   meetup: meetupRouter,
+  presence: presenceRouter,
   chat: chatRouter,
   places: placesRouter,
   geo: geoRouter,
