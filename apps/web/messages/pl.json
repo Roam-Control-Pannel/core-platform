@@ -2030,5 +2030,54 @@
       "startFailed": "Nie udało się rozpocząć konfiguracji wypłat.",
       "openStripeFailed": "Nie udało się otworzyć Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Twój status",
+    "hint": "Widzą to tylko twoi znajomi, a status znika samoczynnie.",
+    "choosePrompt": "Daj znajomym znać, że jesteś w pobliżu",
+    "notePlaceholder": "Dodaj notkę — np. Wolne na kawę ☕",
+    "share": "Udostępnij",
+    "update": "Zaktualizuj",
+    "clear": "Wyczyść",
+    "saving": "Zapisywanie…",
+    "activeNote": "Widoczne dla znajomych",
+    "friendsFree": "W pobliżu teraz",
+    "labels": {
+      "free_to_meet": "Chętnie się spotkam",
+      "out_and_about": "Na mieście",
+      "heads_down": "W skupieniu"
+    },
+    "someone": "Ktoś",
+    "nearbyTitle": "Wokół ciebie",
+    "seeNearby": "Zobacz, kto jest w pobliżu",
+    "locating": "Ustalanie lokalizacji…",
+    "locError": "Nie udało się pobrać twojej lokalizacji. Sprawdź uprawnienia lokalizacji w przeglądarce i spróbuj ponownie.",
+    "noneNearby": "Żaden znajomy nie udostępnia teraz swojej lokalizacji.",
+    "refresh": "Odśwież",
+    "distanceAway": "{distance} stąd",
+    "shareBlurb": "Udostępnij swoją lokalizację, żeby znajomi mogli cię znaleźć. Jest dokładna, widzą ją tylko twoi znajomi i wyłącza się sama.",
+    "shareDuration": "Jak długo udostępniać",
+    "hoursShort": "{h}godz.",
+    "shareCta": "Udostępnij lokalizację",
+    "sharing": "Udostępnianie…",
+    "sharingUntil": "Udostępniasz lokalizację do {time}",
+    "stopSharing": "Zatrzymaj",
+    "alertHint": "Gdy udostępniasz lokalizację, znajomi w pobliżu dostają cynk, że masz czas.",
+    "mapAria": "Mapa znajomych udostępniających swoją lokalizację w pobliżu",
+    "youAreHere": "Tutaj jesteś"
+  },
+  "presenceAlertSettings": {
+    "title": "Znajomi w pobliżu",
+    "label": "Pozwól znajomym powiadamiać mnie, gdy są w pobliżu i mają czas",
+    "hint": "Gdy znajomy jest w pobliżu i chętny na spotkanie, dostaniesz cynk. Wyłącz to, aby zatrzymać te powiadomienia — znajomych i tak zobaczysz na stronie Znajomi."
+  },
+  "locationGate": {
+    "title": "Zobacz, co jest w pobliżu",
+    "body": "Udostępnij lokalizację, aby zobaczyć lokalne miejsca, plany i nowości.",
+    "allow": "Użyj mojej lokalizacji",
+    "dismiss": "Nie teraz",
+    "locating": "Ustalanie lokalizacji…",
+    "nearMe": "Blisko mnie",
+    "yourLocation": "Twoja lokalizacja"
   }
 }

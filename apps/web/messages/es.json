@@ -2030,5 +2030,54 @@
       "startFailed": "No se pudo iniciar la configuración de cobros.",
       "openStripeFailed": "No se pudo abrir Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Tu estado",
+    "hint": "Solo tus amigos pueden verlo, y se borra solo.",
+    "choosePrompt": "Avisa a tus amigos de que estás por aquí",
+    "notePlaceholder": "Añade una nota — p. ej. Libre para un café ☕",
+    "share": "Compartir",
+    "update": "Actualizar",
+    "clear": "Borrar",
+    "saving": "Guardando…",
+    "activeNote": "Visible para tus amigos",
+    "friendsFree": "Por aquí ahora mismo",
+    "labels": {
+      "free_to_meet": "Libre para quedar",
+      "out_and_about": "De salida",
+      "heads_down": "A lo mío"
+    },
+    "someone": "Alguien",
+    "nearbyTitle": "Cerca de ti",
+    "seeNearby": "Ver quién está cerca",
+    "locating": "Localizando…",
+    "locError": "No pudimos obtener tu ubicación. Revisa el permiso de ubicación de tu navegador e inténtalo de nuevo.",
+    "noneNearby": "Ningún amigo está compartiendo su ubicación ahora mismo.",
+    "refresh": "Actualizar",
+    "distanceAway": "a {distance}",
+    "shareBlurb": "Comparte tu ubicación para que tus amigos te encuentren. Es precisa, solo la ven tus amigos y se detiene sola.",
+    "shareDuration": "Cuánto tiempo compartir",
+    "hoursShort": "{h}h",
+    "shareCta": "Compartir ubicación",
+    "sharing": "Compartiendo…",
+    "sharingUntil": "Compartiendo tu ubicación hasta las {time}",
+    "stopSharing": "Parar",
+    "alertHint": "Mientras compartes tu ubicación, tus amigos cercanos reciben un aviso de que estás libre.",
+    "mapAria": "Mapa de amigos que comparten su ubicación cerca",
+    "youAreHere": "Estás aquí"
+  },
+  "presenceAlertSettings": {
+    "title": "Amigos cerca",
+    "label": "Permitir que mis amigos me avisen cuando estén cerca y libres",
+    "hint": "Cuando un amigo esté de salida y libre para quedar cerca de ti, recibirás un aviso. Desactívalo para dejar de recibir esos avisos: seguirás viendo a tus amigos en la página de Amigos."
+  },
+  "locationGate": {
+    "title": "Descubre lo que hay cerca de ti",
+    "body": "Comparte tu ubicación para ver locales, planes y novedades de tu zona.",
+    "allow": "Usar mi ubicación",
+    "dismiss": "Ahora no",
+    "locating": "Localizando…",
+    "nearMe": "Cerca de mí",
+    "yourLocation": "Tu ubicación"
   }
 }

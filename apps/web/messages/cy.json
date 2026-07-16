@@ -2030,5 +2030,54 @@
       "startFailed": "Methu dechrau gosodiad taliadau.",
       "openStripeFailed": "Methu agor Stripe."
     }
+  },
+  "presence": {
+    "yourStatus": "Dy statws",
+    "hint": "Dim ond dy ffrindiau all weld hyn, ac mae'n clirio ei hun yn awtomatig.",
+    "choosePrompt": "Rho wybod i ffrindiau dy fod ti o gwmpas",
+    "notePlaceholder": "Ychwanega nodyn — e.e. Rhydd am goffi ☕",
+    "share": "Rhannu",
+    "update": "Diweddaru",
+    "clear": "Clirio",
+    "saving": "Wrthi'n cadw…",
+    "activeNote": "Yn weladwy i dy ffrindiau",
+    "friendsFree": "O gwmpas nawr",
+    "labels": {
+      "free_to_meet": "Rhydd i gwrdd",
+      "out_and_about": "Allan o gwmpas",
+      "heads_down": "Pen i lawr"
+    },
+    "someone": "Rhywun",
+    "nearbyTitle": "O dy gwmpas",
+    "seeNearby": "Gweld pwy sydd gerllaw",
+    "locating": "Wrthi'n lleoli…",
+    "locError": "Methon ni gael dy leoliad. Gwiria ganiatâd lleoliad dy borwr a thria eto.",
+    "noneNearby": "Does dim ffrindiau'n rhannu eu lleoliad ar hyn o bryd.",
+    "refresh": "Adnewyddu",
+    "distanceAway": "{distance} i ffwrdd",
+    "shareBlurb": "Rhanna dy leoliad fel bod ffrindiau'n gallu dod o hyd i ti. Mae'n fanwl, dim ond dy ffrindiau sy'n ei weld, ac mae'n stopio ohono'i hun.",
+    "shareDuration": "Am faint i rannu",
+    "hoursShort": "{h}a",
+    "shareCta": "Rhannu lleoliad",
+    "sharing": "Wrthi'n rhannu…",
+    "sharingUntil": "Yn rhannu dy leoliad tan {time}",
+    "stopSharing": "Stopio",
+    "alertHint": "Tra dy fod ti'n rhannu dy leoliad, caiff ffrindiau gerllaw wybod dy fod ti'n rhydd.",
+    "mapAria": "Map o ffrindiau'n rhannu eu lleoliad gerllaw",
+    "youAreHere": "Rwyt ti yma"
+  },
+  "presenceAlertSettings": {
+    "title": "Ffrindiau gerllaw",
+    "label": "Gadael i ffrindiau fy hysbysu pan fyddan nhw gerllaw ac yn rhydd",
+    "hint": "Pan fydd ffrind allan ac yn rhydd i gwrdd yn dy ymyl, cei wybod. Diffodda hyn i stopio'r rhybuddion hynny — byddi di'n dal i weld ffrindiau ar y dudalen Ffrindiau."
+  },
+  "locationGate": {
+    "title": "Gweld beth sydd yn dy ymyl",
+    "body": "Rhanna dy leoliad ar gyfer lleoliadau, cynlluniau a newyddion lleol.",
+    "allow": "Defnyddio fy lleoliad",
+    "dismiss": "Nid nawr",
+    "locating": "Wrthi'n lleoli…",
+    "nearMe": "Yn agos ataf",
+    "yourLocation": "Dy leoliad"
   }
 }
