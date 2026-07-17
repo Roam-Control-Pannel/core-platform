@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { Card } from "@roam/design";
 import { categoryLabel } from "../lib/categories";
-import type { DiscoverCategory } from "../lib/discover";
+import { DISCOVER_CATEGORIES, type DiscoverCategory } from "../lib/discover";
 import type { DiscoverVenue } from "../lib/serverApi";
 
 export function DiscoverScreen({
@@ -30,14 +30,17 @@ export function DiscoverScreen({
   venues: DiscoverVenue[];
 }) {
   const lead = cat.blurb.replace("{town}", localityLabel);
+  const siblings = DISCOVER_CATEGORIES.filter((c) => c.slug !== cat.slug);
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
-      <Link
-        href={`/town-hall/${locality}`}
-        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
-      >
-        <span aria-hidden>←</span> {localityLabel}
-      </Link>
+      {/* Breadcrumb trail (Roam › Town › Category) — matches the BreadcrumbList JSON-LD. */}
+      <nav aria-label="Breadcrumb" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", marginBottom: "var(--space-4)" }}>
+        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>Roam</Link>
+        <span aria-hidden>›</span>
+        <Link href={`/town-hall/${locality}`} style={{ color: "var(--muted)", textDecoration: "none" }}>{localityLabel}</Link>
+        <span aria-hidden>›</span>
+        <span style={{ color: "var(--ink-2)" }}>{cat.heading}</span>
+      </nav>
 
       <header style={{ marginBottom: "var(--space-6)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
@@ -50,11 +53,6 @@ export function DiscoverScreen({
           {lead}
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
-          <Link href={`/town-hall/${locality}`} style={{ textDecoration: "none" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", color: "var(--ink)", fontWeight: 600, fontSize: 13.5 }}>
-              All of {localityLabel} <span aria-hidden>→</span>
-            </span>
-          </Link>
           <Link href="/explore" style={{ textDecoration: "none" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13.5 }}>
               Explore the map
@@ -109,6 +107,31 @@ export function DiscoverScreen({
             ))}
           </ol>
         )}
+      </section>
+
+      {/* Sibling categories — sideways links to the town's other discovery pages, so crawlers and
+          readers can move between "eat & drink", "things to do", etc. within the same town. */}
+      <section style={{ marginTop: "var(--space-8)", paddingTop: "var(--space-5)", borderTop: "1px solid var(--line)" }}>
+        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 18, margin: "0 0 var(--space-3)" }}>
+          More in {localityLabel}
+        </h2>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+          {siblings.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/discover/${locality}/${c.slug}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)", fontWeight: 600, fontSize: 13.5 }}
+            >
+              {c.heading} <span aria-hidden style={{ color: "var(--muted)" }}>→</span>
+            </Link>
+          ))}
+          <Link
+            href={`/town-hall/${locality}`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", textDecoration: "none", color: "var(--crimson-700)", fontWeight: 600, fontSize: 13.5 }}
+          >
+            All of {localityLabel} <span aria-hidden>→</span>
+          </Link>
+        </div>
       </section>
     </main>
   );

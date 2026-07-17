@@ -563,6 +563,29 @@ export function discoverJsonLd(
   });
 }
 
+/** BreadcrumbList for a discovery page — Roam › {Town} › {Category} — for a breadcrumb rich result. */
+export function discoverBreadcrumbJsonLd(
+  cat: DiscoverCategory,
+  localityLabel: string,
+  locality: string,
+): Record<string, unknown> {
+  const trail = [
+    { name: "Roam", url: absUrl("/") },
+    { name: localityLabel, url: absUrl(`/town-hall/${locality}`) },
+    { name: cat.heading, url: absUrl(`/discover/${locality}/${cat.slug}`) },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((t, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: t.name,
+      item: t.url,
+    })),
+  };
+}
+
 /* ── JSON-LD builders (schema.org) ───────────────────────────────────────────────────────── */
 
 /** Map a free-text venue category to the most specific schema.org LocalBusiness subtype. */
