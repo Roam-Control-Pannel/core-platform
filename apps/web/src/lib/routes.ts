@@ -52,3 +52,8 @@ export function townHubPath(locality: string): string {
 export function townHallTopicPath(locality: string, slug: string): string {
   return `/town-hall/${locality}/${slug}`;
 }
+
+/** The public, indexable page for one event. */
+export function eventPath(id: string): string {
+  return `/events/${id}`;
+}
