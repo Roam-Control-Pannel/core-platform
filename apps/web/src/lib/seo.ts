@@ -429,16 +429,18 @@ export function hubMetadata(
   venueTotal = 0,
   guide: { region: string; knownFor: string } | null = null,
 ): Metadata {
-  // With a guide, lead the description with its proven "known for" copy (what the old
-  // roam-local.co.uk pages ranked on); otherwise the generic Town Hall line.
+  // Lead with DISCOVERY intent — the queries people actually search ("things to do in <town>") —
+  // rather than the community framing, so these already-indexed town pages rank for local-intent
+  // traffic. With a guide, keep its proven "known for" copy (what the old roam-local.co.uk pages
+  // ranked on) in the description.
   const title = guide
-    ? `${localityLabel} — local community, places & what's on in ${guide.region}`
-    : `${localityLabel} — local community & what's on`;
-  const places = venueTotal > 0 ? `${venueTotal} places to go in ${localityLabel}` : `places to go in ${localityLabel}`;
+    ? `Things to do in ${localityLabel}, ${guide.region} — local places & what's on`
+    : `Things to do in ${localityLabel} — local places & what's on`;
+  const places = venueTotal > 0 ? `${venueTotal} places to go` : "places to go";
   const description = clamp(
     guide
-      ? `${localityLabel}, ${guide.region} — ${guide.knownFor}`
-      : `${localityLabel}'s Town Hall on Roam — local discussion, news and recommendations, plus ${places}.`,
+      ? `Discover ${localityLabel}, ${guide.region}: ${guide.knownFor}`
+      : `Discover ${places} in ${localityLabel} — local recommendations, events and what's on, on Roam.`,
   );
   const url = absUrl(`/town-hall/${locality}`);
   return {
@@ -446,7 +448,7 @@ export function hubMetadata(
     description,
     alternates: { canonical: url },
     ...(indexable ? {} : { robots: { index: false, follow: true } }),
-    ...social({ title, description, url, badge: "Town Hall" }),
+    ...social({ title, description, url, badge: "Local guide" }),
   };
 }
 
@@ -459,8 +461,8 @@ export function hubJsonLd(
   return compact({
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${localityLabel} — Town Hall`,
-    description: guide ? clamp(guide.knownFor) : `Local discussion, news and places in ${localityLabel}.`,
+    name: `Things to do in ${localityLabel}`,
+    description: guide ? clamp(guide.knownFor) : `Places to go, local recommendations and what's on in ${localityLabel}.`,
     url: absUrl(`/town-hall/${locality}`),
     about: compact({
       "@type": "Place",
