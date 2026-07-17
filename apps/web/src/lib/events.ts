@@ -51,18 +51,24 @@ export function isUpcoming(startsAt: string, endsAt: string | null, now: number 
 /**
  * Human "when" line for an event: "Sat 1 Aug, 7:00–10:00 PM" (same day) or a start-only
  * "Sat 1 Aug, 7:00 PM" when there's no end / it spans days. Locale-aware via Intl.
+ *
+ * Times are pinned to Europe/London (Roam is UK-first): without an explicit zone the same event
+ * would render in the browser's zone on the client board but the server's zone (UTC) on the
+ * SSR town-hub/venue sections — a BST event would read an hour early on the hub. Pinning the zone
+ * makes every surface agree and shows the correct local UK time.
  */
+const TZ = "Europe/London";
 export function formatEventWhen(startsAt: string, endsAt: string | null, locale = "en-GB"): string {
   const start = new Date(startsAt);
   if (Number.isNaN(start.getTime())) return "";
-  const dateFmt = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short" });
-  const timeFmt = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
+  const dateFmt = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: TZ });
+  const timeFmt = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: TZ });
   const datePart = dateFmt.format(start);
   const startTime = timeFmt.format(start);
   if (!endsAt) return `${datePart}, ${startTime}`;
   const end = new Date(endsAt);
   if (Number.isNaN(end.getTime())) return `${datePart}, ${startTime}`;
-  const sameDay = start.toDateString() === end.toDateString();
+  const sameDay = dateFmt.format(start) === dateFmt.format(end);
   if (sameDay) return `${datePart}, ${startTime}–${timeFmt.format(end)}`;
   return `${datePart}, ${startTime} — ${dateFmt.format(end)}, ${timeFmt.format(end)}`;
 }
@@ -72,7 +78,7 @@ export function eventDateBadge(startsAt: string, locale = "en-GB"): { day: strin
   const d = new Date(startsAt);
   if (Number.isNaN(d.getTime())) return { day: "", month: "" };
   return {
-    day: new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d),
-    month: new Intl.DateTimeFormat(locale, { month: "short" }).format(d).toUpperCase(),
+    day: new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: TZ }).format(d),
+    month: new Intl.DateTimeFormat(locale, { month: "short", timeZone: TZ }).format(d).toUpperCase(),
   };
 }
