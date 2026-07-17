@@ -18,6 +18,7 @@ import { profilesRouter } from "./profiles.js";
 import { moderationRouter } from "./moderation.js";
 import { townHallRouter } from "./townHall.js";
 import { eventsRouter } from "./events.js";
+import { searchRouter } from "./search.js";
 import { offersRouter } from "./offers.js";
 import { profileWallRouter } from "./profileWall.js";
 import { notificationsRouter } from "./notifications.js";
@@ -53,6 +54,7 @@ export const appRouter = router({
   moderation: moderationRouter,
   townHall: townHallRouter,
   events: eventsRouter,
+  search: searchRouter,
   offers: offersRouter,
   profileWall: profileWallRouter,
   notifications: notificationsRouter,
