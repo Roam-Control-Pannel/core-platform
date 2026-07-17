@@ -25,6 +25,19 @@ interface Person {
   avatarUrl: string | null;
 }
 
+/** A "people you may know" suggestion: a Person plus how many friends you share. */
+interface Suggestion extends Person {
+  mutualCount: number;
+}
+/** The raw suggested_friends() row shape (snake_case) before mapping to Suggestion. */
+interface SuggestionRow {
+  id: string;
+  handle: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  mutual_count: number;
+}
+
 type Availability = "free_to_meet" | "out_and_about" | "heads_down";
 interface FriendAvailabilityRow {
   profile_id: string;
@@ -61,6 +74,27 @@ export function FriendsList() {
   const [requests, setRequests] = useState<Person[] | undefined>(undefined);
   const [friends, setFriends] = useState<Person[] | undefined>(undefined);
   const [availability, setAvailability] = useState<AvailabilityMap>({});
+  const [suggestions, setSuggestions] = useState<Suggestion[] | undefined>(undefined);
+
+  // "People you may know" — second-degree connections. Best-effort + independent of the main load
+  // (a failure or a sparse graph just hides the section).
+  useEffect(() => {
+    if (!hasSession) return;
+    let cancelled = false;
+    const q = trpc.social.suggestedFriends as unknown as { query: () => Promise<SuggestionRow[]> };
+    q.query()
+      .then((rows) => {
+        if (!cancelled) {
+          setSuggestions(rows.map((r) => ({ id: r.id, handle: r.handle, displayName: r.display_name, avatarUrl: r.avatar_url, mutualCount: r.mutual_count })));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasSession, trpc]);
 
   const load = useCallback(async () => {
     const reqQ = trpc.social.friendRequests as unknown as { query: () => Promise<{ ok: boolean; requests?: Person[] }> };
@@ -207,6 +241,29 @@ export function FriendsList() {
                   </div>
                   );
                 })}
+              </div>
+            </section>
+          ) : null}
+
+          {/* People you may know — second-degree suggestions to grow the graph. */}
+          {suggestions && suggestions.length > 0 ? (
+            <section style={{ marginTop: "var(--space-6)" }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: "var(--space-2)" }}>
+                {t("suggestionsTitle")}
+              </div>
+              <div style={{ display: "grid", gap: "var(--space-1)" }}>
+                {suggestions.map((p) => (
+                  <div key={p.id} className={rowStyles.row} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", padding: "8px 8px", borderRadius: "var(--r-md)" }}>
+                    <Link href={`/u/${p.handle ?? p.id}`} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+                      <Avatar p={p} size={32} />
+                      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name(t, p)}</span>
+                        {p.mutualCount > 0 ? <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("mutualCount", { count: p.mutualCount })}</span> : null}
+                      </span>
+                    </Link>
+                    <AddFriendButton userId={p.id} />
+                  </div>
+                ))}
               </div>
             </section>
           ) : null}
