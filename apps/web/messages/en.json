@@ -42,6 +42,8 @@
       "kicker": "Search",
       "searching": "Searching…",
       "noResults": "No results for \"{q}\".",
+      "recent": "Recent",
+      "clear": "Clear",
       "seeAll": "See all results for \"{q}\"",
       "resultsFor": "Results for “{q}”",
       "titleEmpty": "Search Roam",

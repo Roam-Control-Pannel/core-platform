@@ -1,47 +1,61 @@
 /**
  * GlobalSearch — the site-wide search bar in the TopBar (persistent on every page). Debounced
- * typeahead over search.global: as you type it shows grouped results (People · Places · Events ·
- * Community · Marketplace) in a dropdown; Enter (or "See all") goes to the /search results page.
+ * typeahead over search.global: grouped results as you type (People · Places · Events · Community ·
+ * Marketplace · Plans · Deals), Enter / "See all" → /search. Local-first (passes the current place's
+ * lat/lng). Before you type it offers your Recent searches. Full keyboard nav: ↑/↓ move the
+ * highlight through the rows (and the "see all" action), Enter activates it, Escape closes.
  *
- * Local-first: passes the current browsing place's lat/lng so nearby businesses rank first. Stale
- * responses are dropped (a seq guard), the dropdown closes on outside-click / Escape / navigation.
+ * Stale responses are dropped (a seq guard); the dropdown closes on outside-click / Escape / nav.
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Icon } from "@roam/design";
+import { Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { useCurrentPlace } from "../lib/currentPlace";
+import { useRecentSearches } from "../lib/recentSearches";
 import { formatEventWhen } from "../lib/events";
-import {
-  EMPTY_RESULTS,
-  totalCount,
-  listingPrice,
-  distanceLabel,
-  type SearchResultsData,
-} from "../lib/searchResult";
+import { EMPTY_RESULTS, totalCount, listingPrice, distanceLabel, type SearchResultsData } from "../lib/searchResult";
 import styles from "./GlobalSearch.module.css";
+
+interface RowData {
+  key: string;
+  icon: IconName;
+  primary: string;
+  secondary?: string | undefined;
+  avatarUrl?: string | null;
+  url: string;
+  onRemove?: (() => void) | undefined;
+}
+interface SectionData {
+  label: string;
+  rows: RowData[];
+}
 
 export function GlobalSearch() {
   const t = useTranslations("chrome.search");
   const trpc = useTrpc();
   const router = useRouter();
   const { place } = useCurrentPlace();
+  const { recent, add: addRecent, remove: removeRecent, clear: clearRecent } = useRecentSearches();
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResultsData>(EMPTY_RESULTS);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [active, setActive] = useState(-1);
   const seq = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Debounced fan-out query; a seq guard drops out-of-order (stale) responses.
+  const term = q.trim();
+  const isResultsMode = term.length >= 2;
+
+  // Debounced fan-out; a seq guard drops out-of-order (stale) responses.
   useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2) {
+    if (!isResultsMode) {
       setResults(EMPTY_RESULTS);
       setLoading(false);
       return;
@@ -54,20 +68,12 @@ export function GlobalSearch() {
     const timer = setTimeout(() => {
       run
         .query({ q: term, lat: place.lat, lng: place.lng, limitPer: 5 })
-        .then((r) => {
-          if (mine === seq.current) {
-            setResults(r);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (mine === seq.current) setLoading(false);
-        });
+        .then((r) => { if (mine === seq.current) { setResults(r); setLoading(false); } })
+        .catch(() => { if (mine === seq.current) setLoading(false); });
     }, 250);
     return () => clearTimeout(timer);
-  }, [q, trpc, place.lat, place.lng]);
+  }, [term, isResultsMode, trpc, place.lat, place.lng]);
 
-  // Close on outside click.
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
@@ -76,23 +82,80 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
+  // Build the dropdown's sections: recent searches before you type, grouped results after.
+  const sections: SectionData[] = useMemo(() => {
+    if (!isResultsMode) {
+      if (recent.length === 0) return [];
+      return [
+        {
+          label: t("recent"),
+          rows: recent.map((r) => ({
+            key: `recent:${r}`,
+            icon: "clock" as IconName,
+            primary: r,
+            url: `/search?q=${encodeURIComponent(r)}`,
+            onRemove: () => removeRecent(r),
+          })),
+        },
+      ];
+    }
+    const s: SectionData[] = [];
+    if (results.people.length) s.push({ label: t("groups.people"), rows: results.people.map((p) => ({ key: p.id, icon: "person", primary: p.name, secondary: p.handle ? `@${p.handle}` : undefined, avatarUrl: p.avatarUrl, url: p.url })) });
+    if (results.venues.length) s.push({ label: t("groups.places"), rows: results.venues.map((v) => ({ key: v.id, icon: "place", primary: v.name, secondary: [v.category, distanceLabel(v.distanceM)].filter(Boolean).join(" · ") || undefined, url: v.url })) });
+    if (results.events.length) s.push({ label: t("groups.events"), rows: results.events.map((e) => ({ key: e.id, icon: "event", primary: e.title, secondary: `${formatEventWhen(e.startsAt, null)} · ${e.localityLabel}`, url: e.url })) });
+    if (results.topics.length) s.push({ label: t("groups.community"), rows: results.topics.map((tp) => ({ key: tp.id, icon: "landmark", primary: tp.title, secondary: tp.localityLabel, url: tp.url })) });
+    if (results.listings.length) s.push({ label: t("groups.marketplace"), rows: results.listings.map((l) => ({ key: l.id, icon: "shop", primary: l.title, secondary: [listingPrice(l.pricePence, l.mode), l.locality].filter(Boolean).join(" · "), url: l.url })) });
+    if (results.plans.length) s.push({ label: t("groups.plans"), rows: results.plans.map((pl) => ({ key: pl.id, icon: "plan", primary: pl.title, url: pl.url })) });
+    if (results.deals.length) s.push({ label: t("groups.deals"), rows: results.deals.map((d) => ({ key: d.id, icon: "tag", primary: d.title, secondary: d.merchant ?? undefined, url: d.url })) });
+    return s;
+  }, [isResultsMode, recent, results, t, removeRecent]);
+
+  const flatRows = useMemo(() => sections.flatMap((s) => s.rows), [sections]);
+  const total = totalCount(results);
+  const hasSeeAll = isResultsMode && total > 0;
+  const navCount = flatRows.length + (hasSeeAll ? 1 : 0);
+
+  // Reset the highlight whenever what's shown changes.
+  useEffect(() => { setActive(-1); }, [term, flatRows.length]);
+
   const goToResults = useCallback(() => {
-    const term = q.trim();
     if (term.length < 2) return;
+    addRecent(term);
     setOpen(false);
     router.push(`/search?q=${encodeURIComponent(term)}`);
-  }, [q, router]);
+  }, [term, addRecent, router]);
+
+  const activate = useCallback(
+    (row: RowData) => {
+      if (isResultsMode) addRecent(term);
+      else addRecent(row.primary); // a recent row: bump it to the top
+      setOpen(false);
+      router.push(row.url);
+    },
+    [isResultsMode, term, addRecent, router],
+  );
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") goToResults();
-      else if (e.key === "Escape") setOpen(false);
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setOpen(true);
+        setActive((i) => Math.min(i + 1, navCount - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((i) => Math.max(i - 1, -1));
+      } else if (e.key === "Enter") {
+        if (active >= 0 && active < flatRows.length) activate(flatRows[active]!);
+        else goToResults();
+      } else if (e.key === "Escape") {
+        setOpen(false);
+      }
     },
-    [goToResults],
+    [navCount, active, flatRows, activate, goToResults],
   );
 
-  const total = totalCount(results);
-  const showDropdown = open && q.trim().length >= 2;
+  const showDropdown = open && (isResultsMode || recent.length > 0);
+  let idx = -1; // running flat index while rendering
 
   return (
     <div ref={rootRef} className={styles.root}>
@@ -108,76 +171,54 @@ export function GlobalSearch() {
           aria-label={t("placeholder")}
           type="search"
           enterKeyHint="search"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls="global-search-dropdown"
         />
       </div>
 
       {showDropdown ? (
-        <div className={styles.dropdown} role="listbox">
-          {loading && total === 0 ? (
+        <div id="global-search-dropdown" className={styles.dropdown} role="listbox">
+          {isResultsMode && loading && total === 0 ? (
             <div className={styles.hint}>{t("searching")}</div>
-          ) : total === 0 ? (
-            <div className={styles.hint}>{t("noResults", { q: q.trim() })}</div>
+          ) : isResultsMode && total === 0 ? (
+            <div className={styles.hint}>{t("noResults", { q: term })}</div>
           ) : (
             <>
-              {results.people.length > 0 ? (
-                <Group label={t("groups.people")}>
-                  {results.people.map((p) => (
-                    <Row key={p.id} href={p.url} onNavigate={() => setOpen(false)} icon="person" primary={p.name} secondary={p.handle ? `@${p.handle}` : undefined} avatarUrl={p.avatarUrl} />
-                  ))}
-                </Group>
-              ) : null}
+              {sections.map((s) => (
+                <div key={s.label} className={styles.group}>
+                  <div className={styles.groupHead}>
+                    <span className={styles.groupLabel}>{s.label}</span>
+                    {!isResultsMode ? (
+                      <button type="button" className={styles.clear} onClick={() => clearRecent()}>{t("clear")}</button>
+                    ) : null}
+                  </div>
+                  {s.rows.map((row) => {
+                    idx += 1;
+                    const rowIndex = idx;
+                    return (
+                      <Row
+                        key={row.key}
+                        row={row}
+                        active={rowIndex === active}
+                        onActivate={() => activate(row)}
+                        onHover={() => setActive(rowIndex)}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
 
-              {results.venues.length > 0 ? (
-                <Group label={t("groups.places")}>
-                  {results.venues.map((v) => (
-                    <Row key={v.id} href={v.url} onNavigate={() => setOpen(false)} icon="place" primary={v.name} secondary={[v.category, distanceLabel(v.distanceM)].filter(Boolean).join(" · ") || undefined} />
-                  ))}
-                </Group>
+              {hasSeeAll ? (
+                <button
+                  type="button"
+                  className={`${styles.seeAll} ${active === flatRows.length ? styles.seeAllActive : ""}`}
+                  onMouseEnter={() => setActive(flatRows.length)}
+                  onClick={goToResults}
+                >
+                  {t("seeAll", { q: term })} <span aria-hidden>→</span>
+                </button>
               ) : null}
-
-              {results.events.length > 0 ? (
-                <Group label={t("groups.events")}>
-                  {results.events.map((e) => (
-                    <Row key={e.id} href={e.url} onNavigate={() => setOpen(false)} icon="event" primary={e.title} secondary={`${formatEventWhen(e.startsAt, null)} · ${e.localityLabel}`} />
-                  ))}
-                </Group>
-              ) : null}
-
-              {results.topics.length > 0 ? (
-                <Group label={t("groups.community")}>
-                  {results.topics.map((tp) => (
-                    <Row key={tp.id} href={tp.url} onNavigate={() => setOpen(false)} icon="landmark" primary={tp.title} secondary={tp.localityLabel} />
-                  ))}
-                </Group>
-              ) : null}
-
-              {results.listings.length > 0 ? (
-                <Group label={t("groups.marketplace")}>
-                  {results.listings.map((l) => (
-                    <Row key={l.id} href={l.url} onNavigate={() => setOpen(false)} icon="shop" primary={l.title} secondary={[listingPrice(l.pricePence, l.mode), l.locality].filter(Boolean).join(" · ")} />
-                  ))}
-                </Group>
-              ) : null}
-
-              {results.plans.length > 0 ? (
-                <Group label={t("groups.plans")}>
-                  {results.plans.map((pl) => (
-                    <Row key={pl.id} href={pl.url} onNavigate={() => setOpen(false)} icon="plan" primary={pl.title} />
-                  ))}
-                </Group>
-              ) : null}
-
-              {results.deals.length > 0 ? (
-                <Group label={t("groups.deals")}>
-                  {results.deals.map((d) => (
-                    <Row key={d.id} href={d.url} onNavigate={() => setOpen(false)} icon="tag" primary={d.title} secondary={d.merchant ?? undefined} />
-                  ))}
-                </Group>
-              ) : null}
-
-              <button type="button" className={styles.seeAll} onClick={goToResults}>
-                {t("seeAll", { q: q.trim() })} <span aria-hidden>→</span>
-              </button>
             </>
           )}
         </div>
@@ -186,42 +227,46 @@ export function GlobalSearch() {
   );
 }
 
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className={styles.group}>
-      <div className={styles.groupLabel}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
 function Row({
-  href,
-  onNavigate,
-  icon,
-  primary,
-  secondary,
-  avatarUrl,
+  row,
+  active,
+  onActivate,
+  onHover,
 }: {
-  href: string;
-  onNavigate: () => void;
-  icon: "person" | "place" | "event" | "landmark" | "shop" | "plan" | "tag";
-  primary: string;
-  secondary?: string | undefined;
-  avatarUrl?: string | null;
+  row: RowData;
+  active: boolean;
+  onActivate: () => void;
+  onHover: () => void;
 }) {
   return (
-    <Link href={href} className={styles.row} onClick={onNavigate}>
-      {avatarUrl ? (
+    <Link
+      href={row.url}
+      role="option"
+      aria-selected={active}
+      className={`${styles.row} ${active ? styles.rowActive : ""}`}
+      onClick={onActivate}
+      onMouseEnter={onHover}
+    >
+      {row.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- tiny avatar in a dropdown row
-        <img src={avatarUrl} alt="" className={styles.avatar} />
+        <img src={row.avatarUrl} alt="" className={styles.avatar} />
       ) : (
-        <span aria-hidden className={styles.rowIcon}><Icon name={icon} size={15} /></span>
+        <span aria-hidden className={styles.rowIcon}><Icon name={row.icon} size={15} /></span>
       )}
       <span className={styles.rowText}>
-        <span className={styles.primary}>{primary}</span>
-        {secondary ? <span className={styles.secondary}>{secondary}</span> : null}
+        <span className={styles.primary}>{row.primary}</span>
+        {row.secondary ? <span className={styles.secondary}>{row.secondary}</span> : null}
       </span>
+      {row.onRemove ? (
+        <button
+          type="button"
+          className={styles.remove}
+          aria-label="Remove"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); row.onRemove?.(); }}
+        >
+          <Icon name="close" size={13} />
+        </button>
+      ) : null}
     </Link>
   );
 }
