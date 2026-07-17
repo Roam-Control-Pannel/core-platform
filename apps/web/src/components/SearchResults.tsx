@@ -16,7 +16,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { formatEventWhen } from "../lib/events";
 import { EMPTY_RESULTS, totalCount, listingPrice, distanceLabel, type SearchResultsData } from "../lib/searchResult";
 
-type Tab = "all" | "people" | "venues" | "events" | "topics" | "listings";
+type Tab = "all" | "people" | "venues" | "events" | "topics" | "listings" | "plans" | "deals";
 const TABS: { id: Tab; labelKey: string }[] = [
   { id: "all", labelKey: "all" },
   { id: "people", labelKey: "people" },
@@ -24,6 +24,8 @@ const TABS: { id: Tab; labelKey: string }[] = [
   { id: "events", labelKey: "events" },
   { id: "topics", labelKey: "community" },
   { id: "listings", labelKey: "marketplace" },
+  { id: "plans", labelKey: "plans" },
+  { id: "deals", labelKey: "deals" },
 ];
 
 export function SearchResults() {
@@ -64,6 +66,8 @@ export function SearchResults() {
       events: results.events.length,
       topics: results.topics.length,
       listings: results.listings.length,
+      plans: results.plans.length,
+      deals: results.deals.length,
     }),
     [results],
   );
@@ -145,6 +149,20 @@ export function SearchResults() {
             <Section title={t("groups.marketplace")}>
               {results.listings.map((l) => (
                 <ResultCard key={l.id} href={l.url} icon="shop" primary={l.title} secondary={l.locality ?? undefined} trailing={listingPrice(l.pricePence, l.mode)} />
+              ))}
+            </Section>
+          ) : null}
+          {show("plans") && results.plans.length > 0 ? (
+            <Section title={t("groups.plans")}>
+              {results.plans.map((pl) => (
+                <ResultCard key={pl.id} href={pl.url} icon="plan" primary={pl.title} />
+              ))}
+            </Section>
+          ) : null}
+          {show("deals") && results.deals.length > 0 ? (
+            <Section title={t("groups.deals")}>
+              {results.deals.map((d) => (
+                <ResultCard key={d.id} href={d.url} icon="tag" primary={d.title} secondary={d.merchant ?? undefined} />
               ))}
             </Section>
           ) : null}

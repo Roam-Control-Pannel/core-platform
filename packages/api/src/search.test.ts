@@ -11,6 +11,10 @@ import {
   shapeEvent,
   shapeTopic,
   shapeListing,
+  shapePlan,
+  shapeDeal,
+  planUrl,
+  dealUrl,
 } from "./search.js";
 
 /**
@@ -78,5 +82,11 @@ describe("shapeVenue / shapeEvent / shapeTopic / shapeListing", () => {
   it("listing carries price + mode", () => {
     const l = shapeListing({ id: "l1", title: "Bike", price_pence: 12000, mode: "sell", locality: "Durham" });
     expect(l).toMatchObject({ kind: "listing", title: "Bike", pricePence: 12000, mode: "sell", url: "/market/l1" });
+  });
+  it("plan + deal shape with their urls", () => {
+    expect(planUrl("pl1")).toBe("/plans/pl1");
+    expect(dealUrl("d1")).toBe("/deals/d1");
+    expect(shapePlan({ id: "pl1", title: "Weekend trip" })).toMatchObject({ kind: "plan", title: "Weekend trip", url: "/plans/pl1" });
+    expect(shapeDeal({ id: "d1", title: "20% off", advertiser_name: "Acme" })).toMatchObject({ kind: "deal", title: "20% off", merchant: "Acme", url: "/deals/d1" });
   });
 });

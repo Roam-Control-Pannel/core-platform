@@ -159,6 +159,22 @@ export function GlobalSearch() {
                 </Group>
               ) : null}
 
+              {results.plans.length > 0 ? (
+                <Group label={t("groups.plans")}>
+                  {results.plans.map((pl) => (
+                    <Row key={pl.id} href={pl.url} onNavigate={() => setOpen(false)} icon="plan" primary={pl.title} />
+                  ))}
+                </Group>
+              ) : null}
+
+              {results.deals.length > 0 ? (
+                <Group label={t("groups.deals")}>
+                  {results.deals.map((d) => (
+                    <Row key={d.id} href={d.url} onNavigate={() => setOpen(false)} icon="tag" primary={d.title} secondary={d.merchant ?? undefined} />
+                  ))}
+                </Group>
+              ) : null}
+
               <button type="button" className={styles.seeAll} onClick={goToResults}>
                 {t("seeAll", { q: q.trim() })} <span aria-hidden>→</span>
               </button>
@@ -189,7 +205,7 @@ function Row({
 }: {
   href: string;
   onNavigate: () => void;
-  icon: "person" | "place" | "event" | "landmark" | "shop";
+  icon: "person" | "place" | "event" | "landmark" | "shop" | "plan" | "tag";
   primary: string;
   secondary?: string | undefined;
   avatarUrl?: string | null;

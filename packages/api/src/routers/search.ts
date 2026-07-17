@@ -22,10 +22,14 @@ import {
   shapeEvent,
   shapeTopic,
   shapeListing,
+  shapePlan,
+  shapeDeal,
   type PersonRow,
   type EventRow,
   type TopicRow,
   type ListingRow,
+  type PlanRow,
+  type DealRow,
 } from "../search.js";
 
 type LooseDb = {
@@ -33,7 +37,7 @@ type LooseDb = {
   rpc: (fn: string, args: Record<string, unknown>) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
-const EMPTY = { people: [], venues: [], events: [], topics: [], listings: [] };
+const EMPTY = { people: [], venues: [], events: [], topics: [], listings: [], plans: [], deals: [] };
 
 export const searchRouter = router({
   /** Public: site-wide search across people, businesses, events, Town Hall and the marketplace. */
@@ -120,14 +124,39 @@ export const searchRouter = router({
         return (data ?? []).map(shapeListing);
       })();
 
+      // Plans are member-only under RLS, so this returns the caller's OWN matching plans (and none
+      // for anonymous callers) — a safe "find my plan" search, never other people's private plans.
+      const plans = (async () => {
+        const { data } = (await db
+          .from("plans")
+          .select("id, title")
+          .ilike("title", like)
+          .order("created_at", { ascending: false })
+          .limit(n)) as { data: PlanRow[] | null };
+        return (data ?? []).map(shapePlan);
+      })();
+
+      // Deals are public; RLS already limits reads to active, in-window rows.
+      const deals = (async () => {
+        const { data } = (await db
+          .from("awin_deals")
+          .select("id, title, advertiser_name")
+          .ilike("title", like)
+          .order("created_at", { ascending: false })
+          .limit(n)) as { data: DealRow[] | null };
+        return (data ?? []).map(shapeDeal);
+      })();
+
       // Each source is independently fault-tolerant: a failure degrades that group to [].
-      const [p, v, e, t, l] = await Promise.all([
+      const [p, v, e, t, l, pl, d] = await Promise.all([
         people.catch(() => []),
         venues.catch(() => []),
         events.catch(() => []),
         topics.catch(() => []),
         listings.catch(() => []),
+        plans.catch(() => []),
+        deals.catch(() => []),
       ]);
-      return { query: term, people: p, venues: v, events: e, topics: t, listings: l };
+      return { query: term, people: p, venues: v, events: e, topics: t, listings: l, plans: pl, deals: d };
     }),
 });
