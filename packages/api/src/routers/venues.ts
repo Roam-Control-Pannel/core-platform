@@ -620,6 +620,53 @@ export const venuesRouter = router({
     }),
 
   /**
+   * Public: a town's venues in ONE category, best-first — powers the SEO discovery landing pages
+   * (/discover/<town>/<category>, e.g. "Places to eat & drink in Darlington"). Same free-text
+   * locality match as byLocality, filtered to the category and with a larger cap so a full listing
+   * page has real depth. Permanently-closed venues are excluded (consistent with the Explore reads).
+   */
+  byLocalityCategory: publicProcedure
+    .input(
+      z.object({
+        locality: z.string().trim().min(1).max(120),
+        category: z.string().trim().min(1).max(60),
+        limit: z.number().int().min(1).max(60).default(48),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as Loose;
+      const { data, error } = (await db
+        .from("venues")
+        .select("id, slug, name, category, primary_type_label, region, rating, rating_count, status, business_status")
+        .ilike("locality", input.locality)
+        .eq("category", input.category)
+        .order("rating_count", { ascending: false, nullsFirst: false })
+        .limit(200)) as {
+        data:
+          | { id: string; slug: string | null; name: string; category: string | null; primary_type_label: string | null; region: string | null; rating: number | null; rating_count: number | null; status: string; business_status: string | null }[]
+          | null;
+        error: { message: string } | null;
+      };
+      if (error) throw new Error(`Failed to load venues: ${error.message}`);
+      const ranked = (data ?? [])
+        .filter((v) => v.business_status !== "CLOSED_PERMANENTLY")
+        .map((v) => ({ v, claimed: v.status === "claimed" ? 0 : 1, score: corePlaces.weightedVenueRating(v.rating, v.rating_count ?? 0) }))
+        .sort((a, b) => a.claimed - b.claimed || b.score - a.score);
+      return ranked.slice(0, input.limit).map(({ v }) => ({
+        id: v.id,
+        slug: v.slug ?? null,
+        name: v.name,
+        category: v.category,
+        typeLabel: v.primary_type_label ?? null,
+        region: v.region,
+        rating: v.rating,
+        ratingCount: v.rating_count ?? 0,
+        status: v.status,
+      }));
+    }),
+
+  /**
    * Public: how much of a town Roam covers — total venue count + the top categories, for the
    * Town Hall hub's server-rendered summary line ("142 places in Darlington — eateries,
    * shops…"). Counted in JS over a single-column read; a town is a few hundred rows at most.

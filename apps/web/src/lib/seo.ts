@@ -486,6 +486,83 @@ export function hubJsonLd(
   });
 }
 
+/* ── Discovery intent pages (/discover/{town}/{category}) ────────────────────────────────── */
+
+import type { DiscoverCategory } from "./discover";
+import type { DiscoverVenue } from "./serverApi";
+
+/**
+ * Metadata for a discovery landing page ("Best places to eat & drink in Darlington"). These
+ * exist ONLY for real search intent, so they follow the same thin-content rule as hubs: below
+ * DISCOVER_MIN_VENUES the page renders for humans but stays noindex (no doorway pages for
+ * town × category combos Roam can't actually fill). The region suffix, when known, mirrors the
+ * town-hub titles so the two rank as a coherent set.
+ */
+export const DISCOVER_MIN_VENUES = 3;
+
+export function discoverIndexable(venueCount: number): boolean {
+  return venueCount >= DISCOVER_MIN_VENUES;
+}
+
+export function discoverMetadata(
+  cat: DiscoverCategory,
+  localityLabel: string,
+  locality: string,
+  venueCount: number,
+  region: string | null = null,
+): Metadata {
+  const where = region ? `${localityLabel}, ${region}` : localityLabel;
+  const title = `${cat.intent} in ${where}`;
+  const lead = cat.blurb.replace("{town}", localityLabel);
+  const description = clamp(
+    venueCount > 0 ? `${venueCount} ${venueCount === 1 ? "place" : "places"} — ${lead}` : lead,
+  );
+  const url = absUrl(`/discover/${locality}/${cat.slug}`);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(discoverIndexable(venueCount) ? {} : { robots: { index: false, follow: true } }),
+    ...social({ title, description, url, badge: "Local guide" }),
+  };
+}
+
+/** CollectionPage + ItemList for a discovery page — the venues as a ranked, linkable list. */
+export function discoverJsonLd(
+  cat: DiscoverCategory,
+  localityLabel: string,
+  locality: string,
+  venues: DiscoverVenue[],
+  region: string | null = null,
+): Record<string, unknown> {
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${cat.intent} in ${localityLabel}`,
+    description: clamp(cat.blurb.replace("{town}", localityLabel)),
+    url: absUrl(`/discover/${locality}/${cat.slug}`),
+    about: compact({
+      "@type": "Place",
+      name: localityLabel,
+      ...(region ? { containedInPlace: { "@type": "AdministrativeArea", name: region } } : {}),
+    }),
+    ...(venues.length > 0
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            name: `${cat.heading} in ${localityLabel}`,
+            itemListElement: venues.map((v, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: v.name,
+              url: absUrl(`/venue/${v.slug ?? v.id}`),
+            })),
+          },
+        }
+      : {}),
+  });
+}
+
 /* ── JSON-LD builders (schema.org) ───────────────────────────────────────────────────────── */
 
 /** Map a free-text venue category to the most specific schema.org LocalBusiness subtype. */

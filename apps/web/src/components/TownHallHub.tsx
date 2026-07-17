@@ -14,6 +14,7 @@ import { Card, Icon, type IconName } from "@roam/design";
 import { townHallTopicPath } from "../lib/routes";
 import { timeAgo } from "../lib/townHall";
 import { categoryLabel } from "../lib/categories";
+import { DISCOVER_CATEGORIES } from "../lib/discover";
 import type { HubData, HubVenue, HubStats, HubNews } from "../lib/serverApi";
 import type { TownGuide } from "../lib/townGuides";
 import { linkifyHashtags } from "../lib/hashtags";
@@ -73,6 +74,25 @@ export function TownHallHub({
           </span>
         </Link>
       </header>
+
+      {/* Discover by intent — links to the /discover/{town}/{category} landing pages ("Best places
+          to eat & drink in <town>"). Only shown once the town has some venue coverage, so we never
+          point at empty category pages. Each is an indexable, single-intent listing. */}
+      {venues.length > 0 ? (
+        <Section title={`Discover ${label}`}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+            {DISCOVER_CATEGORIES.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/discover/${hub.locality}/${c.slug}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)", fontWeight: 600, fontSize: 13.5 }}
+              >
+                {c.heading} <span aria-hidden style={{ color: "var(--muted)" }}>→</span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {/* About the town — the editorial guide (known for · history · local tip) carried over
           from the original roam-local.co.uk town pages. Server-rendered, unique per town: the
