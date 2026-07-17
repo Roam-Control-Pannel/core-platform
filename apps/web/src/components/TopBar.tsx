@@ -22,6 +22,7 @@ import { useSession } from "./TrpcProvider";
 import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
 import { SideNavToggle } from "./SideNav";
+import { GlobalSearch } from "./GlobalSearch";
 import { Icon } from "@roam/design";
 import styles from "./TopBar.module.css";
 
@@ -87,7 +88,7 @@ export function TopBar() {
         </Link>
       </nav>
 
-      <div className={styles.spacer} />
+      <GlobalSearch />
 
       <div className={styles.actions}>
         <Link href="/business" className={styles.forbiz}>

@@ -37,6 +37,24 @@
   "chrome": {
     "brandHome": "Roam home",
     "primaryNav": "Primary",
+    "search": {
+      "placeholder": "Search Roam",
+      "kicker": "Search",
+      "searching": "Searching…",
+      "noResults": "No results for \"{q}\".",
+      "seeAll": "See all results for \"{q}\"",
+      "resultsFor": "Results for “{q}”",
+      "titleEmpty": "Search Roam",
+      "typeToSearch": "Type at least two characters to search.",
+      "groups": {
+        "all": "All",
+        "people": "People",
+        "places": "Places",
+        "events": "Events",
+        "community": "Community",
+        "marketplace": "Marketplace"
+      }
+    },
     "sideNav": {
       "label": "Shortcuts",
       "openMenu": "Open menu",

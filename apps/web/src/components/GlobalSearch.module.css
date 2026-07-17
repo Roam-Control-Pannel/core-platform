@@ -1,0 +1,160 @@
+/* GlobalSearch — the TopBar search bar + typeahead dropdown. */
+
+.root {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 460px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+.bar:focus-within {
+  border-color: var(--crimson-tint-2);
+  background: #fff;
+}
+.icon {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--ui);
+  font-size: 14px;
+  color: var(--ink);
+}
+/* Hide the native search clear/decoration for a consistent look. */
+.input::-webkit-search-decoration,
+.input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 55;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  padding: 6px;
+}
+
+.hint {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.group {
+  padding: 4px 0;
+}
+.group + .group {
+  border-top: 1px solid var(--line);
+}
+.groupLabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 10px 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.row:hover {
+  background: var(--paper-2);
+}
+.rowIcon,
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.rowIcon {
+  display: grid;
+  place-items: center;
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.primary {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.secondary {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seeAll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--crimson-700);
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  border-radius: 0 0 10px 10px;
+}
+.seeAll:hover {
+  background: var(--paper-2);
+}
+
+/* On narrow phones the top bar is tight — cap the bar so brand + actions still fit. */
+@media (max-width: 559px) {
+  .root {
+    max-width: none;
+  }
+  .input {
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+  }
+}
