@@ -18,7 +18,7 @@ import { DiscoverScreen } from "../../../../components/DiscoverScreen";
 import { JsonLd } from "../../../../components/JsonLd";
 import { getDiscoverVenues, getHub } from "../../../../lib/serverApi";
 import { discoverCategoryBySlug } from "../../../../lib/discover";
-import { discoverMetadata, discoverJsonLd, discoverIndexable } from "../../../../lib/seo";
+import { discoverMetadata, discoverJsonLd, discoverBreadcrumbJsonLd, discoverIndexable } from "../../../../lib/seo";
 import { townGuide } from "../../../../lib/townGuides";
 
 export async function generateMetadata({
@@ -56,7 +56,10 @@ export default async function DiscoverPage({
   return (
     <>
       {discoverIndexable(venues.length) ? (
-        <JsonLd data={discoverJsonLd(cat, label, town, venues, region)} />
+        <>
+          <JsonLd data={discoverJsonLd(cat, label, town, venues, region)} />
+          <JsonLd data={discoverBreadcrumbJsonLd(cat, label, town)} />
+        </>
       ) : null}
       <DiscoverScreen cat={cat} localityLabel={label} locality={town} region={region} venues={venues} />
     </>
