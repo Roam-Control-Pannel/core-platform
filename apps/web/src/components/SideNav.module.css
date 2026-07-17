@@ -1,0 +1,182 @@
+/* SideNav — desktop left rail (≥980px) + mobile slide-out drawer. Mirrors the TopBar's 980px
+   breakpoint (below it the TopBar nav collapses and the hamburger toggle appears). */
+
+/* The hamburger toggle lives in the TopBar; hidden on desktop where the rail is always visible. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle:hover {
+  background: var(--paper-2);
+}
+
+/* ── shared nav body ─────────────────────────────────────────────────────────────────────── */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+}
+.item:hover {
+  background: var(--paper-2);
+}
+.item.active {
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+}
+.itemIcon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--crimson-700);
+  flex-shrink: 0;
+}
+.item.active .itemIcon {
+  color: var(--crimson-700);
+}
+
+/* Profile card at the top of the list. */
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.profile:hover {
+  background: var(--paper-2);
+}
+.avatar,
+.avatarFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.avatarFallback {
+  display: grid;
+  place-items: center;
+  background: var(--crimson-tint);
+  color: var(--crimson-700);
+}
+.profileText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.profileName {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profileSub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── desktop rail ────────────────────────────────────────────────────────────────────────── */
+.rail {
+  display: none;
+}
+@media (min-width: 980px) {
+  .rail {
+    display: block;
+    position: fixed;
+    top: 53px; /* below the sticky TopBar */
+    left: 0;
+    bottom: 0;
+    width: 248px;
+    overflow-y: auto;
+    padding: 16px 12px;
+    border-right: 1px solid var(--line);
+    background: var(--paper);
+    z-index: 40; /* below the TopBar (50) and modals */
+  }
+}
+
+/* The main content wrapper makes room for the fixed rail on desktop. */
+@media (min-width: 980px) {
+  .content {
+    padding-left: 248px;
+  }
+}
+
+/* ── mobile drawer ───────────────────────────────────────────────────────────────────────── */
+.drawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* above the TopBar */
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  animation: sidenav-fade 0.15s ease;
+}
+.drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(84vw, 320px);
+  overflow-y: auto;
+  padding: 16px 12px;
+  background: var(--paper);
+  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.18);
+  animation: sidenav-slide 0.2s ease;
+}
+@media (min-width: 980px) {
+  /* On desktop the rail is always present, so the drawer never shows even if state lingers. */
+  .drawerRoot {
+    display: none;
+  }
+  .toggle {
+    display: none;
+  }
+}
+
+@keyframes sidenav-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes sidenav-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

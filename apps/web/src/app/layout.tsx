@@ -18,6 +18,8 @@ import { LocaleProvider } from "../lib/i18n/LocaleProvider";
 import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
+import { SideNav, SideNavProvider } from "../components/SideNav";
+import sideNav from "../components/SideNav.module.css";
 import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
 import { InviteApply } from "../components/InviteApply";
 import { LocationGate } from "../components/LocationGate";
@@ -85,8 +87,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <LocaleProvider>
           <TrpcProvider>
-            <TopBar />
-            {children}
+            <SideNavProvider>
+              <TopBar />
+              <SideNav />
+              <div className={sideNav.content}>{children}</div>
+            </SideNavProvider>
             <CreateFab />
             <TabBar />
             <FirstRunProfilePrompt />

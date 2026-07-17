@@ -30,6 +30,9 @@ export function CreateFab() {
             <Link href="/plans" role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
               {`＋ ${t("newPlan")}`}
             </Link>
+            <Link href="/events?new=1" role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
+              <Icon name="event" size={15} /> {t("newEvent")}
+            </Link>
             <Link href={`/u/${userId}`} role="menuitem" className={styles.item} onClick={() => setOpen(false)}>
               <Icon name="edit" size={15} /> {t("postToWall")}
             </Link>
