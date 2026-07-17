@@ -1617,7 +1617,9 @@
     "accept": "Accept",
     "decline": "Decline",
     "empty": "No friends yet. Open someone's wall and tap <strong>＋ Add friend</strong> to connect.",
-    "friendCount": "{count, plural, one {# friend} other {# friends}}"
+    "friendCount": "{count, plural, one {# friend} other {# friends}}",
+    "suggestionsTitle": "People you may know",
+    "mutualCount": "{count, plural, one {# mutual friend} other {# mutual friends}}"
   },
   "userSearch": {
     "placeholderFriends": "Search your friends",

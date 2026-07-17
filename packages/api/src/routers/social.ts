@@ -312,6 +312,35 @@ export const socialRouter = router({
     }),
 
   /**
+   * "People you may know" — second-degree connections (friends of the caller's friends) that the
+   * caller isn't already connected to, ranked by mutual-friend count. Reads ONLY through the
+   * suggested_friends() definer function (0098), which does the graph traversal the caller's RLS
+   * can't. Returns [] when the graph is too sparse.
+   */
+  suggestedFriends: protectedProcedure.query(async ({ ctx }) => {
+    // suggested_friends isn't in the generated DB types yet; widen just this rpc call.
+    const rpc = ctx.db.rpc.bind(ctx.db) as unknown as (
+      fn: string,
+      args?: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    const { data, error } = await rpc("suggested_friends", { max_results: 12 });
+    if (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load suggestions: ${error.message}` });
+    }
+    const rows = (data ?? []) as {
+      id: string; handle: string | null; display_name: string | null; avatar_url: string | null; mutual_count: number;
+    }[];
+    // Inline literals keep the inferred AppRouter type portable for the web client.
+    return rows.map((r) => ({
+      id: r.id,
+      handle: r.handle,
+      display_name: r.display_name,
+      avatar_url: r.avatar_url,
+      mutual_count: r.mutual_count,
+    }));
+  }),
+
+  /**
    * The caller's accepted friends — the OTHER profile in each accepted friendship. RLS scopes
    * friendships to the two parties; we embed both ends and pick the one that isn't the caller.
    */
