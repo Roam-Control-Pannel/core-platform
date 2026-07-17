@@ -265,6 +265,38 @@ export interface EventSeo {
   venue: { id: string; name: string | null; slug: string | null } | null;
 }
 
+export interface HubEvent {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+  category: string | null;
+  locationName: string | null;
+  venue: { id: string; name: string | null; slug: string | null } | null;
+  interestedCount: number;
+  status: string;
+}
+
+/** Upcoming events in a town (for the town hub's "What's on" section). */
+export const getHubEvents = cache(async (localityLabel: string): Promise<HubEvent[]> => {
+  try {
+    const c = anon() as unknown as { events: { listByLocality: { query: (i: { localityName: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
+    return (await c.events.listByLocality.query({ localityName: localityLabel, limit: 6 })).events;
+  } catch {
+    return [];
+  }
+});
+
+/** Upcoming events at a venue (for the venue page's "what's on here"). */
+export const getVenueEvents = cache(async (venueId: string): Promise<HubEvent[]> => {
+  try {
+    const c = anon() as unknown as { events: { byVenue: { query: (i: { venueId: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
+    return (await c.events.byVenue.query({ venueId, limit: 6 })).events;
+  } catch {
+    return [];
+  }
+});
+
 /** One event for the server-rendered detail page (metadata + JSON-LD). Null when missing. */
 export const getEvent = cache(async (eventId: string): Promise<EventSeo | null> => {
   try {
@@ -337,9 +369,10 @@ export interface SeoLists {
   posts: SeoIdRow[];
   topics: SeoTopicRow[];
   listings: SeoIdRow[];
+  events: SeoIdRow[];
 }
 
-const EMPTY: SeoLists = { venues: [], profiles: [], posts: [], topics: [], listings: [] };
+const EMPTY: SeoLists = { venues: [], profiles: [], posts: [], topics: [], listings: [], events: [] };
 
 /** All public URLs for the sitemap. Each list is independently fault-tolerant (→ [] on error). */
 export const getSeoLists = cache(async (): Promise<SeoLists> => {
@@ -351,16 +384,18 @@ export const getSeoLists = cache(async (): Promise<SeoLists> => {
         posts: { query: (i: { limit: number }) => Promise<SeoIdRow[]> };
         topics: { query: (i: { limit: number }) => Promise<SeoTopicRow[]> };
         listings: { query: (i: { limit: number }) => Promise<SeoIdRow[]> };
+        events: { query: (i: { limit: number }) => Promise<SeoIdRow[]> };
       };
     };
-    const [venues, profiles, posts, topics, listings] = await Promise.all([
+    const [venues, profiles, posts, topics, listings, events] = await Promise.all([
       c.seo.venues.query({ limit: 5000 }).catch(() => [] as SeoVenueRow[]),
       c.seo.profiles.query({ limit: 5000 }).catch(() => [] as SeoProfileRow[]),
       c.seo.posts.query({ limit: 5000 }).catch(() => [] as SeoIdRow[]),
       c.seo.topics.query({ limit: 5000 }).catch(() => [] as SeoTopicRow[]),
       c.seo.listings.query({ limit: 5000 }).catch(() => [] as SeoIdRow[]),
+      c.seo.events.query({ limit: 5000 }).catch(() => [] as SeoIdRow[]),
     ]);
-    return { venues, profiles, posts, topics, listings };
+    return { venues, profiles, posts, topics, listings, events };
   } catch {
     return EMPTY;
   }

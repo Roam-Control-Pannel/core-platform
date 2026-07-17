@@ -121,6 +121,22 @@ export const eventsRouter = router({
       return { locality: slug, localityLabel: label, events: rows.map((e) => shapeEvent(e, interested.has(e.id))) };
     }),
 
+  /** Public: upcoming events at a venue, soonest-first — powers the venue page's "what's on here". */
+  byVenue: publicProcedure
+    .input(z.object({ venueId: z.string().uuid(), includePast: z.boolean().default(false), limit: z.number().int().min(1).max(50).default(10) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      let q = db.from("events").select(EVENT_COLS).eq("venue_id", input.venueId);
+      if (!input.includePast) q = q.or(upcomingOrClause(new Date().toISOString()));
+      const { data, error } = (await q.order("starts_at", { ascending: true }).limit(input.limit)) as PgResult<RawEvent[] | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load venue events: ${error.message}` });
+      }
+      const rows = data ?? [];
+      const interested = await viewerInterest(db, rows.map((r) => r.id));
+      return { events: rows.map((e) => shapeEvent(e, interested.has(e.id))) };
+    }),
+
   /** Public: upcoming events near a (lat,lng), nearest-first, within radius. */
   near: publicProcedure
     .input(

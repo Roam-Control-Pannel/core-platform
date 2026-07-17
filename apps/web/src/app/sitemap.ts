@@ -92,6 +92,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...mod(l.lastmod),
   }));
 
+  const events: MetadataRoute.Sitemap = lists.events.map((e) => ({
+    url: `${base}/events/${e.id}`,
+    changeFrequency: "weekly",
+    priority: 0.6,
+    ...mod(e.lastmod),
+  }));
+
   // Discovery pages (/discover/{town}/{category}): only combos that clear the venue bar AND whose
   // town has an editorial guide — the guide's name is the canonical label the page uses to match
   // venues, so a guide-backed slug is guaranteed to round-trip (no dead sitemap URLs). The category
@@ -104,5 +111,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [{ url: `${base}/discover/${c.locality}/${catSlug}`, changeFrequency: "weekly" as const, priority: 0.6, ...mod(c.lastmod) }];
   });
 
-  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics, ...listings, ...discover];
+  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics, ...listings, ...events, ...discover];
 }

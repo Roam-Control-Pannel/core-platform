@@ -15,7 +15,8 @@ import { townHallTopicPath } from "../lib/routes";
 import { timeAgo } from "../lib/townHall";
 import { categoryLabel } from "../lib/categories";
 import { DISCOVER_CATEGORIES } from "../lib/discover";
-import type { HubData, HubVenue, HubStats, HubNews } from "../lib/serverApi";
+import { UpcomingEvents } from "./UpcomingEvents";
+import type { HubData, HubVenue, HubStats, HubNews, HubEvent } from "../lib/serverApi";
 import type { TownGuide } from "../lib/townGuides";
 import { linkifyHashtags } from "../lib/hashtags";
 
@@ -34,12 +35,14 @@ export function TownHallHub({
   venues,
   stats,
   news,
+  events,
   guide,
 }: {
   hub: HubData;
   venues: HubVenue[];
   stats: HubStats | null;
   news: HubNews[];
+  events: HubEvent[];
   guide: TownGuide | null;
 }) {
   const label = hub.localityLabel;
@@ -93,6 +96,17 @@ export function TownHallHub({
           </div>
         </Section>
       ) : null}
+
+      {/* What's on — upcoming community events in the town, linking to each /events/{id} page.
+          Server-rendered, so this fresh, dated content feeds the indexable hub. Always renders
+          (a prompt when empty) so the hub advertises the surface. */}
+      <UpcomingEvents
+        title={`What's on in ${label}`}
+        events={events}
+        postHref="/events?new=1"
+        postLabel="Post an event"
+        emptyBody={`Gigs, quiz nights, markets and meet-ups in ${label} will show here. Be the first to post one.`}
+      />
 
       {/* About the town — the editorial guide (known for · history · local tip) carried over
           from the original roam-local.co.uk town pages. Server-rendered, unique per town: the

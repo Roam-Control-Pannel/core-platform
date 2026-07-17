@@ -62,10 +62,18 @@ export function Events() {
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  const [venuePrefill, setVenuePrefill] = useState<{ id: string; name: string } | null>(null);
 
-  // Deep-link from the "Create event" shortcut (/events?new=1) opens the composer straight away.
+  // Deep-links: /events?new=1 opens the composer; &venue=<id>&venueName=<name> pre-attaches a venue
+  // (the "post an event here" affordance on a venue page).
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("new") === "1") setComposing(true);
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("new") === "1") setComposing(true);
+    const vid = p.get("venue");
+    if (vid) {
+      setVenuePrefill({ id: vid, name: p.get("venueName") ?? "" });
+      setComposing(true);
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -123,7 +131,14 @@ export function Events() {
 
       {composing ? (
         session?.user ? (
-          <EventComposer localityName={place.name} lat={place.lat} lng={place.lng} onPosted={onPosted} onCancel={() => setComposing(false)} />
+          <EventComposer
+            localityName={place.name}
+            lat={place.lat}
+            lng={place.lng}
+            {...(venuePrefill ? { venueId: venuePrefill.id, initialLocation: venuePrefill.name } : {})}
+            onPosted={onPosted}
+            onCancel={() => setComposing(false)}
+          />
         ) : (
           <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             <AuthPanel
@@ -277,12 +292,16 @@ function EventComposer({
   localityName,
   lat,
   lng,
+  venueId,
+  initialLocation,
   onPosted,
   onCancel,
 }: {
   localityName: string;
   lat: number;
   lng: number;
+  venueId?: string;
+  initialLocation?: string;
   onPosted: () => void;
   onCancel: () => void;
 }) {
@@ -293,7 +312,7 @@ function EventComposer({
   const [category, setCategory] = useState<string | null>(null);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
-  const [locationName, setLocationName] = useState("");
+  const [locationName, setLocationName] = useState(initialLocation ?? "");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -307,7 +326,7 @@ function EventComposer({
     const create = trpc.events.create as unknown as {
       mutate: (i: {
         localityName: string; title: string; description?: string; category?: string;
-        startsAt: string; endsAt?: string; locationName?: string; lat?: number; lng?: number; url?: string;
+        startsAt: string; endsAt?: string; venueId?: string; locationName?: string; lat?: number; lng?: number; url?: string;
       }) => Promise<{ id: string }>;
     };
     try {
@@ -320,6 +339,7 @@ function EventComposer({
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(category ? { category } : {}),
         ...(endIso ? { endsAt: endIso } : {}),
+        ...(venueId ? { venueId } : {}),
         ...(locationName.trim() ? { locationName: locationName.trim() } : {}),
         ...(/^https?:\/\//i.test(url.trim()) ? { url: url.trim() } : {}),
       });
@@ -328,7 +348,7 @@ function EventComposer({
       setErr(e instanceof Error ? e.message : t("postFailed"));
       setBusy(false);
     }
-  }, [trpc, localityName, lat, lng, title, description, category, startsAt, endsAt, locationName, url, onPosted, t]);
+  }, [trpc, localityName, lat, lng, venueId, title, description, category, startsAt, endsAt, locationName, url, onPosted, t]);
 
   const canPost = title.trim().length > 0 && startsAt.length > 0 && locationName.trim().length > 0 && !busy;
 

@@ -24,6 +24,24 @@ export function eventCategoryKey(id: string | null): string | null {
   return id ? CATEGORY_KEY.get(id) ?? null : null;
 }
 
+/** English category labels for SERVER-rendered surfaces (hub/venue sections), which don't use the
+ *  client i18n hook — mirrors the values in en.json's events.categories. */
+const CATEGORY_LABEL_EN: Record<string, string> = {
+  music: "Music",
+  nightlife: "Nightlife",
+  food_drink: "Food & Drink",
+  arts_culture: "Arts & Culture",
+  sports_fitness: "Sports & Fitness",
+  community: "Community",
+  market_fair: "Markets & Fairs",
+  family: "Family",
+  learning: "Learning",
+  other: "Other",
+};
+export function eventCategoryLabelEn(id: string | null): string | null {
+  return id ? CATEGORY_LABEL_EN[id] ?? null : null;
+}
+
 /** True while the event hasn't ended yet (or, with no end, hasn't started), relative to `now`. */
 export function isUpcoming(startsAt: string, endsAt: string | null, now: number = Date.now()): boolean {
   const end = endsAt ? new Date(endsAt).getTime() : new Date(startsAt).getTime();
