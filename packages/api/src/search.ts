@@ -31,6 +31,12 @@ export function topicUrl(locality: string | null, slug: string | null, id: strin
 export function listingUrl(id: string): string {
   return `/market/${id}`;
 }
+export function planUrl(id: string): string {
+  return `/plans/${id}`;
+}
+export function dealUrl(id: string): string {
+  return `/deals/${id}`;
+}
 
 /* ── raw row → result shapers (inline object literals; no named type leaks into AppRouter) ─── */
 
@@ -125,4 +131,21 @@ export function shapeListing(r: ListingRow) {
     locality: r.locality,
     url: listingUrl(r.id),
   };
+}
+
+export interface PlanRow {
+  id: string;
+  title: string;
+}
+export function shapePlan(r: PlanRow) {
+  return { kind: "plan" as const, id: r.id, title: r.title, url: planUrl(r.id) };
+}
+
+export interface DealRow {
+  id: string;
+  title: string;
+  advertiser_name: string | null;
+}
+export function shapeDeal(r: DealRow) {
+  return { kind: "deal" as const, id: r.id, title: r.title, merchant: r.advertiser_name ?? null, url: dealUrl(r.id) };
 }

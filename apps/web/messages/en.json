@@ -52,7 +52,9 @@
         "places": "Places",
         "events": "Events",
         "community": "Community",
-        "marketplace": "Marketplace"
+        "marketplace": "Marketplace",
+        "plans": "Plans",
+        "deals": "Deals"
       }
     },
     "sideNav": {
