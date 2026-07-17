@@ -226,6 +226,26 @@ export const getDiscoverVenues = cache(
   },
 );
 
+export interface DiscoverCombo {
+  locality: string;
+  label: string;
+  category: string;
+  venueCount: number;
+  lastmod: string | null;
+}
+
+/** Town × category combos with enough venues to carry a discovery page — for the sitemap. */
+export const getDiscoverCombos = cache(async (categories: string[], minVenues: number): Promise<DiscoverCombo[]> => {
+  try {
+    const c = anon() as unknown as {
+      seo: { discoverCombos: { query: (i: { categories: string[]; minVenues: number }) => Promise<DiscoverCombo[]> } };
+    };
+    return (await c.seo.discoverCombos.query({ categories, minVenues })) ?? [];
+  } catch {
+    return [];
+  }
+});
+
 /** One marketplace listing (any status — the page noindexes non-live). Null when missing. */
 export const getListing = cache(async (listingId: string): Promise<ListingSeo | null> => {
   try {

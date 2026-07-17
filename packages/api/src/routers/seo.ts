@@ -159,4 +159,56 @@ export const seoRouter = router({
     }
     return Array.from(seen.values());
   }),
+
+  /**
+   * Public: town × category combos that clear a minimum venue count — the source for the
+   * /discover/{town}/{category} sitemap entries. Given the caller's set of discovery categories,
+   * counts non-permanently-closed venues per (locality slug, category) in JS (PostgREST has no
+   * GROUP BY here) and returns only combos with at least `minVenues`, so the sitemap never lists
+   * a thin (noindex) discovery page. `label` is the raw venue locality so the caller can confirm
+   * the slug round-trips; `lastmod` is the freshest venue in the combo.
+   */
+  discoverCombos: publicProcedure
+    .input(
+      z.object({
+        categories: z.array(z.string().trim().min(1).max(60)).min(1).max(20),
+        minVenues: z.number().int().min(1).max(50).default(3),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const { data, error } = (await db
+        .from("venues")
+        .select("locality, category, business_status, updated_at, created_at")
+        .in("category", input.categories)
+        .not("locality", "is", null)
+        .limit(20000)) as {
+        data: { locality: string | null; category: string | null; business_status: string | null; updated_at: string | null; created_at: string | null }[] | null;
+        error: { message: string } | null;
+      };
+      if (error) fail("discover combos", error.message);
+      const counts = new Map<string, { locality: string; label: string; category: string; venueCount: number; lastmod: string | null }>();
+      for (const row of data ?? []) {
+        if (row.business_status === "CLOSED_PERMANENTLY") continue;
+        const label = row.locality?.trim();
+        const category = row.category;
+        if (!label || !category) continue;
+        let slug: string;
+        try {
+          slug = localitySlug(label);
+        } catch {
+          continue; // a locality that can't slug can't have a discovery URL
+        }
+        const key = `${slug}::${category}`;
+        const mod = row.updated_at ?? row.created_at ?? null;
+        const ex = counts.get(key);
+        if (ex) {
+          ex.venueCount += 1;
+          if (mod && (!ex.lastmod || mod > ex.lastmod)) ex.lastmod = mod;
+        } else {
+          counts.set(key, { locality: slug, label, category, venueCount: 1, lastmod: mod });
+        }
+      }
+      return Array.from(counts.values()).filter((c) => c.venueCount >= input.minVenues);
+    }),
 });

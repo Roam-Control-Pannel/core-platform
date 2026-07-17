@@ -65,10 +65,21 @@ export const DISCOVER_CATEGORIES: DiscoverCategory[] = [
 ];
 
 const BY_SLUG = new Map(DISCOVER_CATEGORIES.map((c) => [c.slug, c]));
+const BY_CATEGORY = new Map(DISCOVER_CATEGORIES.map((c) => [c.category, c.slug]));
 
 /** Resolve a URL segment to its discovery category, or null if it isn't a published one. */
 export function discoverCategoryBySlug(slug: string): DiscoverCategory | null {
   return BY_SLUG.get(slug.toLowerCase()) ?? null;
+}
+
+/** The core CATEGORY strings we publish discovery pages for — the sitemap/API filter set. */
+export function discoverCategories(): string[] {
+  return DISCOVER_CATEGORIES.map((c) => c.category);
+}
+
+/** Map a core CATEGORY (e.g. "Food & Drink") to its published discovery slug, or null. */
+export function discoverSlugForCategory(category: string): string | null {
+  return BY_CATEGORY.get(category) ?? null;
 }
 
 /** The chip links a town hub renders — every published discovery category for that town. */

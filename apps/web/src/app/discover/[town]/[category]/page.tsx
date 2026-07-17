@@ -16,7 +16,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DiscoverScreen } from "../../../../components/DiscoverScreen";
 import { JsonLd } from "../../../../components/JsonLd";
-import { getDiscoverVenues } from "../../../../lib/serverApi";
+import { getDiscoverVenues, getHub } from "../../../../lib/serverApi";
 import { discoverCategoryBySlug } from "../../../../lib/discover";
 import { discoverMetadata, discoverJsonLd, discoverIndexable } from "../../../../lib/seo";
 import { townGuide } from "../../../../lib/townGuides";
@@ -30,7 +30,9 @@ export async function generateMetadata({
   const cat = discoverCategoryBySlug(category);
   if (!cat) return { title: "Discover", robots: { index: false, follow: true } };
   const guide = townGuide(town);
-  const label = guide?.name ?? town;
+  // The guide's name is the canonical label; without one, fall back to the hub's resolved label
+  // (stored locality_label, else the title-cased slug) — same resolution the town hub uses.
+  const label = guide?.name ?? (await getHub(town))?.localityLabel ?? town;
   const venues = await getDiscoverVenues(label, cat.category);
   return discoverMetadata(cat, label, town, venues.length, guide?.region ?? null);
 }
@@ -45,8 +47,9 @@ export default async function DiscoverPage({
   if (!cat) notFound();
 
   const guide = townGuide(town);
-  // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds").
-  const label = guide?.name ?? town;
+  // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds");
+  // without one, use the hub's resolved label (stored locality_label, else title-cased slug).
+  const label = guide?.name ?? (await getHub(town))?.localityLabel ?? town;
   const region = guide?.region ?? null;
   const venues = await getDiscoverVenues(label, cat.category);
 
