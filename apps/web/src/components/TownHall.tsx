@@ -191,8 +191,14 @@ export function TownHall() {
           onChange={(v) => setSort(v)}
         />
         <Link
-          href={townHubPath(townSlug(place.name))}
+          href="/events"
           style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}
+        >
+          {t("whatsOn")} <span aria-hidden>→</span>
+        </Link>
+        <Link
+          href={townHubPath(townSlug(place.name))}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "var(--crimson-700)", textDecoration: "none", whiteSpace: "nowrap" }}
         >
           {t("placeHub", { place: place.name })} <span aria-hidden>→</span>
         </Link>

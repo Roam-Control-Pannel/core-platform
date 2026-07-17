@@ -586,6 +586,71 @@ export function discoverBreadcrumbJsonLd(
   };
 }
 
+/* ── Events (/events/{id}) ───────────────────────────────────────────────────────────────── */
+
+import type { EventSeo } from "./serverApi";
+
+/** Where an event happens, in words — the venue name or the free-text place, plus the town. */
+function eventWhere(ev: Pick<EventSeo, "venue" | "locationName" | "localityLabel">): string {
+  const place = ev.venue?.name || ev.locationName;
+  return place ? `${place}, ${ev.localityLabel}` : ev.localityLabel;
+}
+
+/**
+ * Metadata for one event. Published events are indexable; a cancelled event flips to
+ * noindex,follow so search drops it while the link still resolves for humans (same posture as
+ * sold marketplace listings). Description leads with the where/when so the snippet is useful.
+ */
+export function eventMetadata(event: EventSeo | null, id: string): Metadata {
+  if (!event) return notFoundMeta(`/events/${id}`);
+  const where = eventWhere(event);
+  const title = `${event.title} — ${where}`;
+  const description = clamp(
+    (event.description && event.description.trim()) ||
+      `${event.title} in ${where}. Find local events and what's on, on Roam.`,
+  );
+  const url = absUrl(`/events/${event.id}`);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(event.status === "published" ? {} : { robots: { index: false, follow: true } }),
+    ...social({
+      title,
+      description,
+      url,
+      badge: "What's on",
+      type: "article",
+      ...(event.coverImageUrl ? { image: event.coverImageUrl } : {}),
+    }),
+  };
+}
+
+/** schema.org Event — date, place and organizer, for event rich results. */
+export function eventJsonLd(event: EventSeo): Record<string, unknown> {
+  const placeName = event.venue?.name || event.locationName || event.localityLabel;
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    ...(event.description ? { description: clamp(event.description, 500) } : {}),
+    startDate: event.startsAt,
+    ...(event.endsAt ? { endDate: event.endsAt } : {}),
+    eventStatus: event.status === "cancelled" ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: compact({
+      "@type": "Place",
+      name: placeName,
+      address: { "@type": "PostalAddress", addressLocality: event.localityLabel, addressCountry: "GB" },
+    }),
+    url: absUrl(`/events/${event.id}`),
+    ...(event.coverImageUrl ? { image: event.coverImageUrl } : {}),
+    ...(event.author.displayName || event.author.handle
+      ? { organizer: { "@type": "Person", name: event.author.displayName ?? `@${event.author.handle}` } }
+      : {}),
+  });
+}
+
 /* ── JSON-LD builders (schema.org) ───────────────────────────────────────────────────────── */
 
 /** Map a free-text venue category to the most specific schema.org LocalBusiness subtype. */

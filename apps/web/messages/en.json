@@ -832,6 +832,63 @@
       "cancel": "Cancel"
     }
   },
+  "events": {
+    "kicker": "What's on",
+    "title": "What's on in {place}",
+    "subtitle": "Local events, meet-ups and things to do in {place} — posted by the community.",
+    "post": "Post an event",
+    "all": "All",
+    "loadFailed": "Couldn't load events.",
+    "postFailed": "Couldn't post your event. Please try again.",
+    "signInToPost": "Sign in to post an event in {place}.",
+    "signInToInterest": "Sign in to mark yourself interested.",
+    "interest": "Interested",
+    "interested": "Interested ✓",
+    "by": "by",
+    "bySomeone": "Posted by a local",
+    "cancelledPrefix": "Cancelled:",
+    "report": "Report",
+    "reported": "Reported",
+    "empty": {
+      "title": "No events in {place} yet",
+      "body": "Be the first — post a gig, quiz night, market or meet-up so locals can find it."
+    },
+    "categories": {
+      "music": "Music",
+      "nightlife": "Nightlife",
+      "foodDrink": "Food & Drink",
+      "artsCulture": "Arts & Culture",
+      "sportsFitness": "Sports & Fitness",
+      "community": "Community",
+      "marketFair": "Markets & Fairs",
+      "family": "Family",
+      "learning": "Learning",
+      "other": "Other"
+    },
+    "composer": {
+      "title": "Post an event in {place}",
+      "titlePlaceholder": "Event name",
+      "titleAria": "Event name",
+      "descPlaceholder": "What's happening? Add the details people need.",
+      "descAria": "Event description",
+      "starts": "Starts",
+      "ends": "Ends (optional)",
+      "placePlaceholder": "Where is it? (venue or address)",
+      "placeAria": "Event location",
+      "urlPlaceholder": "Tickets / info link (optional)",
+      "urlAria": "Event link",
+      "cancel": "Cancel",
+      "post": "Post event",
+      "posting": "Posting…"
+    },
+    "detail": {
+      "when": "When",
+      "where": "Where",
+      "link": "Link",
+      "moreInfo": "More info & tickets",
+      "share": "Share"
+    }
+  },
   "townHall": {
     "loadFailed": "Couldn't load the Town Hall.",
     "hero": {
@@ -846,6 +903,7 @@
       "top": "Top"
     },
     "placeHub": "{place} hub",
+    "whatsOn": "What's on",
     "filterByCategory": "Filter by category",
     "categories": {
       "all": "All",

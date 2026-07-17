@@ -246,6 +246,35 @@ export const getDiscoverCombos = cache(async (categories: string[], minVenues: n
   }
 });
 
+export interface EventSeo {
+  id: string;
+  locality: string;
+  localityLabel: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  venueId: string | null;
+  locationName: string | null;
+  url: string | null;
+  coverImageUrl: string | null;
+  interestedCount: number;
+  status: string;
+  author: { id: string | null; handle: string | null; displayName: string | null; avatarUrl: string | null };
+  venue: { id: string; name: string | null; slug: string | null } | null;
+}
+
+/** One event for the server-rendered detail page (metadata + JSON-LD). Null when missing. */
+export const getEvent = cache(async (eventId: string): Promise<EventSeo | null> => {
+  try {
+    const c = anon() as unknown as { events: { byId: { query: (i: { eventId: string }) => Promise<EventSeo | null> } } };
+    return (await c.events.byId.query({ eventId })) ?? null;
+  } catch {
+    return null;
+  }
+});
+
 /** One marketplace listing (any status — the page noindexes non-live). Null when missing. */
 export const getListing = cache(async (listingId: string): Promise<ListingSeo | null> => {
   try {
