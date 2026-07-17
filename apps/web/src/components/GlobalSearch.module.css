@@ -71,6 +71,12 @@
 .group + .group {
   border-top: 1px solid var(--line);
 }
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 4px;
+}
 .groupLabel {
   font-family: var(--mono);
   font-size: 10px;
@@ -78,7 +84,16 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 6px 10px 4px;
+}
+.clear {
+  border: none;
+  background: transparent;
+  color: var(--crimson-700);
+  font-family: var(--ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 }
 
 .row {
@@ -90,8 +105,26 @@
   text-decoration: none;
   color: var(--ink);
 }
-.row:hover {
+.row:hover,
+.rowActive {
   background: var(--paper-2);
+}
+
+.remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.remove:hover {
+  background: var(--line);
+  color: var(--ink);
 }
 .rowIcon,
 .avatar {
@@ -145,7 +178,8 @@
   cursor: pointer;
   border-radius: 0 0 10px 10px;
 }
-.seeAll:hover {
+.seeAll:hover,
+.seeAllActive {
   background: var(--paper-2);
 }
 
