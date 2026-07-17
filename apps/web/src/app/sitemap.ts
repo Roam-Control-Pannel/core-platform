@@ -8,9 +8,10 @@
  * empty and we still emit a valid sitemap of the static routes.
  */
 import type { MetadataRoute } from "next";
-import { siteUrl, HUB_MIN_VENUES } from "../lib/seo";
-import { getSeoLists, getHubTowns } from "../lib/serverApi";
+import { siteUrl, HUB_MIN_VENUES, DISCOVER_MIN_VENUES } from "../lib/seo";
+import { getSeoLists, getHubTowns, getDiscoverCombos } from "../lib/serverApi";
 import { townGuideSlugs } from "../lib/townGuides";
+import { discoverCategories, discoverSlugForCategory } from "../lib/discover";
 
 export const revalidate = 3600;
 
@@ -23,7 +24,11 @@ function mod(lastmod: string | null): { lastModified?: Date } {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
-  const [lists, towns] = await Promise.all([getSeoLists(), getHubTowns()]);
+  const [lists, towns, combos] = await Promise.all([
+    getSeoLists(),
+    getHubTowns(),
+    getDiscoverCombos(discoverCategories(), DISCOVER_MIN_VENUES),
+  ]);
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "daily", priority: 1 },
@@ -87,5 +92,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...mod(l.lastmod),
   }));
 
-  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics, ...listings];
+  // Discovery pages (/discover/{town}/{category}): only combos that clear the venue bar AND whose
+  // town has an editorial guide — the guide's name is the canonical label the page uses to match
+  // venues, so a guide-backed slug is guaranteed to round-trip (no dead sitemap URLs). The category
+  // is mapped from the core CATEGORY to its published discovery slug; unmapped categories are skipped.
+  const guideSet = new Set(townGuideSlugs());
+  const discover: MetadataRoute.Sitemap = combos.flatMap((c) => {
+    if (!guideSet.has(c.locality)) return [];
+    const catSlug = discoverSlugForCategory(c.category);
+    if (!catSlug) return [];
+    return [{ url: `${base}/discover/${c.locality}/${catSlug}`, changeFrequency: "weekly" as const, priority: 0.6, ...mod(c.lastmod) }];
+  });
+
+  return [...staticRoutes, ...hubs, ...venues, ...profiles, ...posts, ...topics, ...listings, ...discover];
 }
