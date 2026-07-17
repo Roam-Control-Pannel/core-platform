@@ -37,6 +37,27 @@
   "chrome": {
     "brandHome": "Roam home",
     "primaryNav": "Primary",
+    "sideNav": {
+      "label": "Shortcuts",
+      "openMenu": "Open menu",
+      "close": "Close menu",
+      "you": "You",
+      "signIn": "Sign in",
+      "signInSub": "Join your local community",
+      "viewProfile": "View profile",
+      "explore": "Explore",
+      "townHall": "Town Hall",
+      "events": "What's on",
+      "createEvent": "Create event",
+      "plans": "Plans",
+      "friends": "Friends",
+      "messages": "Messages",
+      "marketplace": "Marketplace",
+      "deals": "Deals",
+      "basecamp": "Basecamp",
+      "notifications": "Notifications",
+      "settings": "Settings"
+    },
     "nav": {
       "home": "Home",
       "explore": "Explore",
@@ -58,6 +79,7 @@
       "open": "Create",
       "close": "Close create menu",
       "newPlan": "New plan",
+      "newEvent": "New event",
       "postToWall": "Post to your wall"
     }
   },

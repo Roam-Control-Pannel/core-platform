@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
 import { useSession } from "./TrpcProvider";
 import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
+import { SideNavToggle } from "./SideNav";
 import { Icon } from "@roam/design";
 import styles from "./TopBar.module.css";
 
@@ -51,6 +52,8 @@ export function TopBar() {
 
   return (
     <header className={styles.bar}>
+      {/* Menu toggle — opens the shortcuts drawer on phones (the rail replaces it on desktop). */}
+      <SideNavToggle />
       {/* translate="no": the brand name is never machine-translated. */}
       <Link href="/" className={styles.brand} aria-label={t("brandHome")} translate="no">
         {/* eslint-disable-next-line @next/next/no-img-element -- static brand lockup; next/image is overkill in the chrome */}

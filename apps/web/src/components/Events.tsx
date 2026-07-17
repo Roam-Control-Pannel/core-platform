@@ -63,6 +63,11 @@ export function Events() {
   const [category, setCategory] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
+  // Deep-link from the "Create event" shortcut (/events?new=1) opens the composer straight away.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") === "1") setComposing(true);
+  }, []);
+
   const load = useCallback(async () => {
     setEvents(undefined);
     setError(null);
