@@ -12,10 +12,13 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { AuthModal } from "./AuthModal";
+import { useSavedPlaces } from "../lib/savedPlaces";
+import { useCurrentPlace } from "../lib/currentPlace";
 import styles from "./SideNav.module.css";
 
 /* ── open/close context (shared by the TopBar toggle + the drawer) ───────────────────────── */
@@ -134,7 +137,42 @@ function SideNavBody({ pathname }: { pathname: string }) {
           </Link>
         ))}
       </div>
+      <YourPlaces />
     </nav>
+  );
+}
+
+/** The user's saved places — tapping one re-roots browsing to that town and opens Explore. */
+function YourPlaces() {
+  const t = useTranslations("chrome.sideNav");
+  const { saved } = useSavedPlaces();
+  const { setPlace } = useCurrentPlace();
+  const { setOpen } = useSideNav();
+  const router = useRouter();
+
+  if (saved.length === 0) return null;
+
+  return (
+    <div className={styles.places}>
+      <div className={styles.sectionLabel}>{t("yourPlaces")}</div>
+      {saved.slice(0, 8).map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          className={styles.item}
+          onClick={() => {
+            setPlace(p);
+            setOpen(false);
+            router.push("/explore");
+          }}
+        >
+          <span className={styles.itemIcon} aria-hidden>
+            <Icon name="place" size={18} />
+          </span>
+          <span className={styles.placeName}>{p.name}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -149,6 +187,7 @@ function ProfileCard() {
   const trpc = useTrpc();
   const session = useSession();
   const [me, setMe] = useState<Me | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -163,15 +202,21 @@ function ProfileCard() {
 
   if (!session) {
     return (
-      <Link href="/account" className={styles.profile}>
-        <span className={styles.avatarFallback} aria-hidden>
-          <Icon name="person" size={18} />
-        </span>
-        <span className={styles.profileText}>
-          <span className={styles.profileName}>{t("signIn")}</span>
-          <span className={styles.profileSub}>{t("signInSub")}</span>
-        </span>
-      </Link>
+      <>
+        <div className={styles.signedOut}>
+          <div className={styles.signedOutTitle}>{t("signedOutTitle")}</div>
+          <div className={styles.signedOutSub}>{t("signedOutSub")}</div>
+          <button type="button" className={styles.signInBtn} onClick={() => setAuthOpen(true)}>
+            {t("signIn")}
+          </button>
+        </div>
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""}
+          intro={t("signInSub")}
+        />
+      </>
     );
   }
 
