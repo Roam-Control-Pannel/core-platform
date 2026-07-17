@@ -76,6 +76,24 @@ export const seoRouter = router({
     return (data ?? []).map((p) => ({ id: p.id, lastmod: p.published_at ?? null }));
   }),
 
+  /** Public: published event ids (+ last update) for /events/[id] sitemap entries, freshest first.
+   *  Cancelled events are excluded — their pages noindex, so listing them would advertise URLs
+   *  we tell crawlers to drop (same rule as sold listings). */
+  events: publicProcedure.input(limitInput).query(async ({ ctx, input }) => {
+    const db = ctx.db as unknown as LooseDb;
+    const { data, error } = (await db
+      .from("events")
+      .select("id, updated_at, created_at")
+      .eq("status", "published")
+      .order("updated_at", { ascending: false })
+      .limit(input.limit)) as {
+      data: { id: string; updated_at: string | null; created_at: string | null }[] | null;
+      error: { message: string } | null;
+    };
+    if (error) fail("events", error.message);
+    return (data ?? []).map((e) => ({ id: e.id, lastmod: e.updated_at ?? e.created_at ?? null }));
+  }),
+
   /** Public: town-hall topic ids (+ locality, slug, last activity) for nested sitemap entries. */
   topics: publicProcedure.input(limitInput).query(async ({ ctx, input }) => {
     const db = ctx.db as unknown as LooseDb;

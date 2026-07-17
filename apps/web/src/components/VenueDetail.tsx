@@ -42,6 +42,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
+import { VenueEvents } from "./VenueEvents";
 import { AddToPlan } from "./AddToPlan";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { VenueShop } from "./VenueShop";
@@ -352,6 +353,9 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
           venueId={venueId}
         />
       )}
+
+      {/* What's on here — upcoming events at this venue + a "post an event here" affordance. */}
+      {venue ? <VenueEvents venueId={venueId} venueName={venue.name} /> : null}
 
       {/* Quiet report affordance — the user-facing half of the moderation backstop. Shown on
           any real venue (not the loading / not-found / error states). */}

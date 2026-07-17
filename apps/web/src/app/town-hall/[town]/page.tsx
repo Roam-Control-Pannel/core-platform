@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { TownHallHub } from "../../../components/TownHallHub";
 import { JsonLd } from "../../../components/JsonLd";
-import { getHub, getHubVenues, getHubStats, getHubNews, getTopic } from "../../../lib/serverApi";
+import { getHub, getHubVenues, getHubStats, getHubNews, getHubEvents, getTopic } from "../../../lib/serverApi";
 import { hubMetadata, hubJsonLd, hubIndexable } from "../../../lib/seo";
 import { townGuide } from "../../../lib/townGuides";
 
@@ -45,17 +45,18 @@ export default async function TownHubPage({ params }: { params: Promise<{ town: 
   const guide = townGuide(town);
   // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds").
   const hub = { ...fetched, localityLabel: guide?.name ?? fetched.localityLabel };
-  const [venues, stats, news] = await Promise.all([
+  const [venues, stats, news, events] = await Promise.all([
     getHubVenues(hub.localityLabel),
     getHubStats(hub.localityLabel),
     getHubNews(hub.localityLabel),
+    getHubEvents(hub.localityLabel),
   ]);
   const indexable = hubIndexable(hub.hasTopics, venues.length, !!guide);
 
   return (
     <>
       {indexable ? <JsonLd data={hubJsonLd(hub.localityLabel, hub.locality || town, venues, guide)} /> : null}
-      <TownHallHub hub={hub} venues={venues} stats={stats} news={news} guide={guide} />
+      <TownHallHub hub={hub} venues={venues} stats={stats} news={news} events={events} guide={guide} />
     </>
   );
 }
