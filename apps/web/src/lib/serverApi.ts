@@ -200,6 +200,32 @@ export const getHubVenues = cache(async (localityLabel: string): Promise<HubVenu
   }
 });
 
+export interface DiscoverVenue {
+  id: string;
+  slug: string | null;
+  name: string;
+  category: string | null;
+  typeLabel: string | null;
+  region: string | null;
+  rating: number | null;
+  ratingCount: number;
+  status: string;
+}
+
+/** A town's venues in one category, best-first — powers the /discover/<town>/<category> pages. */
+export const getDiscoverVenues = cache(
+  async (localityLabel: string, category: string): Promise<DiscoverVenue[]> => {
+    try {
+      const c = anon() as unknown as {
+        venues: { byLocalityCategory: { query: (i: { locality: string; category: string; limit: number }) => Promise<DiscoverVenue[]> } };
+      };
+      return await c.venues.byLocalityCategory.query({ locality: localityLabel, category, limit: 48 });
+    } catch {
+      return [];
+    }
+  },
+);
+
 /** One marketplace listing (any status — the page noindexes non-live). Null when missing. */
 export const getListing = cache(async (listingId: string): Promise<ListingSeo | null> => {
   try {
