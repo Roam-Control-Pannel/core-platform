@@ -335,6 +335,19 @@ export async function handler(request: Request): Promise<Response> {
               },
             });
           }
+          // The venue owner's bell: "you made a sale". Best-effort — never breaks the webhook.
+          const { data: ownerRow } = (await service
+            .from("venues")
+            .select("owner_id")
+            .eq("id", order.venue_id)
+            .maybeSingle()) as { data: { owner_id: string | null } | null };
+          if (ownerRow?.owner_id && ownerRow.owner_id !== order.buyer_id) {
+            await service.from("notifications").insert({
+              recipient_id: ownerRow.owner_id,
+              type: "order_received",
+              payload: { text: `New order — “${order.product_title}” (${pounds}).`, href: "/dashboard" },
+            });
+          }
         }
         if (order?.product_id) {
           const { data: prod } = (await service

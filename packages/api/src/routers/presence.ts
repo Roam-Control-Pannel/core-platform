@@ -65,6 +65,19 @@ async function pingNearbyFriends(ctx: Context, callerId: string): Promise<void> 
     .single();
   const name = alertName(prof?.display_name ?? null, prof?.handle ?? null);
   await pushToProfileIds(service, ctx.env.vapid, targetIds, buildNearbyAlert(name));
+  // Also land an in-app notification so the alert persists in the bell (not just an ephemeral
+  // push). Best-effort — a failed insert must never affect "set my status".
+  try {
+    await service.from("notifications").insert(
+      targetIds.map((id) => ({
+        recipient_id: id,
+        type: "friends_nearby",
+        payload: { text: `${name} is nearby and free to meet up`, href: "/friends", actorId: callerId },
+      })),
+    );
+  } catch {
+    /* ignore — the push already went out */
+  }
 }
 
 /** A row from the friends_availability() RPC — a friend's live status plus their profile basics.

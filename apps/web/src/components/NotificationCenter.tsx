@@ -35,6 +35,16 @@ const GLYPH: Record<string, IconName> = {
   venue_message: "bell",
   order_paid: "bag",
   order_refunded: "card",
+  // 0102 coverage additions + the birthday_offer glyph that was missing.
+  plan_invite: "plan",
+  event_interest: "event",
+  event_cancelled: "event",
+  venue_review: "star",
+  claim_approved: "check",
+  claim_rejected: "ban",
+  order_received: "bag",
+  friends_nearby: "locate",
+  birthday_offer: "cake",
 };
 
 export function NotificationCenter() {
