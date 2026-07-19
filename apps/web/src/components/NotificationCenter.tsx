@@ -45,6 +45,11 @@ const GLYPH: Record<string, IconName> = {
   order_received: "bag",
   friends_nearby: "locate",
   birthday_offer: "cake",
+  // 0103 engagement coverage.
+  topic_upvote: "upvote",
+  reply_upvote: "upvote",
+  post_like: "heart",
+  venue_offer: "redeem",
 };
 
 export function NotificationCenter() {
