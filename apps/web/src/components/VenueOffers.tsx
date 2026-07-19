@@ -152,6 +152,7 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
   const [maxRedemptions, setMaxRedemptions] = useState("");
   const [offerType, setOfferType] = useState<string>("percent_off");
   const [discountPct, setDiscountPct] = useState("");
+  const [notifyFollowers, setNotifyFollowers] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -159,7 +160,7 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
     setBusy(true);
     setErr(null);
     const create = trpc.offers.create as unknown as {
-      mutate: (i: { venueId: string; title: string; details: string | null; code: string | null; endsAt: string | null; maxRedemptions: number | null; offerType: string | null; discountPct: number | null }) => Promise<{ id: string }>;
+      mutate: (i: { venueId: string; title: string; details: string | null; code: string | null; endsAt: string | null; maxRedemptions: number | null; offerType: string | null; discountPct: number | null; notifyFollowers: boolean }) => Promise<{ id: string }>;
     };
     try {
       const max = maxRedemptions.trim() ? Math.max(1, Math.floor(Number(maxRedemptions))) : null;
@@ -177,13 +178,14 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
         maxRedemptions: max != null && Number.isFinite(max) ? max : null,
         offerType,
         discountPct: pct != null && Number.isFinite(pct) ? pct : null,
+        notifyFollowers,
       });
       onPosted();
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("composer.publishFailed"));
       setBusy(false);
     }
-  }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, offerType, discountPct, onPosted]);
+  }, [trpc, venueId, title, details, code, endsOn, maxRedemptions, offerType, discountPct, notifyFollowers, onPosted]);
 
   const canPost = title.trim().length > 0 && !busy;
 
@@ -219,6 +221,11 @@ function OfferComposer({ venueId, onPosted, onCancel }: { venueId: string; onPos
           <input type="number" min={1} value={maxRedemptions} onChange={(e) => setMaxRedemptions(e.target.value)} placeholder={t("composer.maxPlaceholder")} aria-label={t("composer.maxAria")} style={field} />
         </label>
       </div>
+      {/* Opt-in: notify followers' bells about this offer. Off by default so routine offers stay quiet. */}
+      <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "var(--space-2) 0", fontSize: 13.5, color: "var(--ink-2)", cursor: "pointer" }}>
+        <input type="checkbox" checked={notifyFollowers} onChange={(e) => setNotifyFollowers(e.target.checked)} />
+        {t("composer.notifyFollowers")}
+      </label>
       {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginBottom: "var(--space-2)" }}>{err}</div> : null}
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
         <Button variant="pri" onClick={() => void submit()} disabled={!canPost}>{busy ? t("composer.publishing") : t("composer.publish")}</Button>

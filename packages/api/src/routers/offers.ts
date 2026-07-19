@@ -239,11 +239,11 @@ export const offersRouter = router({
 
   /** Owner: publish a new offer on a venue you own (RLS offers_owner_all gates the write). */
   create: protectedProcedure
-    .input(offerInput.extend({ venueId: z.string().uuid() }))
+    .input(offerInput.extend({ venueId: z.string().uuid(), notifyFollowers: z.boolean().default(false) }))
     .mutation(async ({ ctx, input }) => {
       await callerId(ctx);
-      // Loose db: offer_type/discount_pct (0048) aren't in the generated types until they're
-      // regenerated post-migration; RLS offers_owner_all still gates the write.
+      // Loose db: offer_type/discount_pct (0048) + notify_followers (0103) aren't in the generated
+      // types until they're regenerated post-migration; RLS offers_owner_all still gates the write.
       const db = ctx.db as unknown as LooseDb;
       const { data, error } = await db
         .from("offers")
@@ -257,6 +257,8 @@ export const offersRouter = router({
           max_redemptions: input.maxRedemptions ?? null,
           offer_type: input.offerType ?? null,
           discount_pct: input.discountPct ?? null,
+          // Opt-in: fan the offer out to the venue's followers' bells (trigger notify_offer_followers).
+          notify_followers: input.notifyFollowers,
         })
         .select("id")
         .single();

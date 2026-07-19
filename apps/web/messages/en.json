@@ -876,7 +876,8 @@
       "publishFailed": "Couldn't publish the offer.",
       "publishing": "Publishing…",
       "publish": "Publish offer",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "notifyFollowers": "Notify my followers about this offer"
     }
   },
   "events": {
