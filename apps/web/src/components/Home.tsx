@@ -1,7 +1,7 @@
 /**
  * Home — the signed-in hub (/home), laid out as a WALL (per the hi-fi mockup): a main feed
- * column — date kicker + personal greeting, quick-action cards, then the local feed (business
- * posts + Town Hall topics, see HomeFeed) — beside a right RAIL of widgets (town forum,
+ * column — date kicker + personal greeting, then the local feed (business posts + Town Hall
+ * topics, see HomeFeed) — beside a right RAIL of widgets (town forum,
  * trending venues, recent chats, deals …). The rail keeps the Customise sheet + drag-reorder +
  * cross-device layout persistence; the feed is the fixed heart of the page.
  *
@@ -188,15 +188,6 @@ export function Home() {
             </div>
           </div>
         </div>
-
-        <div className={styles.qgrid}>
-          <QuickAction href="/plans" glyph="plus" label={t("quick.newPlan")} />
-          <QuickAction href="/town-hall" glyph="forum" label={t("quick.startTopic")} />
-          <QuickAction href="/explore" glyph="search" label={t("quick.findVenues")} />
-          <QuickAction href="/friends" glyph="chat" label={t("quick.messageFriend")} />
-          <QuickAction href="/market" glyph="shop" label={t("quick.market")} />
-          <QuickAction href="/basecamp" glyph="widgets" label={t("quick.basecamp")} />
-        </div>
       </header>
 
       <div className={styles.layout}>
@@ -251,15 +242,6 @@ function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
         <Button onClick={onCustomise}>{t("emptyDashboard.cta")}</Button>
       </div>
     </Card>
-  );
-}
-
-function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; label: string }) {
-  return (
-    <Link href={href} className={styles.qcard}>
-      <span className={styles.qtile} aria-hidden><Icon name={glyph} size={16} /></span>
-      <span className={styles.qlabel}>{label}</span>
-    </Link>
   );
 }
 
