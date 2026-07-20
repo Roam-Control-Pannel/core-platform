@@ -734,7 +734,7 @@ function Avatar({ url, name, size, ring }: { url: string | null; name: string; s
 
 const MAX_MEDIA = 4;
 
-function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => void }) {
+export function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => void }) {
   const t = useTranslations("profileWall");
   const trpc = useTrpc();
   const [body, setBody] = useState("");

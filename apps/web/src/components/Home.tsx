@@ -1,7 +1,7 @@
 /**
  * Home — the signed-in hub (/home), laid out as a WALL (per the hi-fi mockup): a main feed
- * column — date kicker + personal greeting, quick-action cards, then the local feed (business
- * posts + Town Hall topics, see HomeFeed) — beside a right RAIL of widgets (town forum,
+ * column — date kicker + personal greeting, then the local feed (business posts + Town Hall
+ * topics, see HomeFeed) — beside a right RAIL of widgets (town forum,
  * trending venues, recent chats, deals …). The rail keeps the Customise sheet + drag-reorder +
  * cross-device layout persistence; the feed is the fixed heart of the page.
  *
@@ -20,6 +20,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useMe } from "./MeProvider";
+import { WallComposer } from "./ProfileWall";
+import { ActiveFriends } from "./ActiveFriends";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
@@ -88,6 +91,75 @@ function greeting(t: ReturnType<typeof useTranslations>): string {
   if (h < 12) return t("greeting.morning");
   if (h < 18) return t("greeting.afternoon");
   return t("greeting.evening");
+}
+
+/**
+ * HomeComposer — a Facebook-style "What's on your mind?" prompt at the top of the feed. Collapsed,
+ * it's a slim pill; tapping it (or the photo button) expands the full wall composer (reused from
+ * ProfileWall) which posts to YOUR wall. After posting it collapses with a "view your wall" link.
+ */
+function HomeComposer({ myId }: { myId: string }) {
+  const t = useTranslations("home");
+  const me = useMe();
+  const [open, setOpen] = useState(false);
+  const [posted, setPosted] = useState(false);
+  const first = (me?.displayName ?? "").trim().split(/\s+/)[0] ?? "";
+
+  if (open) {
+    return (
+      <div style={{ marginBottom: "var(--space-4)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-2)" }}>
+          <span style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15 }}>{t("composer.title")}</span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label={t("composer.close")}
+            style={{ all: "unset", cursor: "pointer", display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: "50%", color: "var(--ink-2)", background: "var(--paper-2)" }}
+          >
+            <Icon name="close" size={15} />
+          </button>
+        </div>
+        <WallComposer userId={myId} onPosted={() => { setOpen(false); setPosted(true); }} />
+      </div>
+    );
+  }
+
+  return (
+    <Card style={{ padding: "var(--space-3) var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        {me?.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- small avatar in the composer prompt
+          <img src={me.avatarUrl} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+        ) : (
+          <span aria-hidden style={{ display: "grid", placeItems: "center", width: 40, height: 40, borderRadius: "50%", background: "var(--crimson-tint)", color: "var(--crimson-700)", flexShrink: 0 }}>
+            <Icon name="person" size={19} />
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => { setPosted(false); setOpen(true); }}
+          style={{ all: "unset", cursor: "pointer", flex: 1, minWidth: 0, padding: "10px 16px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", color: "var(--muted)", fontSize: 15.5, fontFamily: "var(--ui)" }}
+        >
+          {first ? t("composer.promptName", { name: first }) : t("composer.prompt")}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setPosted(false); setOpen(true); }}
+          aria-label={t("composer.addPhoto")}
+          style={{ all: "unset", cursor: "pointer", display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: "50%", color: "var(--crimson-700)", flexShrink: 0 }}
+        >
+          <Icon name="photo" size={19} />
+        </button>
+      </div>
+      {posted ? (
+        <div style={{ marginTop: "var(--space-2)", fontSize: 13, color: "var(--ink-2)", display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="check" size={14} style={{ color: "var(--success)" }} />
+          {t("composer.posted")}{" "}
+          <Link href="/account" style={{ color: "var(--crimson-700)", fontWeight: 600, textDecoration: "none" }}>{t("composer.viewWall")}</Link>
+        </div>
+      ) : null}
+    </Card>
+  );
 }
 
 export function Home() {
@@ -188,20 +260,15 @@ export function Home() {
             </div>
           </div>
         </div>
-
-        <div className={styles.qgrid}>
-          <QuickAction href="/plans" glyph="plus" label={t("quick.newPlan")} />
-          <QuickAction href="/town-hall" glyph="forum" label={t("quick.startTopic")} />
-          <QuickAction href="/explore" glyph="search" label={t("quick.findVenues")} />
-          <QuickAction href="/friends" glyph="chat" label={t("quick.messageFriend")} />
-          <QuickAction href="/market" glyph="shop" label={t("quick.market")} />
-          <QuickAction href="/basecamp" glyph="widgets" label={t("quick.basecamp")} />
-        </div>
       </header>
 
       <div className={styles.layout}>
         {/* Main column: the wall. */}
         <div style={{ minWidth: 0 }}>
+          {/* Friends who are active/available right now — a compact presence strip. */}
+          <ActiveFriends />
+          {/* Facebook-style composer — post to your own wall, right from Home. */}
+          {session ? <HomeComposer myId={session.user.id} /> : null}
           {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
               customisable/hideable rail (a birthday treat shouldn't be dismissable). */}
           <BirthdayTreats />
@@ -251,15 +318,6 @@ function EmptyDashboard({ onCustomise }: { onCustomise: () => void }) {
         <Button onClick={onCustomise}>{t("emptyDashboard.cta")}</Button>
       </div>
     </Card>
-  );
-}
-
-function QuickAction({ href, glyph, label }: { href: string; glyph: IconName; label: string }) {
-  return (
-    <Link href={href} className={styles.qcard}>
-      <span className={styles.qtile} aria-hidden><Icon name={glyph} size={16} /></span>
-      <span className={styles.qlabel}>{label}</span>
-    </Link>
   );
 }
 

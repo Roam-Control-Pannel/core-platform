@@ -324,6 +324,18 @@
     },
     "movingIn": "Here's what's moving in",
     "customise": "Customise",
+    "composer": {
+      "prompt": "What's on your mind?",
+      "promptName": "What's on your mind, {name}?",
+      "title": "Create post",
+      "close": "Close",
+      "addPhoto": "Add a photo",
+      "posted": "Posted to your wall.",
+      "viewWall": "View"
+    },
+    "activeFriends": {
+      "title": "Active now"
+    },
     "quick": {
       "newPlan": "New plan",
       "startTopic": "Start a topic",

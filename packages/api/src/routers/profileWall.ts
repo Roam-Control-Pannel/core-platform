@@ -168,6 +168,40 @@ export const profileWallRouter = router({
       return { posts: rows.map((p) => shapePost(p, liked.has(p.id))) };
     }),
 
+  /**
+   * Protected: the caller's HOME wall feed — their own posts + their accepted friends', newest
+   * first. Powers the Facebook-style Home feed. friendships are visible to both parties under RLS,
+   * so we read the caller's accepted edges, collect the other id, then read those authors' posts
+   * (profile_posts is world-readable-while-approved). Same shape as `list`.
+   */
+  friendsFeed: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const me = await callerId(db);
+
+      const { data: edges } = (await db
+        .from("friendships")
+        .select("requester_id, addressee_id")
+        .eq("status", "accepted")
+        .or(`requester_id.eq.${me},addressee_id.eq.${me}`)) as PgResult<{ requester_id: string; addressee_id: string }[] | null>;
+      const friendIds = (edges ?? []).map((e) => (e.requester_id === me ? e.addressee_id : e.requester_id));
+      const authorIds = Array.from(new Set([me, ...friendIds]));
+
+      const { data, error } = (await db
+        .from("profile_posts")
+        .select(POST_COLS)
+        .in("author_id", authorIds)
+        .order("created_at", { ascending: false })
+        .limit(input.limit)) as PgResult<RawPost[] | null>;
+      if (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your feed: ${error.message}` });
+      }
+      const rows = data ?? [];
+      const liked = await viewerLikes(db, rows.map((r) => r.id));
+      return { posts: rows.map((p) => shapePost(p, liked.has(p.id))) };
+    }),
+
   /** Public: one post by id — the /p/[postId] permalink read. RLS hides non-approved rows. */
   byId: publicProcedure
     .input(z.object({ postId: z.string().uuid() }))
