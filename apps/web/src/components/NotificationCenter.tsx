@@ -50,6 +50,9 @@ const GLYPH: Record<string, IconName> = {
   reply_upvote: "upvote",
   post_like: "heart",
   venue_offer: "redeem",
+  // 0105 business-post engagement.
+  business_post_like: "heart",
+  business_post_comment: "chat",
 };
 
 export function NotificationCenter() {

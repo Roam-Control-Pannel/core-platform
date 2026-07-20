@@ -23,8 +23,91 @@ import { TRPCError } from "@trpc/server";
 import { posts, credits, routes } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { dispatchFollowerPush } from "../push/dispatch.js";
+import { normaliseCommentBody, COMMENT_BODY_MAX } from "../profile-wall.js";
 
 const postKind = z.enum(["news", "offer", "event"]);
+
+/* ── engagement (likes + comments) — loose-typed reads; the posts_likes/posts_comments tables and
+ *    the new posts.like_count/comment_count columns aren't in the generated DB types yet (same idiom
+ *    as townHall/search). Counts are trigger-maintained by migration 0105. ──────────────────────── */
+type LooseDb = {
+  from: (t: string) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> };
+};
+
+/** The signed-in caller's id, or null (anonymous). Never throws. */
+async function maybeCallerId(db: LooseDb): Promise<string | null> {
+  try {
+    const { data } = await db.auth.getUser();
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The subset of postIds the caller has liked. Anonymous → empty (RLS scopes likes to self). */
+async function viewerLikes(db: LooseDb, postIds: string[]): Promise<Set<string>> {
+  if (postIds.length === 0) return new Set();
+  const me = await maybeCallerId(db);
+  if (!me) return new Set();
+  const { data } = (await db
+    .from("posts_likes")
+    .select("post_id")
+    .eq("liker_id", me)
+    .in("post_id", postIds)) as { data: { post_id: string }[] | null };
+  return new Set((data ?? []).map((l) => l.post_id));
+}
+
+/** Trigger-maintained like/comment counts for a set of posts, keyed by post id. */
+async function postCounts(db: LooseDb, postIds: string[]): Promise<Map<string, { likeCount: number; commentCount: number }>> {
+  const m = new Map<string, { likeCount: number; commentCount: number }>();
+  if (postIds.length === 0) return m;
+  const { data } = (await db
+    .from("posts")
+    .select("id, like_count, comment_count")
+    .in("id", postIds)) as { data: { id: string; like_count: number | null; comment_count: number | null }[] | null };
+  for (const r of data ?? []) m.set(r.id, { likeCount: r.like_count ?? 0, commentCount: r.comment_count ?? 0 });
+  return m;
+}
+
+/** Fold likeCount/commentCount/viewerLiked onto a page of posts (one batched query each). */
+async function withEngagement<T extends { id: string }>(
+  db: LooseDb,
+  rows: T[],
+): Promise<(T & { likeCount: number; commentCount: number; viewerLiked: boolean })[]> {
+  const ids = rows.map((r) => r.id);
+  const [counts, liked] = await Promise.all([postCounts(db, ids), viewerLikes(db, ids)]);
+  return rows.map((r) => {
+    const c = counts.get(r.id);
+    return { ...r, likeCount: c?.likeCount ?? 0, commentCount: c?.commentCount ?? 0, viewerLiked: liked.has(r.id) };
+  });
+}
+
+/** The signed-in caller's id, throwing when anonymous (for the protected engagement mutations). */
+async function callerId(db: LooseDb): Promise<string> {
+  const me = await maybeCallerId(db);
+  if (!me) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to continue." });
+  return me;
+}
+
+interface RawPostComment {
+  id: string;
+  body: string;
+  created_at: string;
+  author: unknown; // PostgREST embed — object or (for a non-unique FK) a one-element array
+}
+/** Normalise the embedded comment author to the { id, handle, displayName, avatarUrl } shape the UI wants. */
+function shapeCommentAuthor(a: unknown) {
+  const o = (Array.isArray(a) ? a[0] : a) as
+    | { id?: string; handle?: string | null; display_name?: string | null; avatar_url?: string | null }
+    | null;
+  return {
+    id: o?.id ?? "",
+    handle: o?.handle ?? null,
+    displayName: o?.display_name ?? null,
+    avatarUrl: o?.avatar_url ?? null,
+  };
+}
 const postDestination = z.enum(["profile", "feed", "follower_push"]);
 
 /** Post images live in posts.media (jsonb). v1 is images-only: [{type:'image', url}]. */
@@ -123,7 +206,7 @@ export const postsRouter = router({
           venue_locality: string | null;
           media?: unknown;
         }> | null) ?? [];
-        return rows.map(
+        const base = rows.map(
           (r): FeedRow => ({
             id: r.id,
             kind: r.kind,
@@ -136,6 +219,7 @@ export const postsRouter = router({
             media: asMedia(r.media),
           }),
         );
+        return withEngagement(ctx.db as unknown as LooseDb, base);
       }
 
       // Global path (no origin): the original whole-network feed.
@@ -156,7 +240,7 @@ export const postsRouter = router({
       // the byId result in VenueDetail. Never fabricate a venue name if the embed is
       // absent.
       type EmbeddedVenue = { name: string; locality: string | null };
-      return (data ?? []).map(
+      const base = (data ?? []).map(
         (p): FeedRow => {
           const raw = (p as { venues?: unknown }).venues;
           const v: EmbeddedVenue | null = Array.isArray(raw)
@@ -175,6 +259,7 @@ export const postsRouter = router({
           };
         },
       );
+      return withEngagement(ctx.db as unknown as LooseDb, base);
     }),
 
   /**
@@ -199,7 +284,7 @@ export const postsRouter = router({
       const v: EmbeddedVenue | null = Array.isArray(raw)
         ? ((raw[0] as EmbeddedVenue | undefined) ?? null)
         : ((raw as EmbeddedVenue | null) ?? null);
-      return {
+      const base = {
         id: data.id,
         kind: data.kind,
         title: data.title,
@@ -210,6 +295,8 @@ export const postsRouter = router({
         venueName: v?.name ?? null,
         venueLocality: v?.locality ?? null,
       };
+      const [hydrated] = await withEngagement(ctx.db as unknown as LooseDb, [base]);
+      return hydrated ?? { ...base, likeCount: 0, commentCount: 0, viewerLiked: false };
     }),
 
   /**
@@ -270,7 +357,7 @@ export const postsRouter = router({
         .order("published_at", { ascending: false })
         .limit(input.limit);
       if (error) throw new Error(`Failed to load venue posts: ${error.message}`);
-      return (data ?? []).map((p) => ({
+      const base = (data ?? []).map((p) => ({
         id: p.id,
         kind: p.kind,
         title: p.title,
@@ -279,6 +366,7 @@ export const postsRouter = router({
         publishedAt: p.published_at,
         venueId: p.venue_id,
       }));
+      return withEngagement(ctx.db as unknown as LooseDb, base);
     }),
 
   /**
@@ -348,6 +436,114 @@ export const postsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { error } = await ctx.db.from("posts").delete().eq("id", input.postId);
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't delete that post: ${error.message}` });
+      return { ok: true as const };
+    }),
+
+  /* ── Likes + comments (mirrors profileWall; migration 0105) ──────────────────────────────── */
+
+  /** Protected: toggle the caller's like on a post. Returns the fresh state + count. */
+  toggleLike: protectedProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const liker_id = await callerId(db);
+
+      const { data: existing } = (await db
+        .from("posts_likes")
+        .select("post_id")
+        .eq("post_id", input.postId)
+        .eq("liker_id", liker_id)
+        .maybeSingle()) as { data: { post_id: string } | null };
+
+      if (existing) {
+        const { error } = (await db.from("posts_likes").delete().eq("post_id", input.postId).eq("liker_id", liker_id)) as { error: { message: string } | null };
+        if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't remove your like." });
+      } else {
+        const { error } = (await db.from("posts_likes").insert({ post_id: input.postId, liker_id })) as { error: { message: string } | null };
+        if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't add your like." });
+      }
+
+      const { data: fresh } = (await db
+        .from("posts")
+        .select("like_count")
+        .eq("id", input.postId)
+        .maybeSingle()) as { data: { like_count: number } | null };
+      return { liked: !existing, likeCount: fresh?.like_count ?? 0 };
+    }),
+
+  /** Public: a post's comments, oldest first. */
+  listComments: publicProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const { data, error } = (await db
+        .from("posts_comments")
+        .select("id, body, created_at, author:profiles!posts_comments_author_id_fkey(id, handle, display_name, avatar_url)")
+        .eq("post_id", input.postId)
+        .order("created_at", { ascending: true })) as { data: RawPostComment[] | null; error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load comments: ${error.message}` });
+      return {
+        comments: (data ?? []).map((c) => ({
+          id: c.id,
+          body: c.body,
+          createdAt: c.created_at,
+          author: shapeCommentAuthor(c.author),
+        })),
+      };
+    }),
+
+  /** Protected: comment on a post (the trigger bumps comment_count + notifies the venue owner). */
+  addComment: protectedProcedure
+    .input(z.object({ postId: z.string().uuid(), body: z.string().min(1).max(COMMENT_BODY_MAX + 500) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      const author_id = await callerId(db);
+      let body: string;
+      try {
+        body = normaliseCommentBody(input.body);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid comment." });
+      }
+      const { data, error } = (await db
+        .from("posts_comments")
+        .insert({ post_id: input.postId, author_id, body })
+        .select("id")
+        .single()) as { data: { id: string } | null; error: { message: string } | null };
+      if (error || !data) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't post your comment." });
+      return { id: data.id };
+    }),
+
+  /** Protected: edit your own comment's body (RLS author_id = auth.uid()). */
+  updateComment: protectedProcedure
+    .input(z.object({ commentId: z.string().uuid(), body: z.string().min(1).max(COMMENT_BODY_MAX + 500) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      let body: string;
+      try {
+        body = normaliseCommentBody(input.body);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Invalid comment." });
+      }
+      const { data, error } = (await db
+        .from("posts_comments")
+        .update({ body })
+        .eq("id", input.commentId)
+        .select("id")
+        .maybeSingle()) as { data: { id: string } | null; error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't update that comment." });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found, or it isn't yours to edit." });
+      return { ok: true as const };
+    }),
+
+  /** Protected: delete your own comment. */
+  removeComment: protectedProcedure
+    .input(z.object({ commentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb;
+      await callerId(db);
+      const { error } = (await db.from("posts_comments").delete().eq("id", input.commentId)) as { error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Couldn't delete that comment." });
       return { ok: true as const };
     }),
 

@@ -21,6 +21,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import type { Place } from "./PlaceSwitcher";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { PostMediaGrid } from "./PostMediaGrid";
+import { PostLikeButton, PostCommentLink } from "./PostEngagement";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { linkifyHashtags } from "../lib/hashtags";
 
@@ -34,6 +35,9 @@ interface FeedPost {
   venueId: string;
   venueName: string | null;
   venueLocality: string | null;
+  likeCount?: number;
+  commentCount?: number;
+  viewerLiked?: boolean;
 }
 
 interface FeedTopic {
@@ -266,7 +270,9 @@ function PostFeedCard({ post }: { post: FeedPost }) {
       </Link>
 
       {/* Action bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginTop: "var(--space-3)", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginTop: "var(--space-3)", flexWrap: "wrap" }}>
+        <PostLikeButton postId={post.id} initialLiked={post.viewerLiked ?? false} initialCount={post.likeCount ?? 0} />
+        <PostCommentLink postId={post.id} count={post.commentCount ?? 0} />
         <CopyLinkButton path={permalink} {...(post.title ? { title: post.title } : {})} />
         <Link
           href={permalink}
