@@ -37,6 +37,10 @@ export function planUrl(id: string): string {
 export function dealUrl(id: string): string {
   return `/deals/${id}`;
 }
+/** A venue offer has no page of its own — it links to its venue (where offers are shown). */
+export function offerUrl(venueSlug: string | null, venueId: string): string {
+  return `/venue/${venueSlug ?? venueId}`;
+}
 
 /* ── raw row → result shapers (inline object literals; no named type leaks into AppRouter) ─── */
 
@@ -148,4 +152,23 @@ export interface DealRow {
 }
 export function shapeDeal(r: DealRow) {
   return { kind: "deal" as const, id: r.id, title: r.title, merchant: r.advertiser_name ?? null, url: dealUrl(r.id) };
+}
+
+export interface OfferRow {
+  offer_id: string;
+  title: string;
+  venue_id: string;
+  venue_name: string | null;
+  venue_slug: string | null;
+  locality: string | null;
+}
+export function shapeOffer(r: OfferRow) {
+  return {
+    kind: "offer" as const,
+    id: r.offer_id,
+    title: r.title,
+    venueName: r.venue_name,
+    locality: r.locality,
+    url: offerUrl(r.venue_slug, r.venue_id),
+  };
 }

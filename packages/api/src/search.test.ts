@@ -13,8 +13,10 @@ import {
   shapeListing,
   shapePlan,
   shapeDeal,
+  shapeOffer,
   planUrl,
   dealUrl,
+  offerUrl,
 } from "./search.js";
 
 /**
@@ -88,5 +90,12 @@ describe("shapeVenue / shapeEvent / shapeTopic / shapeListing", () => {
     expect(dealUrl("d1")).toBe("/deals/d1");
     expect(shapePlan({ id: "pl1", title: "Weekend trip" })).toMatchObject({ kind: "plan", title: "Weekend trip", url: "/plans/pl1" });
     expect(shapeDeal({ id: "d1", title: "20% off", advertiser_name: "Acme" })).toMatchObject({ kind: "deal", title: "20% off", merchant: "Acme", url: "/deals/d1" });
+  });
+  it("venue offer links to its venue (slug, else id)", () => {
+    expect(offerUrl("the-dog", "v1")).toBe("/venue/the-dog");
+    expect(offerUrl(null, "v1")).toBe("/venue/v1");
+    expect(
+      shapeOffer({ offer_id: "of1", title: "2-for-1 coffee", venue_id: "v1", venue_name: "The Dog", venue_slug: "the-dog", locality: "Belfast" }),
+    ).toMatchObject({ kind: "offer", title: "2-for-1 coffee", venueName: "The Dog", locality: "Belfast", url: "/venue/the-dog" });
   });
 });

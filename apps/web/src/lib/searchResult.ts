@@ -60,6 +60,14 @@ export interface SearchDeal {
   merchant: string | null;
   url: string;
 }
+export interface SearchOffer {
+  kind: "offer";
+  id: string;
+  title: string;
+  venueName: string | null;
+  locality: string | null;
+  url: string;
+}
 
 export interface SearchResultsData {
   query: string;
@@ -69,14 +77,18 @@ export interface SearchResultsData {
   topics: SearchTopic[];
   listings: SearchListing[];
   plans: SearchPlan[];
+  offers: SearchOffer[];
   deals: SearchDeal[];
 }
 
-export const EMPTY_RESULTS: SearchResultsData = { query: "", people: [], venues: [], events: [], topics: [], listings: [], plans: [], deals: [] };
+export const EMPTY_RESULTS: SearchResultsData = { query: "", people: [], venues: [], events: [], topics: [], listings: [], plans: [], offers: [], deals: [] };
 
 /** Total hits across all groups (drives the "no results" state + the tab counts). */
 export function totalCount(r: SearchResultsData): number {
-  return r.people.length + r.venues.length + r.events.length + r.topics.length + r.listings.length + r.plans.length + r.deals.length;
+  return (
+    r.people.length + r.venues.length + r.events.length + r.topics.length +
+    r.listings.length + r.plans.length + r.offers.length + r.deals.length
+  );
 }
 
 /** "£120" / "Free" / "Swap" — the marketplace price word. */

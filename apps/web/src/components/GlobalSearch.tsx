@@ -106,6 +106,7 @@ export function GlobalSearch() {
     if (results.topics.length) s.push({ label: t("groups.community"), rows: results.topics.map((tp) => ({ key: tp.id, icon: "landmark", primary: tp.title, secondary: tp.localityLabel, url: tp.url })) });
     if (results.listings.length) s.push({ label: t("groups.marketplace"), rows: results.listings.map((l) => ({ key: l.id, icon: "shop", primary: l.title, secondary: [listingPrice(l.pricePence, l.mode), l.locality].filter(Boolean).join(" · "), url: l.url })) });
     if (results.plans.length) s.push({ label: t("groups.plans"), rows: results.plans.map((pl) => ({ key: pl.id, icon: "plan", primary: pl.title, url: pl.url })) });
+    if (results.offers.length) s.push({ label: t("groups.offers"), rows: results.offers.map((of) => ({ key: of.id, icon: "redeem", primary: of.title, secondary: [of.venueName, of.locality].filter(Boolean).join(" · ") || undefined, url: of.url })) });
     if (results.deals.length) s.push({ label: t("groups.deals"), rows: results.deals.map((d) => ({ key: d.id, icon: "tag", primary: d.title, secondary: d.merchant ?? undefined, url: d.url })) });
     return s;
   }, [isResultsMode, recent, results, t, removeRecent]);
