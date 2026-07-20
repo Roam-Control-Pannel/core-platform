@@ -146,9 +146,10 @@ function SideNavBody({ pathname }: { pathname: string }) {
 
 /**
  * Owner-aware shortcut to the business dashboard — shown ONLY to users who've claimed a business
- * (me.ownedVenues). Facebook-style: one claimed venue links straight into its manager and shows its
- * name; several link to the /dashboard hub. This is the site's only persistent front door to owned
- * businesses, so it leads the shortcut list.
+ * (me.ownedVenues). Deliberately ONE generic entry regardless of how many venues you own: it never
+ * injects a venue name (a proper noun) or per-venue rows into the app-section nav, so the rail looks
+ * identical for 1 or 50 businesses. Switching between venues happens on the dashboard's own header.
+ * The href is a shortcut: one venue jumps straight to its manager, several land on the /dashboard hub.
  */
 function OwnedBusinesses({ pathname }: { pathname: string }) {
   const t = useTranslations("chrome.sideNav");
@@ -156,16 +157,14 @@ function OwnedBusinesses({ pathname }: { pathname: string }) {
   const owned = me?.ownedVenues ?? [];
   if (owned.length === 0) return null;
 
-  const single = owned.length === 1 ? owned[0] : null;
-  const href = single ? `/dashboard/${single.id}` : "/dashboard";
-  const label = single ? single.name : t("myBusinesses");
+  const href = owned.length === 1 ? `/dashboard/${owned[0]!.id}` : "/dashboard";
 
   return (
     <Link href={href} className={`${styles.item} ${isActive(pathname, ["/dashboard"]) ? styles.active : ""}`}>
       <span className={styles.itemIcon} aria-hidden>
         <Icon name="briefcase" size={18} />
       </span>
-      {label}
+      {t("myBusinesses")}
     </Link>
   );
 }
