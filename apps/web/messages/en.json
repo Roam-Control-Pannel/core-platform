@@ -756,6 +756,32 @@
     "ariaLabel": "Map of venues",
     "attribution": "© OpenStreetMap contributors"
   },
+  "postEngagement": {
+    "like": {
+      "like": "Like",
+      "unlike": "Unlike",
+      "signInToLike": "Sign in to like"
+    },
+    "comments": {
+      "title": "Comments ({count})",
+      "empty": "No comments yet — be the first.",
+      "count": "{count}",
+      "placeholder": "Write a comment…",
+      "addAria": "Add a comment",
+      "send": "Post",
+      "signInToInteract": "<link>Sign in</link> to like and comment."
+    },
+    "comment": {
+      "editAria": "Edit your comment",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this comment?",
+      "yes": "Delete",
+      "no": "Cancel",
+      "save": "Save",
+      "cancel": "Cancel"
+    }
+  },
   "localPosts": {
     "kinds": {
       "news": "News",

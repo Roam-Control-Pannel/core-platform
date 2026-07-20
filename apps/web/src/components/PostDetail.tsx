@@ -21,6 +21,7 @@ import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { PostMediaGrid } from "./PostMediaGrid";
+import { PostLikeButton, PostComments } from "./PostEngagement";
 import { venuePath } from "../lib/routes";
 import { linkifyHashtags } from "../lib/hashtags";
 import { getFormatLocale } from "../lib/i18n/runtime";
@@ -35,6 +36,9 @@ export interface FeedPost {
   venueId: string;
   venueName: string | null;
   venueLocality: string | null;
+  likeCount?: number;
+  commentCount?: number;
+  viewerLiked?: boolean;
 }
 
 /** Post-kind tag — OFFER carries the crimson emphasis; EVENT/NEWS are neutral. */
@@ -140,18 +144,21 @@ export function PostDetail({ post }: { post: FeedPost }) {
           </div>
         ) : null}
 
-        <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-5)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginTop: "var(--space-5)" }}>
+          <PostLikeButton postId={post.id} initialLiked={post.viewerLiked ?? false} initialCount={post.likeCount ?? 0} />
           <CopyLinkButton
-            variant="button"
             path={`/feed/${post.id}`}
             title={post.title ?? post.venueName ?? t("shareTitleFallback")}
           />
-          <Link href={venuePath(post.venueId)} style={{ textDecoration: "none", flex: 1 }}>
-            <Button variant="neutral" block>
+          <span style={{ flex: 1 }} />
+          <Link href={venuePath(post.venueId)} style={{ textDecoration: "none" }}>
+            <Button variant="neutral" size="sm">
               {t("viewVenue")} →
             </Button>
           </Link>
         </div>
+
+        <PostComments postId={post.id} />
       </div>
     </Card>
   );
