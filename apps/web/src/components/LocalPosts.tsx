@@ -447,7 +447,7 @@ function MediaPicker({
             accept="image/jpeg,image/png,image/webp"
             multiple
             style={{ display: "none" }}
-            onChange={(e) => { const fs = e.target.files; e.currentTarget.value = ""; void pick(fs); }}
+            onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.currentTarget.value = ""; void pick(fs); }}
           />
         </>
       ) : null}
