@@ -14,6 +14,22 @@ export function sanitizeQuery(q: string): string {
   return q.replace(/[%,()\\]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Split a (already-sanitised) query into meaningful search tokens: lower-cased words, dropping
+ * grammatical stopwords + one-character noise. Powers token-AND venue matching so "the duke of
+ * york belfast" becomes [duke, york, belfast] — each must appear in the venue's searchable text,
+ * instead of the whole phrase having to be one literal substring of the name. Falls back to the
+ * caller's behaviour when it returns [] (an all-stopword query).
+ */
+const SEARCH_STOPWORDS = new Set(["the", "and", "of", "a", "an", "at", "in", "on", "to", "for", "with"]);
+export function searchTokens(q: string): string[] {
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !SEARCH_STOPWORDS.has(t));
+}
+
 /* ── url builders (kept here so the API returns ready-to-link results) ────────────────────── */
 
 export function personUrl(handle: string | null, id: string): string {

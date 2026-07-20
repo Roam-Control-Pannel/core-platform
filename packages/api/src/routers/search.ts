@@ -17,6 +17,7 @@ import { router, publicProcedure } from "../trpc.js";
 import { upcomingOrClause } from "../events.js";
 import {
   sanitizeQuery,
+  searchTokens,
   shapePerson,
   shapeVenue,
   shapeEvent,
@@ -82,11 +83,17 @@ export const searchRouter = router({
             .slice(0, n)
             .map((v) => shapeVenue({ id: v.id, name: v.name, slug: null, category: v.category, rating: v.rating, distance_m: v.distance_m }));
         }
-        const { data } = (await db
-          .from("venues")
-          .select("id, name, slug, category, rating, business_status")
-          .ilike("name", like)
-          .limit(n * 2)) as { data: { id: string; name: string; slug: string | null; category: string | null; rating: number | null; business_status: string | null }[] | null };
+        // No browsing origin: token-AND on the name (each meaningful word must appear), so
+        // multi-word names like "the duke of york" match even without the geofenced RPC. Chained
+        // .ilike() ANDs the tokens; each value is a bound param (no PostgREST or-syntax parsing).
+        let vq = db.from("venues").select("id, name, slug, category, rating, business_status");
+        const toks = searchTokens(term);
+        if (toks.length > 0) {
+          for (const tok of toks) vq = vq.ilike("name", `%${tok}%`);
+        } else {
+          vq = vq.ilike("name", like);
+        }
+        const { data } = (await vq.limit(n * 2)) as { data: { id: string; name: string; slug: string | null; category: string | null; rating: number | null; business_status: string | null }[] | null };
         return (data ?? [])
           .filter((v) => v.business_status !== "CLOSED_PERMANENTLY")
           .slice(0, n)
