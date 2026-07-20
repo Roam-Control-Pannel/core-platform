@@ -23,6 +23,7 @@ import { AuthModal } from "./AuthModal";
 import { NotificationBell } from "./NotificationCenter";
 import { SideNavToggle } from "./SideNav";
 import { GlobalSearch } from "./GlobalSearch";
+import { useMe } from "./MeProvider";
 import { Icon } from "@roam/design";
 import styles from "./TopBar.module.css";
 
@@ -47,6 +48,7 @@ function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" 
 export function TopBar() {
   const t = useTranslations("chrome");
   const session = useSession();
+  const me = useMe();
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
   const [authOpen, setAuthOpen] = useState(false);
@@ -108,9 +110,14 @@ export function TopBar() {
         {session ? <NotificationBell /> : null}
         {session ? (
           <Link href="/account" className={styles.avatar} aria-label={t("yourAccount")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6z" />
-            </svg>
+            {me?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- small chrome avatar; next/image is overkill here
+              <img src={me.avatarUrl} alt="" className={styles.avatarImg} />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6z" />
+              </svg>
+            )}
           </Link>
         ) : (
           <button className={styles.signin} onClick={() => setAuthOpen(true)}>

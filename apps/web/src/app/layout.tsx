@@ -19,6 +19,7 @@ import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
 import { CreateFab } from "../components/CreateFab";
 import { SideNav, SideNavProvider } from "../components/SideNav";
+import { MeProvider } from "../components/MeProvider";
 import sideNav from "../components/SideNav.module.css";
 import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
 import { InviteApply } from "../components/InviteApply";
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <LocaleProvider>
           <TrpcProvider>
+            <MeProvider>
             <SideNavProvider>
               <TopBar />
               <SideNav />
@@ -101,6 +103,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <LocationGate />
             {/* Headless: syncs saved/current place to the account (cross-device). */}
             <PlacePrefsSync />
+            </MeProvider>
           </TrpcProvider>
         </LocaleProvider>
       </body>
