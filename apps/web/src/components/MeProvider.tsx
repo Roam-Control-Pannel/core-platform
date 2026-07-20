@@ -8,10 +8,19 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useTrpc, useSession } from "./TrpcProvider";
 
+export interface OwnedVenue {
+  id: string;
+  name: string;
+  slug: string | null;
+  status: string | null;
+}
+
 export interface Me {
   handle: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  /** Businesses this user has claimed — drives the owner-aware "My businesses" nav. */
+  ownedVenues: OwnedVenue[];
 }
 
 const MeContext = createContext<Me | null>(null);
@@ -27,8 +36,10 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let live = true;
-    const q = trpc.profiles.me as unknown as { query: () => Promise<Me> };
-    q.query().then((p) => { if (live) setMe(p); }).catch(() => {});
+    const q = trpc.profiles.me as unknown as { query: () => Promise<Partial<Me> & Omit<Me, "ownedVenues">> };
+    // Default ownedVenues to [] so the chrome renders correctly during the API redeploy window,
+    // before the extended `me` payload is live.
+    q.query().then((p) => { if (live) setMe({ ...p, ownedVenues: p.ownedVenues ?? [] }); }).catch(() => {});
     return () => { live = false; };
   }, [trpc, session]);
 

@@ -129,6 +129,7 @@ function SideNavBody({ pathname }: { pathname: string }) {
     <nav className={styles.nav} aria-label={t("label")}>
       <ProfileCard />
       <div className={styles.list}>
+        <OwnedBusinesses pathname={pathname} />
         {SHORTCUTS.map((s) => (
           <Link key={s.labelKey} href={s.href} className={`${styles.item} ${isActive(pathname, s.match) ? styles.active : ""}`}>
             <span className={styles.itemIcon} aria-hidden>
@@ -140,6 +141,32 @@ function SideNavBody({ pathname }: { pathname: string }) {
       </div>
       <YourPlaces />
     </nav>
+  );
+}
+
+/**
+ * Owner-aware shortcut to the business dashboard — shown ONLY to users who've claimed a business
+ * (me.ownedVenues). Facebook-style: one claimed venue links straight into its manager and shows its
+ * name; several link to the /dashboard hub. This is the site's only persistent front door to owned
+ * businesses, so it leads the shortcut list.
+ */
+function OwnedBusinesses({ pathname }: { pathname: string }) {
+  const t = useTranslations("chrome.sideNav");
+  const me = useMe();
+  const owned = me?.ownedVenues ?? [];
+  if (owned.length === 0) return null;
+
+  const single = owned.length === 1 ? owned[0] : null;
+  const href = single ? `/dashboard/${single.id}` : "/dashboard";
+  const label = single ? single.name : t("myBusinesses");
+
+  return (
+    <Link href={href} className={`${styles.item} ${isActive(pathname, ["/dashboard"]) ? styles.active : ""}`}>
+      <span className={styles.itemIcon} aria-hidden>
+        <Icon name="briefcase" size={18} />
+      </span>
+      {label}
+    </Link>
   );
 }
 
