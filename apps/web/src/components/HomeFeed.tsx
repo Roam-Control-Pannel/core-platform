@@ -13,12 +13,13 @@
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Pill, Seg, Icon, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import type { Place } from "./PlaceSwitcher";
+import { PostCard, type WallPost } from "./ProfileWall";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { PostMediaGrid } from "./PostMediaGrid";
 import { PostLikeButton, PostCommentLink } from "./PostEngagement";
@@ -73,8 +74,12 @@ export function HomeFeed({ place }: { place: Place }) {
   const [tab, setTab] = useState<Tab>("foryou");
   const [posts, setPosts] = useState<FeedPost[] | undefined>(undefined);
   const [topics, setTopics] = useState<FeedTopic[] | undefined>(undefined);
+  const [wallPosts, setWallPosts] = useState<WallPost[] | undefined>(undefined);
+  const [wallNonce, setWallNonce] = useState(0);
   const [followedIds, setFollowedIds] = useState<Set<string> | undefined>(undefined);
   const [error, setError] = useState(false);
+  const myId = session?.user?.id ?? null;
+  const reloadWall = useCallback(() => setWallNonce((n) => n + 1), []);
 
   // One fetch per place for each source; the tabs are client-side views over them.
   useEffect(() => {
@@ -129,6 +134,21 @@ export function HomeFeed({ place }: { place: Place }) {
     };
   }, [trpc, signedIn]);
 
+  // The social wall feed: the caller's own posts + their friends', for the "For you" tab.
+  // Signed-in only; additive (a failure just leaves a venue/topic feed). Re-fetched on wallNonce.
+  useEffect(() => {
+    if (!signedIn) {
+      setWallPosts(undefined);
+      return;
+    }
+    let cancelled = false;
+    const q = trpc.profileWall.friendsFeed as unknown as { query: (i: { limit: number }) => Promise<{ posts: WallPost[] }> };
+    q.query({ limit: 20 })
+      .then((r) => { if (!cancelled) setWallPosts(r.posts ?? []); })
+      .catch(() => { if (!cancelled) setWallPosts([]); });
+    return () => { cancelled = true; };
+  }, [trpc, signedIn, wallNonce]);
+
   const items: FeedItem[] | undefined = useMemo(() => {
     if (posts === undefined) return undefined;
     const postItems = (posts ?? []).map((p) => ({
@@ -141,14 +161,19 @@ export function HomeFeed({ place }: { place: Place }) {
       if (!signedIn || followedIds === undefined) return [];
       return postItems.filter((_, i) => followedIds.has((posts ?? [])[i]!.venueId)).sort((a, b) => b.at - a.at);
     }
-    // For you: interleave hot topics by recency alongside posts.
+    // For you: interleave hot topics + friends' wall posts by recency alongside business posts.
     const topicItems = (topics ?? []).map((t) => ({
       key: `topic-${t.id}`,
       at: ts(t.lastActivityAt ?? t.createdAt),
       node: <TopicFeedCard topic={t} />,
     }));
-    return [...postItems, ...topicItems].sort((a, b) => b.at - a.at);
-  }, [posts, topics, tab, signedIn, followedIds]);
+    const wallItems = (wallPosts ?? []).map((p) => ({
+      key: `wall-${p.id}`,
+      at: ts(p.createdAt),
+      node: <PostCard post={p} canInteract={signedIn} isOwner={p.authorId === myId} myId={myId} onChanged={reloadWall} />,
+    }));
+    return [...postItems, ...topicItems, ...wallItems].sort((a, b) => b.at - a.at);
+  }, [posts, topics, wallPosts, tab, signedIn, followedIds, myId, reloadWall]);
 
   return (
     <section>

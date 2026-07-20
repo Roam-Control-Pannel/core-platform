@@ -333,6 +333,9 @@
       "posted": "Posted to your wall.",
       "viewWall": "View"
     },
+    "activeFriends": {
+      "title": "Active now"
+    },
     "quick": {
       "newPlan": "New plan",
       "startTopic": "Start a topic",

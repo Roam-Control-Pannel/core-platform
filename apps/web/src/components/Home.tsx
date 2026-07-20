@@ -22,6 +22,7 @@ import { Card, Button, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { useMe } from "./MeProvider";
 import { WallComposer } from "./ProfileWall";
+import { ActiveFriends } from "./ActiveFriends";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
@@ -264,6 +265,8 @@ export function Home() {
       <div className={styles.layout}>
         {/* Main column: the wall. */}
         <div style={{ minWidth: 0 }}>
+          {/* Friends who are active/available right now — a compact presence strip. */}
+          <ActiveFriends />
           {/* Facebook-style composer — post to your own wall, right from Home. */}
           {session ? <HomeComposer myId={session.user.id} /> : null}
           {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
