@@ -2,8 +2,8 @@
  * AccountHub — the /account "You" surface. Signed in, it LEADS WITH YOUR OWN WALL: the
  * ProfileWall rendered in `editable` mode, so your profile (avatar, header, name, handle, bio,
  * links) edits inline via its "Edit profile" toggle, and your posts compose right there. The
- * other "you" surfaces (Following, Business dashboard) and Sign out ride along as secondary
- * controls in the wall header + a slim top bar.
+ * other "you" surfaces (Business dashboard — for owners —, Settings, Notifications, Orders) ride
+ * along in the wall header's "…" overflow menu; Sign out sits in the slim top bar.
  *
  * Signed out shows the same just-in-time AuthPanel as before.
  */
@@ -71,7 +71,8 @@ export function AccountHub() {
     );
   }
 
-  // The secondary "you" surfaces now live in ProfileWall's owner tab chips — no extra nav here.
+  // The secondary "you" surfaces (Business dashboard, Settings, Notifications, Orders) live in the
+  // ProfileWall header's "…" overflow menu — no extra nav here.
   return (
     <>
       <div

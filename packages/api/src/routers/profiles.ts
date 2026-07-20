@@ -36,6 +36,13 @@ interface ProfileRow {
   social_links: Record<string, unknown> | null;
 }
 
+interface OwnedVenueRow {
+  id: string;
+  name: string;
+  slug: string | null;
+  status: string | null;
+}
+
 /** Pull a single displayable website URL out of the free-form social_links bag (a "website"/"url"
  *  key first, else the first http(s) value). Returns null when there's nothing usable. */
 function firstWebsite(links: unknown): string | null {
@@ -297,6 +304,31 @@ export const profilesRouter = router({
     if (error) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your profile: ${error.message}` });
     }
+
+    // The businesses this user has claimed (owner_id is set only on claim approval). Carried on the
+    // `me` payload so the chrome can surface an owner-aware "My businesses" entry without an extra
+    // round-trip; a failure here degrades to [] rather than breaking the whole profile load.
+    const ownedDb = ctx.db as unknown as {
+      from: (t: string) => {
+        select: (c: string) => {
+          eq: (col: string, val: string) => {
+            order: (col: string, opts: { ascending: boolean }) => Promise<{ data: OwnedVenueRow[] | null }>;
+          };
+        };
+      };
+    };
+    const { data: ownedRows } = await ownedDb
+      .from("venues")
+      .select("id, name, slug, status")
+      .eq("owner_id", uid)
+      .order("name", { ascending: true });
+    const ownedVenues = (ownedRows ?? []).map((v) => ({
+      id: v.id,
+      name: v.name,
+      slug: v.slug ?? null,
+      status: v.status ?? null,
+    }));
+
     // Build an inline-typed result (anonymous structural — no named-type leak into AppRouter).
     return {
       homeLocality: (data as { home_locality?: string | null } | null)?.home_locality ?? null,
@@ -307,6 +339,7 @@ export const profilesRouter = router({
       headerUrl: data?.header_url ?? null,
       bio: data?.bio ?? null,
       socialLinks: (data?.social_links ?? {}) as Record<string, string>,
+      ownedVenues,
     };
   }),
 

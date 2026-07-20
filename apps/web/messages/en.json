@@ -71,6 +71,7 @@
       "signedOutSub": "Sign in to save places, post events and connect with friends.",
       "viewProfile": "View profile",
       "yourPlaces": "Your places",
+      "myBusinesses": "My businesses",
       "explore": "Explore",
       "townHall": "Town Hall",
       "events": "What's on",
@@ -1086,6 +1087,7 @@
       "verifiedLocal": "Verified local",
       "menu": {
         "more": "More",
+        "dashboard": "Business dashboard",
         "settings": "Settings",
         "notifications": "Notifications",
         "orders": "Orders"

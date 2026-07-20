@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useMe } from "./MeProvider";
 import { ProfileEditor } from "./ProfileEditor";
 import { AuthorLink } from "./AuthorLink";
 import { AddFriendButton } from "./AddFriendButton";
@@ -431,9 +432,11 @@ function StatCell({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** The "…" overflow — owner quick-nav (settings · notifications · orders), outside-click to close. */
+/** The "…" overflow — owner quick-nav (dashboard · settings · notifications · orders), outside-click
+ *  to close. The Business dashboard row shows only when this user has claimed a business. */
 function OverflowMenu() {
   const t = useTranslations("profileWall");
+  const me = useMe();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -442,7 +445,10 @@ function OverflowMenu() {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+  const owned = me?.ownedVenues ?? [];
+  const dashboardHref = owned.length === 1 ? `/dashboard/${owned[0]!.id}` : "/dashboard";
   const items: [string, string][] = [
+    ...(owned.length > 0 ? [[dashboardHref, t("header.menu.dashboard")] as [string, string]] : []),
     ["/settings", t("header.menu.settings")],
     ["/notifications", t("header.menu.notifications")],
     ["/orders", t("header.menu.orders")],
