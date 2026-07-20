@@ -21,11 +21,12 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Icon, Seg, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useMe } from "./MeProvider";
 import { Button } from "@roam/design";
 import { OwnerMediaManager } from "./OwnerMediaManager";
 import { OwnerDetailsEditor } from "./OwnerDetailsEditor";
@@ -363,9 +364,7 @@ function IdentityHeader({ venue, venueId }: { venue: OwnerVenue; venueId: string
         <VenueAvatar venueId={venueId} name={venue.name} />
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 26, letterSpacing: "-.02em" }}>
-              {venue.name}
-            </h1>
+            <VenueSwitcher venueId={venueId} name={venue.name} />
             <StatusChip status={venue.status} />
             {open.status === "open" ? (
               <span style={openChip}>
@@ -385,6 +384,67 @@ function IdentityHeader({ venue, venueId }: { venue: OwnerVenue; venueId: string
       <Link href={venuePath(venue.slug ?? venueId)} style={{ textDecoration: "none", flexShrink: 0 }}>
         <Button variant="neutral" size="sm">{t("header.viewPublicPage")}</Button>
       </Link>
+    </div>
+  );
+}
+
+/**
+ * The venue name in the dashboard header. When the owner has more than one business it becomes a
+ * dropdown to switch between them (this is where venue-switching lives, so the global rail can stay
+ * one generic "My businesses" entry). A single-venue owner just sees the plain title.
+ */
+const h1Style: React.CSSProperties = { fontFamily: "var(--display)", fontWeight: 600, margin: 0, fontSize: 26, letterSpacing: "-.02em" };
+
+function VenueSwitcher({ venueId, name }: { venueId: string; name: string }) {
+  const t = useTranslations("venueOwnerEditor");
+  const me = useMe();
+  const owned = me?.ownedVenues ?? [];
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  if (owned.length <= 1) {
+    return <h1 className="t-h1" style={h1Style}>{name}</h1>;
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("header.switchBusiness")}
+        style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
+      >
+        <h1 className="t-h1" style={h1Style}>{name}</h1>
+        <span aria-hidden style={{ fontSize: 16, lineHeight: 1, color: "var(--ink-2)", transform: "translateY(1px)" }}>▾</span>
+      </button>
+      {open ? (
+        <div role="menu" style={{ position: "absolute", left: 0, top: "calc(100% + 8px)", background: "#fff", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, minWidth: 240, maxHeight: 360, overflowY: "auto", zIndex: 30 }}>
+          <div style={{ padding: "6px 11px 8px", fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{t("header.yourBusinesses")}</div>
+          {owned.map((v) => {
+            const active = v.id === venueId;
+            return (
+              <Link
+                key={v.id}
+                href={`/dashboard/${v.id}`}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none", background: active ? "var(--crimson-tint)" : "transparent", color: active ? "var(--crimson-700)" : "var(--ink)" }}
+              >
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</span>
+                {active ? <Icon name="check" size={14} strokeWidth={3} /> : null}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

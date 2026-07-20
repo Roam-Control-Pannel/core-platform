@@ -1807,7 +1807,9 @@
       "closed": "Closed",
       "closedOpens": "Closed · opens {time}",
       "claimed": "Claimed",
-      "viewPublicPage": "View public page →"
+      "viewPublicPage": "View public page →",
+      "switchBusiness": "Switch business",
+      "yourBusinesses": "Your businesses"
     },
     "stats": {
       "followers": "Followers",
