@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   sanitizeQuery,
+  searchTokens,
   personUrl,
   venueUrl,
   eventUrl,
@@ -36,6 +37,21 @@ describe("sanitizeQuery", () => {
   it("empties to '' when nothing usable remains", () => {
     expect(sanitizeQuery("%%%")).toBe("");
     expect(sanitizeQuery("   ")).toBe("");
+  });
+});
+
+describe("searchTokens", () => {
+  it("splits into meaningful words, dropping grammatical stopwords", () => {
+    // "the duke of york belfast" (post-sanitise: the comma is already a space) → the venue's words.
+    expect(searchTokens("the duke of york belfast")).toEqual(["duke", "york", "belfast"]);
+  });
+  it("drops one-char noise and lower-cases", () => {
+    expect(searchTokens("The Dog Inn")).toEqual(["dog", "inn"]);
+    expect(searchTokens("a b cd")).toEqual(["cd"]);
+  });
+  it("returns [] for an all-stopword query (caller falls back)", () => {
+    expect(searchTokens("the and of")).toEqual([]);
+    expect(searchTokens("")).toEqual([]);
   });
 });
 
