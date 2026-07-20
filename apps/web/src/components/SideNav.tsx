@@ -149,7 +149,7 @@ function SideNavBody({ pathname }: { pathname: string }) {
  * (me.ownedVenues). Deliberately ONE generic entry regardless of how many venues you own: it never
  * injects a venue name (a proper noun) or per-venue rows into the app-section nav, so the rail looks
  * identical for 1 or 50 businesses. Switching between venues happens on the dashboard's own header.
- * The href is a shortcut: one venue jumps straight to its manager, several land on the /dashboard hub.
+ * Always lands on the /dashboard list page (even for a single venue) so it's a consistent home base.
  */
 function OwnedBusinesses({ pathname }: { pathname: string }) {
   const t = useTranslations("chrome.sideNav");
@@ -157,10 +157,8 @@ function OwnedBusinesses({ pathname }: { pathname: string }) {
   const owned = me?.ownedVenues ?? [];
   if (owned.length === 0) return null;
 
-  const href = owned.length === 1 ? `/dashboard/${owned[0]!.id}` : "/dashboard";
-
   return (
-    <Link href={href} className={`${styles.item} ${isActive(pathname, ["/dashboard"]) ? styles.active : ""}`}>
+    <Link href="/dashboard" className={`${styles.item} ${isActive(pathname, ["/dashboard"]) ? styles.active : ""}`}>
       <span className={styles.itemIcon} aria-hidden>
         <Icon name="briefcase" size={18} />
       </span>
