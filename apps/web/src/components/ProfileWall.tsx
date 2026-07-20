@@ -446,9 +446,8 @@ function OverflowMenu() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
   const owned = me?.ownedVenues ?? [];
-  const dashboardHref = owned.length === 1 ? `/dashboard/${owned[0]!.id}` : "/dashboard";
   const items: [string, string][] = [
-    ...(owned.length > 0 ? [[dashboardHref, t("header.menu.dashboard")] as [string, string]] : []),
+    ...(owned.length > 0 ? [["/dashboard", t("header.menu.dashboard")] as [string, string]] : []),
     ["/settings", t("header.menu.settings")],
     ["/notifications", t("header.menu.notifications")],
     ["/orders", t("header.menu.orders")],
