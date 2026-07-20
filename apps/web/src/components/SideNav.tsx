@@ -15,7 +15,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
-import { useTrpc, useSession } from "./TrpcProvider";
+import { useSession } from "./TrpcProvider";
+import { useMe } from "./MeProvider";
 import { AuthModal } from "./AuthModal";
 import { useSavedPlaces } from "../lib/savedPlaces";
 import { useCurrentPlace } from "../lib/currentPlace";
@@ -176,29 +177,11 @@ function YourPlaces() {
   );
 }
 
-interface Me {
-  handle: string | null;
-  displayName: string | null;
-  avatarUrl: string | null;
-}
-
 function ProfileCard() {
   const t = useTranslations("chrome.sideNav");
-  const trpc = useTrpc();
   const session = useSession();
-  const [me, setMe] = useState<Me | null>(null);
+  const me = useMe();
   const [authOpen, setAuthOpen] = useState(false);
-
-  useEffect(() => {
-    if (!session) {
-      setMe(null);
-      return;
-    }
-    let live = true;
-    const q = trpc.profiles.me as unknown as { query: () => Promise<Me> };
-    q.query().then((p) => { if (live) setMe(p); }).catch(() => {});
-    return () => { live = false; };
-  }, [trpc, session]);
 
   if (!session) {
     return (
