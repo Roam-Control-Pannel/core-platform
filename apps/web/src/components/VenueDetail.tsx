@@ -40,6 +40,7 @@ import Link from "next/link";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
+import { PostMediaGrid } from "./PostMediaGrid";
 import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
 import { VenueEvents } from "./VenueEvents";
@@ -609,10 +610,7 @@ function VenuePostsPanel({ venueId }: { venueId: string }) {
       {posts.map((p) => (
         <Link key={p.id} href={`/feed/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
           <Card flat style={{ padding: 0, overflow: "hidden" }}>
-            {p.media && p.media.length > 0 ? (
-              // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-              <img src={p.media[0]!.url} alt="" loading="lazy" style={{ width: "100%", height: 168, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
-            ) : null}
+            {p.media && p.media.length > 0 ? <PostMediaGrid media={p.media} /> : null}
             <div style={{ padding: "var(--space-4)" }}>
               <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: p.kind === "offer" ? "var(--crimson-700)" : "var(--muted)" }}>
                 {p.kind}

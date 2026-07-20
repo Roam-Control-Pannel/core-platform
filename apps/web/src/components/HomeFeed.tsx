@@ -20,6 +20,7 @@ import { Card, Pill, Seg, Icon, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import type { Place } from "./PlaceSwitcher";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { PostMediaGrid } from "./PostMediaGrid";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { linkifyHashtags } from "../lib/hashtags";
 
@@ -258,13 +259,9 @@ function PostFeedCard({ post }: { post: FeedPost }) {
           </p>
         ) : null}
         {post.media && post.media.length > 0 ? (
-          // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-          <img
-            src={post.media[0]!.url}
-            alt=""
-            loading="lazy"
-            style={{ width: "100%", maxHeight: 300, objectFit: "cover", display: "block", borderRadius: "var(--r-md)", marginTop: "var(--space-3)", background: "var(--paper-2)" }}
-          />
+          <div style={{ marginTop: "var(--space-3)" }}>
+            <PostMediaGrid media={post.media} />
+          </div>
         ) : null}
       </Link>
 
