@@ -24,12 +24,14 @@ import {
   shapeListing,
   shapePlan,
   shapeDeal,
+  shapeOffer,
   type PersonRow,
   type EventRow,
   type TopicRow,
   type ListingRow,
   type PlanRow,
   type DealRow,
+  type OfferRow,
 } from "../search.js";
 
 type LooseDb = {
@@ -37,7 +39,7 @@ type LooseDb = {
   rpc: (fn: string, args: Record<string, unknown>) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 
-const EMPTY = { people: [], venues: [], events: [], topics: [], listings: [], plans: [], deals: [] };
+const EMPTY = { people: [], venues: [], events: [], topics: [], listings: [], plans: [], offers: [], deals: [] };
 
 export const searchRouter = router({
   /** Public: site-wide search across people, businesses, events, Town Hall and the marketplace. */
@@ -136,27 +138,37 @@ export const searchRouter = router({
         return (data ?? []).map(shapePlan);
       })();
 
-      // Deals are public; RLS already limits reads to active, in-window rows.
+      // Venue offers: a Roam business's own deal, LOCAL (tied to a venue → a town). Matched by
+      // offer title, venue name, or venue LOCALITY — so a place query ("Belfast") surfaces the
+      // town's live offers. RLS-free public read via the SECURITY INVOKER search_offers RPC.
+      const offers = (async () => {
+        const { data } = (await db.rpc("search_offers", { q: term, max_results: n })) as { data: OfferRow[] | null };
+        return (data ?? []).map(shapeOffer);
+      })();
+
+      // Affiliate deals are NATIONAL brand offers. Matched by title, description or advertiser name
+      // (broadened from title-only); RLS already limits reads to active, in-window rows.
       const deals = (async () => {
         const { data } = (await db
           .from("awin_deals")
           .select("id, title, advertiser_name")
-          .ilike("title", like)
+          .or(`title.ilike.${like},description.ilike.${like},advertiser_name.ilike.${like}`)
           .order("created_at", { ascending: false })
           .limit(n)) as { data: DealRow[] | null };
         return (data ?? []).map(shapeDeal);
       })();
 
       // Each source is independently fault-tolerant: a failure degrades that group to [].
-      const [p, v, e, t, l, pl, d] = await Promise.all([
+      const [p, v, e, t, l, pl, o, d] = await Promise.all([
         people.catch(() => []),
         venues.catch(() => []),
         events.catch(() => []),
         topics.catch(() => []),
         listings.catch(() => []),
         plans.catch(() => []),
+        offers.catch(() => []),
         deals.catch(() => []),
       ]);
-      return { query: term, people: p, venues: v, events: e, topics: t, listings: l, plans: pl, deals: d };
+      return { query: term, people: p, venues: v, events: e, topics: t, listings: l, plans: pl, offers: o, deals: d };
     }),
 });

@@ -16,7 +16,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { formatEventWhen } from "../lib/events";
 import { EMPTY_RESULTS, totalCount, listingPrice, distanceLabel, type SearchResultsData } from "../lib/searchResult";
 
-type Tab = "all" | "people" | "venues" | "events" | "topics" | "listings" | "plans" | "deals";
+type Tab = "all" | "people" | "venues" | "events" | "topics" | "listings" | "plans" | "offers" | "deals";
 const TABS: { id: Tab; labelKey: string }[] = [
   { id: "all", labelKey: "all" },
   { id: "people", labelKey: "people" },
@@ -25,6 +25,7 @@ const TABS: { id: Tab; labelKey: string }[] = [
   { id: "topics", labelKey: "community" },
   { id: "listings", labelKey: "marketplace" },
   { id: "plans", labelKey: "plans" },
+  { id: "offers", labelKey: "offers" },
   { id: "deals", labelKey: "deals" },
 ];
 
@@ -67,6 +68,7 @@ export function SearchResults() {
       topics: results.topics.length,
       listings: results.listings.length,
       plans: results.plans.length,
+      offers: results.offers.length,
       deals: results.deals.length,
     }),
     [results],
@@ -156,6 +158,13 @@ export function SearchResults() {
             <Section title={t("groups.plans")}>
               {results.plans.map((pl) => (
                 <ResultCard key={pl.id} href={pl.url} icon="plan" primary={pl.title} />
+              ))}
+            </Section>
+          ) : null}
+          {show("offers") && results.offers.length > 0 ? (
+            <Section title={t("groups.offers")}>
+              {results.offers.map((of) => (
+                <ResultCard key={of.id} href={of.url} icon="redeem" primary={of.title} secondary={[of.venueName, of.locality].filter(Boolean).join(" · ") || undefined} />
               ))}
             </Section>
           ) : null}
