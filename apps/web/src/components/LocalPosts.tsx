@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, Button, Seg } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { PostMediaGrid } from "./PostMediaGrid";
 import { uploadProfileImage } from "../lib/uploadProfileImage";
 import actions from "./inlineActions.module.css";
 import { linkifyHashtags } from "../lib/hashtags";
@@ -329,24 +330,10 @@ function PostManageRow({ post, onChanged }: { post: ManagedPost; onChanged: () =
         <div style={{ marginTop: 6 }}>
           {post.title ? <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-hi)" }}>{post.title}</div> : null}
           {post.body ? <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45, marginTop: 2, whiteSpace: "pre-wrap" }}>{linkifyHashtags(post.body)}</div> : null}
-          {post.media.length > 0 ? <div style={{ marginTop: "var(--space-2)" }}><MediaGrid media={post.media} /></div> : null}
+          {post.media.length > 0 ? <div style={{ marginTop: "var(--space-2)" }}><PostMediaGrid media={post.media} /></div> : null}
         </div>
       )}
     </Card>
-  );
-}
-
-/** MediaGrid — render a post's images (1 large, or a tidy 2-col grid for several). */
-function MediaGrid({ media }: { media: PostMedia[] }) {
-  if (media.length === 0) return null;
-  const single = media.length === 1;
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: single ? "1fr" : "1fr 1fr", gap: 4, borderRadius: "var(--r-md)", overflow: "hidden" }}>
-      {media.map((m) => (
-        // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-        <img key={m.url} src={m.url} alt="" loading="lazy" style={{ width: "100%", height: single ? "auto" : 140, maxHeight: 420, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
-      ))}
-    </div>
   );
 }
 

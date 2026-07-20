@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { PostMediaGrid } from "./PostMediaGrid";
 import { venuePath } from "../lib/routes";
 import { linkifyHashtags } from "../lib/hashtags";
 import { getFormatLocale } from "../lib/i18n/runtime";
@@ -83,18 +84,7 @@ export function PostDetail({ post }: { post: FeedPost }) {
     <Card>
       {/* Hero — the post's own image when it has one; otherwise a kind-tinted gradient (no faked photo). */}
       {post.media && post.media.length > 0 ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- public bucket URL */}
-          <img src={post.media[0]!.url} alt="" style={{ width: "100%", height: 240, objectFit: "cover", display: "block", background: "var(--paper-2)" }} />
-          {post.media.length > 1 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, padding: 4, background: "var(--card)" }}>
-              {post.media.slice(1, 4).map((m) => (
-                // eslint-disable-next-line @next/next/no-img-element -- public bucket URL
-                <img key={m.url} src={m.url} alt="" loading="lazy" style={{ width: "100%", height: 80, objectFit: "cover", display: "block", borderRadius: 6 }} />
-              ))}
-            </div>
-          ) : null}
-        </>
+        <PostMediaGrid media={post.media} />
       ) : (
         <div
           aria-hidden
