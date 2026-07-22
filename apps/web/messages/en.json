@@ -438,6 +438,10 @@
     "emptyLocal": "Nothing moving in {place} just yet — check back soon, or be the one who starts something in the Town Hall.",
     "exploreVenues": "Explore venues",
     "openTownHall": "Open Town Hall",
+    "acrossRoam": {
+      "kicker": "Popular across Roam",
+      "note": "Roam is just getting started in {place} — here's what's happening across the community while your area fills up."
+    },
     "caughtUp": "You're all caught up",
     "exploreAround": "Explore what's around you",
     "kind": {
