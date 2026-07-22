@@ -74,11 +74,13 @@ import {
   Briefcase,
   Church,
   CreditCard,
+  House,
   type LucideIcon,
 } from "lucide-react";
 
 /** Semantic name → Lucide icon. Extend as the app needs more; usage stays name-based. */
 const ICONS = {
+  home: House,
   place: MapPin,
   plan: CalendarDays,
   person: User,
