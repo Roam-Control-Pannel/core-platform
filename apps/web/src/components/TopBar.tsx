@@ -24,8 +24,20 @@ import { NotificationBell } from "./NotificationCenter";
 import { SideNavToggle } from "./SideNav";
 import { GlobalSearch } from "./GlobalSearch";
 import { useMe } from "./MeProvider";
-import { Icon } from "@roam/design";
+import { Icon, type IconName } from "@roam/design";
 import styles from "./TopBar.module.css";
+
+type NavKey = "home" | "explore" | "townhall" | "plans" | "chat" | "you";
+
+/** Primary nav — icon + label tabs. Each item's icon is its section's glyph. */
+const NAV: { key: NavKey; href: string; icon: IconName; labelKey: string }[] = [
+  { key: "home", href: "/", icon: "home", labelKey: "nav.home" },
+  { key: "explore", href: "/explore", icon: "search", labelKey: "nav.explore" },
+  { key: "townhall", href: "/town-hall", icon: "landmark", labelKey: "nav.townHall" },
+  { key: "plans", href: "/plans", icon: "plan", labelKey: "nav.plans" },
+  { key: "chat", href: "/threads", icon: "chat", labelKey: "nav.chat" },
+  { key: "you", href: "/account", icon: "person", labelKey: "nav.you" },
+];
 
 /** Which primary nav item the current path belongs to (for the active pill). Basecamp is
  *  deliberately NOT a nav item — it's reached from the Home header cards + rail — but it should
@@ -64,30 +76,20 @@ export function TopBar() {
       </Link>
 
       <nav className={styles.nav} aria-label={t("primaryNav")}>
-        <Link href="/" className={`${styles.link} ${active === "home" ? styles.active : ""}`}>
-          {t("nav.home")}
-        </Link>
-        <Link href="/explore" className={`${styles.link} ${active === "explore" ? styles.active : ""}`}>
-          {t("nav.explore")}
-        </Link>
-        <Link href="/town-hall" className={`${styles.link} ${active === "townhall" ? styles.active : ""}`}>
-          {t("nav.townHall")}
-        </Link>
-        <Link href="/plans" className={`${styles.link} ${active === "plans" ? styles.active : ""}`}>
-          {t("nav.plans")}
-        </Link>
-        <Link
-          href="/threads"
-          className={`${styles.link} ${active === "chat" ? styles.active : ""}`}
-        >
-          {t("nav.chat")}
-        </Link>
-        <Link
-          href="/account"
-          className={`${styles.link} ${active === "you" ? styles.active : ""}`}
-        >
-          {t("nav.you")}
-        </Link>
+        {NAV.map((item) => {
+          const on = active === item.key;
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`${styles.link} ${on ? styles.active : ""}`}
+              aria-current={on ? "page" : undefined}
+            >
+              <Icon name={item.icon} size={20} />
+              <span className={styles.navLabel}>{t(item.labelKey)}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       <GlobalSearch />

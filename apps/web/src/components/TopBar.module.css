@@ -41,35 +41,60 @@
 
 .nav {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-left: 6px;
+  /* Stretch to the bar's full content height so the active underline can sit on the bottom border. */
+  align-self: stretch;
+  align-items: stretch;
 }
 
+/* Icon + label tabs (the mock's header nav): a glyph over a small caption, the active tab in
+   crimson with a short underline on the bar's bottom edge. */
 .link,
 .dormant {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   font-family: var(--ui);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 7px 13px;
-  border-radius: 999px;
+  padding: 3px 12px;
+  border-radius: 10px;
   text-decoration: none;
   white-space: nowrap;
   color: var(--muted);
+  position: relative;
 }
 
 .link:hover {
-  background: var(--paper-2);
   color: var(--ink);
 }
 
-.active {
-  background: var(--ink-hi);
-  color: #fff;
+.active,
+.active:hover {
+  color: var(--crimson-700);
+  background: transparent;
 }
 
-.active:hover {
-  background: var(--ink-hi);
-  color: #fff;
+/* The active accent — a crimson underline landing on the bar's bottom border (bar padding-bottom
+   is 11px, so -11px from the stretched tab's bottom edge reaches the border). */
+.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2.5px;
+  border-radius: 3px;
+  background: var(--crimson);
+}
+
+.navLabel {
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 /* Dormant nav item (a Stage-2 surface that doesn't exist yet): present as an honest
@@ -261,7 +286,7 @@
 
   .link,
   .dormant {
-    padding: 7px 9px;
+    padding: 3px 8px;
   }
 
   .actions {
