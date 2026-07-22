@@ -76,6 +76,7 @@ export function HomeFeed({ place }: { place: Place }) {
   const [topics, setTopics] = useState<FeedTopic[] | undefined>(undefined);
   const [wallPosts, setWallPosts] = useState<WallPost[] | undefined>(undefined);
   const [wallNonce, setWallNonce] = useState(0);
+  const [globalPosts, setGlobalPosts] = useState<FeedPost[] | undefined>(undefined);
   const [followedIds, setFollowedIds] = useState<Set<string> | undefined>(undefined);
   const [error, setError] = useState(false);
   const myId = session?.user?.id ?? null;
@@ -149,6 +150,28 @@ export function HomeFeed({ place }: { place: Place }) {
     return () => { cancelled = true; };
   }, [trpc, signedIn, wallNonce]);
 
+  // "Never a dead feed": while a town has no local content yet, a brand-new visitor would see an
+  // empty For-you feed. When the local sources all come back empty, fetch the network-wide feed
+  // (posts.feed WITHOUT an origin → the global branch) and show it, clearly labelled "across Roam",
+  // so the page always looks alive. Only fires when local is genuinely empty; no cost otherwise.
+  const localForYouEmpty =
+    posts !== undefined &&
+    (posts?.length ?? 0) === 0 &&
+    (topics?.length ?? 0) === 0 &&
+    (wallPosts?.length ?? 0) === 0;
+  useEffect(() => {
+    if (!localForYouEmpty) {
+      setGlobalPosts(undefined);
+      return;
+    }
+    let cancelled = false;
+    trpc.posts.feed
+      .query({ limit: 12 })
+      .then((rows: unknown) => { if (!cancelled) setGlobalPosts(Array.isArray(rows) ? (rows as FeedPost[]) : []); })
+      .catch(() => { if (!cancelled) setGlobalPosts([]); });
+    return () => { cancelled = true; };
+  }, [trpc, localForYouEmpty]);
+
   const items: FeedItem[] | undefined = useMemo(() => {
     if (posts === undefined) return undefined;
     const postItems = (posts ?? []).map((p) => ({
@@ -213,6 +236,23 @@ export function HomeFeed({ place }: { place: Place }) {
             </Link>
           </div>
         </Card>
+      ) : items.length === 0 && tab === "foryou" && (globalPosts?.length ?? 0) > 0 ? (
+        /* Nothing local yet → keep the page alive with network-wide activity, clearly labelled. */
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-4)" }}>
+          <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)" }}>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 4 }}>
+              {t("acrossRoam.kicker")}
+            </div>
+            <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>
+              {t("acrossRoam.note", { place: place.name })}
+            </p>
+          </Card>
+          {(globalPosts ?? []).map((p) => (
+            <div key={`global-${p.id}`}>
+              <PostFeedCard post={p} />
+            </div>
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <Card flat style={{ padding: "var(--space-5)" }}>
           <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14, lineHeight: 1.55 }}>
