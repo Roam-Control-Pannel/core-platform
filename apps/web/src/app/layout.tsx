@@ -25,6 +25,7 @@ import { FirstRunProfilePrompt } from "../components/FirstRunProfilePrompt";
 import { InviteApply } from "../components/InviteApply";
 import { LocationGate } from "../components/LocationGate";
 import { PlacePrefsSync } from "../components/PlacePrefsSync";
+import { Analytics } from "../components/Analytics";
 import { siteUrl, ogCardUrl } from "../lib/seo";
 
 const DESCRIPTION = "Discover the best local venues, read reviews, follow your town's news and plan days out with friends — all on Roam.";
@@ -86,6 +87,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        {/* Google Analytics (GA4) — loaded after hydration; never blocks first paint. */}
+        <Analytics />
         <LocaleProvider>
           <TrpcProvider>
             <MeProvider>
