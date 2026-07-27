@@ -386,7 +386,8 @@
     "viewPost": "Ver publicación",
     "townHall": "Plaza del pueblo",
     "asked": "{author} preguntó",
-    "replies": "{count, plural, one {# respuesta} other {# respuestas}}"
+    "replies": "{count, plural, one {# respuesta} other {# respuestas}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Personalizar inicio",

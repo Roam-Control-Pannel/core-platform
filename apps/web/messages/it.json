@@ -386,7 +386,8 @@
     "viewPost": "Vedi post",
     "townHall": "Piazza",
     "asked": "{author} ha chiesto",
-    "replies": "{count, plural, one {# risposta} other {# risposte}}"
+    "replies": "{count, plural, one {# risposta} other {# risposte}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Personalizza la home",

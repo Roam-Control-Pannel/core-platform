@@ -453,7 +453,15 @@
     "viewPost": "View post",
     "townHall": "Town Hall",
     "asked": "{author} asked",
-    "replies": "{count, plural, one {# reply} other {# replies}}"
+    "replies": "{count, plural, one {# reply} other {# replies}}",
+    "pioneer": {
+      "kicker": "You're early here",
+      "title": "Be the first in {place}",
+      "body": "No one's shared anything in {place} yet — so whatever you post sets the tone. Be the one who puts your area on the map.",
+      "ctaPrimary": "Start the first conversation",
+      "ctaSecondary": "Explore {place}",
+      "meanwhile": "Meanwhile, across Roam"
+    }
   },
   "homeCustomize": {
     "title": "Customise home",

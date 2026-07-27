@@ -386,7 +386,8 @@
     "viewPost": "Voir la publication",
     "townHall": "Place du village",
     "asked": "{author} a demandé",
-    "replies": "{count, plural, one {# réponse} other {# réponses}}"
+    "replies": "{count, plural, one {# réponse} other {# réponses}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Personnaliser l'accueil",

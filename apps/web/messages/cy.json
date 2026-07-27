@@ -386,7 +386,8 @@
     "viewPost": "Gweld y postiad",
     "townHall": "Neuadd y Dref",
     "asked": "Gofynnodd {author}",
-    "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}"
+    "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Addasu'r hafan",
