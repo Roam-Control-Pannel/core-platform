@@ -295,6 +295,35 @@ export const townHallRouter = router({
       return { locals };
     }),
 
+  /**
+   * Public: the honest founding counter for a locality — how many people have started a
+   * conversation here, and the caller's own founding rank (null if they haven't). Powers the Town
+   * Hall hero's "N founding members so far · you're #3" line and the pioneer framing. Real counts
+   * (locality_founding_stats, 0108), never a fabricated figure; degrades to zero pre-migration.
+   */
+  foundingStats: publicProcedure
+    .input(z.object({ localityName: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as LooseDb & {
+        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+      let slug: string;
+      try {
+        slug = localitySlug(input.localityName);
+      } catch {
+        return { contributors: 0, viewerRank: null as number | null, cap: 25 };
+      }
+      const viewer = await maybeCallerId(db);
+      const { data, error } = await db.rpc("locality_founding_stats", { p_locality: slug, p_viewer: viewer });
+      if (error) return { contributors: 0, viewerRank: null as number | null, cap: 25 };
+      // The function returns a single row; PostgREST may surface it as a one-element array or object.
+      const row = (Array.isArray(data) ? data[0] : data) as { contributor_count?: number | string; viewer_rank?: number | string | null } | null;
+      const contributors = Number(row?.contributor_count ?? 0) || 0;
+      const rankRaw = row?.viewer_rank;
+      const viewerRank = rankRaw == null ? null : Number(rankRaw) || null;
+      return { contributors, viewerRank, cap: 25 };
+    }),
+
   /** Public: one topic with its replies (oldest-first), plus the caller's upvote state. */
   getTopic: publicProcedure
     .input(z.object({ topicId: z.string().uuid() }))

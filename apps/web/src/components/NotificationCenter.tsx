@@ -53,6 +53,8 @@ const GLYPH: Record<string, IconName> = {
   // 0105 business-post engagement.
   business_post_like: "heart",
   business_post_comment: "chat",
+  // 0108 pioneer loop — someone new joined your town.
+  locality_newcomer: "wave",
 };
 
 export function NotificationCenter() {

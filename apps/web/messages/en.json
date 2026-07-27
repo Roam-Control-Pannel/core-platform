@@ -1050,6 +1050,22 @@
       "posting": "Posting…",
       "post": "Post topic",
       "cancel": "Cancel"
+    },
+    "founding": {
+      "count": "{count, plural, one {# founding member so far} other {# founding members so far}}",
+      "you": "you're #{rank}"
+    },
+    "starters": {
+      "title": "Get {place} talking",
+      "subtitle": "Tap a question to start it — you'll be first to ask.",
+      "q": {
+        "coffee": "Best coffee in {place}?",
+        "sundayLunch": "Best spot for Sunday lunch around here?",
+        "hiddenGem": "What's a hidden gem in {place} that visitors miss?",
+        "weekend": "Something good to do this weekend in {place}?",
+        "newHere": "New to {place} — what shouldn't I miss?",
+        "quietPint": "Best place for a quiet pint in {place}?"
+      }
     }
   },
   "townHallTopic": {
