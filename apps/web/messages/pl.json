@@ -386,7 +386,8 @@
     "viewPost": "Zobacz post",
     "townHall": "Ratusz",
     "asked": "{author} pyta",
-    "replies": "{count, plural, one {# odpowiedź} few {# odpowiedzi} many {# odpowiedzi} other {# odpowiedzi}}"
+    "replies": "{count, plural, one {# odpowiedź} few {# odpowiedzi} many {# odpowiedzi} other {# odpowiedzi}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Dostosuj Start",

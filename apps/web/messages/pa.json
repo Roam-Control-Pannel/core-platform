@@ -386,7 +386,8 @@
     "viewPost": "ਪੋਸਟ ਵੇਖੋ",
     "townHall": "ਟਾਊਨ ਹਾਲ",
     "asked": "{author} ਨੇ ਪੁੱਛਿਆ",
-    "replies": "{count, plural, one {# ਜਵਾਬ} other {# ਜਵਾਬ}}"
+    "replies": "{count, plural, one {# ਜਵਾਬ} other {# ਜਵਾਬ}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "ਹੋਮ ਕਸਟਮਾਈਜ਼ ਕਰੋ",

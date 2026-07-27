@@ -331,7 +331,20 @@
       "close": "Close",
       "addPhoto": "Add a photo",
       "posted": "Posted to your wall.",
-      "viewWall": "View"
+      "viewWall": "View",
+      "starters": {
+        "gem": "Local gem",
+        "hello": "Say hello",
+        "food": "Good food",
+        "tip": "Local tip",
+        "photo": "Add a photo"
+      },
+      "seeds": {
+        "gem": "A local gem worth knowing about: ",
+        "hello": "New to Roam in {place} — hello! ",
+        "food": "A great place to eat around here: ",
+        "tip": "One thing every local should know: "
+      }
     },
     "activeFriends": {
       "title": "Active now"
@@ -453,7 +466,15 @@
     "viewPost": "View post",
     "townHall": "Town Hall",
     "asked": "{author} asked",
-    "replies": "{count, plural, one {# reply} other {# replies}}"
+    "replies": "{count, plural, one {# reply} other {# replies}}",
+    "pioneer": {
+      "kicker": "You're early here",
+      "title": "Be the first in {place}",
+      "body": "No one's shared anything in {place} yet — so whatever you post sets the tone. Be the one who puts your area on the map.",
+      "ctaPrimary": "Start the first conversation",
+      "ctaSecondary": "Explore {place}",
+      "meanwhile": "Meanwhile, across Roam"
+    }
   },
   "homeCustomize": {
     "title": "Customise home",
@@ -1029,6 +1050,22 @@
       "posting": "Posting…",
       "post": "Post topic",
       "cancel": "Cancel"
+    },
+    "founding": {
+      "count": "{count, plural, one {# founding member so far} other {# founding members so far}}",
+      "you": "you're #{rank}"
+    },
+    "starters": {
+      "title": "Get {place} talking",
+      "subtitle": "Tap a question to start it — you'll be first to ask.",
+      "q": {
+        "coffee": "Best coffee in {place}?",
+        "sundayLunch": "Best spot for Sunday lunch around here?",
+        "hiddenGem": "What's a hidden gem in {place} that visitors miss?",
+        "weekend": "Something good to do this weekend in {place}?",
+        "newHere": "New to {place} — what shouldn't I miss?",
+        "quietPint": "Best place for a quiet pint in {place}?"
+      }
     }
   },
   "townHallTopic": {
@@ -1218,6 +1255,10 @@
       "noFollowing": "Not following any venues yet.",
       "noFriends": "No friends yet.",
       "noPlans": "No plans yet."
+    },
+    "founder": {
+      "badge": "Founding member of {place} · #{rank}",
+      "tooltip": "One of the first {rank} people to start a Town Hall conversation in {place}."
     }
   },
   "feedList": {

@@ -236,22 +236,27 @@ export function HomeFeed({ place }: { place: Place }) {
             </Link>
           </div>
         </Card>
-      ) : items.length === 0 && tab === "foryou" && (globalPosts?.length ?? 0) > 0 ? (
-        /* Nothing local yet → keep the page alive with network-wide activity, clearly labelled. */
+      ) : items.length === 0 && tab === "foryou" ? (
+        /* Nothing local yet → reframe the empty area as a frontier ("be the first"), then keep the
+           page alive with network-wide activity below, demoted to "meanwhile, across Roam". */
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "var(--space-4)" }}>
-          <Card flat style={{ padding: "var(--space-4)", background: "var(--paper-2)" }}>
-            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 4 }}>
-              {t("acrossRoam.kicker")}
-            </div>
-            <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>
-              {t("acrossRoam.note", { place: place.name })}
-            </p>
-          </Card>
-          {(globalPosts ?? []).map((p) => (
-            <div key={`global-${p.id}`}>
-              <PostFeedCard post={p} />
-            </div>
-          ))}
+          <PioneerBanner place={place} />
+          {(globalPosts?.length ?? 0) > 0 ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-1)" }}>
+                <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+                <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                  {t("pioneer.meanwhile")}
+                </span>
+                <span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+              </div>
+              {(globalPosts ?? []).map((p) => (
+                <div key={`global-${p.id}`}>
+                  <PostFeedCard post={p} />
+                </div>
+              ))}
+            </>
+          ) : null}
         </div>
       ) : items.length === 0 ? (
         <Card flat style={{ padding: "var(--space-5)" }}>
@@ -284,6 +289,45 @@ export function HomeFeed({ place }: { place: Place }) {
         </div>
       )}
     </section>
+  );
+}
+
+/* ── Pioneer banner ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * PioneerBanner — shown on the "For you" tab when a town has no local content yet. Rather than an
+ * apologetic "nothing here", it reframes the empty area as a frontier: the visitor is (likely) the
+ * first person on Roam in their place, and the first post shapes what everyone after them sees. A
+ * clear primary action (start a Town Hall conversation) turns the reframe into a next step; the
+ * network-wide "meanwhile across Roam" feed rendered below it keeps the page feeling alive.
+ */
+function PioneerBanner({ place }: { place: Place }) {
+  const t = useTranslations("homeFeed");
+  return (
+    <Card style={{ padding: "var(--space-5)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2, var(--line))" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+        <span style={{ display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: "50%", background: "var(--crimson-700)", color: "#fff", flexShrink: 0 }}>
+          <Icon name="sparkle" size={15} />
+        </span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--crimson-700)" }}>
+          {t("pioneer.kicker")}
+        </span>
+      </div>
+      <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 22, lineHeight: 1.2, letterSpacing: "-.02em", color: "var(--ink-hi)", marginBottom: 6 }}>
+        {t("pioneer.title", { place: place.name })}
+      </div>
+      <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 14.5, lineHeight: 1.55, maxWidth: "46ch" }}>
+        {t("pioneer.body", { place: place.name })}
+      </p>
+      <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <Link href="/town-hall" style={{ textDecoration: "none" }}>
+          <Button variant="pri" size="sm">{t("pioneer.ctaPrimary")}</Button>
+        </Link>
+        <Link href="/explore" style={{ textDecoration: "none" }}>
+          <Button variant="neutral" size="sm">{t("pioneer.ctaSecondary", { place: place.name })}</Button>
+        </Link>
+      </div>
+    </Card>
   );
 }
 

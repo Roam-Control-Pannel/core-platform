@@ -145,6 +145,37 @@ export const profilesRouter = router({
       };
     }),
 
+  /**
+   * Public: the "Founding member" badges a profile has earned — the localities where they are among
+   * the first N Town Hall contributors (founder_badges_for_profile, 0107), each with a rank and
+   * founding date. Rendered on the profile header (and, later, post cards). Kept a SEPARATE lazy
+   * query rather than folded into byId, so the many lightweight author-card byId calls don't pay for
+   * the ranking. Fault-tolerant: any error (pre-migration, transient) degrades to no badges, never a
+   * thrown page.
+   */
+  founderBadges: publicProcedure
+    .input(z.object({ userId: z.string().uuid(), limit: z.number().int().min(1).max(20).default(6) }))
+    .query(async ({ ctx, input }) => {
+      const db = ctx.db as unknown as {
+        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+      const { data, error } = await db.rpc("founder_badges_for_profile", { p_profile: input.userId, p_max_rank: 25 });
+      if (error) return { badges: [] as { locality: string; localityLabel: string; rank: number; foundedAt: string | null }[] };
+      const rows = Array.isArray(data)
+        ? (data as { locality?: string; locality_label?: string; rank?: number | string; founded_at?: string }[])
+        : [];
+      const badges = rows
+        .map((r) => ({
+          locality: String(r.locality ?? ""),
+          localityLabel: String(r.locality_label ?? r.locality ?? ""),
+          rank: Number(r.rank ?? 0),
+          foundedAt: r.founded_at ?? null,
+        }))
+        .filter((b) => b.locality !== "" && b.rank > 0)
+        .slice(0, input.limit);
+      return { badges };
+    }),
+
   /** Public, fire-and-forget: count a profile view (record_profile_view; no viewer identity
    *  stored). The wall page calls this once per profile per session. Never throws into the page. */
   recordView: publicProcedure

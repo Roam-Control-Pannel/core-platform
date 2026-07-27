@@ -386,7 +386,8 @@
     "viewPost": "Vezi postarea",
     "townHall": "Piața orașului",
     "asked": "{author} a întrebat",
-    "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}"
+    "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Personalizează Acasă",

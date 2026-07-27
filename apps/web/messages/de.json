@@ -386,7 +386,8 @@
     "viewPost": "Post ansehen",
     "townHall": "Stadtforum",
     "asked": "{author} fragte",
-    "replies": "{count, plural, one {# Antwort} other {# Antworten}}"
+    "replies": "{count, plural, one {# Antwort} other {# Antworten}}",
+    "pioneer": {}
   },
   "homeCustomize": {
     "title": "Start anpassen",

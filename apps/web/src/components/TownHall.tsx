@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Button, Seg, Icon } from "@roam/design";
@@ -86,6 +86,12 @@ export function TownHall() {
   const [sort, setSort] = useState<Sort>("hot");
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [composing, setComposing] = useState(false);
+  // Composer seed (from a starter question) + a nonce so each "start" remounts the composer fresh.
+  const [seed, setSeed] = useState<{ title: string; category: CategoryId | null; nonce: number }>({ title: "", category: null, nonce: 0 });
+  const startTopic = useCallback((title = "", cat: CategoryId | null = null) => {
+    setSeed((s) => ({ title, category: cat, nonce: s.nonce + 1 }));
+    setComposing(true);
+  }, []);
 
   const load = useCallback(async () => {
     setTopics(undefined);
@@ -154,7 +160,7 @@ export function TownHall() {
           </p>
           <button
             type="button"
-            onClick={() => setComposing(true)}
+            onClick={() => startTopic()}
             style={{
               all: "unset",
               boxSizing: "border-box",
@@ -175,6 +181,8 @@ export function TownHall() {
           >
             <Icon name="plus" size={16} /> {t("hero.startTopic")}
           </button>
+          {/* Honest founding counter — real distinct-contributor count for this town. */}
+          <FoundingCounter localityName={place.name} />
         </div>
       </section>
 
@@ -230,7 +238,14 @@ export function TownHall() {
           {/* Start a topic — auth-gated, prompted just-in-time. */}
           {composing ? (
             session ? (
-              <TopicComposer localityName={place.name} onPosted={onPosted} onCancel={() => setComposing(false)} />
+              <TopicComposer
+                key={seed.nonce}
+                localityName={place.name}
+                onPosted={onPosted}
+                onCancel={() => setComposing(false)}
+                initialTitle={seed.title}
+                initialCategory={seed.category}
+              />
             ) : (
               <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
                 <AuthPanel
@@ -244,6 +259,13 @@ export function TownHall() {
             )
           ) : null}
 
+          {/* Starter questions — shown while a town is still quiet, to hand the first contributors
+              a concrete "tap to start it" prompt (they become real topics on post). Hidden once the
+              board has a few topics, while composing, or under a category filter. */}
+          {!composing && !category && topics !== undefined && topics.length <= 2 ? (
+            <StarterQuestions place={place.name} onPick={(title, cat) => startTopic(title, cat)} />
+          ) : null}
+
           {error ? (
             <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
               <p style={{ color: "var(--muted)", margin: 0 }}>{error}</p>
@@ -251,14 +273,18 @@ export function TownHall() {
           ) : topics === undefined ? (
             <TopicListSkeleton />
           ) : topics.length === 0 ? (
-            <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
-              <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
-                {category ? t("empty.titleCategory", { category: categoryLabel(t, category) ?? "", place: place.name }) : t("empty.title", { place: place.name })}
-              </div>
-              <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
-                {t("empty.body")}
-              </p>
-            </Card>
+            // No-category empty state is handled by StarterQuestions above (the "be the first"
+            // on-ramp); here we only cover the category-filtered empty case.
+            category ? (
+              <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
+                <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: "var(--space-2)" }}>
+                  {t("empty.titleCategory", { category: categoryLabel(t, category) ?? "", place: place.name })}
+                </div>
+                <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>
+                  {t("empty.body")}
+                </p>
+              </Card>
+            ) : null
           ) : (
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
               {topics.map((topic) => (
@@ -463,22 +489,127 @@ function ActiveLocals({ localityName }: { localityName: string }) {
   );
 }
 
+/* ── Founding counter (hero) ─────────────────────────────────────────────────────────────── */
+
+interface FoundingStats {
+  contributors: number;
+  viewerRank: number | null;
+  cap: number;
+}
+
+/**
+ * FoundingCounter — the honest social-proof line in the hero: the REAL number of people who have
+ * started a conversation in this town (townHall.foundingStats → locality_founding_stats, 0108), plus
+ * the viewer's own founding rank when they have one. Never a fabricated figure. Renders nothing while
+ * loading or when the town is still empty — there the hero body already invites the very first post.
+ */
+function FoundingCounter({ localityName }: { localityName: string }) {
+  const t = useTranslations("townHall");
+  const trpc = useTrpc();
+  const [stats, setStats] = useState<FoundingStats | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setStats(null);
+    const q = trpc.townHall.foundingStats as unknown as { query: (i: { localityName: string }) => Promise<FoundingStats> };
+    q.query({ localityName })
+      .then((r) => { if (!cancelled) setStats(r); })
+      .catch(() => { if (!cancelled) setStats(null); });
+    return () => { cancelled = true; };
+  }, [trpc, localityName]);
+  if (!stats || stats.contributors <= 0) return null;
+  return (
+    <div style={{ marginTop: "var(--space-4)" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 13px", borderRadius: 999, background: "rgba(255,255,255,.16)", color: "#fff", fontSize: 12.5, fontWeight: 600 }}>
+        <Icon name="star" size={13} aria-hidden />
+        {t("founding.count", { count: stats.contributors })}
+        {stats.viewerRank ? <span style={{ opacity: 0.85 }}>· {t("founding.you", { rank: stats.viewerRank })}</span> : null}
+      </span>
+    </div>
+  );
+}
+
+/* ── Starter questions (sparse-board on-ramp) ────────────────────────────────────────────── */
+
+/**
+ * Curated starter questions — universal prompts (templated with the town name) a first contributor
+ * can tap to open the composer pre-filled with the question + a fitting category. They are UI
+ * suggestions, NOT stored content: nothing exists until someone actually posts, so there are never
+ * fake topics or fabricated activity. Shown only while a town's board is still quiet.
+ */
+const STARTER_QUESTIONS: { id: string; category: CategoryId }[] = [
+  { id: "coffee", category: "recommendations" },
+  { id: "sundayLunch", category: "food-drink" },
+  { id: "hiddenGem", category: "recommendations" },
+  { id: "weekend", category: "things-to-do" },
+  { id: "newHere", category: "neighbourhood" },
+  { id: "quietPint", category: "food-drink" },
+];
+
+function StarterQuestions({ place, onPick }: { place: string; onPick: (title: string, category: CategoryId) => void }) {
+  const t = useTranslations("townHall");
+  return (
+    <Card style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 4 }}>
+        <span aria-hidden style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 8, background: "var(--crimson-tint)", color: "var(--crimson-700)" }}>
+          <Icon name="idea" size={15} />
+        </span>
+        <h2 className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>{t("starters.title", { place })}</h2>
+      </div>
+      <p style={{ margin: "0 0 var(--space-3)", color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.5 }}>{t("starters.subtitle")}</p>
+      <div style={{ display: "grid", gap: "var(--space-2)" }}>
+        {STARTER_QUESTIONS.map((q) => {
+          const question = t(`starters.q.${q.id}`, { place });
+          return (
+            <button
+              key={q.id}
+              type="button"
+              onClick={() => onPick(question, q.category)}
+              className={styles.lift}
+              style={{ boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: "var(--space-3)", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: "var(--r-md)", border: "1px solid var(--line-2)", background: "#fff", fontFamily: "var(--ui)" }}
+            >
+              <span aria-hidden style={{ color: "var(--crimson-700)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <Icon name="plus" size={15} />
+              </span>
+              <span style={{ minWidth: 0, flex: 1, fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{question}</span>
+              <Icon name="chevronRight" size={15} style={{ color: "var(--muted)", flexShrink: 0 }} />
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 /* ── Composer ────────────────────────────────────────────────────────────────────────────── */
 
 function TopicComposer({
   localityName,
   onPosted,
   onCancel,
+  initialTitle = "",
+  initialCategory = null,
 }: {
   localityName: string;
   onPosted: () => void;
   onCancel: () => void;
+  initialTitle?: string;
+  initialCategory?: CategoryId | null;
 }) {
   const t = useTranslations("townHall");
   const trpc = useTrpc();
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState<CategoryId | null>(null);
+  const [category, setCategory] = useState<CategoryId | null>(initialCategory);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Seeded from a starter question → the title is already the question, so drop the user straight
+  // into the body to write their answer. Opened blank → focus the title (a fresh thought).
+  useEffect(() => {
+    (initialTitle ? bodyRef.current : titleRef.current)?.focus();
+    // Run once on mount for this composer instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [linkUrl, setLinkUrl] = useState("");
   const [preview, setPreview] = useState<{ url: string; domain: string | null; title: string | null; imageUrl: string | null } | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -529,6 +660,7 @@ function TopicComposer({
         {t("composer.title", { place: localityName })}
       </div>
       <input
+        ref={titleRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder={t("composer.titlePlaceholder")}
@@ -537,6 +669,7 @@ function TopicComposer({
         style={inputStyle}
       />
       <textarea
+        ref={bodyRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={t("composer.bodyPlaceholder")}
