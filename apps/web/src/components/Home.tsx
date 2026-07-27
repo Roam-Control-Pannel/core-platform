@@ -94,16 +94,35 @@ function greeting(t: ReturnType<typeof useTranslations>): string {
 }
 
 /**
- * HomeComposer — a Facebook-style "What's on your mind?" prompt at the top of the feed. Collapsed,
- * it's a slim pill; tapping it (or the photo button) expands the full wall composer (reused from
- * ProfileWall) which posts to YOUR wall. After posting it collapses with a "view your wall" link.
+ * Quick-start chips — one-tap prompts that seed the wall composer with a concrete opening line, so
+ * the first post is "finish this sentence" instead of "fill a blank box". Each carries an icon, a
+ * short label ("composer.starters.*"), and — unless it's the photo chip — a localised seed line
+ * ("composer.seeds.*") pre-filled into the body. This is the biggest lever on first-post rate for
+ * someone who's early in their area.
  */
-function HomeComposer({ myId }: { myId: string }) {
+const STARTER_CHIPS: { id: string; icon: IconName; seeds: boolean }[] = [
+  { id: "gem", icon: "sparkle", seeds: true },
+  { id: "hello", icon: "wave", seeds: true },
+  { id: "food", icon: "dining", seeds: true },
+  { id: "tip", icon: "idea", seeds: true },
+  { id: "photo", icon: "photo", seeds: false },
+];
+
+/**
+ * HomeComposer — a Facebook-style "What's on your mind?" prompt at the top of the feed. Collapsed,
+ * it's a slim pill (plus a row of quick-start chips); tapping it, a chip, or the photo button
+ * expands the full wall composer (reused from ProfileWall) which posts to YOUR wall — chips pre-fill
+ * it with a starter line. After posting it collapses with a "view your wall" link.
+ */
+function HomeComposer({ myId, placeName }: { myId: string; placeName: string }) {
   const t = useTranslations("home");
   const me = useMe();
   const [open, setOpen] = useState(false);
+  const [seed, setSeed] = useState("");
   const [posted, setPosted] = useState(false);
   const first = (me?.displayName ?? "").trim().split(/\s+/)[0] ?? "";
+
+  const expand = (nextSeed: string) => { setPosted(false); setSeed(nextSeed); setOpen(true); };
 
   if (open) {
     return (
@@ -119,7 +138,7 @@ function HomeComposer({ myId }: { myId: string }) {
             <Icon name="close" size={15} />
           </button>
         </div>
-        <WallComposer userId={myId} onPosted={() => { setOpen(false); setPosted(true); }} />
+        <WallComposer userId={myId} initialBody={seed} onPosted={() => { setOpen(false); setPosted(true); }} />
       </div>
     );
   }
@@ -137,19 +156,33 @@ function HomeComposer({ myId }: { myId: string }) {
         )}
         <button
           type="button"
-          onClick={() => { setPosted(false); setOpen(true); }}
+          onClick={() => expand("")}
           style={{ all: "unset", cursor: "pointer", flex: 1, minWidth: 0, padding: "10px 16px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", color: "var(--muted)", fontSize: 15.5, fontFamily: "var(--ui)" }}
         >
           {first ? t("composer.promptName", { name: first }) : t("composer.prompt")}
         </button>
         <button
           type="button"
-          onClick={() => { setPosted(false); setOpen(true); }}
+          onClick={() => expand("")}
           aria-label={t("composer.addPhoto")}
           style={{ all: "unset", cursor: "pointer", display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: "50%", color: "var(--crimson-700)", flexShrink: 0 }}
         >
           <Icon name="photo" size={19} />
         </button>
+      </div>
+      {/* Quick-start chips — "not sure what to say? finish one of these." */}
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginTop: "var(--space-3)" }}>
+        {STARTER_CHIPS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => expand(c.seeds ? t(`composer.seeds.${c.id}`, { place: placeName }) : "")}
+            style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "var(--paper-2)", border: "1px solid var(--line)", color: "var(--ink-2)", fontSize: 13, fontWeight: 600, fontFamily: "var(--ui)" }}
+          >
+            <Icon name={c.icon} size={14} style={{ color: "var(--crimson-700)" }} />
+            {t(`composer.starters.${c.id}`)}
+          </button>
+        ))}
       </div>
       {posted ? (
         <div style={{ marginTop: "var(--space-2)", fontSize: 13, color: "var(--ink-2)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -268,7 +301,7 @@ export function Home() {
           {/* Friends who are active/available right now — a compact presence strip. */}
           <ActiveFriends />
           {/* Facebook-style composer — post to your own wall, right from Home. */}
-          {session ? <HomeComposer myId={session.user.id} /> : null}
+          {session ? <HomeComposer myId={session.user.id} placeName={place.name} /> : null}
           {/* Ephemeral birthday moment — self-hides outside birthday week; not part of the
               customisable/hideable rail (a birthday treat shouldn't be dismissable). */}
           <BirthdayTreats />

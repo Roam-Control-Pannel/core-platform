@@ -331,7 +331,20 @@
       "close": "Close",
       "addPhoto": "Add a photo",
       "posted": "Posted to your wall.",
-      "viewWall": "View"
+      "viewWall": "View",
+      "starters": {
+        "gem": "Local gem",
+        "hello": "Say hello",
+        "food": "Good food",
+        "tip": "Local tip",
+        "photo": "Add a photo"
+      },
+      "seeds": {
+        "gem": "A local gem worth knowing about: ",
+        "hello": "New to Roam in {place} — hello! ",
+        "food": "A great place to eat around here: ",
+        "tip": "One thing every local should know: "
+      }
     },
     "activeFriends": {
       "title": "Active now"

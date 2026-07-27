@@ -734,10 +734,10 @@ function Avatar({ url, name, size, ring }: { url: string | null; name: string; s
 
 const MAX_MEDIA = 4;
 
-export function WallComposer({ userId, onPosted }: { userId: string; onPosted: () => void }) {
+export function WallComposer({ userId, onPosted, initialBody }: { userId: string; onPosted: () => void; initialBody?: string }) {
   const t = useTranslations("profileWall");
   const trpc = useTrpc();
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialBody ?? "");
   const [media, setMedia] = useState<WallMedia[]>([]);
   const [location, setLocation] = useState("");
   const [checkingIn, setCheckingIn] = useState(false);
@@ -747,8 +747,19 @@ export function WallComposer({ userId, onPosted }: { userId: string; onPosted: (
   const fileRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
   const locationRef = useRef<HTMLInputElement | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [progress, setProgress] = useState<string | null>(null);
+
+  // Seeded via a quick-start chip → focus the textarea and drop the cursor at the end of the
+  // starter text, so the user is one keystroke from finishing the thought (not staring at a wall).
+  useEffect(() => {
+    if (!initialBody) return;
+    const el = bodyRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [initialBody]);
 
   const onPickFiles = useCallback(
     async (files: FileList | File[] | null) => {
@@ -832,6 +843,7 @@ export function WallComposer({ userId, onPosted }: { userId: string; onPosted: (
       onDrop={(e) => { const fs = imageFilesFrom(e.dataTransfer); if (fs.length > 0) { e.preventDefault(); void onPickFiles(fs); } }}
     >
       <textarea
+        ref={bodyRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onPaste={(e) => { const fs = imageFilesFrom(e.clipboardData); if (fs.length > 0) { e.preventDefault(); void onPickFiles(fs); } }}
