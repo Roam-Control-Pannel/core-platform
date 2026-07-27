@@ -1239,6 +1239,10 @@
       "noFollowing": "Not following any venues yet.",
       "noFriends": "No friends yet.",
       "noPlans": "No plans yet."
+    },
+    "founder": {
+      "badge": "Founding member of {place} · #{rank}",
+      "tooltip": "One of the first {rank} people to start a Town Hall conversation in {place}."
     }
   },
   "feedList": {

@@ -268,6 +268,51 @@ export function ProfileWall({
   );
 }
 
+interface FounderBadge {
+  locality: string;
+  localityLabel: string;
+  rank: number;
+  foundedAt: string | null;
+}
+
+/**
+ * FounderBadges — the prestige row on a profile header: gold "Founding member of {place} · #N"
+ * chips for the localities where this person was among the first Town Hall contributors
+ * (profiles.founderBadges → founder_badges_for_profile, 0107). Self-fetching so it slots into the
+ * header without threading a prop; renders nothing while loading, on error, or when the person has
+ * founded nowhere — so it never adds empty space.
+ */
+function FounderBadges({ userId }: { userId: string }) {
+  const t = useTranslations("profileWall");
+  const trpc = useTrpc();
+  const [badges, setBadges] = useState<FounderBadge[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const q = trpc.profiles.founderBadges as unknown as {
+      query: (i: { userId: string }) => Promise<{ badges: FounderBadge[] }>;
+    };
+    q.query({ userId })
+      .then((r) => { if (!cancelled) setBadges(r.badges ?? []); })
+      .catch(() => { if (!cancelled) setBadges([]); });
+    return () => { cancelled = true; };
+  }, [trpc, userId]);
+  if (!badges || badges.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "var(--space-2)" }}>
+      {badges.map((b) => (
+        <span
+          key={b.locality}
+          title={t("founder.tooltip", { place: b.localityLabel, rank: b.rank })}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#8a6d1a", background: "var(--gold-tint, #fbf3d9)", border: "1px solid var(--gold, #e6c34a)", borderRadius: 999, padding: "4px 11px" }}
+        >
+          <Icon name="star" size={13} style={{ color: "var(--gold, #e0b93f)" }} />
+          {t("founder.badge", { place: b.localityLabel, rank: b.rank })}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ProfileHeader({
   profile,
   isOwner,
@@ -359,6 +404,8 @@ function ProfileHeader({
               ) : null}
             </div>
           ) : null}
+          {/* Founding-member badges — the pioneer's permanent payoff for being first in their town. */}
+          <FounderBadges userId={profile.id} />
         </div>
         <div className={styles.identityActions}>
           <CopyLinkButton
