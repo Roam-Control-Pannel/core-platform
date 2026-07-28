@@ -16,6 +16,7 @@
     "backfill:photos": "tsx --env-file=../../.env scripts/backfill-photos.ts",
     "deliver-birthdays": "tsx src/jobs/deliverBirthdays.ts",
     "sync-awin-offers": "tsx src/jobs/syncAwinOffers.ts",
+    "sync-cj-offers": "tsx src/jobs/syncCjOffers.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",

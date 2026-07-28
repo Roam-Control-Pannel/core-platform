@@ -20,11 +20,12 @@ import { useTranslations } from "next-intl";
 import { Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
-import { buildAwinLink } from "../lib/awin";
+import { buildDealLink } from "../lib/dealLink";
 import { getFormatLocale } from "../lib/i18n/runtime";
 
 export interface Deal {
   id: string;
+  network?: "awin" | "cj";
   advertiserId: string;
   advertiserName: string | null;
   title: string;
@@ -104,7 +105,7 @@ function DealThumb({ deal, variant }: { deal: Deal; variant: "hero" | "tile" }) 
 /** One deal card. `clickRef` tags the affiliate link with the surface it was clicked from. */
 export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
   const t = useTranslations("deals");
-  const href = buildAwinLink({ advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef });
+  const href = buildDealLink({ network: deal.network, advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef });
   return (
     <Card style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <DealThumb deal={deal} variant="hero" />
@@ -214,7 +215,7 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
   }, [trpc, dealId, initialDeal]);
 
   const href = deal
-    ? buildAwinLink({ advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef: "deal-detail" })
+    ? buildDealLink({ network: deal.network, advertiserId: deal.advertiserId, destinationUrl: deal.destinationUrl, clickRef: "deal-detail" })
     : "#";
 
   return (
@@ -311,7 +312,7 @@ export function DealsHomeWidget() {
           otherwise set the track width and push every row past the card's padding. */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 4 }}>
         {deals.map((d) => {
-          const href = buildAwinLink({ advertiserId: d.advertiserId, destinationUrl: d.destinationUrl, clickRef: "home" });
+          const href = buildDealLink({ network: d.network, advertiserId: d.advertiserId, destinationUrl: d.destinationUrl, clickRef: "home" });
           return (
             <a
               key={d.id}

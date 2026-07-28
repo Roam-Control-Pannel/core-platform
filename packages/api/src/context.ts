@@ -89,6 +89,26 @@ export interface ApiEnv {
     offersMethod: string | null;
   };
   /**
+   * CJ (Commission Junction) Link Search API — a second affiliate deals network alongside Awin,
+   * ingested into cj_deals and unioned into the same public Deals surface. `token`/`websiteId` unset
+   * leaves it dormant (the sync route no-ops), so the API boots before CJ is provisioned. `debug`
+   * logs the raw first response so the field-mapping can be tuned (CJ Link Search returns XML).
+   */
+  cj: {
+    token: string | null;
+    websiteId: string | null;
+    baseUrl: string;
+    /** `advertiser-ids` value: "joined" (default) | "notjoined" | a comma list. */
+    advertiserIds: string;
+    /** Optional CJ link-type / promotion-type filters; null = all. */
+    linkType: string | null;
+    promotionType: string | null;
+    /** Keep only promotional links (default true; CJ_ALL_LINKS=1 disables the gate). */
+    promotionalOnly: boolean;
+    region: string;
+    debug: boolean;
+  };
+  /**
    * Stripe Connect (the venue marketplace's payment engine). `secretKey` null disables the
    * whole payments surface (procedures answer "not configured", the webhook 503s), so the API
    * runs before Stripe is provisioned. `webOrigin` is where hosted-onboarding redirects land
