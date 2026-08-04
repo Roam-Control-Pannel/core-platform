@@ -89,6 +89,34 @@ async function readDeals(
   return (data ?? []).map((d) => shapeDeal(d, network));
 }
 
+/**
+ * Fill in advertiser logos for CJ deals that have no image of their own: look up each deal's
+ * advertiser in cj_advertisers (0111, populated by the syncCjLogos job) and use its logo as the
+ * deal's imageUrl, so the card shows the real brand logo instead of the generic category icon.
+ * Best-effort — mutates the passed deals in place, and degrades silently (deals keep their icon
+ * fallback) if the table doesn't exist yet or the lookup errors. No-op when every CJ deal already
+ * has an image, or none carries an advertiser id.
+ */
+async function attachCjLogos(db: LooseDb, deals: ReturnType<typeof shapeDeal>[]): Promise<void> {
+  const need = deals.filter((d) => !d.imageUrl && d.advertiserId);
+  if (need.length === 0) return;
+  const ids = [...new Set(need.map((d) => d.advertiserId))];
+  try {
+    const { data, error } = (await db
+      .from("cj_advertisers")
+      .select("advertiser_id, logo_url")
+      .in("advertiser_id", ids)) as { data: { advertiser_id: string; logo_url: string | null }[] | null; error: unknown };
+    if (error || !Array.isArray(data)) return;
+    const logoById = new Map(data.filter((r) => r.logo_url).map((r) => [r.advertiser_id, r.logo_url as string]));
+    for (const d of need) {
+      const logo = logoById.get(d.advertiserId);
+      if (logo) d.imageUrl = logo;
+    }
+  } catch {
+    // Pre-migration / transient: leave deals as-is (icon fallback).
+  }
+}
+
 /** Round-robin two recency-sorted lists (a0, c0, a1, c1, …) so neither network buries the other —
  *  even when one has 900 fresh rows and the other 20. Deterministic given the inputs, so paginating
  *  by offset over the interleaved sequence yields contiguous, non-overlapping pages. */
@@ -133,6 +161,7 @@ export const dealsRouter = router({
         readDeals(db, "awin_deals", "awin", { category, q, limit: end + 1, required: true }),
         readDeals(db, "cj_deals", "cj", { category, q, limit: end + 1, required: false }),
       ]);
+      await attachCjLogos(db, cj); // brand logos for CJ cards without an image (best-effort)
       const merged = interleave(awin, cj);
       return { deals: merged.slice(offset, end), hasMore: merged.length > end };
     }),
@@ -170,6 +199,10 @@ export const dealsRouter = router({
         }
         return data ? shapeDeal(data, network) : null;
       };
-      return (await readOne("awin_deals", "awin", true)) ?? (await readOne("cj_deals", "cj", false));
+      const awinDeal = await readOne("awin_deals", "awin", true);
+      if (awinDeal) return awinDeal;
+      const cjDeal = await readOne("cj_deals", "cj", false);
+      if (cjDeal) await attachCjLogos(db, [cjDeal]); // brand logo for a CJ permalink (best-effort)
+      return cjDeal;
     }),
 });

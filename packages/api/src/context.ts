@@ -98,6 +98,8 @@ export interface ApiEnv {
     token: string | null;
     websiteId: string | null;
     baseUrl: string;
+    /** Advertiser Lookup API base (a different CJ host) — powers the advertiser-logo companion sync. */
+    advertiserLookupBaseUrl: string;
     /** `advertiser-ids` value: "joined" (default) | "notjoined" | a comma list. */
     advertiserIds: string;
     /** Optional CJ link-type / promotion-type filters; null = all. */
