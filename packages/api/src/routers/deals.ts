@@ -80,30 +80,66 @@ async function readDeals(
   return (data ?? []).map((d) => shapeDeal(d, network));
 }
 
+/** Round-robin two recency-sorted lists (a0, c0, a1, c1, …) so neither network buries the other —
+ *  even when one has 900 fresh rows and the other 20. Deterministic given the inputs, so paginating
+ *  by offset over the interleaved sequence yields contiguous, non-overlapping pages. */
+function interleave<T>(a: T[], b: T[]): T[] {
+  const out: T[] = [];
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    if (i < a.length) out.push(a[i]!);
+    if (i < b.length) out.push(b[i]!);
+  }
+  return out;
+}
+
 export const dealsRouter = router({
-  /** Public: live affiliate deals across both networks, newest first. Optional category + limit. */
+  /**
+   * Public: a page of live affiliate deals, INTERLEAVED across both networks (Awin + CJ) so neither
+   * dominates, newest-first within each. Offset-paginated: each call fetches enough of each network
+   * to reconstruct the interleaved window [offset, offset+limit) exactly, then returns that slice +
+   * whether more remain. Optional category filter.
+   */
   list: publicProcedure
     .input(
       z
         .object({
-          category: z.string().trim().min(1).max(60).optional(),
-          limit: z.number().int().min(1).max(50).default(24),
+          category: z.string().trim().min(1).max(80).optional(),
+          limit: z.number().int().min(1).max(48).default(24),
+          offset: z.number().int().min(0).max(2000).default(0),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const db = ctx.db as unknown as LooseDb;
       const limit = input?.limit ?? 24;
+      const offset = input?.offset ?? 0;
       const category = input?.category;
-      // Fetch up to `limit` from each network (best-effort for CJ), then merge → recency → cap.
+      const end = offset + limit;
+      // Fetch end+1 newest from each network (CJ best-effort) — enough to compute the interleaved
+      // sequence up to `end` and to tell whether anything remains beyond this page.
       const [awin, cj] = await Promise.all([
-        readDeals(db, "awin_deals", "awin", { category, limit, required: true }),
-        readDeals(db, "cj_deals", "cj", { category, limit, required: false }),
+        readDeals(db, "awin_deals", "awin", { category, limit: end + 1, required: true }),
+        readDeals(db, "cj_deals", "cj", { category, limit: end + 1, required: false }),
       ]);
-      return [...awin, ...cj]
-        .sort((a, b) => (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0))
-        .slice(0, limit);
+      const merged = interleave(awin, cj);
+      return { deals: merged.slice(offset, end), hasMore: merged.length > end };
     }),
+
+  /** Public: the distinct live-deal categories across both networks (deal_categories, 0110), most-
+   *  populated first — the filter chips on /deals. Fault-tolerant: no chips pre-migration. */
+  categories: publicProcedure.query(async ({ ctx }) => {
+    const db = ctx.db as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
+    const { data, error } = await db.rpc("deal_categories", { p_limit: 14 });
+    if (error) return { categories: [] as { category: string; count: number }[] };
+    const rows = Array.isArray(data) ? (data as { category?: string; deal_count?: number | string }[]) : [];
+    const categories = rows
+      .map((r) => ({ category: String(r.category ?? ""), count: Number(r.deal_count ?? 0) || 0 }))
+      .filter((c) => c.category !== "");
+    return { categories };
+  }),
 
   /** Public: one deal by id — the /deals/[dealId] permalink read. Tries Awin, then CJ. RLS hides
    *  retired/expired rows. */

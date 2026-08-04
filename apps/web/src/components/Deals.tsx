@@ -14,10 +14,10 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Card, Icon, type IconName } from "@roam/design";
+import { Card, Button, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { buildDealLink } from "../lib/dealLink";
@@ -39,20 +39,83 @@ export interface Deal {
   endsAt: string | null;
 }
 
-function useDeals(limit: number): { deals: Deal[] | undefined; error: boolean } {
+const PAGE = 24;
+type DealPage = { deals: Deal[]; hasMore: boolean };
+
+/** The /deals page feed: category-filtered, offset-paginated, accumulating pages via loadMore. */
+function useDealsPage(category: string | null): {
+  deals: Deal[] | undefined;
+  hasMore: boolean;
+  loadingMore: boolean;
+  error: boolean;
+  loadMore: () => void;
+} {
   const trpc = useTrpc();
   const [deals, setDeals] = useState<Deal[] | undefined>(undefined);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  const list = trpc.deals.list as unknown as {
+    query: (i: { category?: string; limit: number; offset: number }) => Promise<DealPage>;
+  };
+
+  // Reset + load page one whenever the category changes.
   useEffect(() => {
     let cancelled = false;
-    const list = trpc.deals.list as unknown as { query: (i: { limit: number }) => Promise<Deal[]> };
+    setDeals(undefined); setOffset(0); setHasMore(false); setError(false);
     list
-      .query({ limit })
-      .then((r) => { if (!cancelled) setDeals(Array.isArray(r) ? r : []); })
+      .query({ limit: PAGE, offset: 0, ...(category ? { category } : {}) })
+      .then((r) => { if (!cancelled) { setDeals(r.deals); setHasMore(r.hasMore); setOffset(r.deals.length); } })
       .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trpc, category]);
+
+  const loadMore = useCallback(() => {
+    setLoadingMore(true);
+    list
+      .query({ limit: PAGE, offset, ...(category ? { category } : {}) })
+      .then((r) => {
+        setDeals((cur) => [...(cur ?? []), ...r.deals]);
+        setHasMore(r.hasMore);
+        setOffset((o) => o + r.deals.length);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trpc, category, offset]);
+
+  return { deals, hasMore, loadingMore, error, loadMore };
+}
+
+/** A few live deals for the compact home widget — first page only, no pagination. */
+function useDealsPreview(limit: number): Deal[] | undefined {
+  const trpc = useTrpc();
+  const [deals, setDeals] = useState<Deal[] | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    const list = trpc.deals.list as unknown as { query: (i: { limit: number; offset: number }) => Promise<DealPage> };
+    list
+      .query({ limit, offset: 0 })
+      .then((r) => { if (!cancelled) setDeals(r.deals); })
+      .catch(() => { if (!cancelled) setDeals([]); });
+    return () => { cancelled = true; };
   }, [trpc, limit]);
-  return { deals, error };
+  return deals;
+}
+
+/** The filter-chip categories (distinct live categories across both networks). */
+function useDealCategories(): { category: string; count: number }[] {
+  const trpc = useTrpc();
+  const [cats, setCats] = useState<{ category: string; count: number }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const q = trpc.deals.categories as unknown as { query: () => Promise<{ categories: { category: string; count: number }[] }> };
+    q.query().then((r) => { if (!cancelled) setCats(r.categories ?? []); }).catch(() => { if (!cancelled) setCats([]); });
+    return () => { cancelled = true; };
+  }, [trpc]);
+  return cats;
 }
 
 function shortDate(iso: string): string {
@@ -148,10 +211,39 @@ export function DealCard({ deal, clickRef }: { deal: Deal; clickRef: string }) {
   );
 }
 
-/** Full /deals page body. */
+/** One category filter chip. */
+function CategoryChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        all: "unset",
+        boxSizing: "border-box",
+        cursor: "pointer",
+        padding: "6px 14px",
+        borderRadius: 999,
+        fontFamily: "var(--ui)",
+        fontSize: 13,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        border: `1px solid ${active ? "var(--crimson-tint-2)" : "var(--line-2)"}`,
+        background: active ? "var(--crimson-tint)" : "#fff",
+        color: active ? "var(--crimson-700)" : "var(--ink-2)",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Full /deals page body: category chips + an interleaved, paginated deal grid. */
 export function Deals() {
   const t = useTranslations("deals");
-  const { deals, error } = useDeals(24);
+  const [category, setCategory] = useState<string | null>(null);
+  const { deals, hasMore, loadingMore, error, loadMore } = useDealsPage(category);
+  const categories = useDealCategories();
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-3)" }}>
@@ -163,6 +255,16 @@ export function Deals() {
           {t.rich("intro", { strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
       </header>
+
+      {/* Category filter chips (distinct live categories across both networks). */}
+      {categories.length > 0 ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+          <CategoryChip label={t("allCategories")} active={category === null} onClick={() => setCategory(null)} />
+          {categories.map((c) => (
+            <CategoryChip key={c.category} label={c.category} active={category === c.category} onClick={() => setCategory(c.category)} />
+          ))}
+        </div>
+      ) : null}
 
       {error ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
@@ -179,7 +281,16 @@ export function Deals() {
           <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>{t("emptyBody")}</p>
         </Card>
       ) : (
-        <DealsGrid>{deals.map((d) => <DealCard key={d.id} deal={d} clickRef="deals" />)}</DealsGrid>
+        <>
+          <DealsGrid>{deals.map((d) => <DealCard key={`${d.network ?? "awin"}-${d.id}`} deal={d} clickRef="deals" />)}</DealsGrid>
+          {hasMore ? (
+            <div style={{ textAlign: "center", marginTop: "var(--space-6)" }}>
+              <Button variant="neutral" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? t("loadingMore") : t("loadMore")}
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
     </main>
   );
@@ -294,7 +405,7 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
  */
 export function DealsHomeWidget() {
   const t = useTranslations("deals");
-  const { deals } = useDeals(3);
+  const deals = useDealsPreview(3);
   if (!deals || deals.length === 0) return null;
   return (
     <Card style={{ padding: "var(--space-4)" }}>
