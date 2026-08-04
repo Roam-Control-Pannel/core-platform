@@ -32,10 +32,44 @@ even weekly is fine).
 
 ## Railway cron setup
 
-Railway crons are configured **per service in the dashboard** (they aren't declared in `railway.json`).
-For each job, add a **Cron Schedule** service on the same repo/image, with the schedule and start
-command below. This is the established pattern — the birthday delivery job (`pnpm deliver-birthdays`)
-runs the same way (see migration `0055`).
+Each job runs as its own **service** on the same repo/image, with a cron schedule and a start command.
+This is the established pattern — the birthday delivery job (`pnpm deliver-birthdays`) runs the same way
+(see migration `0055`).
+
+> **Gotcha — the root `railway.json` pins the start command.** The repo's `railway.json` sets
+> `deploy.startCommand` to `pnpm --filter @roam/api start` (the long-running API), and **config-as-code
+> overrides the dashboard on every deploy**. So a cron service that reads the default `railway.json`
+> would ignore whatever start command you type in the dashboard and just run a second copy of the API.
+> To give a cron its own command + schedule, point the service at its **own config file** (below).
+
+For each job, add a config file at the repo root and point the service's **Settings → Config-as-code →
+Railway Config File** at it. The CJ logo cron ships one already — **`railway.cron-cj-logos.json`**:
+
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build":  { "builder": "DOCKERFILE" },
+  "deploy": {
+    "startCommand": "pnpm --filter @roam/api sync-cj-logos",
+    "cronSchedule": "45 5 * * *",
+    "restartPolicyType": "NEVER"
+  }
+}
+```
+
+Steps in the Railway dashboard for the `deals-cj-logos` service:
+
+1. **New service → GitHub Repo → `Roam-Control-Pannel/core-platform`**, branch `main`.
+2. **Settings → Config-as-code → Railway Config File → Add File Path →** `railway.cron-cj-logos.json`.
+   The start command (`sync-cj-logos`) and schedule (`45 5 * * *`, after the CJ offers sync) now come
+   from that file — nothing to type in the dashboard.
+3. **Variables →** reference the API service's `CJ_API_TOKEN`, `CJ_WEBSITE_ID`, `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY` (secrets live in env, never in the config file).
+4. **Deploy.** Use **⋯ → Redeploy** to run it once now instead of waiting for 05:45; watch the logs.
+
+The other two syncs (`deals-awin-offers`, `deals-cj-offers`) follow the same recipe — give each its own
+`railway.cron-*.json` with the schedule + start command below. The only hard rule is **`deals-cj-logos`
+fires after `deals-cj-offers` finishes**.
 
 | Cron service | Schedule (UTC) | Start command |
 | --- | --- | --- |
@@ -43,9 +77,8 @@ runs the same way (see migration `0055`).
 | `deals-cj-offers` | `15 5 * * *` (05:15 daily) | `pnpm --filter @roam/api sync-cj-offers` |
 | `deals-cj-logos` | `45 5 * * *` (05:45 daily, **after** CJ offers) | `pnpm --filter @roam/api sync-cj-logos` |
 
-Adjust the times to your existing cadence — the only hard rule is **`deals-cj-logos` fires after
-`deals-cj-offers` finishes**. A cron service shares the API service's environment, so no extra env is
-needed beyond what the sections below list.
+Adjust the times to your existing cadence. Each cron service needs its own copy of the env vars
+(reference them from the API service in the Variables tab — they aren't inherited automatically).
 
 ### Alternative: schedule the internal HTTP route
 
