@@ -40,7 +40,7 @@
     "nav": {
       "home": "Accueil",
       "explore": "Explorer",
-      "townHall": "Place du village",
+      "townHall": "The Forum",
       "plans": "Sorties",
       "chat": "Discussions",
       "you": "Toi"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Forum de la ville",
-      "townHall": "Place du village",
+      "townHall": "The Forum",
       "error": "Impossible de charger le forum pour le moment.",
       "empty": "Aucun sujet à {place} pour l'instant.",
       "startOne": "Lance le premier →",
@@ -372,9 +372,9 @@
     "followingNudge": "Connecte-toi et abonne-toi à tes commerces locaux préférés — leurs actus, offres et événements arrivent ici.",
     "signIn": "Se connecter",
     "emptyFollowing": "Aucune publication des lieux que tu suis pour l'instant — abonne-toi à quelques-uns depuis Explorer et leurs actus arriveront ici.",
-    "emptyLocal": "Rien ne bouge à {place} pour l'instant — repasse bientôt, ou sois la première personne à lancer quelque chose sur la Place du village.",
+    "emptyLocal": "Rien ne bouge à {place} pour l'instant — repasse bientôt, ou sois la première personne à lancer quelque chose sur The Forum.",
     "exploreVenues": "Explorer les lieux",
-    "openTownHall": "Ouvrir la Place du village",
+    "openTownHall": "Ouvrir The Forum",
     "caughtUp": "Tu as tout vu",
     "exploreAround": "Explore ce qui t'entoure",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Un commerce local",
     "viewPost": "Voir la publication",
-    "townHall": "Place du village",
+    "townHall": "The Forum",
     "asked": "{author} a demandé",
     "replies": "{count, plural, one {# réponse} other {# réponses}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Personnaliser",
     "nav": {
       "explore": "Explorer",
-      "townHall": "Place du village",
+      "townHall": "The Forum",
       "plans": "Sorties",
       "chat": "Discussions",
       "deals": "Bons plans",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Impossible de charger la Place du village.",
+    "loadFailed": "Impossible de charger The Forum.",
     "hero": {
       "kicker": "Le forum local",
-      "title": "Place du village",
+      "title": "The Forum",
       "body": "Ce dont les gens du coin parlent en ce moment. Pose une question, partage un tuyau, ou vote pour ce qui compte là où tu es.",
       "startTopic": "Lancer un sujet"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Place du village",
+    "townHall": "The Forum",
     "loadFailed": "Impossible de charger ce sujet.",
     "notFoundTitle": "Sujet introuvable",
     "notFoundBody": "Il a peut-être été supprimé, ou le lien est erroné.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# publication} other {# publications}} sur tout Roam",
     "loadFailed": "Impossible de charger #{tag} pour le moment.",
     "emptyTitle": "Rien avec #{tag} pour l'instant",
-    "emptyBody": "Utilise #{tag} dans un sujet de la Place du village ou une publication de mur et ça s'affichera ici.",
+    "emptyBody": "Utilise #{tag} dans un sujet de The Forum ou une publication de mur et ça s'affichera ici.",
     "sections": {
-      "townHall": "Discussion sur la Place du village",
+      "townHall": "Discussion sur The Forum",
       "businesses": "Des commerces locaux",
       "locals": "Des gens du coin"
     },

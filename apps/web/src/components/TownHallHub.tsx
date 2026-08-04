@@ -52,12 +52,12 @@ export function TownHallHub({
         href="/town-hall"
         style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-4)" }}
       >
-        <span aria-hidden>←</span> Town Hall
+        <span aria-hidden>←</span> The Forum
       </Link>
 
       <header style={{ marginBottom: "var(--space-6)" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--crimson-700)", marginBottom: 6 }}>
-          Town Hall
+          The Forum
         </div>
         <h1 className="t-h1" style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 30, letterSpacing: "-.02em", margin: 0 }}>
           {label}

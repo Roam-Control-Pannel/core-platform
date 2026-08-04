@@ -40,7 +40,7 @@
     "nav": {
       "home": "Hafan",
       "explore": "Darganfod",
-      "townHall": "Neuadd y Dref",
+      "townHall": "The Forum",
       "plans": "Cynlluniau",
       "chat": "Sgwrs",
       "you": "Ti"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Fforwm y dref",
-      "townHall": "Neuadd y Dref",
+      "townHall": "The Forum",
       "error": "Methu llwytho'r fforwm ar hyn o bryd.",
       "empty": "Dim pynciau yn {place} eto.",
       "startOne": "Dechreua un →",
@@ -372,9 +372,9 @@
     "followingNudge": "Mewngofnoda a dilyna dy hoff fusnesau lleol — bydd eu newyddion, cynigion a digwyddiadau'n glanio yma.",
     "signIn": "Mewngofnodi",
     "emptyFollowing": "Dim postiadau gan leoliadau rwyt ti'n eu dilyn eto — dilyna ambell un ar Darganfod a bydd eu diweddariadau'n glanio yma.",
-    "emptyLocal": "Dim byd yn digwydd yn {place} ar hyn o bryd — dere'n ôl cyn bo hir, neu bydda di'r un sy'n dechrau rhywbeth yn Neuadd y Dref.",
+    "emptyLocal": "Dim byd yn digwydd yn {place} ar hyn o bryd — dere'n ôl cyn bo hir, neu bydda di'r un sy'n dechrau rhywbeth yn The Forum.",
     "exploreVenues": "Darganfod lleoliadau",
-    "openTownHall": "Agor Neuadd y Dref",
+    "openTownHall": "Agor The Forum",
     "caughtUp": "Rwyt ti wedi gweld popeth",
     "exploreAround": "Darganfydda beth sydd o dy gwmpas",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Busnes lleol",
     "viewPost": "Gweld y postiad",
-    "townHall": "Neuadd y Dref",
+    "townHall": "The Forum",
     "asked": "Gofynnodd {author}",
     "replies": "{count, plural, zero {# atebion} one {# ateb} two {# ateb} few {# ateb} many {# ateb} other {# atebion}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Addasu",
     "nav": {
       "explore": "Darganfod",
-      "townHall": "Neuadd y Dref",
+      "townHall": "The Forum",
       "plans": "Cynlluniau",
       "chat": "Sgwrs",
       "deals": "Bargeinion",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Methu llwytho Neuadd y Dref.",
+    "loadFailed": "Methu llwytho The Forum.",
     "hero": {
       "kicker": "Y fforwm lleol",
-      "title": "Neuadd y Dref",
+      "title": "The Forum",
       "body": "Beth mae pobl leol yn ei drafod ar hyn o bryd. Gofynna gwestiwn, rhanna awgrym, neu rho bleidlais i'r hyn sy'n bwysig lle rwyt ti.",
       "startTopic": "Dechrau pwnc"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Neuadd y Dref",
+    "townHall": "The Forum",
     "loadFailed": "Methu llwytho'r pwnc hwn.",
     "notFoundTitle": "Heb ddod o hyd i'r pwnc",
     "notFoundBody": "Efallai iddo gael ei dynnu, neu fod y ddolen yn anghywir.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, zero {# postiadau} one {# postiad} two {# bostiad} few {# phostiad} many {# phostiad} other {# postiadau}} ar draws Roam",
     "loadFailed": "Methu llwytho #{tag} ar hyn o bryd.",
     "emptyTitle": "Dim byd wedi'i dagio #{tag} eto",
-    "emptyBody": "Defnyddia #{tag} mewn pwnc Neuadd y Dref neu bostiad wal ac fe fydd yn ymddangos yma.",
+    "emptyBody": "Defnyddia #{tag} mewn pwnc The Forum neu bostiad wal ac fe fydd yn ymddangos yma.",
     "sections": {
-      "townHall": "Trafodaeth Neuadd y Dref",
+      "townHall": "Trafodaeth The Forum",
       "businesses": "Gan fusnesau lleol",
       "locals": "Gan bobl leol"
     },

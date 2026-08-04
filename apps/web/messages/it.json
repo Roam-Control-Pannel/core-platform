@@ -40,7 +40,7 @@
     "nav": {
       "home": "Home",
       "explore": "Esplora",
-      "townHall": "Piazza",
+      "townHall": "The Forum",
       "plans": "Programmi",
       "chat": "Chat",
       "you": "Tu"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Forum locale",
-      "townHall": "Piazza",
+      "townHall": "The Forum",
       "error": "Impossibile caricare il forum al momento.",
       "empty": "Ancora nessuna discussione a {place}.",
       "startOne": "Aprine una →",
@@ -372,9 +372,9 @@
     "followingNudge": "Accedi e segui le tue attività locali preferite — le loro novità, offerte ed eventi arrivano qui.",
     "signIn": "Accedi",
     "emptyFollowing": "Ancora nessun post dai locali che segui — seguine qualcuno su Esplora e i loro aggiornamenti arriveranno qui.",
-    "emptyLocal": "Non si muove ancora niente a {place} — torna presto, o sii tu ad avviare qualcosa in Piazza.",
+    "emptyLocal": "Non si muove ancora niente a {place} — torna presto, o sii tu ad avviare qualcosa in The Forum.",
     "exploreVenues": "Esplora i locali",
-    "openTownHall": "Apri la Piazza",
+    "openTownHall": "Apri The Forum",
     "caughtUp": "Sei in pari",
     "exploreAround": "Esplora cosa c'è intorno a te",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Un'attività locale",
     "viewPost": "Vedi post",
-    "townHall": "Piazza",
+    "townHall": "The Forum",
     "asked": "{author} ha chiesto",
     "replies": "{count, plural, one {# risposta} other {# risposte}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Personalizza",
     "nav": {
       "explore": "Esplora",
-      "townHall": "Piazza",
+      "townHall": "The Forum",
       "plans": "Programmi",
       "chat": "Chat",
       "deals": "Sconti",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Impossibile caricare la Piazza.",
+    "loadFailed": "Impossibile caricare The Forum.",
     "hero": {
       "kicker": "Il forum locale",
-      "title": "Piazza",
+      "title": "The Forum",
       "body": "Di cosa parla la gente del posto in questo momento. Fai una domanda, condividi un consiglio o vota ciò che conta dove sei.",
       "startTopic": "Apri una discussione"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Piazza",
+    "townHall": "The Forum",
     "loadFailed": "Impossibile caricare questa discussione.",
     "notFoundTitle": "Discussione non trovata",
     "notFoundBody": "Potrebbe essere stata rimossa, o il link è sbagliato.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# post} other {# post}} su tutto Roam",
     "loadFailed": "Impossibile caricare #{tag} al momento.",
     "emptyTitle": "Ancora niente con #{tag}",
-    "emptyBody": "Usa #{tag} in una discussione in Piazza o in un post in bacheca e apparirà qui.",
+    "emptyBody": "Usa #{tag} in una discussione in The Forum o in un post in bacheca e apparirà qui.",
     "sections": {
-      "townHall": "Discussione in Piazza",
+      "townHall": "Discussione in The Forum",
       "businesses": "Dalle attività locali",
       "locals": "Dalla gente del posto"
     },

@@ -40,7 +40,7 @@
     "nav": {
       "home": "ਹੋਮ",
       "explore": "ਖੋਜੋ",
-      "townHall": "ਟਾਊਨ ਹਾਲ",
+      "townHall": "The Forum",
       "plans": "ਪਲਾਨ",
       "chat": "ਚੈਟ",
       "you": "ਤੁਸੀਂ"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "ਟਾਊਨ ਫੋਰਮ",
-      "townHall": "ਟਾਊਨ ਹਾਲ",
+      "townHall": "The Forum",
       "error": "ਹੁਣੇ ਫੋਰਮ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
       "empty": "{place} ਵਿੱਚ ਅਜੇ ਕੋਈ ਵਿਸ਼ਾ ਨਹੀਂ।",
       "startOne": "ਪਹਿਲ ਕਰੋ →",
@@ -372,9 +372,9 @@
     "followingNudge": "ਸਾਈਨ ਇਨ ਕਰੋ ਤੇ ਆਪਣੇ ਮਨਪਸੰਦ ਲੋਕਲ ਕਾਰੋਬਾਰ ਫਾਲੋ ਕਰੋ — ਉਨ੍ਹਾਂ ਦੀਆਂ ਖ਼ਬਰਾਂ, ਆਫ਼ਰਾਂ ਤੇ ਇਵੈਂਟ ਇੱਥੇ ਆਉਣਗੇ।",
     "signIn": "ਸਾਈਨ ਇਨ ਕਰੋ",
     "emptyFollowing": "ਤੁਹਾਡੀਆਂ ਫਾਲੋ ਕੀਤੀਆਂ ਥਾਵਾਂ ਤੋਂ ਅਜੇ ਕੋਈ ਪੋਸਟ ਨਹੀਂ — ਖੋਜੋ ਵਿੱਚ ਕੁਝ ਥਾਵਾਂ ਫਾਲੋ ਕਰੋ, ਉਨ੍ਹਾਂ ਦੀਆਂ ਅੱਪਡੇਟਾਂ ਇੱਥੇ ਆਉਣਗੀਆਂ।",
-    "emptyLocal": "{place} ਵਿੱਚ ਹਾਲੇ ਕੁਝ ਖ਼ਾਸ ਨਹੀਂ ਚੱਲ ਰਿਹਾ — ਜਲਦੀ ਮੁੜ ਵੇਖੋ, ਜਾਂ ਟਾਊਨ ਹਾਲ ਵਿੱਚ ਖ਼ੁਦ ਕੁਝ ਸ਼ੁਰੂ ਕਰਨ ਵਾਲੇ ਬਣੋ।",
+    "emptyLocal": "{place} ਵਿੱਚ ਹਾਲੇ ਕੁਝ ਖ਼ਾਸ ਨਹੀਂ ਚੱਲ ਰਿਹਾ — ਜਲਦੀ ਮੁੜ ਵੇਖੋ, ਜਾਂ The Forum ਵਿੱਚ ਖ਼ੁਦ ਕੁਝ ਸ਼ੁਰੂ ਕਰਨ ਵਾਲੇ ਬਣੋ।",
     "exploreVenues": "ਥਾਵਾਂ ਖੋਜੋ",
-    "openTownHall": "ਟਾਊਨ ਹਾਲ ਖੋਲ੍ਹੋ",
+    "openTownHall": "The Forum ਖੋਲ੍ਹੋ",
     "caughtUp": "ਤੁਸੀਂ ਸਭ ਕੁਝ ਵੇਖ ਲਿਆ",
     "exploreAround": "ਵੇਖੋ ਤੁਹਾਡੇ ਆਲੇ-ਦੁਆਲੇ ਕੀ ਹੈ",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "ਇੱਕ ਲੋਕਲ ਕਾਰੋਬਾਰ",
     "viewPost": "ਪੋਸਟ ਵੇਖੋ",
-    "townHall": "ਟਾਊਨ ਹਾਲ",
+    "townHall": "The Forum",
     "asked": "{author} ਨੇ ਪੁੱਛਿਆ",
     "replies": "{count, plural, one {# ਜਵਾਬ} other {# ਜਵਾਬ}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "ਕਸਟਮਾਈਜ਼ ਕਰੋ",
     "nav": {
       "explore": "ਖੋਜੋ",
-      "townHall": "ਟਾਊਨ ਹਾਲ",
+      "townHall": "The Forum",
       "plans": "ਪਲਾਨ",
       "chat": "ਚੈਟ",
       "deals": "ਡੀਲਾਂ",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "ਟਾਊਨ ਹਾਲ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
+    "loadFailed": "The Forum ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
     "hero": {
       "kicker": "ਲੋਕਲ ਫੋਰਮ",
-      "title": "ਟਾਊਨ ਹਾਲ",
+      "title": "The Forum",
       "body": "ਲੋਕਲ ਲੋਕ ਇਸ ਵੇਲੇ ਕਿਸ ਬਾਰੇ ਗੱਲ ਕਰ ਰਹੇ ਹਨ। ਸਵਾਲ ਪੁੱਛੋ, ਕੋਈ ਨੁਸਖ਼ਾ ਸਾਂਝਾ ਕਰੋ, ਜਾਂ ਜੋ ਤੁਹਾਡੇ ਇਲਾਕੇ ਵਿੱਚ ਮਾਅਨੇ ਰੱਖਦਾ ਹੈ ਉਸਨੂੰ ਅੱਪਵੋਟ ਕਰੋ।",
       "startTopic": "ਵਿਸ਼ਾ ਸ਼ੁਰੂ ਕਰੋ"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "ਟਾਊਨ ਹਾਲ",
+    "townHall": "The Forum",
     "loadFailed": "ਇਹ ਵਿਸ਼ਾ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
     "notFoundTitle": "ਵਿਸ਼ਾ ਨਹੀਂ ਮਿਲਿਆ",
     "notFoundBody": "ਸ਼ਾਇਦ ਇਹ ਹਟਾ ਦਿੱਤਾ ਗਿਆ ਹੈ, ਜਾਂ ਲਿੰਕ ਗ਼ਲਤ ਹੈ।",
@@ -865,9 +865,9 @@
     "postCount": "ਪੂਰੇ Roam 'ਤੇ {count, plural, one {# ਪੋਸਟ} other {# ਪੋਸਟਾਂ}}",
     "loadFailed": "ਹੁਣੇ #{tag} ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
     "emptyTitle": "#{tag} ਨਾਲ ਅਜੇ ਕੁਝ ਵੀ ਟੈਗ ਨਹੀਂ ਹੋਇਆ",
-    "emptyBody": "ਕਿਸੇ ਟਾਊਨ ਹਾਲ ਵਿਸ਼ੇ ਜਾਂ ਵਾਲ ਪੋਸਟ ਵਿੱਚ #{tag} ਵਰਤੋ ਤੇ ਇਹ ਇੱਥੇ ਦਿਸੇਗਾ।",
+    "emptyBody": "ਕਿਸੇ The Forum ਵਿਸ਼ੇ ਜਾਂ ਵਾਲ ਪੋਸਟ ਵਿੱਚ #{tag} ਵਰਤੋ ਤੇ ਇਹ ਇੱਥੇ ਦਿਸੇਗਾ।",
     "sections": {
-      "townHall": "ਟਾਊਨ ਹਾਲ ਦੀ ਚਰਚਾ",
+      "townHall": "The Forum ਦੀ ਚਰਚਾ",
       "businesses": "ਲੋਕਲ ਕਾਰੋਬਾਰਾਂ ਵੱਲੋਂ",
       "locals": "ਲੋਕਲ ਲੋਕਾਂ ਵੱਲੋਂ"
     },

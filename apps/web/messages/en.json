@@ -73,7 +73,7 @@
       "yourPlaces": "Your places",
       "myBusinesses": "My businesses",
       "explore": "Explore",
-      "townHall": "Town Hall",
+      "townHall": "The Forum",
       "events": "What's on",
       "createEvent": "Create event",
       "plans": "Plans",
@@ -88,7 +88,7 @@
     "nav": {
       "home": "Home",
       "explore": "Explore",
-      "townHall": "Town Hall",
+      "townHall": "The Forum",
       "plans": "Plans",
       "chat": "Chat",
       "you": "You"
@@ -399,7 +399,7 @@
     },
     "townForum": {
       "title": "Town forum",
-      "townHall": "Town Hall",
+      "townHall": "The Forum",
       "error": "Couldn't load the forum just now.",
       "empty": "No topics in {place} yet.",
       "startOne": "Start one →",
@@ -448,9 +448,9 @@
     "followingNudge": "Sign in and follow your favourite local businesses — their news, offers and events land here.",
     "signIn": "Sign in",
     "emptyFollowing": "No posts from venues you follow yet — follow a few on Explore and their updates will land here.",
-    "emptyLocal": "Nothing moving in {place} just yet — check back soon, or be the one who starts something in the Town Hall.",
+    "emptyLocal": "Nothing moving in {place} just yet — check back soon, or be the one who starts something in The Forum.",
     "exploreVenues": "Explore venues",
-    "openTownHall": "Open Town Hall",
+    "openTownHall": "Open The Forum",
     "acrossRoam": {
       "kicker": "Popular across Roam",
       "note": "Roam is just getting started in {place} — here's what's happening across the community while your area fills up."
@@ -464,7 +464,7 @@
     },
     "aLocalBusiness": "A local business",
     "viewPost": "View post",
-    "townHall": "Town Hall",
+    "townHall": "The Forum",
     "asked": "{author} asked",
     "replies": "{count, plural, one {# reply} other {# replies}}",
     "pioneer": {
@@ -491,7 +491,7 @@
     "customise": "Customise",
     "nav": {
       "explore": "Explore",
-      "townHall": "Town Hall",
+      "townHall": "The Forum",
       "plans": "Plans",
       "chat": "Chat",
       "deals": "Deals",
@@ -1008,10 +1008,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Couldn't load the Town Hall.",
+    "loadFailed": "Couldn't load The Forum.",
     "hero": {
       "kicker": "The local forum",
-      "title": "Town Hall",
+      "title": "The Forum",
       "body": "What locals are talking about right now. Ask a question, share a tip, or upvote what matters where you are.",
       "startTopic": "Start a topic"
     },
@@ -1074,7 +1074,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Town Hall",
+    "townHall": "The Forum",
     "loadFailed": "Couldn't load this topic.",
     "notFoundTitle": "Topic not found",
     "notFoundBody": "It may have been removed, or the link is wrong.",
@@ -1116,9 +1116,9 @@
     "postCount": "{count, plural, one {# post} other {# posts}} across Roam",
     "loadFailed": "Couldn't load #{tag} just now.",
     "emptyTitle": "Nothing tagged #{tag} yet",
-    "emptyBody": "Use #{tag} in a Town Hall topic or a wall post and it'll show up here.",
+    "emptyBody": "Use #{tag} in a Forum topic or a wall post and it'll show up here.",
     "sections": {
-      "townHall": "Town Hall discussion",
+      "townHall": "Forum discussion",
       "businesses": "From local businesses",
       "locals": "From locals"
     },
@@ -1263,7 +1263,7 @@
     },
     "founder": {
       "badge": "Founding member of {place} · #{rank}",
-      "tooltip": "One of the first {rank} people to start a Town Hall conversation in {place}."
+      "tooltip": "One of the first {rank} people to start a Forum conversation in {place}."
     }
   },
   "feedList": {

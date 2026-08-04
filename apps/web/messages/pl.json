@@ -40,7 +40,7 @@
     "nav": {
       "home": "Start",
       "explore": "Odkrywaj",
-      "townHall": "Ratusz",
+      "townHall": "The Forum",
       "plans": "Plany",
       "chat": "Czat",
       "you": "Ty"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Forum miasta",
-      "townHall": "Ratusz",
+      "townHall": "The Forum",
       "error": "Nie udało się teraz wczytać forum.",
       "empty": "Brak wątków w {place}.",
       "startOne": "Zacznij pierwszy →",
@@ -372,9 +372,9 @@
     "followingNudge": "Zaloguj się i obserwuj ulubione lokalne firmy — ich nowości, oferty i wydarzenia trafią tutaj.",
     "signIn": "Zaloguj się",
     "emptyFollowing": "Jeszcze brak postów od obserwowanych miejsc — zaobserwuj kilka w Odkrywaj, a ich aktualności trafią tutaj.",
-    "emptyLocal": "W {place} jeszcze nic się nie dzieje — zajrzyj wkrótce albo bądź tym, kto zacznie coś w Ratuszu.",
+    "emptyLocal": "W {place} jeszcze nic się nie dzieje — zajrzyj wkrótce albo bądź tym, kto zacznie coś w The Forum.",
     "exploreVenues": "Odkrywaj miejsca",
-    "openTownHall": "Otwórz Ratusz",
+    "openTownHall": "Otwórz The Forum",
     "caughtUp": "Wszystko na bieżąco",
     "exploreAround": "Odkrywaj, co jest wokół ciebie",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Lokalna firma",
     "viewPost": "Zobacz post",
-    "townHall": "Ratusz",
+    "townHall": "The Forum",
     "asked": "{author} pyta",
     "replies": "{count, plural, one {# odpowiedź} few {# odpowiedzi} many {# odpowiedzi} other {# odpowiedzi}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Dostosuj",
     "nav": {
       "explore": "Odkrywaj",
-      "townHall": "Ratusz",
+      "townHall": "The Forum",
       "plans": "Plany",
       "chat": "Czat",
       "deals": "Okazje",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Nie udało się wczytać Ratusza.",
+    "loadFailed": "Nie udało się wczytać The Forum.",
     "hero": {
       "kicker": "Lokalne forum",
-      "title": "Ratusz",
+      "title": "The Forum",
       "body": "O czym mieszkańcy rozmawiają właśnie teraz. Zadaj pytanie, podziel się wskazówką albo zagłosuj na to, co ważne tam, gdzie jesteś.",
       "startTopic": "Zacznij wątek"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Ratusz",
+    "townHall": "The Forum",
     "loadFailed": "Nie udało się wczytać tego wątku.",
     "notFoundTitle": "Nie znaleziono wątku",
     "notFoundBody": "Mógł zostać usunięty albo link jest błędny.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# post} few {# posty} many {# postów} other {# postów}} w całym Roam",
     "loadFailed": "Nie udało się teraz wczytać #{tag}.",
     "emptyTitle": "Jeszcze nic z tagiem #{tag}",
-    "emptyBody": "Użyj #{tag} w wątku w Ratuszu albo w poście na tablicy, a pojawi się tutaj.",
+    "emptyBody": "Użyj #{tag} w wątku w The Forum albo w poście na tablicy, a pojawi się tutaj.",
     "sections": {
-      "townHall": "Dyskusja w Ratuszu",
+      "townHall": "Dyskusja w The Forum",
       "businesses": "Od lokalnych firm",
       "locals": "Od mieszkańców"
     },

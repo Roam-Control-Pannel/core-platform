@@ -40,7 +40,7 @@
     "nav": {
       "home": "Acasă",
       "explore": "Explorează",
-      "townHall": "Piața orașului",
+      "townHall": "The Forum",
       "plans": "Planuri",
       "chat": "Chat",
       "you": "Tu"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Forumul orașului",
-      "townHall": "Piața orașului",
+      "townHall": "The Forum",
       "error": "Nu am putut încărca forumul acum.",
       "empty": "Niciun subiect în {place} încă.",
       "startOne": "Deschide unul →",
@@ -372,9 +372,9 @@
     "followingNudge": "Conectează-te și urmărește-ți afacerile locale preferate — noutățile, ofertele și evenimentele lor ajung aici.",
     "signIn": "Conectează-te",
     "emptyFollowing": "Nicio postare de la localurile urmărite încă — urmărește câteva din Explorează și noutățile lor vor ajunge aici.",
-    "emptyLocal": "Nu se întâmplă nimic în {place} deocamdată — revino curând, sau fii tu cel care pornește ceva în Piața orașului.",
+    "emptyLocal": "Nu se întâmplă nimic în {place} deocamdată — revino curând, sau fii tu cel care pornește ceva în The Forum.",
     "exploreVenues": "Explorează localuri",
-    "openTownHall": "Deschide Piața orașului",
+    "openTownHall": "Deschide The Forum",
     "caughtUp": "Ești la zi",
     "exploreAround": "Explorează ce e în jurul tău",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "O afacere locală",
     "viewPost": "Vezi postarea",
-    "townHall": "Piața orașului",
+    "townHall": "The Forum",
     "asked": "{author} a întrebat",
     "replies": "{count, plural, one {# răspuns} few {# răspunsuri} other {# de răspunsuri}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Personalizează",
     "nav": {
       "explore": "Explorează",
-      "townHall": "Piața orașului",
+      "townHall": "The Forum",
       "plans": "Planuri",
       "chat": "Chat",
       "deals": "Reduceri",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Nu am putut încărca Piața orașului.",
+    "loadFailed": "Nu am putut încărca The Forum.",
     "hero": {
       "kicker": "Forumul local",
-      "title": "Piața orașului",
+      "title": "The Forum",
       "body": "Despre ce vorbesc localnicii chiar acum. Pune o întrebare, împărtășește un pont, sau votează ce contează acolo unde ești.",
       "startTopic": "Deschide un subiect"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Piața orașului",
+    "townHall": "The Forum",
     "loadFailed": "Nu am putut încărca acest subiect.",
     "notFoundTitle": "Subiectul nu a fost găsit",
     "notFoundBody": "Poate a fost eliminat, sau linkul e greșit.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# postare} few {# postări} other {# de postări}} pe Roam",
     "loadFailed": "Nu am putut încărca #{tag} acum.",
     "emptyTitle": "Nimic etichetat cu #{tag} încă",
-    "emptyBody": "Folosește #{tag} într-un subiect din Piața orașului sau într-o postare pe perete și va apărea aici.",
+    "emptyBody": "Folosește #{tag} într-un subiect din The Forum sau într-o postare pe perete și va apărea aici.",
     "sections": {
-      "townHall": "Discuție din Piața orașului",
+      "townHall": "Discuție din The Forum",
       "businesses": "De la afaceri locale",
       "locals": "De la localnici"
     },

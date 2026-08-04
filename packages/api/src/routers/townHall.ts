@@ -230,7 +230,7 @@ export const townHallRouter = router({
       else q = q.order("last_activity_at", { ascending: false }); // hot: recent-activity candidates, re-ranked below
       const { data, error } = (await q.limit(input.limit)) as PgResult<RawTopic[] | null>;
       if (error) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load the Town Hall: ${error.message}` });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load The Forum: ${error.message}` });
       }
       let rows = data ?? [];
       if (sort === "hot") {
@@ -380,7 +380,7 @@ export const townHallRouter = router({
         .order("last_activity_at", { ascending: false })
         .limit(input.limit)) as PgResult<RawTopic[] | null>;
       if (error) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load the Town Hall: ${error.message}` });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load The Forum: ${error.message}` });
       }
       const rows = data ?? [];
       const upvoted = await viewerUpvotes(db, rows.map((r) => r.id));
