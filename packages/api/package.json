@@ -17,6 +17,7 @@
     "deliver-birthdays": "tsx src/jobs/deliverBirthdays.ts",
     "sync-awin-offers": "tsx src/jobs/syncAwinOffers.ts",
     "sync-cj-offers": "tsx src/jobs/syncCjOffers.ts",
+    "sync-cj-logos": "tsx src/jobs/syncCjLogos.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",

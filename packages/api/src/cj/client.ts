@@ -25,6 +25,9 @@ export interface CjConfig {
   websiteId: string;
   /** API base, override per env. Default https://link-search.api.cj.com */
   baseUrl: string;
+  /** Advertiser Lookup API base (a DIFFERENT CJ host) — powers the advertiser-logo companion sync
+   *  (syncCjLogos). Default https://advertiser-lookup.api.cj.com; override via CJ_ADVERTISER_LOOKUP_BASE. */
+  advertiserLookupBaseUrl: string;
   /** `advertiser-ids` value: "joined" (partners we earn from, default) | "notjoined" | a comma list. */
   advertiserIds: string;
   /** Optional CJ `link-type` filter (e.g. "Text Link", "Banner"); null = all types. */
@@ -68,11 +71,11 @@ interface CjResponse {
   text: string;
 }
 
-/** Authenticated GET against the CJ API. Never throws on HTTP status — returns it (with the body),
- *  so the caller can surface a 401/403 in the sync result. A per-call AbortSignal timeout means no
- *  single call can hang the whole job; a transport error/timeout comes back as status 0. */
-async function cjGet(cfg: CjConfig, path: string, log: (m: string) => void): Promise<CjResponse> {
-  const url = `${cfg.baseUrl.replace(/\/$/, "")}${path}`;
+/** Authenticated GET against a full CJ API URL (any CJ host — Link Search or Advertiser Lookup).
+ *  Never throws on HTTP status — returns it (with the body), so the caller can surface a 401/403 in
+ *  the sync result. A per-call AbortSignal timeout means no single call can hang the whole job; a
+ *  transport error/timeout comes back as status 0. Self-revealing: cfg.debug logs the raw response. */
+export async function cjAuthedGet(cfg: CjConfig, url: string, log: (m: string) => void): Promise<CjResponse> {
   const started = Date.now();
   let res: Response;
   try {
@@ -84,18 +87,23 @@ async function cjGet(cfg: CjConfig, path: string, log: (m: string) => void): Pro
   } catch (e) {
     const ms = Date.now() - started;
     const reason = e instanceof Error ? e.message : String(e);
-    if (cfg.debug) log(`cj GET ${path} → ERROR ${ms}ms ${reason}`);
+    if (cfg.debug) log(`cj GET ${url} → ERROR ${ms}ms ${reason}`);
     return { status: 0, text: `transport error after ${ms}ms: ${reason}` };
   }
   const text = await res.text();
-  if (cfg.debug) log(`cj GET ${path} → ${res.status} ${Date.now() - started}ms len=${text.length} ${trunc(text)}`);
+  if (cfg.debug) log(`cj GET ${url} → ${res.status} ${Date.now() - started}ms len=${text.length} ${trunc(text)}`);
   return { status: res.status, text };
+}
+
+/** Link Search GET: `path` is relative to cfg.baseUrl (the link-search host). */
+async function cjGet(cfg: CjConfig, path: string, log: (m: string) => void): Promise<CjResponse> {
+  return cjAuthedGet(cfg, `${cfg.baseUrl.replace(/\/$/, "")}${path}`, log);
 }
 
 /* ── parsing ─────────────────────────────────────────────────────────────────────────────── */
 
 /** Decode the handful of XML entities CJ emits (order matters: &amp; last). */
-function decodeXml(s: string): string {
+export function decodeXml(s: string): string {
   return s
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&lt;/g, "<")
@@ -107,7 +115,7 @@ function decodeXml(s: string): string {
 }
 
 /** First text value of a child tag within an XML fragment (case-insensitive), or "" if absent. */
-function xmlTag(fragment: string, tag: string): string {
+export function xmlTag(fragment: string, tag: string): string {
   const m = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i").exec(fragment);
   return m ? decodeXml(m[1] ?? "") : "";
 }
@@ -160,7 +168,7 @@ export function parseLinks(body: string): Record<string, string>[] {
   return out;
 }
 
-const val = (o: Record<string, string>, ...keys: string[]): string | null => {
+export const val = (o: Record<string, string>, ...keys: string[]): string | null => {
   for (const k of keys) {
     const v = o[k];
     if (typeof v === "string" && v.trim()) return v.trim();

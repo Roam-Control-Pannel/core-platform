@@ -95,6 +95,7 @@ async function main(): Promise<void> {
     token: requireEnv("CJ_API_TOKEN"),
     websiteId: requireEnv("CJ_WEBSITE_ID"),
     baseUrl: process.env.CJ_API_BASE ?? "https://link-search.api.cj.com",
+    advertiserLookupBaseUrl: process.env.CJ_ADVERTISER_LOOKUP_BASE ?? "https://advertiser-lookup.api.cj.com",
     advertiserIds: process.env.CJ_ADVERTISER_IDS ?? "joined",
     linkType: process.env.CJ_LINK_TYPE ?? null,
     promotionType: process.env.CJ_PROMOTION_TYPE ?? null,

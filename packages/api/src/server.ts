@@ -25,6 +25,7 @@ import { escalateToService } from "./trpc.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
 import { runCjOffersSync } from "./jobs/syncCjOffers.js";
+import { runCjLogoSync } from "./jobs/syncCjLogos.js";
 import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
@@ -90,6 +91,7 @@ function loadEnv(): ApiEnv {
       token: process.env.CJ_API_TOKEN ?? null,
       websiteId: process.env.CJ_WEBSITE_ID ?? null,
       baseUrl: process.env.CJ_API_BASE ?? "https://link-search.api.cj.com",
+      advertiserLookupBaseUrl: process.env.CJ_ADVERTISER_LOOKUP_BASE ?? "https://advertiser-lookup.api.cj.com",
       advertiserIds: process.env.CJ_ADVERTISER_IDS ?? "joined",
       linkType: process.env.CJ_LINK_TYPE ?? null,
       promotionType: process.env.CJ_PROMOTION_TYPE ?? null,
@@ -282,6 +284,30 @@ export async function handler(request: Request): Promise<Response> {
     try {
       const service = escalateToService(ctx.env);
       const result = await runCjOffersSync(service, { ...cj, token: cj.token, websiteId: cj.websiteId }, (m) => console.log(m));
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // Internal cron route: look up CJ advertiser logos into cj_advertisers (companion to the CJ offers
+  // sync — the deals router attaches these logos to CJ cards at read time). Same internal-secret gate;
+  // dormant when CJ_API_TOKEN / CJ_WEBSITE_ID are unset. Idempotent (upsert-by-advertiser-id).
+  if (pathname === "/jobs/sync-cj-logos") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (!ctx.isInternalCall) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    const cj = ctx.env.cj;
+    if (!cj.token || !cj.websiteId) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 200, cors);
+    }
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runCjLogoSync(service, { ...cj, token: cj.token, websiteId: cj.websiteId }, (m) => console.log(m));
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (e) {
       return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
