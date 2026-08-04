@@ -92,6 +92,7 @@ function loadEnv(): ApiEnv {
       websiteId: process.env.CJ_WEBSITE_ID ?? null,
       baseUrl: process.env.CJ_API_BASE ?? "https://link-search.api.cj.com",
       advertiserLookupBaseUrl: process.env.CJ_ADVERTISER_LOOKUP_BASE ?? "https://advertiser-lookup.api.cj.com",
+      advertiserLookupCid: process.env.CJ_CID ?? null,
       advertiserIds: process.env.CJ_ADVERTISER_IDS ?? "joined",
       linkType: process.env.CJ_LINK_TYPE ?? null,
       promotionType: process.env.CJ_PROMOTION_TYPE ?? null,

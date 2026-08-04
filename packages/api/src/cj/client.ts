@@ -28,6 +28,10 @@ export interface CjConfig {
   /** Advertiser Lookup API base (a DIFFERENT CJ host) — powers the advertiser-logo companion sync
    *  (syncCjLogos). Default https://advertiser-lookup.api.cj.com; override via CJ_ADVERTISER_LOOKUP_BASE. */
   advertiserLookupBaseUrl: string;
+  /** CJ Company ID (CID) for Advertiser Lookup's `requestor-cid` — the publisher ACCOUNT id, which is
+   *  DIFFERENT from the website id (PID) used by Link Search. Set via CJ_CID; null falls back to
+   *  websiteId (correct only if your account's CID and website PID happen to be the same number). */
+  advertiserLookupCid: string | null;
   /** `advertiser-ids` value: "joined" (partners we earn from, default) | "notjoined" | a comma list. */
   advertiserIds: string;
   /** Optional CJ `link-type` filter (e.g. "Text Link", "Banner"); null = all types. */

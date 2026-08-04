@@ -101,11 +101,27 @@ The CJ logo sync reuses the CJ credentials — no new secret is required:
 ```
 CJ_API_TOKEN=<CJ personal access token>     # required (shared with the CJ offers sync)
 CJ_WEBSITE_ID=<CJ website / PID>             # required (shared with the CJ offers sync)
+CJ_CID=<CJ company / CID>                    # required for Advertiser Lookup — see below (NOT the PID)
 
 # optional (default shown) — the Advertiser Lookup API lives on a different CJ host than Link Search:
 CJ_ADVERTISER_LOOKUP_BASE=https://advertiser-lookup.api.cj.com
 CJ_DEBUG=1                                   # logs the raw first Lookup response to confirm the logo field
 ```
+
+### `CJ_CID` — the account CID, not the website PID
+
+Advertiser Lookup authenticates against your **Company ID (CID)** via its `requestor-cid` param — a
+*different* number from the **Website ID (PID)** that Link Search uses. If `CJ_CID` is unset, the sync
+falls back to `CJ_WEBSITE_ID`, and if your CID and PID differ CJ rejects the call with:
+
+```
+400  User is not authorized to access this API on behalf of this CID: <the PID>
+```
+
+Fix: find your CID in the CJ dashboard (**Account → Company**, or the number shown by the CJ Developer
+Portal for your account — distinct from the per-website PID) and set it as `CJ_CID`. Also confirm the
+personal access token is granted access to the **Advertiser Lookup** API (Link Search access alone is
+not enough). The offers sync is unaffected — it keeps using `CJ_WEBSITE_ID`.
 
 **First run:** set `CJ_DEBUG=1` for one run and check the logged raw response. CJ's docs don't pin down
 which field carries the logo, so `cj/advertisers.ts` reads it from several plausible names and stores

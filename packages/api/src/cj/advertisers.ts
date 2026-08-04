@@ -114,7 +114,8 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 function buildPath(cfg: CjConfig, ids: string[], page: number): string {
   const p = new URLSearchParams({
-    "requestor-cid": cfg.websiteId,
+    // Advertiser Lookup keys on the account CID, NOT the website PID — prefer the explicit CID.
+    "requestor-cid": cfg.advertiserLookupCid ?? cfg.websiteId,
     "advertiser-ids": ids.join(","),
     "records-per-page": String(RECORDS_PER_PAGE),
     "page-number": String(page),
