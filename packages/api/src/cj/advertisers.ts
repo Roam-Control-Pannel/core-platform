@@ -18,10 +18,12 @@
  */
 import { cjAuthedGet, decodeXml, val, type CjConfig } from "./client.js";
 
-/** A resolved advertiser: its id, display name, and logo (null when the API exposes none). */
+/** A resolved advertiser: its id, display name, the merchant site (program-url), and a brand logo
+ *  derived from that site's domain (null when there's no usable domain). */
 export interface CjAdvertiser {
   advertiserId: string;
   advertiserName: string | null;
+  programUrl: string | null;
   logoUrl: string | null;
 }
 
@@ -71,7 +73,10 @@ export function parseAdvertisers(body: string): Record<string, string>[] {
   const advRe = /<advertiser(?:\s[^>]*)?>([\s\S]*?)<\/advertiser>/gi;
   const FIELDS = [
     "advertiser-id", "advertiser-name",
-    // Logo lives under an unknown name — read every plausible one; whichever is present wins.
+    // program-url is the merchant's own site — we derive the brand logo from its domain. (CJ's
+    // Advertiser Lookup carries no logo field; the logo-* names remain only to prefer one if CJ ever
+    // adds it.)
+    "program-url",
     "logo-url", "logo", "advertiser-logo-url", "advertiser-logo", "program-logo-url", "image-url",
   ];
   let m: RegExpExecArray | null;
@@ -87,21 +92,44 @@ export function parseAdvertisers(body: string): Record<string, string>[] {
   return out;
 }
 
-/** Map a raw advertiser bag to CjAdvertiser. Null when there's no advertiser-id (nothing to key on);
- *  logoUrl reads from several plausible names and is null when none is present (→ icon fallback). */
+/** Reduce a program URL to a bare domain: strip scheme, credentials, path, port, www.
+ *  "http://www.CruiseDirect.com/deals" → "cruisedirect.com". Null when there's no plausible host. */
+export function domainFromUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  let s = raw.trim().toLowerCase();
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, ""); // scheme://
+  s = s.replace(/^[^/@]*@/, ""); // user:pass@
+  s = (s.split(/[/?#]/)[0] ?? "").split(":")[0] ?? ""; // drop path/query/fragment/port
+  s = s.replace(/^www\./, "");
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(s) ? s : null;
+}
+
+/** Brand logo for a domain via the Clearbit logo service (public, keyless). A miss 404s and the card
+ *  falls back to its category icon (DealThumb's onError), so an unknown/bad domain is harmless. */
+export function logoUrlForDomain(domain: string): string {
+  return `https://logo.clearbit.com/${domain}`;
+}
+
+/**
+ * Map a raw advertiser bag to CjAdvertiser. Null when there's no advertiser-id (nothing to key on).
+ * CJ Advertiser Lookup exposes no logo field, so the logo is derived from the merchant's own site
+ * (program-url) domain; an explicit logo field is still preferred if CJ ever adds one. logoUrl is
+ * null only when there's neither a usable domain nor an explicit logo (→ the card keeps its icon).
+ */
 export function normalizeAdvertiser(raw: Record<string, string>): CjAdvertiser | null {
   const advertiserId = val(raw, "advertiser-id", "advertiserId", "cid");
   if (!advertiserId) return null;
-  const logoUrl = val(
-    raw,
-    "logo-url", "logoUrl", "logo",
-    "advertiser-logo-url", "advertiserLogoUrl", "advertiser-logo",
-    "program-logo-url", "image-url", "imageUrl",
-  );
+  const programUrl = val(raw, "program-url", "programUrl", "url");
+  const explicitLogo = val(raw, "logo-url", "logoUrl", "logo", "advertiser-logo-url", "advertiser-logo", "program-logo-url");
+  const domain = domainFromUrl(programUrl);
+  const logoUrl =
+    (explicitLogo && /^https?:\/\//i.test(explicitLogo) ? explicitLogo : null) ??
+    (domain ? logoUrlForDomain(domain) : null);
   return {
     advertiserId,
     advertiserName: val(raw, "advertiser-name", "advertiserName", "name"),
-    logoUrl: logoUrl && /^https?:\/\//i.test(logoUrl) ? logoUrl : null,
+    programUrl,
+    logoUrl,
   };
 }
 

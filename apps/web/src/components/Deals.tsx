@@ -136,23 +136,31 @@ function dealIcon(deal: Deal): IconName {
   return "tag";
 }
 
-/** The lead visual: advertiser image when present, else a branded, category-appropriate icon tile. */
+/** The lead visual: advertiser logo when present (contained + padded, since brand logos aren't
+ *  full-bleed photos), else a branded, category-appropriate icon tile. A logo that fails to load
+ *  (e.g. the logo service has none for that brand) falls back to the same icon tile. */
 function DealThumb({ deal, variant }: { deal: Deal; variant: "hero" | "tile" }) {
   const hero = variant === "hero";
+  const [imgFailed, setImgFailed] = useState(false);
   const base: React.CSSProperties = hero
     ? { width: "100%", aspectRatio: "16 / 9", display: "grid", placeItems: "center" }
     : { width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: "grid", placeItems: "center", overflow: "hidden" };
 
-  if (deal.imageUrl) {
+  if (deal.imageUrl && !imgFailed) {
     return (
       <div style={{ ...base, background: "var(--paper-2)" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- external advertiser image */}
-        <img src={deal.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- external advertiser logo */}
+        <img
+          src={deal.imageUrl}
+          alt=""
+          onError={() => setImgFailed(true)}
+          style={{ width: "100%", height: "100%", objectFit: "contain", padding: hero ? 28 : 6 }}
+        />
       </div>
     );
   }
 
-  // No image → a soft crimson tile with the category icon.
+  // No image (or it failed to load) → a soft crimson tile with the category icon.
   return (
     <div
       aria-hidden
