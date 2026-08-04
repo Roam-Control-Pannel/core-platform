@@ -123,8 +123,21 @@ Portal for your account — distinct from the per-website PID) and set it as `CJ
 personal access token is granted access to the **Advertiser Lookup** API (Link Search access alone is
 not enough). The offers sync is unaffected — it keeps using `CJ_WEBSITE_ID`.
 
-**First run:** set `CJ_DEBUG=1` for one run and check the logged raw response. CJ's docs don't pin down
-which field carries the logo, so `cj/advertisers.ts` reads it from several plausible names and stores
-`null` when none is present (the card keeps its icon). If the real response shows the logo under a name
-we don't yet read, add that name to the field list in `cj/advertisers.ts` and re-run — nothing else
-changes.
+### How the logo is sourced
+
+CJ's Advertiser Lookup returns **no logo field** — but it does return each advertiser's own website
+(`program-url`, e.g. `http://www.cruisedirect.com`). `syncCjLogos` reduces that to a domain
+(`cruisedirect.com`) and stores a brand-logo URL from the keyless [Clearbit logo
+service](https://logo.clearbit.com/) (`https://logo.clearbit.com/<domain>`) in `cj_advertisers.logo_url`
+(the source domain is kept in `program_url` so the logo can be re-derived with a different provider
+later). The deals router attaches that URL to CJ cards; `DealThumb` renders it, and **falls back to the
+category icon** if the logo service has nothing for that brand (its `onError`). So a missing or unknown
+logo is always harmless.
+
+Two consequences worth knowing:
+- **Third-party image host.** Card logos load from `logo.clearbit.com` at render. There's no CSP in the
+  web app today, so nothing to allowlist — but if a CSP is added later, `img-src` must include it. To
+  remove the dependency entirely, fetch each logo server-side during the sync and re-host it in Supabase
+  Storage (store that URL in `logo_url` instead) — `program_url` makes this a drop-in change.
+- **First run:** set `CJ_DEBUG=1` once to see the raw Advertiser Lookup response in the logs (advertiser
+  names, `program-url`s, the resolved/with-logo tally), then remove it.

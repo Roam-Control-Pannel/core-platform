@@ -1,27 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { parseAdvertisers, normalizeAdvertiser } from "./advertisers.js";
+import { parseAdvertisers, normalizeAdvertiser, domainFromUrl } from "./advertisers.js";
 
 /**
  * Unit tests for the PURE CJ Advertiser Lookup helpers: the defensive XML/JSON parser and the
- * raw→CjAdvertiser mapper (reads the logo from several plausible field names, tolerates its absence).
- * The HTTP paging is I/O and isn't unit-tested (same posture as the Link Search client). These tests
- * pin the behaviour the deals surface depends on: an advertiser with no logo yields logoUrl=null
- * (→ the card keeps its category-icon fallback), never a throw.
+ * raw→CjAdvertiser mapper. CJ's Advertiser Lookup carries NO logo field, but it returns each
+ * advertiser's own site (program-url), from which we derive a brand logo via its domain. These tests
+ * pin that: a real program-url yields a logo; a missing one yields logoUrl=null (→ the card keeps its
+ * category-icon fallback), never a throw. The HTTP paging is I/O and isn't unit-tested.
  */
 
+// Mirrors a real CJ Advertiser Lookup response: program-url present, no logo field anywhere.
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
 <cj-api>
   <advertisers total-matched="2" records-returned="2" page-number="1">
     <advertiser>
-      <advertiser-id>1001</advertiser-id>
-      <advertiser-name>ASOS &amp; Co</advertiser-name>
+      <advertiser-id>965192</advertiser-id>
       <account-status>Active</account-status>
-      <logo-url>https://logos.cj.com/1001.png</logo-url>
+      <advertiser-name>CruiseDirect &amp; Co</advertiser-name>
+      <program-url>http://www.cruisedirect.com</program-url>
+      <relationship-status>joined</relationship-status>
     </advertiser>
     <advertiser>
       <advertiser-id>2002</advertiser-id>
-      <advertiser-name>No Logo Ltd</advertiser-name>
       <account-status>Active</account-status>
+      <advertiser-name>No Site Ltd</advertiser-name>
     </advertiser>
   </advertisers>
 </cj-api>`;
@@ -31,20 +33,20 @@ describe("parseAdvertisers", () => {
     const rows = parseAdvertisers(XML);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      "advertiser-id": "1001",
-      "advertiser-name": "ASOS & Co", // XML entity decoded
-      "logo-url": "https://logos.cj.com/1001.png",
+      "advertiser-id": "965192",
+      "advertiser-name": "CruiseDirect & Co", // XML entity decoded
+      "program-url": "http://www.cruisedirect.com",
     });
-    expect(rows[1]).toMatchObject({ "advertiser-id": "2002", "advertiser-name": "No Logo Ltd" });
-    expect(rows[1]!["logo-url"]).toBeUndefined();
+    expect(rows[1]).toMatchObject({ "advertiser-id": "2002", "advertiser-name": "No Site Ltd" });
+    expect(rows[1]!["program-url"]).toBeUndefined();
   });
 
   it("also accepts a JSON body ({ advertisers: [...] })", () => {
     const rows = parseAdvertisers(
-      JSON.stringify({ advertisers: [{ "advertiser-id": "9", "advertiser-name": "X", "logo-url": "https://x.test/l.png" }] }),
+      JSON.stringify({ advertisers: [{ "advertiser-id": "9", "advertiser-name": "X", "program-url": "https://x.test" }] }),
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ "advertiser-id": "9", "logo-url": "https://x.test/l.png" });
+    expect(rows[0]).toMatchObject({ "advertiser-id": "9", "program-url": "https://x.test" });
   });
 
   it("degrades to [] on an unparseable / empty body", () => {
@@ -54,37 +56,53 @@ describe("parseAdvertisers", () => {
   });
 });
 
+describe("domainFromUrl", () => {
+  it("reduces a program URL to a bare domain", () => {
+    expect(domainFromUrl("http://www.CruiseDirect.com/deals")).toBe("cruisedirect.com");
+    expect(domainFromUrl("https://priceline.com")).toBe("priceline.com");
+    expect(domainFromUrl("http://shop.example.co.uk/path?x=1")).toBe("shop.example.co.uk");
+    expect(domainFromUrl("https://user:pass@brand.com:8443/")).toBe("brand.com");
+  });
+
+  it("returns null for junk / non-hosts", () => {
+    expect(domainFromUrl(null)).toBeNull();
+    expect(domainFromUrl("")).toBeNull();
+    expect(domainFromUrl("not a url")).toBeNull();
+    expect(domainFromUrl("localhost")).toBeNull(); // no TLD
+  });
+});
+
 describe("normalizeAdvertiser", () => {
-  it("maps an advertiser with a logo", () => {
-    const [asos] = parseAdvertisers(XML);
-    expect(normalizeAdvertiser(asos!)).toEqual({
-      advertiserId: "1001",
-      advertiserName: "ASOS & Co",
-      logoUrl: "https://logos.cj.com/1001.png",
+  it("derives a brand logo from the program-url domain", () => {
+    const [cruise] = parseAdvertisers(XML);
+    expect(normalizeAdvertiser(cruise!)).toEqual({
+      advertiserId: "965192",
+      advertiserName: "CruiseDirect & Co",
+      programUrl: "http://www.cruisedirect.com",
+      logoUrl: "https://logo.clearbit.com/cruisedirect.com",
     });
   });
 
-  it("yields logoUrl=null when the advertiser exposes no logo", () => {
-    const [, noLogo] = parseAdvertisers(XML);
-    expect(normalizeAdvertiser(noLogo!)).toEqual({
+  it("yields logoUrl=null when there's no usable site", () => {
+    const [, noSite] = parseAdvertisers(XML);
+    expect(normalizeAdvertiser(noSite!)).toEqual({
       advertiserId: "2002",
-      advertiserName: "No Logo Ltd",
+      advertiserName: "No Site Ltd",
+      programUrl: null,
       logoUrl: null,
     });
   });
 
-  it("reads the logo from any of several plausible field names", () => {
-    for (const key of ["logo", "advertiser-logo-url", "program-logo-url", "image-url"]) {
-      const adv = normalizeAdvertiser({ "advertiser-id": "7", [key]: "https://x.test/logo.png" });
-      expect(adv?.logoUrl).toBe("https://x.test/logo.png");
-    }
-  });
-
-  it("ignores a non-http logo value (guards against junk / relative paths)", () => {
-    expect(normalizeAdvertiser({ "advertiser-id": "7", "logo-url": "not-a-url" })?.logoUrl).toBeNull();
+  it("prefers an explicit logo field if CJ ever provides one", () => {
+    const adv = normalizeAdvertiser({
+      "advertiser-id": "7",
+      "program-url": "https://brand.com",
+      "logo-url": "https://cdn.cj.com/7.png",
+    });
+    expect(adv?.logoUrl).toBe("https://cdn.cj.com/7.png");
   });
 
   it("returns null when there's no advertiser id (nothing to key on)", () => {
-    expect(normalizeAdvertiser({ "advertiser-name": "Orphan", "logo-url": "https://x.test/l.png" })).toBeNull();
+    expect(normalizeAdvertiser({ "advertiser-name": "Orphan", "program-url": "https://x.test" })).toBeNull();
   });
 });

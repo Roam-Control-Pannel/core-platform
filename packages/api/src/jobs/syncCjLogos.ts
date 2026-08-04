@@ -75,6 +75,7 @@ export async function runCjLogoSync(
   const rows = [...resolved.values()].map((a) => ({
     advertiser_id: a.advertiserId,
     advertiser_name: a.advertiserName,
+    program_url: a.programUrl,
     logo_url: a.logoUrl,
     updated_at: runStamp,
   }));
