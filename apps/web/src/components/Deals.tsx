@@ -42,8 +42,8 @@ export interface Deal {
 const PAGE = 24;
 type DealPage = { deals: Deal[]; hasMore: boolean };
 
-/** The /deals page feed: category-filtered, offset-paginated, accumulating pages via loadMore. */
-function useDealsPage(category: string | null): {
+/** The /deals page feed: category- + keyword-filtered, offset-paginated, accumulating via loadMore. */
+function useDealsPage(category: string | null, q: string): {
   deals: Deal[] | undefined;
   hasMore: boolean;
   loadingMore: boolean;
@@ -56,26 +56,28 @@ function useDealsPage(category: string | null): {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
+  const term = q.trim();
   const list = trpc.deals.list as unknown as {
-    query: (i: { category?: string; limit: number; offset: number }) => Promise<DealPage>;
+    query: (i: { category?: string; q?: string; limit: number; offset: number }) => Promise<DealPage>;
   };
+  const filter = { ...(category ? { category } : {}), ...(term ? { q: term } : {}) };
 
-  // Reset + load page one whenever the category changes.
+  // Reset + load page one whenever the category or search term changes.
   useEffect(() => {
     let cancelled = false;
     setDeals(undefined); setOffset(0); setHasMore(false); setError(false);
     list
-      .query({ limit: PAGE, offset: 0, ...(category ? { category } : {}) })
+      .query({ limit: PAGE, offset: 0, ...filter })
       .then((r) => { if (!cancelled) { setDeals(r.deals); setHasMore(r.hasMore); setOffset(r.deals.length); } })
       .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trpc, category]);
+  }, [trpc, category, term]);
 
   const loadMore = useCallback(() => {
     setLoadingMore(true);
     list
-      .query({ limit: PAGE, offset, ...(category ? { category } : {}) })
+      .query({ limit: PAGE, offset, ...filter })
       .then((r) => {
         setDeals((cur) => [...(cur ?? []), ...r.deals]);
         setHasMore(r.hasMore);
@@ -84,7 +86,7 @@ function useDealsPage(category: string | null): {
       .catch(() => {})
       .finally(() => setLoadingMore(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trpc, category, offset]);
+  }, [trpc, category, term, offset]);
 
   return { deals, hasMore, loadingMore, error, loadMore };
 }
@@ -242,8 +244,17 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
 export function Deals() {
   const t = useTranslations("deals");
   const [category, setCategory] = useState<string | null>(null);
-  const { deals, hasMore, loadingMore, error, loadMore } = useDealsPage(category);
+  const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const { deals, hasMore, loadingMore, error, loadMore } = useDealsPage(category, debounced);
   const categories = useDealCategories();
+
+  // Debounce the keyword so we're not firing a query on every keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none", marginBottom: "var(--space-3)" }}>
@@ -255,6 +266,32 @@ export function Deals() {
           {t.rich("intro", { strong: (chunks) => <strong>{chunks}</strong> })}
         </p>
       </header>
+
+      {/* Search bar — filter offers by title or brand. */}
+      <div style={{ position: "relative", marginBottom: "var(--space-3)", maxWidth: 420 }}>
+        <span aria-hidden style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", display: "grid", placeItems: "center" }}>
+          <Icon name="search" size={16} />
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchAria")}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "10px 14px 10px 38px",
+            background: "#fff",
+            border: "1px solid var(--line-2)",
+            borderRadius: 999,
+            fontFamily: "var(--ui)",
+            fontSize: 16,
+            color: "var(--ink)",
+            outline: "none",
+          }}
+        />
+      </div>
 
       {/* Category filter chips (distinct live categories across both networks). */}
       {categories.length > 0 ? (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLinks, normalizeLink, isPromotional } from "./client.js";
+import { parseLinks, normalizeLink, isPromotional, looksLikeCreativeName, prettifyTitle } from "./client.js";
 
 /**
  * Unit tests for the PURE CJ Link Search helpers: the defensive XML/JSON parser, the raw→CjDeal
@@ -92,6 +92,33 @@ describe("normalizeLink", () => {
     expect(normalizeLink({ "advertiser-id": "1", "link-name": "x", clickUrl: "https://x.test" })).toBeNull(); // no link-id
     expect(normalizeLink({ "link-id": "1", "link-name": "x", clickUrl: "https://x.test" })).toBeNull(); // no advertiser-id
     expect(normalizeLink({ "link-id": "1", "advertiser-id": "2", "link-name": "x" })).toBeNull(); // no clickUrl
+  });
+});
+
+describe("title quality (banner-creative names)", () => {
+  it("flags banner creative names, not real titles", () => {
+    expect(looksLikeCreativeName("Generic_120x90")).toBe(true);
+    expect(looksLikeCreativeName("Chicago_spanish_468x60")).toBe(true);
+    expect(looksLikeCreativeName("summer-sale.gif")).toBe(true);
+    expect(looksLikeCreativeName("20% off everything")).toBe(false);
+    expect(looksLikeCreativeName("Free UK delivery")).toBe(false);
+  });
+
+  it("prettifies underscores/whitespace", () => {
+    expect(prettifyTitle("Save_20_percent")).toBe("Save 20 percent");
+    expect(prettifyTitle("  a   b ")).toBe("a b");
+  });
+
+  it("uses the description when the link-name is a banner creative", () => {
+    const deal = normalizeLink({
+      "link-id": "1", "advertiser-id": "2", "link-name": "Chicago_spanish_468x60",
+      description: "Save 20% on Chicago attractions", clickUrl: "https://x.test/c",
+    });
+    expect(deal?.title).toBe("Save 20% on Chicago attractions");
+  });
+
+  it("drops a pure banner creative with no readable text (no 'Generic_120x90' cards)", () => {
+    expect(normalizeLink({ "link-id": "1", "advertiser-id": "2", "link-name": "Generic_120x90", clickUrl: "https://x.test/c" })).toBeNull();
   });
 });
 

@@ -60,16 +60,25 @@ function shapeDeal(d: RawDeal, network: Network) {
   };
 }
 
+/** Strip ILIKE / PostgREST-.or() control chars so a user's search term is matched literally. */
+function sanitizeTerm(q: string): string {
+  return q.replace(/[%,()\\]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 /** Read one network's live deals. `required` throws on error (Awin, the established table); the
  *  optional network (CJ) swallows errors so a missing table pre-migration degrades to Awin-only. */
 async function readDeals(
   db: LooseDb,
   table: string,
   network: Network,
-  opts: { category?: string | undefined; limit: number; required: boolean },
+  opts: { category?: string | undefined; q?: string | undefined; limit: number; required: boolean },
 ): Promise<ReturnType<typeof shapeDeal>[]> {
   let q = db.from(table).select(DEAL_COLS).order("created_at", { ascending: false }).limit(opts.limit);
   if (opts.category) q = q.eq("category", opts.category);
+  if (opts.q) {
+    const term = sanitizeTerm(opts.q);
+    if (term) q = q.or(`title.ilike.%${term}%,advertiser_name.ilike.%${term}%`);
+  }
   const { data, error } = (await q) as { data: RawDeal[] | null; error: { message: string } | null };
   if (error) {
     if (opts.required) {
@@ -105,6 +114,7 @@ export const dealsRouter = router({
       z
         .object({
           category: z.string().trim().min(1).max(80).optional(),
+          q: z.string().trim().min(1).max(80).optional(),
           limit: z.number().int().min(1).max(48).default(24),
           offset: z.number().int().min(0).max(2000).default(0),
         })
@@ -115,12 +125,13 @@ export const dealsRouter = router({
       const limit = input?.limit ?? 24;
       const offset = input?.offset ?? 0;
       const category = input?.category;
+      const q = input?.q;
       const end = offset + limit;
       // Fetch end+1 newest from each network (CJ best-effort) — enough to compute the interleaved
       // sequence up to `end` and to tell whether anything remains beyond this page.
       const [awin, cj] = await Promise.all([
-        readDeals(db, "awin_deals", "awin", { category, limit: end + 1, required: true }),
-        readDeals(db, "cj_deals", "cj", { category, limit: end + 1, required: false }),
+        readDeals(db, "awin_deals", "awin", { category, q, limit: end + 1, required: true }),
+        readDeals(db, "cj_deals", "cj", { category, q, limit: end + 1, required: false }),
       ]);
       const merged = interleave(awin, cj);
       return { deals: merged.slice(offset, end), hasMore: merged.length > end };
