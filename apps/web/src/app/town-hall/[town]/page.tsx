@@ -21,7 +21,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function generateMetadata({ params }: { params: Promise<{ town: string }> }): Promise<Metadata> {
   const { town } = await params;
-  if (UUID_RE.test(town)) return { title: "Town Hall" };
+  if (UUID_RE.test(town)) return { title: "The Forum" };
   const hub = await getHub(town);
   const guide = townGuide(town);
   // The guide's name is the canonical display label (proper casing, e.g. "Bury St Edmunds").

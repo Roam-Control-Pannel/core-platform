@@ -28,7 +28,7 @@ export function localitySlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  if (!slug) throw new Error("That place can't be used for a Town Hall board.");
+  if (!slug) throw new Error("That place can't be used for a Forum board.");
   return slug;
 }
 

@@ -40,7 +40,7 @@
     "nav": {
       "home": "Inicio",
       "explore": "Explorar",
-      "townHall": "Plaza del pueblo",
+      "townHall": "The Forum",
       "plans": "Planes",
       "chat": "Chat",
       "you": "Tú"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Foro del pueblo",
-      "townHall": "Plaza del pueblo",
+      "townHall": "The Forum",
       "error": "No se pudo cargar el foro.",
       "empty": "Aún no hay temas en {place}.",
       "startOne": "Abre uno →",
@@ -372,9 +372,9 @@
     "followingNudge": "Inicia sesión y sigue a tus negocios locales favoritos: sus novedades, ofertas y eventos llegan aquí.",
     "signIn": "Iniciar sesión",
     "emptyFollowing": "Aún no hay publicaciones de los locales que sigues: sigue unos cuantos en Explorar y sus novedades llegarán aquí.",
-    "emptyLocal": "Todavía no se mueve nada en {place}: vuelve pronto, o sé quien empiece algo en la Plaza del pueblo.",
+    "emptyLocal": "Todavía no se mueve nada en {place}: vuelve pronto, o sé quien empiece algo en The Forum.",
     "exploreVenues": "Explorar locales",
-    "openTownHall": "Abrir la Plaza del pueblo",
+    "openTownHall": "Abrir The Forum",
     "caughtUp": "Estás al día",
     "exploreAround": "Explora lo que hay a tu alrededor",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Un negocio local",
     "viewPost": "Ver publicación",
-    "townHall": "Plaza del pueblo",
+    "townHall": "The Forum",
     "asked": "{author} preguntó",
     "replies": "{count, plural, one {# respuesta} other {# respuestas}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Personalizar",
     "nav": {
       "explore": "Explorar",
-      "townHall": "Plaza del pueblo",
+      "townHall": "The Forum",
       "plans": "Planes",
       "chat": "Chat",
       "deals": "Chollos",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "No se pudo cargar la Plaza del pueblo.",
+    "loadFailed": "No se pudo cargar The Forum.",
     "hero": {
       "kicker": "El foro local",
-      "title": "Plaza del pueblo",
+      "title": "The Forum",
       "body": "De qué habla la gente de tu zona ahora mismo. Haz una pregunta, comparte un consejo o vota lo que importa donde estás.",
       "startTopic": "Abrir un tema"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Plaza del pueblo",
+    "townHall": "The Forum",
     "loadFailed": "No se pudo cargar este tema.",
     "notFoundTitle": "Tema no encontrado",
     "notFoundBody": "Puede que se haya eliminado o que el enlace sea incorrecto.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# publicación} other {# publicaciones}} en todo Roam",
     "loadFailed": "No se pudo cargar #{tag}.",
     "emptyTitle": "Aún no hay nada con #{tag}",
-    "emptyBody": "Usa #{tag} en un tema de la Plaza del pueblo o en una publicación de muro y aparecerá aquí.",
+    "emptyBody": "Usa #{tag} en un tema de The Forum o en una publicación de muro y aparecerá aquí.",
     "sections": {
-      "townHall": "Debate en la Plaza del pueblo",
+      "townHall": "Debate en The Forum",
       "businesses": "De negocios locales",
       "locals": "De vecinos"
     },

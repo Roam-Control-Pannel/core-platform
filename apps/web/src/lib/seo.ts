@@ -339,14 +339,14 @@ export function topicMetadata(data: TopicSeo | null, id: string): Metadata {
   if (!data) return notFoundMeta(`/town-hall/${id}`);
   const { topic } = data;
   const title = topic.title;
-  const fallback = `${topic.title} — Town Hall discussion${topic.localityLabel ? ` in ${topic.localityLabel}` : ""} on Roam.`;
+  const fallback = `${topic.title} — Forum discussion${topic.localityLabel ? ` in ${topic.localityLabel}` : ""} on Roam.`;
   const description = clamp((topic.body && topic.body.trim()) || fallback);
   const url = absUrl(topicPath(topic, id));
   return {
     title,
     description,
     alternates: { canonical: url },
-    ...social({ title, description, url, type: "article", badge: `Town Hall · ${topic.localityLabel}` }),
+    ...social({ title, description, url, type: "article", badge: `The Forum · ${topic.localityLabel}` }),
   };
 }
 

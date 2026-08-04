@@ -40,7 +40,7 @@
     "nav": {
       "home": "Start",
       "explore": "Entdecken",
-      "townHall": "Stadtforum",
+      "townHall": "The Forum",
       "plans": "Pläne",
       "chat": "Chat",
       "you": "Du"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "Stadtforum",
-      "townHall": "Stadtforum",
+      "townHall": "The Forum",
       "error": "Das Forum konnte gerade nicht geladen werden.",
       "empty": "Noch keine Themen in {place}.",
       "startOne": "Starte eins →",
@@ -372,9 +372,9 @@
     "followingNudge": "Melde dich an und folge deinen lokalen Lieblingsunternehmen — ihre News, Angebote und Events landen hier.",
     "signIn": "Anmelden",
     "emptyFollowing": "Noch keine Posts von Locations, denen du folgst — folge ein paar unter Entdecken und ihre Updates landen hier.",
-    "emptyLocal": "In {place} tut sich gerade noch nichts — schau bald wieder rein oder starte selbst etwas im Stadtforum.",
+    "emptyLocal": "In {place} tut sich gerade noch nichts — schau bald wieder rein oder starte selbst etwas in The Forum.",
     "exploreVenues": "Locations entdecken",
-    "openTownHall": "Stadtforum öffnen",
+    "openTownHall": "The Forum öffnen",
     "caughtUp": "Du bist auf dem Laufenden",
     "exploreAround": "Entdecke, was um dich herum ist",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "Ein lokales Unternehmen",
     "viewPost": "Post ansehen",
-    "townHall": "Stadtforum",
+    "townHall": "The Forum",
     "asked": "{author} fragte",
     "replies": "{count, plural, one {# Antwort} other {# Antworten}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "Anpassen",
     "nav": {
       "explore": "Entdecken",
-      "townHall": "Stadtforum",
+      "townHall": "The Forum",
       "plans": "Pläne",
       "chat": "Chat",
       "deals": "Deals",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "Das Stadtforum konnte nicht geladen werden.",
+    "loadFailed": "The Forum konnte nicht geladen werden.",
     "hero": {
       "kicker": "Das lokale Forum",
-      "title": "Stadtforum",
+      "title": "The Forum",
       "body": "Worüber Locals gerade reden. Stell eine Frage, teile einen Tipp oder upvote, was dort zählt, wo du bist.",
       "startTopic": "Thema starten"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "Stadtforum",
+    "townHall": "The Forum",
     "loadFailed": "Dieses Thema konnte nicht geladen werden.",
     "notFoundTitle": "Thema nicht gefunden",
     "notFoundBody": "Es wurde vielleicht entfernt, oder der Link ist falsch.",
@@ -865,9 +865,9 @@
     "postCount": "{count, plural, one {# Post} other {# Posts}} auf ganz Roam",
     "loadFailed": "#{tag} konnte gerade nicht geladen werden.",
     "emptyTitle": "Noch nichts mit #{tag} getaggt",
-    "emptyBody": "Nutze #{tag} in einem Stadtforum-Thema oder Pinnwand-Post und es taucht hier auf.",
+    "emptyBody": "Nutze #{tag} in einem Thema in The Forum oder in einem Pinnwand-Post und es taucht hier auf.",
     "sections": {
-      "townHall": "Diskussion im Stadtforum",
+      "townHall": "Diskussion in The Forum",
       "businesses": "Von lokalen Unternehmen",
       "locals": "Von Locals"
     },

@@ -40,7 +40,7 @@
     "nav": {
       "home": "હોમ",
       "explore": "શોધો",
-      "townHall": "ટાઉન હૉલ",
+      "townHall": "The Forum",
       "plans": "પ્લાન",
       "chat": "ચેટ",
       "you": "તમે"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "ટાઉન ફોરમ",
-      "townHall": "ટાઉન હૉલ",
+      "townHall": "The Forum",
       "error": "ફોરમ હમણાં લોડ થઈ શક્યું નહીં.",
       "empty": "{place} માં હજુ કોઈ ટૉપિક નથી.",
       "startOne": "એક શરૂ કરો →",
@@ -372,9 +372,9 @@
     "followingNudge": "સાઇન ઇન કરીને તમારા મનપસંદ લોકલ બિઝનેસ ફોલો કરો — એમના સમાચાર, ઑફર અને ઇવેન્ટ અહીં આવશે.",
     "signIn": "સાઇન ઇન કરો",
     "emptyFollowing": "તમે ફોલો કરો છો તે વેન્યુની હજુ કોઈ પોસ્ટ નથી — શોધોમાં થોડાં ફોલો કરો અને એમનાં અપડેટ અહીં આવશે.",
-    "emptyLocal": "{place} માં હમણાં કંઈ ચાલી રહ્યું નથી — થોડી વારે ફરી જુઓ, અથવા ટાઉન હૉલમાં કંઈક શરૂ કરનાર તમે બનો.",
+    "emptyLocal": "{place} માં હમણાં કંઈ ચાલી રહ્યું નથી — થોડી વારે ફરી જુઓ, અથવા The Forum માં કંઈક શરૂ કરનાર તમે બનો.",
     "exploreVenues": "વેન્યુ શોધો",
-    "openTownHall": "ટાઉન હૉલ ખોલો",
+    "openTownHall": "The Forum ખોલો",
     "caughtUp": "તમે બધું જોઈ લીધું",
     "exploreAround": "તમારી આસપાસ શું છે તે શોધો",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "એક લોકલ બિઝનેસ",
     "viewPost": "પોસ્ટ જુઓ",
-    "townHall": "ટાઉન હૉલ",
+    "townHall": "The Forum",
     "asked": "{author} એ પૂછ્યું",
     "replies": "{count, plural, one {# જવાબ} other {# જવાબો}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "કસ્ટમાઇઝ કરો",
     "nav": {
       "explore": "શોધો",
-      "townHall": "ટાઉન હૉલ",
+      "townHall": "The Forum",
       "plans": "પ્લાન",
       "chat": "ચેટ",
       "deals": "ડીલ",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "ટાઉન હૉલ લોડ થઈ શક્યો નહીં.",
+    "loadFailed": "The Forum લોડ થઈ શક્યો નહીં.",
     "hero": {
       "kicker": "લોકલ ફોરમ",
-      "title": "ટાઉન હૉલ",
+      "title": "The Forum",
       "body": "લોકલ લોકો અત્યારે શાની વાત કરે છે. સવાલ પૂછો, ટિપ શેર કરો, અથવા તમારા વિસ્તારમાં જે મહત્ત્વનું છે તેને અપવોટ કરો.",
       "startTopic": "ટૉપિક શરૂ કરો"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "ટાઉન હૉલ",
+    "townHall": "The Forum",
     "loadFailed": "આ ટૉપિક લોડ થઈ શક્યો નહીં.",
     "notFoundTitle": "ટૉપિક મળ્યો નહીં",
     "notFoundBody": "એ કદાચ દૂર થયો હોય, અથવા લિંક ખોટી છે.",
@@ -865,9 +865,9 @@
     "postCount": "Roam પર કુલ {count, plural, one {# પોસ્ટ} other {# પોસ્ટ}}",
     "loadFailed": "#{tag} હમણાં લોડ થઈ શક્યું નહીં.",
     "emptyTitle": "#{tag} ટૅગવાળું હજુ કંઈ નથી",
-    "emptyBody": "ટાઉન હૉલ ટૉપિકમાં કે વૉલ પોસ્ટમાં #{tag} વાપરો અને એ અહીં દેખાશે.",
+    "emptyBody": "The Forum ટૉપિકમાં કે વૉલ પોસ્ટમાં #{tag} વાપરો અને એ અહીં દેખાશે.",
     "sections": {
-      "townHall": "ટાઉન હૉલ ચર્ચા",
+      "townHall": "The Forum ચર્ચા",
       "businesses": "લોકલ બિઝનેસ તરફથી",
       "locals": "લોકલ લોકો તરફથી"
     },

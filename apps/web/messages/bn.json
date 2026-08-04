@@ -40,7 +40,7 @@
     "nav": {
       "home": "হোম",
       "explore": "ঘুরে দেখুন",
-      "townHall": "টাউন হল",
+      "townHall": "The Forum",
       "plans": "প্ল্যান",
       "chat": "চ্যাট",
       "you": "আপনি"
@@ -323,7 +323,7 @@
     },
     "townForum": {
       "title": "শহরের ফোরাম",
-      "townHall": "টাউন হল",
+      "townHall": "The Forum",
       "error": "ফোরামটি এখন লোড করা গেল না।",
       "empty": "{place}-এ এখনও কোনো টপিক নেই।",
       "startOne": "একটি শুরু করুন →",
@@ -372,9 +372,9 @@
     "followingNudge": "সাইন ইন করে প্রিয় লোকাল ব্যবসাগুলো ফলো করুন — তাদের খবর, অফার ও ইভেন্ট এখানে এসে পৌঁছাবে।",
     "signIn": "সাইন ইন",
     "emptyFollowing": "আপনার ফলো করা ভেন্যুগুলোর কোনো পোস্ট এখনও নেই — ঘুরে দেখুন থেকে কয়েকটি ফলো করুন, তাদের আপডেট এখানেই আসবে।",
-    "emptyLocal": "{place}-এ এখনই তেমন কিছু ঘটছে না — একটু পরে আবার দেখুন, অথবা টাউন হলে আপনিই কিছু শুরু করে দিন।",
+    "emptyLocal": "{place}-এ এখনই তেমন কিছু ঘটছে না — একটু পরে আবার দেখুন, অথবা The Forum-এ আপনিই কিছু শুরু করে দিন।",
     "exploreVenues": "ভেন্যু ঘুরে দেখুন",
-    "openTownHall": "টাউন হল খুলুন",
+    "openTownHall": "The Forum খুলুন",
     "caughtUp": "সব দেখা শেষ",
     "exploreAround": "আশেপাশে কী আছে ঘুরে দেখুন",
     "kind": {
@@ -384,7 +384,7 @@
     },
     "aLocalBusiness": "একটি লোকাল ব্যবসা",
     "viewPost": "পোস্ট দেখুন",
-    "townHall": "টাউন হল",
+    "townHall": "The Forum",
     "asked": "{author} জিজ্ঞেস করেছেন",
     "replies": "{count, plural, one {#টি রিপ্লাই} other {#টি রিপ্লাই}}",
     "pioneer": {}
@@ -404,7 +404,7 @@
     "customise": "কাস্টমাইজ",
     "nav": {
       "explore": "ঘুরে দেখুন",
-      "townHall": "টাউন হল",
+      "townHall": "The Forum",
       "plans": "প্ল্যান",
       "chat": "চ্যাট",
       "deals": "ডিল",
@@ -774,10 +774,10 @@
     }
   },
   "townHall": {
-    "loadFailed": "টাউন হল লোড করা গেল না।",
+    "loadFailed": "The Forum লোড করা গেল না।",
     "hero": {
       "kicker": "লোকাল ফোরাম",
-      "title": "টাউন হল",
+      "title": "The Forum",
       "body": "এলাকার মানুষজন এখন যা নিয়ে কথা বলছে। প্রশ্ন করুন, টিপস দিন, বা আপনার এলাকায় যা জরুরি তাতে আপভোট দিন।",
       "startTopic": "টপিক শুরু করুন"
     },
@@ -823,7 +823,7 @@
     }
   },
   "townHallTopic": {
-    "townHall": "টাউন হল",
+    "townHall": "The Forum",
     "loadFailed": "এই টপিকটি লোড করা গেল না।",
     "notFoundTitle": "টপিক পাওয়া যায়নি",
     "notFoundBody": "এটি হয়তো সরিয়ে ফেলা হয়েছে, অথবা লিঙ্কটি ভুল।",
@@ -865,9 +865,9 @@
     "postCount": "Roam জুড়ে {count, plural, one {#টি পোস্ট} other {#টি পোস্ট}}",
     "loadFailed": "#{tag} এখন লোড করা গেল না।",
     "emptyTitle": "#{tag} ট্যাগে এখনও কিছু নেই",
-    "emptyBody": "টাউন হলের টপিকে বা ওয়াল পোস্টে #{tag} ব্যবহার করুন, তা এখানে দেখাবে।",
+    "emptyBody": "The Forum-এর টপিকে বা ওয়াল পোস্টে #{tag} ব্যবহার করুন, তা এখানে দেখাবে।",
     "sections": {
-      "townHall": "টাউন হল আলোচনা",
+      "townHall": "The Forum আলোচনা",
       "businesses": "লোকাল ব্যবসাগুলো থেকে",
       "locals": "স্থানীয়দের কাছ থেকে"
     },
