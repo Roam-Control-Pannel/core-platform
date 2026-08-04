@@ -896,7 +896,10 @@
     "widget": {
       "allDeals": "All deals",
       "code": "CODE"
-    }
+    },
+    "allCategories": "All",
+    "loadMore": "Load more deals",
+    "loadingMore": "Loading…"
   },
   "offerCard": {
     "signInToSave": "Sign in to save deals.",
