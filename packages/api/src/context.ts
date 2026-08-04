@@ -105,6 +105,8 @@ export interface ApiEnv {
     promotionType: string | null;
     /** Keep only promotional links (default true; CJ_ALL_LINKS=1 disables the gate). */
     promotionalOnly: boolean;
+    /** Cap deals kept per category (0 = unlimited) so no category dominates. CJ_MAX_PER_CATEGORY. */
+    maxPerCategory: number;
     region: string;
     debug: boolean;
   };

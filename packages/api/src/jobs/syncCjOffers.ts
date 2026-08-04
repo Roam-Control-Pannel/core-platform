@@ -99,6 +99,7 @@ async function main(): Promise<void> {
     linkType: process.env.CJ_LINK_TYPE ?? null,
     promotionType: process.env.CJ_PROMOTION_TYPE ?? null,
     promotionalOnly: !(process.env.CJ_ALL_LINKS === "1" || process.env.CJ_ALL_LINKS === "true"),
+    maxPerCategory: Number(process.env.CJ_MAX_PER_CATEGORY ?? "0") || 0,
     region: process.env.CJ_REGION ?? "GB",
     debug: process.env.CJ_DEBUG === "1" || process.env.CJ_DEBUG === "true",
   };

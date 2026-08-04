@@ -899,7 +899,9 @@
     },
     "allCategories": "All",
     "loadMore": "Load more deals",
-    "loadingMore": "Loading…"
+    "loadingMore": "Loading…",
+    "searchPlaceholder": "Search deals or brands…",
+    "searchAria": "Search deals"
   },
   "offerCard": {
     "signInToSave": "Sign in to save deals.",

@@ -34,6 +34,9 @@ export interface CjConfig {
   /** Keep only links with a promotional signal (coupon/promo-type/end-date) so the surface is deals,
    *  not generic homepage links. Default true; set CJ_ALL_LINKS=1 to keep everything. */
   promotionalOnly: boolean;
+  /** Cap deals kept per category so no single category (e.g. Vacation) dominates the surface.
+   *  0 = unlimited. Set CJ_MAX_PER_CATEGORY to balance the mix. */
+  maxPerCategory: number;
   /** Optional locality tag stored on each row for later geo-relevance; null = global. */
   region: string;
   debug: boolean;
@@ -166,6 +169,32 @@ const val = (o: Record<string, string>, ...keys: string[]): string | null => {
 };
 
 /**
+ * A CJ banner/image link's `link-name` is its creative filename — "Generic_120x90",
+ * "Chicago_spanish_468x60" — not a human offer title. Detect those so we can prefer the description
+ * instead (and drop the link entirely if there's nothing readable).
+ */
+export function looksLikeCreativeName(name: string): boolean {
+  return (
+    /\d{2,4}\s*[x×]\s*\d{2,4}/i.test(name) || // banner dimensions: 120x90, 468x60, 728x90
+    /^generic\b/i.test(name) ||
+    /\.(gif|jpe?g|png|svg)$/i.test(name) // an image filename
+  );
+}
+
+/** Tidy a raw name/description for display: underscores → spaces, collapse whitespace. */
+export function prettifyTitle(s: string): string {
+  return s.replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Choose the best human title: a non-creative link-name, else the description, else null (a pure
+ *  banner creative with no text — dropped so we never show "Generic_120x90" as a deal). */
+function bestTitle(rawName: string | null, description: string | null): string | null {
+  if (rawName && !looksLikeCreativeName(rawName)) return prettifyTitle(rawName);
+  if (description) return prettifyTitle(description);
+  return null;
+}
+
+/**
  * Map a raw CJ link (flat field bag from XML or JSON) to our CjDeal, reading each field from several
  * plausible names. Returns null when a structural essential is missing (id, advertiser, title, or a
  * clickUrl) — the promotional-signal filter is applied separately in retrieveDeals (config-driven).
@@ -173,7 +202,8 @@ const val = (o: Record<string, string>, ...keys: string[]): string | null => {
 export function normalizeLink(raw: Record<string, string>): CjDeal | null {
   const linkId = val(raw, "link-id", "linkId", "id");
   const advertiserId = val(raw, "advertiser-id", "advertiserId", "cid");
-  const title = val(raw, "link-name", "linkName", "name", "description");
+  const description = val(raw, "description", "link-description");
+  const title = bestTitle(val(raw, "link-name", "linkName", "name"), description);
   const destinationUrl = val(raw, "clickUrl", "click-url", "clickURL", "clickurl");
   if (!linkId || !advertiserId || !title || !destinationUrl) return null;
 
@@ -187,7 +217,7 @@ export function normalizeLink(raw: Record<string, string>): CjDeal | null {
     advertiserId,
     advertiserName: val(raw, "advertiser-name", "advertiserName"),
     title,
-    description: val(raw, "description", "link-description"),
+    description,
     kind,
     voucherCode,
     destinationUrl,
@@ -260,6 +290,22 @@ export async function retrieveDeals(cfg: CjConfig, log: (m: string) => void = ()
   }
 
   if (droppedNonPromo > 0) log(`cj: skipped ${droppedNonPromo} non-promotional link(s).`);
-  if (droppedStruct > 0) log(`cj: skipped ${droppedStruct} link(s) missing required fields.`);
+  if (droppedStruct > 0) log(`cj: skipped ${droppedStruct} link(s) missing a title / required fields.`);
+
+  // Balance the mix: cap deals kept per category so one category (e.g. Vacation) can't dominate.
+  if (cfg.maxPerCategory > 0) {
+    const perCat = new Map<string, number>();
+    const capped: CjDeal[] = [];
+    let droppedCap = 0;
+    for (const d of out) {
+      const key = (d.category ?? "").toLowerCase();
+      const n = perCat.get(key) ?? 0;
+      if (n >= cfg.maxPerCategory) { droppedCap++; continue; }
+      perCat.set(key, n + 1);
+      capped.push(d);
+    }
+    if (droppedCap > 0) log(`cj: capped ${droppedCap} link(s) over ${cfg.maxPerCategory}/category.`);
+    return capped;
+  }
   return out;
 }
