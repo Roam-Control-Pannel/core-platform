@@ -113,8 +113,8 @@ function StatsBlock({ version }: { version: number }) {
   const bars: Bar[] = weekly.map((w, i) => ({ value: w.count, highlight: i === weekly.length - 1, title: `${w.weekStart}: ${w.count}` }));
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="hq-heroes">
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }} className="hq-heroes">
         {/* Left hero — new-member velocity (proxy for "active users"). */}
         <Panel style={{ padding: 24 }}>
           <Label>New members · last 7 days</Label>
