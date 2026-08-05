@@ -12,12 +12,12 @@
  *   2. Departure-Monitor (XML_DM_REQUEST) — the live board for one stop id.
  * Both return rapidJSON and both carry the key.
  *
- * THE KEY — auth is SELF-TUNING. Translink's licence dictates whether the key rides as a query
- * param or an HTTP header, and that wasn't unambiguous in the spec, so rather than force a guess
- * we try the configured mode first and, if Translink rejects it with an auth status (401/403/407),
- * automatically retry in the OTHER mode. The mode that works is PINNED for the rest of the
- * process, so it's a one-time cost. Which mode won is logged once, so the deploy logs tell us the
- * answer definitively — then we can set TRANSLINK_AUTH_MODE explicitly to skip the probing.
+ * THE KEY — CONFIRMED (Gary @ Translink, Aug 2026): the key is sent as an HTTP header named
+ * `X-API-TOKEN` (verified 200 OK via Translink's own Postman collection), which is the default the
+ * config resolves to. The client still keeps the OTHER injection (query param) as an automatic
+ * fallback: it tries the primary, and on an auth-status rejection (401/403/407) retries in the
+ * alternate mode, pinning + logging whichever wins. That's a safety net against a future change in
+ * Translink's licence, not an open question — set TRANSLINK_AUTH_MODE to skip the fallback entirely.
  *
  * The key itself is read from env at the call boundary (server-only) and passed in via EfaConfig,
  * never read from process.env here, so the module stays drivable with an injected fetch.
@@ -101,6 +101,11 @@ function proxyDispatcher(proxyUrl: string): unknown {
  * Best-effort: log the public egress IP AS TRANSLINK SEES US — i.e. through the proxy dispatcher
  * when one is set, so the logged IP is the fixed one to register. Uses a neutral IP-echo (not
  * gated, so it answers). Once per process, swallows all errors — purely diagnostic.
+ *
+ * NOTE: the primary cause of a 401 here is a wrong/missing auth header — auth is the confirmed
+ * `X-API-TOKEN` header (see the module header). This egress log is the SECONDARY diagnostic: if the
+ * header is correct and Translink still 401s, an IP/subscriber gate is the next suspect, and this
+ * tells us which IP to register. Kept as dormant plumbing; only meaningful once auth is ruled out.
  */
 async function logEgressIp(dispatcher?: unknown): Promise<void> {
   if (egressLogged) return;
@@ -114,10 +119,10 @@ async function logEgressIp(dispatcher?: unknown): Promise<void> {
     if (!res.ok) return;
     const data = (await res.json()) as { ip?: string };
     if (data.ip) {
-      const via = dispatcher ? " (via proxy — this is the FIXED IP to register)" : " (Railway dynamic egress — rotates)";
+      const via = dispatcher ? " (via proxy — the FIXED IP to register if Translink IP-gates)" : " (Railway dynamic egress — rotates)";
       console.log(
-        `[transit] outbound egress IP as Translink sees us is ${data.ip}${via} — Translink must ` +
-          `AUTHORIZE this IP as a subscriber (the 401 "Please authorize" means our source isn't recognised).`,
+        `[transit] outbound egress IP as Translink sees us is ${data.ip}${via}. If auth is correct ` +
+          `(X-API-TOKEN header) and calls still 401, ask Translink whether our source IP must be allow-listed.`,
       );
     }
   } catch {
@@ -211,8 +216,10 @@ async function efaRequest(
       console.log(
         `[transit] ${endpoint} ${res.status} ${res.statusText} · headers[${diag.join(" | ")}] · body: ${body.slice(0, 220)}`,
       );
-      // A 401/403 with no www-authenticate is a subscriber/IP gate, not a credential challenge —
-      // log our egress IP (through the proxy if set) so it can be registered with Translink.
+      // A 401/403 most likely means the auth header is wrong (it must be `X-API-TOKEN`); the client
+      // already retries the alternate mode. If auth is confirmed and it STILL 401s with no
+      // www-authenticate, a subscriber/IP gate is the next suspect — log our egress IP (through the
+      // proxy if set) as the secondary diagnostic so it can be registered with Translink.
       if (res.status === 401 || res.status === 403) void logEgressIp(dispatcher);
     }
     if (AUTH_REJECT_STATUSES.has(res.status) && attempts.length > 1) {
