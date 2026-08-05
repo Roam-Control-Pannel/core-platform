@@ -119,28 +119,30 @@ function loadEnv(): ApiEnv {
   };
 }
 
-/** The documented Translink Opendata EFA base (overridable, e.g. to swap to an https endpoint). */
-const TRANSLINK_DEFAULT_BASE = "http://opendata.translinkniplanner.co.uk/Ext_API/";
+/** The documented Translink Opendata EFA base (overridable). https per Translink's own examples. */
+const TRANSLINK_DEFAULT_BASE = "https://opendata.translinkniplanner.co.uk/Ext_API/";
 
 /**
  * Resolve the Translink EFA config from env, or null when no key is set.
  *
- * The auth injection is SELF-TUNING: Translink's licence decides whether the key is a query
- * param or a header, and the spec was ambiguous, so we build BOTH forms and let the client try
- * the primary then fall back to the alternate on an auth rejection (it pins + logs whichever
- * works). Set TRANSLINK_AUTH_MODE once the logs reveal the answer to skip the probe.
- *   - TRANSLINK_AUTH_MODE = query (default) | header   → the primary (tried first)
+ * AUTH — CONFIRMED (Gary @ Translink, Aug 2026): the key rides as an HTTP header named
+ * `X-API-TOKEN` (verified working, 200 OK, via Translink's own Postman collection). Those are the
+ * defaults below, so it works out of the box. The query-param form is retained as an automatic
+ * FALLBACK (the client tries the primary, then the alternate on an auth-status rejection, pinning
+ * + logging whichever wins) — a cheap safety net if Translink ever changes the injection, not
+ * because the answer is unknown. Every knob stays overridable via env:
+ *   - TRANSLINK_AUTH_MODE = header (default) | query   → the primary (tried first)
+ *   - header name       from TRANSLINK_AUTH_HEADER (default "X-API-TOKEN")
  *   - query param name  from TRANSLINK_AUTH_PARAM  (default "key")
- *   - header name       from TRANSLINK_AUTH_HEADER (default "Authorization")
  *   - TRANSLINK_DEBUG=1 logs the raw (truncated) EFA JSON so a deploy can confirm the shape.
  */
 function loadTransitConfig(): EfaConfig | null {
   const value = process.env.TRANSLINK_API_KEY;
   if (!value) return null;
   const baseUrl = process.env.TRANSLINK_API_BASE ?? TRANSLINK_DEFAULT_BASE;
-  const mode = process.env.TRANSLINK_AUTH_MODE === "header" ? "header" : "query";
+  const mode = process.env.TRANSLINK_AUTH_MODE === "query" ? "query" : "header";
   const paramName = process.env.TRANSLINK_AUTH_PARAM ?? "key";
-  const headerName = process.env.TRANSLINK_AUTH_HEADER ?? "Authorization";
+  const headerName = process.env.TRANSLINK_AUTH_HEADER ?? "X-API-TOKEN";
 
   const queryAuth = { mode: "query" as const, name: paramName, value };
   const headerAuth = { mode: "header" as const, name: headerName, value };

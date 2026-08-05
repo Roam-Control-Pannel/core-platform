@@ -45,20 +45,22 @@ Only the key is required. Set it on the **`core-platform`** service:
 TRANSLINK_API_KEY=<your key>
 ```
 
-**How the key rides on each request** is Translink-specific — but the client **auto-detects it**,
-so you don't have to know up front. It tries the primary mode, falls back to the other on an auth
-rejection (401/403/407), then **pins + logs** whichever Translink accepts:
+**How the key rides on each request** is CONFIRMED (Translink, Aug 2026): the key is sent as the
+HTTP header **`X-API-TOKEN`** — verified working (200 OK) against Translink's own Postman
+collection. That's the default, so no extra config is needed. The client also keeps the query-param
+form as an **automatic fallback**: it tries the header, falls back on an auth rejection
+(401/403/407), then **pins + logs** whichever Translink accepts:
 
 ```
-[transit] EFA auth accepted — mode='query' name='key'. Set TRANSLINK_AUTH_MODE='query' to pin it and skip probing.
+[transit] EFA auth accepted — mode='header' name='X-API-TOKEN'. Set TRANSLINK_AUTH_MODE='header' to pin it and skip probing.
 ```
 
-Once the logs reveal the answer, set it explicitly to skip the probe:
+You normally don't touch these; override only if Translink ever changes the injection:
 
+- **HTTP header** (default): `TRANSLINK_AUTH_MODE=header`, header name from `TRANSLINK_AUTH_HEADER`
+  (default `X-API-TOKEN`) → `X-API-TOKEN: <KEY>`.
 - **Query parameter**: `TRANSLINK_AUTH_MODE=query`, param name from `TRANSLINK_AUTH_PARAM`
   (default `key`) → `…XML_DM_REQUEST?…&key=<KEY>`.
-- **HTTP header**: `TRANSLINK_AUTH_MODE=header`, header name from `TRANSLINK_AUTH_HEADER`
-  (default `Authorization`) → `Authorization: <KEY>`.
 
 Optional:
 - `TRANSLINK_API_BASE` overrides the EFA base URL. **Use `https://`** — the `http://` endpoint
@@ -66,15 +68,17 @@ Optional:
 - `TRANSLINK_DEBUG=1` logs the raw (truncated) EFA JSON + the resolved board — **set it for the
   first live verification**, read one Belfast load's logs, then unset it.
 
-### Authorization is by SERVER IP, via a static-IP proxy (`TRANSLINK_PROXY_URL`)
+### If (and only if) Translink also gates by SERVER IP — static-IP proxy (`TRANSLINK_PROXY_URL`)
 
-The Translink Opendata API is **keyless** — access is granted by **authorizing your server's IP**
-as a subscriber (a 401 `"Please authorize"` with no `www-authenticate` header = your IP isn't on
-their list). Railway's egress IP **rotates within a `/23` pool** (observed `152.55.176.x` /
-`152.55.177.x` across deploys), so a single Railway IP can't be registered.
+Auth is by the `X-API-TOKEN` key (above), **not** by IP — earlier deploys that saw a 401
+`"Please authorize"` were sending the wrong header name, not being IP-blocked. So this section is a
+**dormant fallback**: keep it in mind only if the key is confirmed correct and calls *still* 401
+with no `www-authenticate` header, which would indicate Translink additionally allow-lists source
+IPs on your subscription. (Railway's egress IP **rotates within a `/23` pool** — observed
+`152.55.176.x` / `152.55.177.x` across deploys — so a single Railway IP can't be registered.)
 
-The fix: route the Translink calls through a **static-IP forward proxy** and register the *proxy's*
-fixed IP with Translink.
+If that turns out to be the case, route the calls through a **static-IP forward proxy** and register
+the *proxy's* fixed IP with Translink:
 
 1. Provision a static-IP HTTP proxy — **QuotaGuard Static** (free tier) or **Fixie**. You get a URL
    like `http://user:pass@static.quotaguard.com:9293` and one or two fixed IPs.
@@ -83,10 +87,9 @@ fixed IP with Translink.
    TRANSLINK_PROXY_URL=http://user:pass@static.quotaguard.com:9293
    ```
    When set, every EFA call **and** the egress-IP probe route through it. With `TRANSLINK_DEBUG=1`,
-   the log then prints the **proxy's** IP (`… via proxy — this is the FIXED IP to register …`).
+   the log prints the **proxy's** IP (`… via proxy — the FIXED IP to register …`).
 3. Email Translink to authorize that fixed IP on your subscription.
-4. Once authorized, the 401 becomes 200 and the card goes live. Then pin `TRANSLINK_AUTH_MODE` is
-   unnecessary (keyless), and you can drop `TRANSLINK_DEBUG`.
+4. Once authorized, the 401 becomes 200 and the card goes live; you can drop `TRANSLINK_DEBUG`.
 
 Until `TRANSLINK_API_KEY` is set, the feature is dormant (`nearbyDepartures` returns
 `status: "unconfigured"`) and the API still boots.
