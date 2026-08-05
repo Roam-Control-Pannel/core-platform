@@ -39,6 +39,10 @@ import { marketRouter } from "./market.js";
 import { listingsRouter } from "./listings.js";
 import { tagsRouter } from "./tags.js";
 import { reviewsRouter } from "./reviews.js";
+import { adminMetricsRouter } from "./adminMetrics.js";
+import { adminActivityRouter } from "./adminActivity.js";
+import { adminSearchRouter } from "./adminSearch.js";
+import { adminActionsRouter } from "./adminActions.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -75,6 +79,10 @@ export const appRouter = router({
   listings: listingsRouter,
   tags: tagsRouter,
   reviews: reviewsRouter,
+  adminMetrics: adminMetricsRouter,
+  adminActivity: adminActivityRouter,
+  adminSearch: adminSearchRouter,
+  adminActions: adminActionsRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */

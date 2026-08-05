@@ -164,10 +164,12 @@ const createContext = makeContextFactory(env);
 
 /**
  * Allowed browser origins for CORS. Comma-separated CORS_ALLOWED_ORIGINS in prod;
- * sensible local Next origins (3000/3001) in dev. Read once at boot.
+ * sensible local Next origins in dev — web (3000), business console (3001), and Roam
+ * HQ admin (3002). Read once at boot.
  */
 const allowedOrigins: string[] = (
-  process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:3000,http://localhost:3001"
+  process.env.CORS_ALLOWED_ORIGINS ??
+  "http://localhost:3000,http://localhost:3001,http://localhost:3002"
 )
   .split(",")
   .map((o) => o.trim())
