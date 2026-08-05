@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./admin": "./src/admin/index.ts",
     "./meetup": "./src/meetup/index.ts",
     "./posts": "./src/posts/index.ts",
     "./push": "./src/push/index.ts",

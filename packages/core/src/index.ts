@@ -6,6 +6,7 @@
  *
  * Modules are also importable directly (e.g. `@roam/core/meetup`) for tree-shaking.
  */
+export * as admin from "./admin/index.js";
 export * as meetup from "./meetup/index.js";
 export * as credits from "./credits/index.js";
 export * as geo from "./geo/index.js";
