@@ -72,12 +72,12 @@ export function BigStat({
 /** A KPI cell for the bordered strip: value, caption, optional sub-note. */
 export function Kpi({ value, caption, note }: { value: ReactNode; caption: ReactNode; note?: ReactNode }) {
   return (
-    <div style={{ padding: "18px 20px" }}>
-      <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 30, lineHeight: 1, letterSpacing: "-.02em", color: C.ink }}>
+    <div style={{ padding: "13px 15px" }}>
+      <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 27, lineHeight: 1, letterSpacing: "-.02em", color: C.ink }}>
         {value}
       </div>
-      <div style={{ ...labelStyle, marginTop: 8 }}>{caption}</div>
-      {note ? <div style={{ fontFamily: F.mono, fontSize: 11, color: C.muted, marginTop: 4 }}>{note}</div> : null}
+      <div style={{ ...labelStyle, marginTop: 5 }}>{caption}</div>
+      {note ? <div style={{ fontFamily: F.mono, fontSize: 10.5, color: C.muted, marginTop: 2 }}>{note}</div> : null}
     </div>
   );
 }
