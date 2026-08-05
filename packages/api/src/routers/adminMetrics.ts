@@ -57,4 +57,56 @@ export const adminMetricsRouter = router({
       });
     }
   }),
+
+  /** The Overview page's KPI strip + engagement hero, in one call. */
+  overview: adminProcedure.query(async ({ ctx }) => {
+    try {
+      return await admin.getOverview(ctx.service);
+    } catch (e) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: e instanceof Error ? e.message : "Failed to load overview.",
+      });
+    }
+  }),
+
+  /** New members per rolling week (the "active users" hero proxy). */
+  memberWeekly: adminProcedure
+    .input(z.object({ weeks: z.number().int().min(4).max(26).default(14) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.getMemberWeekly(ctx.service, input.weeks);
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Failed to load member trend.",
+        });
+      }
+    }),
+
+  /** The "Needs You" counts (open reports, pending claims, flags, wall posts). */
+  needsYou: adminProcedure.query(async ({ ctx }) => {
+    try {
+      return await admin.getNeedsYou(ctx.service);
+    } catch (e) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: e instanceof Error ? e.message : "Failed to load Needs You.",
+      });
+    }
+  }),
+
+  /** Top localities by forum activity over a window. */
+  topPlaces: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(90).default(7), limit: z.number().int().min(1).max(20).default(5) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.getTopPlaces(ctx.service, input.days, input.limit);
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Failed to load top places.",
+        });
+      }
+    }),
 });

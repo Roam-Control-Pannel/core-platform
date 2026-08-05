@@ -7,6 +7,7 @@
  * is observe-only in v1; the one privileged write (the audit log) lands in Phase 3.
  */
 export * from "./metrics.js";
+export * from "./overview.js";
 export * from "./activity.js";
 export * from "./directory.js";
 export * from "./safety.js";
