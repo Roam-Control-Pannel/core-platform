@@ -1,0 +1,111 @@
+/* GENERATED from @roam/design — do not hand-edit.
+   Source of truth: packages/design/src/tokens. Regenerate via apps/web gen:css. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --crimson: #C2123F;
+  --crimson-500: #D6214E;
+  --crimson-600: #B01038;
+  --crimson-700: #9D0F33;
+  --crimson-tint: #FBE6EC;
+  --crimson-tint-2: #F6D2DD;
+  --gold: #CAA14A;
+  --gold-tint: #F7EFDA;
+  --success: #1F8A5B;
+  --success-tint: #E3F3EA;
+  --info: #2A5FB0;
+  --info-tint: #E6EEFB;
+  --paper: #F6F3EF;
+  --paper-2: #EFE9E2;
+  --card: #FFFFFF;
+  --ink: #211D1A;
+  --ink-hi: #1A1714;
+  --ink-2: #4D463F;
+  --muted: #857C72;
+  --faint: #AAA093;
+  --line: #E4DED6;
+  --line-2: #D6CEC3;
+  --display: 'Space Grotesk', system-ui, sans-serif;
+  --ui: 'Schibsted Grotesk', system-ui, sans-serif;
+  --mono: 'Space Mono', ui-monospace, monospace;
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --r-sm: 7px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-phone: 32px;
+  --r-full: 9999px;
+  --sh-1: 0 1px 2px rgba(33,29,26,.06);
+  --sh-2: 0 6px 22px rgba(33,29,26,.10);
+  --sh-3: 0 18px 50px rgba(33,29,26,.14);
+  --shadow-key: 0 1px 2px rgba(33,29,26,.05),0 8px 24px rgba(33,29,26,.07);
+  --shadow-pop: 0 2px 6px rgba(33,29,26,.06),0 20px 48px rgba(33,29,26,.16);
+  --motion-tap: 120ms;
+  --motion-transition: 240ms;
+  --motion-sheet: 320ms;
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --ease-tap: ease-out;
+}
+
+.t-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.t-h1 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: 0em;
+}
+
+.t-h2 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0em;
+}
+
+.t-h3 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0em;
+}
+
+.t-body {
+  font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0em;
+}
+
+.t-body-s {
+  font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0em;
+}
+
+.t-mono-label {
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--ui); -webkit-font-smoothing: antialiased; }

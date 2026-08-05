@@ -27,6 +27,52 @@ importers:
         specifier: ^3.0.0
         version: 3.2.6(@types/node@22.19.19)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  apps/admin:
+    dependencies:
+      '@roam/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@roam/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@roam/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@supabase/supabase-js':
+        specifier: ^2.47.0
+        version: 2.108.1
+      '@trpc/client':
+        specifier: ^11.0.0
+        version: 11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3)
+      '@trpc/server':
+        specifier: ^11.0.0
+        version: 11.17.0(typescript@6.0.3)
+      next:
+        specifier: ^16.0.0
+        version: 16.2.7(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@roam/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.19
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.16
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.16)
+      typescript:
+        specifier: ^6.0.0
+        version: 6.0.3
+
   apps/console:
     dependencies:
       '@roam/api':
@@ -8701,6 +8747,31 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
+  next@16.2.7(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      '@next/env': 16.2.7
+      '@swc/helpers': 0.5.15
+      baseline-browser-mapping: 2.10.33
+      caniuse-lite: 1.0.30001793
+      postcss: 8.4.31
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      styled-jsx: 5.1.6(react@19.2.3)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.2.7
+      '@next/swc-darwin-x64': 16.2.7
+      '@next/swc-linux-arm64-gnu': 16.2.7
+      '@next/swc-linux-arm64-musl': 16.2.7
+      '@next/swc-linux-x64-gnu': 16.2.7
+      '@next/swc-linux-x64-musl': 16.2.7
+      '@next/swc-win32-arm64-msvc': 16.2.7
+      '@next/swc-win32-x64-msvc': 16.2.7
+      babel-plugin-react-compiler: 1.0.0
+      sharp: 0.34.5
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+
   next@16.2.7(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@next/env': 16.2.7
@@ -9365,6 +9436,11 @@ snapshots:
       js-tokens: 9.0.1
 
   structured-headers@0.4.1: {}
+
+  styled-jsx@5.1.6(react@19.2.3):
+    dependencies:
+      client-only: 0.0.1
+      react: 19.2.3
 
   styled-jsx@5.1.6(react@19.2.7):
     dependencies:

@@ -11,6 +11,15 @@ import { admin } from "@roam/core";
 import { router, adminProcedure } from "../trpc.js";
 
 export const adminMetricsRouter = router({
+  /**
+   * The staff gate + identity. Returns the caller's HQ id and role; a non-staff caller
+   * never reaches here (adminProcedure throws FORBIDDEN), which the UI reads as
+   * "not authorised". Cheap, so the dashboard can gate on it before loading anything.
+   */
+  me: adminProcedure.query(({ ctx }) => {
+    return { id: ctx.admin.id, role: ctx.admin.role };
+  }),
+
   /** The top-strip pulse: signups, venues, recent content. */
   pulse: adminProcedure.query(async ({ ctx }) => {
     try {
