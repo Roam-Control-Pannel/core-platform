@@ -23,6 +23,7 @@ import { ContentBreakdown } from "./ContentBreakdown";
 import { ActivityFeed } from "./ActivityFeed";
 import { ModerationQueue } from "./ModerationQueue";
 import { Lookup } from "./Lookup";
+import { AuditLog } from "./AuditLog";
 
 type Gate = "checking" | "ok" | "forbidden" | "error";
 
@@ -108,11 +109,12 @@ function StaffGate() {
 }
 
 function Dashboard({ role }: { role: string }) {
+  const canAct = role === "admin" || role === "owner";
   return (
     <div style={{ display: "grid", gap: "var(--space-6)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
         <Pill variant="ghost-crim" size="sm">{role}</Pill>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>observe-only · v1</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{canAct ? "can act" : "observe-only"}</span>
       </div>
 
       <Pulse />
@@ -124,10 +126,12 @@ function Dashboard({ role }: { role: string }) {
 
       <div style={{ display: "grid", gap: "var(--space-4)", gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)" }} className="hq-two-col">
         <ActivityFeed />
-        <ModerationQueue />
+        <ModerationQueue canAct={canAct} />
       </div>
 
-      <Lookup />
+      <Lookup canAct={canAct} />
+
+      {canAct ? <AuditLog /> : null}
 
       <style>{`@media (max-width: 860px){ .hq-two-col{ grid-template-columns: 1fr !important; } }`}</style>
     </div>

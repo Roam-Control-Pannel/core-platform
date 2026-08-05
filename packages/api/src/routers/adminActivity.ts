@@ -37,4 +37,18 @@ export const adminActivityRouter = router({
         });
       }
     }),
+
+  /** The privileged-action audit trail (who did what, newest first). */
+  auditLog: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.getAuditLog(ctx.service, input.limit);
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Failed to load audit log.",
+        });
+      }
+    }),
 });

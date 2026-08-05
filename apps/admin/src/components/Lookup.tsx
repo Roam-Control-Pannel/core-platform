@@ -29,7 +29,7 @@ interface VenueSummary {
   createdAt: string;
 }
 
-export function Lookup() {
+export function Lookup({ canAct = false }: { canAct?: boolean }) {
   const trpc = useTrpc();
   const [mode, setMode] = useState<Mode>("users");
   const [q, setQ] = useState("");
@@ -104,13 +104,13 @@ export function Lookup() {
         ) : mode === "users" ? (
           <div style={{ display: "grid", gap: "var(--space-2)" }}>
             {(users ?? []).map((u) => (
-              <UserRow key={u.id} user={u} open={openId === u.id} onToggle={() => setOpenId(openId === u.id ? null : u.id)} />
+              <UserRow key={u.id} user={u} canAct={canAct} open={openId === u.id} onToggle={() => setOpenId(openId === u.id ? null : u.id)} />
             ))}
           </div>
         ) : (
           <div style={{ display: "grid", gap: "var(--space-2)" }}>
             {(venues ?? []).map((v) => (
-              <VenueRow key={v.id} venue={v} open={openId === v.id} onToggle={() => setOpenId(openId === v.id ? null : v.id)} />
+              <VenueRow key={v.id} venue={v} canAct={canAct} open={openId === v.id} onToggle={() => setOpenId(openId === v.id ? null : v.id)} />
             ))}
           </div>
         )}
@@ -141,7 +141,7 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-function UserRow({ user, open, onToggle }: { user: UserSummary; open: boolean; onToggle: () => void }) {
+function UserRow({ user, canAct, open, onToggle }: { user: UserSummary; canAct: boolean; open: boolean; onToggle: () => void }) {
   return (
     <div style={{ borderRadius: 10, background: "var(--paper-2)", padding: "var(--space-3)" }}>
       <button type="button" onClick={onToggle} style={rowButton}>
@@ -153,7 +153,7 @@ function UserRow({ user, open, onToggle }: { user: UserSummary; open: boolean; o
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)" }}>joined {timeAgo(user.createdAt)}</span>
       </button>
-      {open ? <UserDetail id={user.id} /> : null}
+      {open ? <UserDetail id={user.id} canAct={canAct} /> : null}
     </div>
   );
 }
@@ -172,20 +172,43 @@ interface UserDetailData {
   recentPosts: Array<{ id: string; body: string | null; createdAt: string }>;
 }
 
-function UserDetail({ id }: { id: string }) {
+function UserDetail({ id, canAct }: { id: string; canAct: boolean }) {
   const trpc = useTrpc();
   const [data, setData] = useState<UserDetailData | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [banned, setBanned] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (trpc.adminSearch.userDetail.query({ id }) as Promise<UserDetailData>)
-      .then((d) => !cancelled && setData(d))
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        setBanned(d.profile.banned);
+      })
       .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : "Failed to load."));
     return () => {
       cancelled = true;
     };
   }, [trpc, id]);
+
+  const toggleBan = async () => {
+    if (banned === null) return;
+    setBusy(true);
+    const next = !banned;
+    const mut = trpc.adminActions.setUserBanned as unknown as {
+      mutate: (i: { userId: string; banned: boolean }) => Promise<{ ok: true }>;
+    };
+    try {
+      await mut.mutate({ userId: id, banned: next });
+      setBanned(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (error) return <div style={detailWrap}><ErrorLine message={error} /></div>;
   if (!data) return <div style={{ ...detailWrap, color: "var(--muted)", fontSize: 13 }}>Loading…</div>;
@@ -199,6 +222,14 @@ function UserDetail({ id }: { id: string }) {
         <CountChip label="Friends" value={data.counts.friends} />
         <CountChip label="Invited" value={data.counts.invited} />
       </div>
+      {canAct ? (
+        <div style={{ marginBottom: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          <Button variant={banned ? "neutral" : "pri"} size="sm" onClick={() => void toggleBan()} disabled={busy}>
+            {busy ? "…" : banned ? "Un-ban user" : "Ban user"}
+          </Button>
+          {banned ? <span style={{ fontSize: 12, color: "var(--crimson-700)" }}>Currently banned</span> : null}
+        </div>
+      ) : null}
       {data.recentPosts.length > 0 ? (
         <>
           <SectionLabel>Recent posts</SectionLabel>
@@ -216,7 +247,7 @@ function UserDetail({ id }: { id: string }) {
   );
 }
 
-function VenueRow({ venue, open, onToggle }: { venue: VenueSummary; open: boolean; onToggle: () => void }) {
+function VenueRow({ venue, canAct, open, onToggle }: { venue: VenueSummary; canAct: boolean; open: boolean; onToggle: () => void }) {
   return (
     <div style={{ borderRadius: 10, background: "var(--paper-2)", padding: "var(--space-3)" }}>
       <button type="button" onClick={onToggle} style={rowButton}>
@@ -226,7 +257,7 @@ function VenueRow({ venue, open, onToggle }: { venue: VenueSummary; open: boolea
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)" }}>{timeAgo(venue.createdAt)}</span>
       </button>
-      {open ? <VenueDetail id={venue.id} /> : null}
+      {open ? <VenueDetail id={venue.id} canAct={canAct} /> : null}
     </div>
   );
 }
@@ -238,20 +269,56 @@ interface VenueDetailData {
   recentClaims: Array<{ id: string; claimantId: string; status: string; createdAt: string }>;
 }
 
-function VenueDetail({ id }: { id: string }) {
+function VenueDetail({ id, canAct }: { id: string; canAct: boolean }) {
   const trpc = useTrpc();
   const [data, setData] = useState<VenueDetailData | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const reload = useCallback(() => {
+    (trpc.adminSearch.venueDetail.query({ id }) as Promise<VenueDetailData>)
+      .then((d) => {
+        setData(d);
+        setStatus(d.venue.status);
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load."));
+  }, [trpc, id]);
 
   useEffect(() => {
-    let cancelled = false;
-    (trpc.adminSearch.venueDetail.query({ id }) as Promise<VenueDetailData>)
-      .then((d) => !cancelled && setData(d))
-      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : "Failed to load."));
-    return () => {
-      cancelled = true;
+    reload();
+  }, [reload]);
+
+  const suspended = status === "suspended";
+
+  const toggleSuspend = async () => {
+    setBusy(true);
+    const mut = trpc.adminActions.setVenueSuspended as unknown as {
+      mutate: (i: { venueId: string; suspended: boolean }) => Promise<{ ok: true }>;
     };
-  }, [trpc, id]);
+    try {
+      await mut.mutate({ venueId: id, suspended: !suspended });
+      reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const actClaim = async (claimId: string, approve: boolean) => {
+    setBusy(true);
+    const path = approve ? trpc.adminActions.approveClaim : trpc.adminActions.rejectClaim;
+    const mut = path as unknown as { mutate: (i: { claimId: string }) => Promise<{ ok: true }> };
+    try {
+      await mut.mutate({ claimId });
+      reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (error) return <div style={detailWrap}><ErrorLine message={error} /></div>;
   if (!data) return <div style={{ ...detailWrap, color: "var(--muted)", fontSize: 13 }}>Loading…</div>;
@@ -270,13 +337,28 @@ function VenueDetail({ id }: { id: string }) {
           <em style={{ color: "var(--faint)" }}>unclaimed</em>
         )}
       </div>
+      {canAct ? (
+        <div style={{ marginBottom: "var(--space-3)" }}>
+          <Button variant={suspended ? "neutral" : "pri"} size="sm" onClick={() => void toggleSuspend()} disabled={busy}>
+            {busy ? "…" : suspended ? "Restore venue" : "Suspend venue"}
+          </Button>
+        </div>
+      ) : null}
       {data.recentClaims.length > 0 ? (
         <>
           <SectionLabel>Recent claims</SectionLabel>
-          <div style={{ display: "grid", gap: 4, marginTop: 4 }}>
+          <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
             {data.recentClaims.map((c) => (
-              <div key={c.id} style={{ fontSize: 12, color: "var(--ink-2)" }}>
-                {c.status} · <span style={{ color: "var(--faint)", fontFamily: "var(--mono)", fontSize: 10 }}>{timeAgo(c.createdAt)}</span>
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: 12, color: "var(--ink-2)" }}>
+                <span>{c.status}</span>
+                <span style={{ color: "var(--faint)", fontFamily: "var(--mono)", fontSize: 10 }}>{timeAgo(c.createdAt)}</span>
+                {canAct && c.status === "pending" ? (
+                  <>
+                    <span style={{ flex: 1 }} />
+                    <Button variant="pri" size="sm" onClick={() => void actClaim(c.id, true)} disabled={busy}>Approve</Button>
+                    <Button variant="neutral" size="sm" onClick={() => void actClaim(c.id, false)} disabled={busy}>Reject</Button>
+                  </>
+                ) : null}
               </div>
             ))}
           </div>

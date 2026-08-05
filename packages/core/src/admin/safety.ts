@@ -48,4 +48,36 @@ export async function getModerationQueue(
   }));
   return { pendingCount, items };
 }
+
+export interface AuditEntry {
+  id: string;
+  actorEmail: string | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** Recent privileged-action audit trail, newest first. */
+export async function getAuditLog(
+  client: RoamClient,
+  limit = 30,
+): Promise<AuditEntry[]> {
+  const { data, error } = await loose(client)
+    .from("admin_audit_log")
+    .select("id, actor_email, action, entity_type, entity_id, detail, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`admin: audit log read failed: ${error.message}`);
+  return ((data ?? []) as any[]).map((r) => ({
+    id: r.id,
+    actorEmail: r.actor_email ?? null,
+    action: r.action,
+    entityType: r.entity_type ?? null,
+    entityId: r.entity_id ?? null,
+    detail: (r.detail ?? {}) as Record<string, unknown>,
+    createdAt: r.created_at,
+  }));
+}
 /* eslint-enable @typescript-eslint/no-explicit-any */
