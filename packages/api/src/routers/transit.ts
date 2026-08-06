@@ -70,6 +70,8 @@ type Board = {
     delayMin: number | null;
     realtime: boolean;
   }[];
+  /** Service notices / disruptions harvested from the same EFA payload (no extra call). */
+  alerts: { title: string; content: string | null; priority: string | null; url: string | null }[];
   /** Licence-required credit; always present so the UI can't forget it. */
   attribution: string;
   /** True when served from the in-memory cache (no budget spent). */
@@ -86,7 +88,7 @@ const fetchStopFinder = defaultFetchStopFinder;
 const fetchTrip = defaultFetchTrip;
 
 function emptyBoard(status: Board["status"], stop: Board["stop"] = null): Board {
-  return { status, stop, departures: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
+  return { status, stop, departures: [], alerts: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
 }
 
 /**
@@ -134,9 +136,12 @@ async function buildBoard(
   // (2) Departure board — costs a second EFA request.
   if (!guard.claimRequest()) return emptyBoard("budget-exhausted", stop);
   let departures: transit.Departure[] = [];
+  let alerts: transit.ServiceInfo[] = [];
   try {
     const dmJson = await fetchDepartures({ stopId: stop.id, limit: transit.MAX_DEPARTURES }, config);
     departures = transit.parseDepartures(dmJson);
+    // Disruption notices ride in the SAME payload — no extra EFA request.
+    alerts = transit.collectServiceInfos(dmJson);
   } catch (e) {
     console.error("[transit] departure-board lookup failed:", e);
     return { ...emptyBoard("error", stop) };
@@ -146,6 +151,7 @@ async function buildBoard(
     status: "ok",
     stop,
     departures,
+    alerts,
     attribution: transit.TRANSLINK_ATTRIBUTION,
     cached: false,
   };
@@ -190,6 +196,8 @@ type TripPlan = {
       realtime: boolean;
     }[];
   }[];
+  /** Service notices / disruptions harvested from the same trip payload (no extra call). */
+  alerts: { title: string; content: string | null; priority: string | null; url: string | null }[];
   attribution: string;
   cached: boolean;
 };
@@ -198,7 +206,7 @@ function emptyStops(status: StopList["status"]): StopList {
   return { status, matches: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
 }
 function emptyPlan(status: TripPlan["status"]): TripPlan {
-  return { status, trips: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
+  return { status, trips: [], alerts: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
 }
 
 /** Resolve a typed name to stop/address/POI matches. Cost-controlled + cached (names are stable). */
@@ -274,6 +282,7 @@ async function buildTripPlan(
     const result: TripPlan = {
       status: trips.length > 0 ? "ok" : "no-trips",
       trips,
+      alerts: transit.collectServiceInfos(json),
       attribution: transit.TRANSLINK_ATTRIBUTION,
       cached: false,
     };

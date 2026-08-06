@@ -536,3 +536,86 @@ export function parseTrips(json: unknown): Trip[] {
   }
   return out.slice(0, MAX_TRIP_RESULTS);
 }
+
+// ============================================================================
+// Service messages / disruptions (Stage 5 · Slice 3).
+// EFA embeds line/stop disruption notices as `infos` (and `hints`) arrays scattered
+// through a Departure-Monitor or Trip response. collectServiceInfos harvests them from
+// a payload WE ALREADY FETCH — so surfacing disruptions costs no extra EFA request.
+// ============================================================================
+
+/** A service notice / disruption surfaced alongside a board or journey. */
+export interface ServiceInfo {
+  title: string;
+  content: string | null;
+  /** EFA priority, e.g. "veryLow" | "low" | "normal" | "high" | "veryHigh"; null if absent. */
+  priority: string | null;
+  url: string | null;
+}
+
+/** Keys under which EFA carries notice arrays. */
+const INFO_KEYS = new Set(["infos", "hints"]);
+
+/** Strip HTML tags + collapse whitespace so a notice renders cleanly as plain text. */
+function plainText(s: string): string {
+  return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Turn one raw EFA info object into a ServiceInfo, or null if it carries no text. */
+function toServiceInfo(item: unknown): ServiceInfo | null {
+  if (!isRecord(item)) return null;
+  const rawTitle = asString(item.title) ?? asString(item.subtitle) ?? asString(item.content);
+  if (!rawTitle) return null;
+  const title = plainText(rawTitle);
+  if (!title) return null;
+
+  const rawContent = asString(item.content) ?? asString(item.subtitle);
+  const content = rawContent ? plainText(rawContent) : null;
+  const props = isRecord(item.properties) ? item.properties : {};
+  const url = asString(item.url) ?? asString(props.url) ?? null;
+
+  return {
+    title: title.slice(0, 200),
+    // Drop content when it just repeats the title.
+    content: content && content !== title ? content.slice(0, 600) : null,
+    priority: asString(item.priority),
+    url,
+  };
+}
+
+/**
+ * Harvest service notices from an EFA response (Departure-Monitor or Trip), wherever they're
+ * nested. Deduped by title+content and capped, so a pathological payload can't flood the UI.
+ * Tolerant of any shape: returns [] for junk.
+ */
+export function collectServiceInfos(json: unknown, max = 12): ServiceInfo[] {
+  const out: ServiceInfo[] = [];
+  const seen = new Set<string>();
+
+  const visit = (node: unknown, depth: number): void => {
+    if (out.length >= max || depth > 8) return;
+    if (Array.isArray(node)) {
+      for (const el of node) visit(el, depth + 1);
+      return;
+    }
+    if (!isRecord(node)) return;
+    for (const [key, val] of Object.entries(node)) {
+      if (INFO_KEYS.has(key) && Array.isArray(val)) {
+        for (const item of val) {
+          const info = toServiceInfo(item);
+          if (!info) continue;
+          const dedupeKey = `${info.title}|${info.content ?? ""}`;
+          if (seen.has(dedupeKey)) continue;
+          seen.add(dedupeKey);
+          out.push(info);
+          if (out.length >= max) return;
+        }
+      } else {
+        visit(val, depth + 1);
+      }
+    }
+  };
+
+  visit(json, 0);
+  return out;
+}

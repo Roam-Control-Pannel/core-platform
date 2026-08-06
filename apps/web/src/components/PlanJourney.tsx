@@ -52,6 +52,12 @@ interface Trip {
   realtime: boolean;
   legs: Leg[];
 }
+interface ServiceInfo {
+  title: string;
+  content: string | null;
+  priority: string | null;
+  url: string | null;
+}
 
 function modeIcon(mode: Mode | null): IconName {
   switch (mode) {
@@ -92,10 +98,12 @@ export function PlanJourney({
   destName,
   destLat,
   destLng,
+  variant = "plan",
 }: {
   destName?: string;
   destLat?: number;
   destLng?: number;
+  variant?: "plan" | "getHere";
 }) {
   const t = useTranslations("planJourney");
   const [open, setOpen] = useState(false);
@@ -109,14 +117,37 @@ export function PlanJourney({
   const [date, setDate] = useState(() => toDateInput(now.current));
   const [time, setTime] = useState(() => toTimeInput(now.current));
   const [trips, setTrips] = useState<Trip[] | null>(null);
+  const [alerts, setAlerts] = useState<ServiceInfo[]>([]);
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [geoErr, setGeoErr] = useState(false);
 
   const swap = () => {
     setFrom(to);
     setTo(from);
     setTrips(null);
   };
+
+  const useMyLocation = useCallback(() => {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGeoErr(true);
+      return;
+    }
+    setLocating(true);
+    setGeoErr(false);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setFrom({ label: t("myLocation"), place: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+      },
+      () => {
+        setLocating(false);
+        setGeoErr(true);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+    );
+  }, [t]);
 
   const find = useCallback(async () => {
     if (!from || !to) {
@@ -126,6 +157,7 @@ export function PlanJourney({
     setLoading(true);
     setStatus("");
     setTrips(null);
+    setAlerts([]);
     try {
       const body: Record<string, unknown> = { origin: from.place, destination: to.place };
       if (whenMode !== "now") {
@@ -138,9 +170,10 @@ export function PlanJourney({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { status?: string; trips?: Trip[] };
+      const data = (await res.json()) as { status?: string; trips?: Trip[]; alerts?: ServiceInfo[] };
       setStatus(data.status ?? "error");
       setTrips(data.trips ?? []);
+      setAlerts(data.alerts ?? []);
     } catch {
       setStatus("error");
       setTrips([]);
@@ -157,7 +190,7 @@ export function PlanJourney({
     return (
       <button type="button" onClick={() => setOpen(true)} style={triggerStyle}>
         <Icon name="locate" size={16} />
-        {t("trigger")}
+        {variant === "getHere" ? t("getHereTitle") : t("trigger")}
       </button>
     );
   }
@@ -165,14 +198,23 @@ export function PlanJourney({
   return (
     <div style={panelStyle}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--ink-hi)" }}>{t("title")}</div>
+        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--ink-hi)" }}>
+          {variant === "getHere" ? t("getHereTitle") : t("title")}
+        </div>
         <button type="button" onClick={() => setOpen(false)} aria-label={t("close")} style={iconBtn}>
           <Icon name="close" size={16} />
         </button>
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
-        <StopField label={t("from")} placeholder={t("fromPlaceholder")} value={from} onChange={setFrom} />
+        <StopField
+          label={t("from")}
+          placeholder={t("fromPlaceholder")}
+          value={from}
+          onChange={setFrom}
+          onUseMyLocation={useMyLocation}
+          myLocationLabel={locating ? t("locating") : t("useMyLocation")}
+        />
         <div style={{ display: "flex", justifyContent: "center", margin: "-4px 0" }}>
           <button type="button" onClick={swap} aria-label={t("swap")} style={{ ...iconBtn, transform: "rotate(90deg)" }}>
             ⇄
@@ -208,9 +250,12 @@ export function PlanJourney({
         {loading ? t("searching") : t("find")}
       </button>
 
+      {geoErr ? <Note>{t("locationError")}</Note> : null}
       {status === "need-both" ? <Note>{t("needBoth")}</Note> : null}
       {status === "error" ? <Note>{t("error")}</Note> : null}
       {trips && trips.length === 0 && status !== "error" && status !== "need-both" ? <Note>{t("noResults")}</Note> : null}
+
+      {alerts.length > 0 ? <AlertsBanner alerts={alerts} label={t("disruptions")} /> : null}
 
       {trips && trips.length > 0 ? (
         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -278,11 +323,15 @@ function StopField({
   placeholder,
   value,
   onChange,
+  onUseMyLocation,
+  myLocationLabel,
 }: {
   label: string;
   placeholder: string;
   value: { label: string; place: Place } | null;
   onChange: (v: { label: string; place: Place } | null) => void;
+  onUseMyLocation?: () => void;
+  myLocationLabel?: string;
 }) {
   const [q, setQ] = useState(value?.label ?? "");
   const [sug, setSug] = useState<StopMatch[]>([]);
@@ -339,7 +388,15 @@ function StopField({
 
   return (
     <div style={{ position: "relative" }}>
-      <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</label>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+        <label style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</label>
+        {onUseMyLocation ? (
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onUseMyLocation} style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--crimson-700)", fontWeight: 600 }}>
+            <Icon name="locate" size={12} />
+            {myLocationLabel}
+          </button>
+        ) : null}
+      </div>
       <input
         value={q}
         placeholder={placeholder}
@@ -372,6 +429,32 @@ function StopField({
 
 function Note({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 10 }}>{children}</div>;
+}
+
+/** A compact list of service notices / disruptions. `priority` high/veryHigh reads as a warning. */
+function AlertsBanner({ alerts, label }: { alerts: ServiceInfo[]; label: string }) {
+  const urgent = alerts.some((a) => a.priority === "high" || a.priority === "veryHigh");
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: urgent ? "var(--crimson-tint)" : "var(--paper-2)",
+        border: `1px solid ${urgent ? "var(--crimson-tint-2)" : "var(--line)"}`,
+      }}
+    >
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: urgent ? "var(--crimson-700)" : "var(--muted)", marginBottom: 4 }}>{label}</div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {alerts.slice(0, 4).map((a, i) => (
+          <div key={i} style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.4 }}>
+            <span style={{ fontWeight: 600, color: "var(--ink-hi)" }}>{a.title}</span>
+            {a.content ? <span> — {a.content}</span> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function toDateInput(d: Date): string {
