@@ -350,6 +350,12 @@ export async function fetchTrip(
     date?: string | null;
     time?: string | null;
     arriveBy?: boolean;
+    /**
+     * EFA means-of-transport class ids to EXCLUDE (the mode-include filters). Comma-joined into
+     * EFA's `excludedMeans` param. Best-effort: if Translink's build ignores it, the web still drops
+     * journeys using an excluded mode client-side, so the filter is correct either way.
+     */
+    excludedMeans?: string | null;
     limit: number;
   },
   config: EfaConfig,
@@ -369,5 +375,6 @@ export async function fetchTrip(
     base.itdTime = params.time.replace(":", ""); // HHMM
     base.itdTripDateTimeDepArr = params.arriveBy ? "arr" : "dep";
   }
+  if (params.excludedMeans) base.excludedMeans = params.excludedMeans;
   return efaRequest(TRIP_ENDPOINT, base, config, fetchImpl);
 }

@@ -36,6 +36,8 @@ interface PlanInput {
   date?: string;
   time?: string;
   arriveBy?: boolean;
+  includeBus?: boolean;
+  includeRail?: boolean;
 }
 
 function parse(body: unknown): { ok: true; input: PlanInput } | { ok: false; reason: string } {
@@ -57,6 +59,14 @@ function parse(body: unknown): { ok: true; input: PlanInput } | { ok: false; rea
   if (b.arriveBy !== undefined) {
     if (typeof b.arriveBy !== "boolean") return { ok: false, reason: "`arriveBy` must be a boolean." };
     input.arriveBy = b.arriveBy;
+  }
+  if (b.includeBus !== undefined) {
+    if (typeof b.includeBus !== "boolean") return { ok: false, reason: "`includeBus` must be a boolean." };
+    input.includeBus = b.includeBus;
+  }
+  if (b.includeRail !== undefined) {
+    if (typeof b.includeRail !== "boolean") return { ok: false, reason: "`includeRail` must be a boolean." };
+    input.includeRail = b.includeRail;
   }
   return { ok: true, input };
 }
