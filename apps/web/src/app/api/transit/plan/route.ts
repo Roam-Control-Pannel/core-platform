@@ -85,6 +85,7 @@ function clientIpFrom(request: Request): string | null {
 const errorPayload = {
   status: "error",
   trips: [],
+  alerts: [],
   attribution: "Transport Information supplied by Translink Opendata API",
   cached: false,
 };

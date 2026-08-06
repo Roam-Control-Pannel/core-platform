@@ -17,6 +17,7 @@ import {
   parseDepartures,
   parseStopFinder,
   parseTrips,
+  collectServiceInfos,
   nearestStop,
   parseEfaTime,
   MAX_DEPARTURES,
@@ -373,3 +374,32 @@ describe("parseTrips", () => {
     expect(parseTrips({ trips: json.journeys }).length).toBe(1);
   });
 });
+
+describe("collectServiceInfos", () => {
+  it("harvests nested infos from a DM-shaped payload, deduped", () => {
+    const json = {
+      stopEvents: [
+        { transportation: { infos: [{ priority: "high", title: "Diversion", content: "Route 7 is on diversion.", url: "http://x" }] } },
+        { transportation: { infos: [{ title: "Diversion", content: "Route 7 is on diversion." }] } }, // dup
+      ],
+    };
+    const infos = collectServiceInfos(json);
+    expect(infos).toHaveLength(1);
+    expect(infos[0]).toMatchObject({ title: "Diversion", content: "Route 7 is on diversion.", priority: "high", url: "http://x" });
+  });
+
+  it("strips HTML and drops content that only repeats the title", () => {
+    const json = { infos: [{ title: "Delay", content: "<p>Delay</p>" }, { hints: [] }] };
+    const infos = collectServiceInfos(json);
+    expect(infos).toHaveLength(1);
+    expect(infos[0]!.title).toBe("Delay");
+    expect(infos[0]!.content).toBeNull();
+  });
+
+  it("caps output and tolerates junk", () => {
+    const many = { infos: Array.from({ length: 30 }, (_, i) => ({ title: `Notice ${i}` })) };
+    expect(collectServiceInfos(many, 5)).toHaveLength(5);
+    expect(collectServiceInfos(null)).toEqual([]);
+    expect(collectServiceInfos({ infos: [{ noText: true }] })).toEqual([]);
+  });
+})

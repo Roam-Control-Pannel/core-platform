@@ -552,6 +552,7 @@
     "minEarly": "{mins} min early",
     "onTime": "On time (live)",
     "live": "Live",
+    "disruptions": "Service notices",
     "comingSoon": {
       "title": "Local transit",
       "badge": "Coming soon",
@@ -582,7 +583,13 @@
     "live": "Live",
     "to_": "to",
     "error": "Couldn't plan that journey. Please try again.",
-    "close": "Close"
+    "close": "Close",
+    "getHereTitle": "Get here by public transport",
+    "useMyLocation": "Use my location",
+    "myLocation": "My location",
+    "locating": "Locating…",
+    "locationError": "Couldn't get your location — type a start point instead.",
+    "disruptions": "Service notices"
   },
   "birthdayOffer": {
     "intro": "Set a treat and we'll deliver it automatically to followers on their birthday — the ones who've opted in. You never see whose birthday it is, only how many were sent.",

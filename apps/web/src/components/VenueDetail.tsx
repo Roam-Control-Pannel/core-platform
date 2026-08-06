@@ -44,6 +44,7 @@ import { PostMediaGrid } from "./PostMediaGrid";
 import { FollowButton } from "./FollowButton";
 import { ReportVenue } from "./ReportVenue";
 import { VenueEvents } from "./VenueEvents";
+import { PlanJourney } from "./PlanJourney";
 import { AddToPlan } from "./AddToPlan";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { VenueShop } from "./VenueShop";
@@ -1117,6 +1118,12 @@ function WhereToFind({ venue }: { venue: VenueDetailData }) {
           <DirectionsButton address={venue.address} />
         </div>
       </Card>
+      {/* Get here by public transport — NI journey planner to this venue; self-hides outside NI. */}
+      {hasCoords ? (
+        <div style={{ marginTop: "var(--space-3)" }}>
+          <PlanJourney variant="getHere" destName={venue.name} destLat={venue.lat as number} destLng={venue.lng as number} />
+        </div>
+      ) : null}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-2)", fontSize: 13, color: "var(--ink-2)", flexWrap: "wrap" }}>
         <span style={{ flex: 1, minWidth: 180 }}>{t("suggestEditPrompt")}</span>
         <span style={{ color: "var(--muted)" }}>{t("suggestEdit")}</span>

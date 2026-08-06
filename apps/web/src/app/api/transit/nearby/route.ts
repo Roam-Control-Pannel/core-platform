@@ -77,6 +77,7 @@ export async function POST(request: Request): Promise<Response> {
         status: "error",
         stop: null,
         departures: [],
+        alerts: [],
         attribution: "Transport Information supplied by Translink Opendata API",
         cached: false,
       },

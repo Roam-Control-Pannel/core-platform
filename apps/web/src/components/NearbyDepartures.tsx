@@ -42,6 +42,7 @@ interface Board {
     | "error";
   stop: { id: string; name: string; lat: number; lng: number; distanceM: number | null } | null;
   departures: BoardDeparture[];
+  alerts?: { title: string; content: string | null; priority: string | null; url: string | null }[];
   attribution: string;
   cached: boolean;
 }
@@ -256,6 +257,27 @@ export function NearbyDepartures({
           })}
         </ul>
       )}
+
+      {board.alerts && board.alerts.length > 0 ? (
+        <div
+          style={{
+            marginTop: "var(--space-3)",
+            padding: "8px 10px",
+            borderRadius: 10,
+            background: board.alerts.some((a) => a.priority === "high" || a.priority === "veryHigh") ? "var(--crimson-tint)" : "var(--paper-2)",
+          }}
+        >
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 3 }}>
+            {t("disruptions")}
+          </div>
+          {board.alerts.slice(0, 3).map((a, i) => (
+            <div key={i} style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{a.title}</span>
+              {a.content ? <span> — {a.content}</span> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div
         style={{
