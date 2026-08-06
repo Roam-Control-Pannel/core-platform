@@ -555,6 +555,13 @@
     "timetabled": "Timetabled",
     "showMore": "Show {count} more",
     "showLess": "Show less",
+    "showAll": "Show all {count} departures",
+    "openBoard": "Open full board",
+    "nearestStop": "Nearest stop",
+    "buyTicket": "Buy a ticket",
+    "close": "Close",
+    "refreshesEvery": "Refreshes every {secs}s",
+    "updatedRefreshes": "Updated {time} · refreshes every {secs}s",
     "filter": {
       "all": "All",
       "bus": "Bus",
