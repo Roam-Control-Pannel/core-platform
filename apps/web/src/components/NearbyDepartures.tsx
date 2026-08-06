@@ -13,13 +13,36 @@
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { isWithinNI, isWithinIreland, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
 import { getFormatLocale } from "../lib/i18n/runtime";
+import { detectMapsPlatform, directionsToPlaceUrl, type MapsPlatform } from "../lib/directions";
 
 type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
+
+/** The mode-filter groups the board offers as tabs (Glider = EFA's tram class in NI). */
+type FilterGroup = "all" | "bus" | "glider" | "rail" | "ferry";
+
+/** Which filter tab a departure's mode belongs to. `other` rides under Bus (mostly coaches). */
+function filterGroupForMode(mode: Mode): Exclude<FilterGroup, "all"> {
+  switch (mode) {
+    case "rail":
+      return "rail";
+    case "tram":
+      return "glider";
+    case "ferry":
+      return "ferry";
+    default:
+      return "bus";
+  }
+}
+
+/** Walking minutes to a stop from its distance — ~80 m/min, floored at 1 so it never reads "0 min". */
+function walkMinutes(distanceM: number): number {
+  return Math.max(1, Math.round(distanceM / 80));
+}
 
 interface BoardDeparture {
   line: string;
@@ -169,117 +192,225 @@ export function NearbyDepartures({
 
   // A real live board (in NI, with a nearby stop) → render departures.
   if (inNI && board && board.status === "ok" && board.stop) {
-    const { stop, departures } = board;
-    const anyLive = departures.some((d) => d.realtime);
-    const shown = departures.slice(0, MAX_ROWS);
-    const hidden = departures.length - shown.length;
-    const subline =
-      stop.name +
-      (typeof stop.distanceM === "number" ? ` · ${t("mAway", { distance: stop.distanceM })}` : "");
-    return (
-      <div style={cardStyle}>
-        <BoardHeader title={t("title")} subline={subline} {...(anyLive ? { live: t("live") } : {})} />
-
-        {departures.length === 0 ? (
-          <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0 2px" }}>
-            {t("noDepartures")}
-          </div>
-        ) : (
-          <ul style={listStyle}>
-            {shown.map((d, i) => {
-              const when = formatWhen(t, d);
-              const due = when === t("due");
-              const late = typeof d.delayMin === "number" && d.delayMin > 0;
-              const early = typeof d.delayMin === "number" && d.delayMin < 0;
-              const badge = modeBadge(d.mode);
-              const dotTitle = late
-                ? t("minLate", { mins: d.delayMin as number })
-                : early
-                  ? t("minEarly", { mins: Math.abs(d.delayMin as number) })
-                  : t("onTime");
-              return (
-                <li key={`${d.line}-${d.plannedTime}-${i}`} style={rowGridStyle}>
-                  <span style={{ ...badgeStyle, background: badge.bg, color: badge.fg }}>{d.line}</span>
-                  <span style={destStyle}>{cleanDestination(d.destination, placeName)}</span>
-                  <span style={timeCellStyle}>
-                    {d.realtime ? (
-                      <span
-                        className="roam-live-pulse"
-                        title={dotTitle}
-                        aria-label={t("live")}
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: "50%",
-                          background: late ? "var(--crimson-700)" : "#1a9e57",
-                          flex: "0 0 auto",
-                        }}
-                      />
-                    ) : null}
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        fontFamily: "var(--ui)",
-                        fontVariantNumeric: "tabular-nums",
-                        color: due || late ? "var(--crimson-700)" : "var(--ink)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {when}
-                    </span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {hidden > 0 ? (
-          <div style={{ fontSize: 12, color: "var(--faint)", marginTop: "var(--space-2)", paddingLeft: 2 }}>
-            {t("more", { count: hidden })}
-          </div>
-        ) : null}
-
-        {board.alerts && board.alerts.length > 0 ? (
-          <div
-            style={{
-              marginTop: "var(--space-3)",
-              padding: "10px 12px",
-              borderRadius: 12,
-              display: "flex",
-              gap: 10,
-              background: board.alerts.some((a) => a.priority === "high" || a.priority === "veryHigh")
-                ? "var(--crimson-tint)"
-                : "var(--paper-2)",
-            }}
-          >
-            <Icon
-              name="megaphone"
-              size={15}
-              aria-hidden
-              style={{ color: "var(--crimson-700)", flex: "0 0 auto", marginTop: 1 }}
-            />
-            <div style={{ minWidth: 0 }}>
-              <div className="t-mono-label" style={{ fontSize: 10, color: "var(--muted)", marginBottom: 3 }}>
-                {t("disruptions")}
-              </div>
-              {board.alerts.slice(0, 3).map((a, i) => (
-                <div key={i} style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: "var(--ink)" }}>{a.title}</span>
-                  {a.content ? <span> — {a.content}</span> : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div style={attributionStyle}>{board.attribution || TRANSLINK_ATTRIBUTION}</div>
-      </div>
-    );
+    return <LiveBoard board={board} placeName={placeName} />;
   }
 
   // Anywhere on the island of Ireland without a live board → the "coming soon" placeholder.
   return <TransitComingSoon placeName={placeName} />;
+}
+
+/**
+ * LiveBoard — the departure board itself, split out so it can own the interactive state (mode
+ * filter, sort order, expand) with hooks that never sit behind a conditional return. Mounted only
+ * when the parent has an OK board with a stop, so `board.stop` is guaranteed present.
+ */
+function LiveBoard({ board, placeName }: { board: Board; placeName: string }) {
+  const t = useTranslations("nearbyDepartures");
+  const stop = board.stop!;
+  const departures = board.departures;
+
+  const [filter, setFilter] = useState<FilterGroup>("all");
+  const [sort, setSort] = useState<"next" | "route">("next");
+  const [expanded, setExpanded] = useState(false);
+  // Detect the maps platform once (client-only) so the Directions link routes to the right app.
+  const [platform] = useState<MapsPlatform>(() =>
+    typeof navigator !== "undefined"
+      ? detectMapsPlatform(navigator.userAgent, navigator.maxTouchPoints, navigator.platform)
+      : "web",
+  );
+
+  // Which filter tabs to offer: "All" plus only the groups actually on the board, in a stable
+  // order. A tab bar is pointless when everything is one mode, so it hides in that case.
+  const groups = useMemo(() => {
+    const present = new Set(departures.map((d) => filterGroupForMode(d.mode)));
+    const ordered: FilterGroup[] = (["bus", "glider", "rail", "ferry"] as const).filter((g) =>
+      present.has(g),
+    );
+    return ordered.length > 1 ? (["all", ...ordered] as FilterGroup[]) : [];
+  }, [departures]);
+
+  // Apply the mode filter, then the sort. "By route" clusters a line's departures together,
+  // earliest-departing line first; "Next out" keeps EFA's soonest-first order.
+  const rows = useMemo(() => {
+    const filtered =
+      filter === "all" ? departures : departures.filter((d) => filterGroupForMode(d.mode) === filter);
+    if (sort === "next") return filtered;
+    const earliest = new Map<string, number>();
+    filtered.forEach((d) => {
+      const at = parseEfaTime(d.expectedTime ?? d.plannedTime);
+      const cur = earliest.get(d.line);
+      if (cur === undefined || at < cur) earliest.set(d.line, at);
+    });
+    return [...filtered].sort(
+      (a, b) =>
+        (earliest.get(a.line) ?? 0) - (earliest.get(b.line) ?? 0) ||
+        a.line.localeCompare(b.line) ||
+        parseEfaTime(a.expectedTime ?? a.plannedTime) - parseEfaTime(b.expectedTime ?? b.plannedTime),
+    );
+  }, [departures, filter, sort]);
+
+  const visible = expanded ? rows : rows.slice(0, MAX_ROWS);
+  const hidden = rows.length - visible.length;
+
+  const subline =
+    typeof stop.distanceM === "number"
+      ? `${stop.name} · ${t("metres", { distance: stop.distanceM })} · ${t("walk", { mins: walkMinutes(stop.distanceM) })}`
+      : stop.name;
+  const directionsHref = directionsToPlaceUrl(stop.lat, stop.lng, platform);
+
+  return (
+    <div style={cardStyle}>
+      <BoardHeader title={t("title")} subline={subline} directionsHref={directionsHref} directionsLabel={t("directions")} />
+
+      {groups.length > 0 || departures.length > 1 ? (
+        <div style={controlRowStyle}>
+          {groups.length > 0 ? (
+            <div role="tablist" aria-label={t("title")} style={tabsStyle}>
+              {groups.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === g}
+                  onClick={() => setFilter(g)}
+                  style={filter === g ? tabActiveStyle : tabStyle}
+                >
+                  {t(`filter.${g}`)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span />
+          )}
+          {departures.length > 1 ? (
+            <button
+              type="button"
+              onClick={() => setSort((s) => (s === "next" ? "route" : "next"))}
+              style={sortToggleStyle}
+              aria-label={t(`sort.${sort === "next" ? "route" : "next"}`)}
+            >
+              {t(`sort.${sort}`)}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {rows.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0 2px" }}>
+          {t("noDepartures")}
+        </div>
+      ) : (
+        <ul style={listStyle}>
+          {visible.map((d, i) => (
+            <DepartureRow key={`${d.line}-${d.plannedTime}-${i}`} d={d} placeName={placeName} t={t} />
+          ))}
+        </ul>
+      )}
+
+      {hidden > 0 || expanded ? (
+        <button type="button" onClick={() => setExpanded((v) => !v)} style={showMoreStyle}>
+          {expanded ? t("showLess") : t("showMore", { count: hidden })}
+        </button>
+      ) : null}
+
+      {board.alerts && board.alerts.length > 0 ? (
+        <div
+          style={{
+            marginTop: "var(--space-3)",
+            padding: "10px 12px",
+            borderRadius: 12,
+            display: "flex",
+            gap: 10,
+            background: board.alerts.some((a) => a.priority === "high" || a.priority === "veryHigh")
+              ? "var(--crimson-tint)"
+              : "var(--paper-2)",
+          }}
+        >
+          <Icon
+            name="megaphone"
+            size={15}
+            aria-hidden
+            style={{ color: "var(--crimson-700)", flex: "0 0 auto", marginTop: 1 }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div className="t-mono-label" style={{ fontSize: 10, color: "var(--muted)", marginBottom: 3 }}>
+              {t("disruptions")}
+            </div>
+            {board.alerts.slice(0, 3).map((a, i) => (
+              <div key={i} style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45 }}>
+                <span style={{ fontWeight: 600, color: "var(--ink)" }}>{a.title}</span>
+                {a.content ? <span> — {a.content}</span> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div style={attributionStyle}>{board.attribution || TRANSLINK_ATTRIBUTION}</div>
+    </div>
+  );
+}
+
+/** One departure row: route roundel · destination · countdown with a LIVE / TIMETABLED status. */
+function DepartureRow({
+  d,
+  placeName,
+  t,
+}: {
+  d: BoardDeparture;
+  placeName: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const when = formatWhen(t, d);
+  const due = when === t("due");
+  const late = typeof d.delayMin === "number" && d.delayMin > 0;
+  const early = typeof d.delayMin === "number" && d.delayMin < 0;
+  const badge = modeBadge(d.mode);
+  const statusTitle = late
+    ? t("minLate", { mins: d.delayMin as number })
+    : early
+      ? t("minEarly", { mins: Math.abs(d.delayMin as number) })
+      : d.realtime
+        ? t("onTime")
+        : t("timetabled");
+  return (
+    <li style={rowGridStyle}>
+      <span style={{ ...badgeStyle, background: badge.bg, color: badge.fg }}>{d.line}</span>
+      <span style={destStyle}>{cleanDestination(d.destination, placeName)}</span>
+      <span style={timeCellStyle}>
+        <span
+          style={{
+            fontWeight: 700,
+            fontFamily: "var(--ui)",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 15,
+            color: due || late ? "var(--crimson-700)" : "var(--ink)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {when}
+        </span>
+        <span title={statusTitle} style={statusLabelStyle}>
+          {d.realtime ? (
+            <span
+              className="roam-live-pulse"
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: late ? "var(--crimson-700)" : "#1a9e57",
+                flex: "0 0 auto",
+              }}
+            />
+          ) : null}
+          <span style={{ color: d.realtime ? (late ? "var(--crimson-700)" : "#1a7f4b") : "var(--faint)" }}>
+            {d.realtime ? t("live") : t("timetabled")}
+          </span>
+        </span>
+      </span>
+    </li>
+  );
 }
 
 /**
@@ -342,10 +473,20 @@ function TransitComingSoon({ placeName }: { placeName: string }) {
 
 /**
  * BoardHeader — the shared crest for the transit card: a crimson bus icon-chip, the title, a
- * stop·distance subline, and an optional right-aligned LIVE pulse pill when the board carries
- * realtime data. Matches the icon-chip + display-title language of the home widgets around it.
+ * stop · distance · walk-time subline, and an optional right-aligned Directions link that hands
+ * off to the device's maps app. Matches the icon-chip + display-title language of the home widgets.
  */
-function BoardHeader({ title, subline, live }: { title: string; subline: string; live?: string }) {
+function BoardHeader({
+  title,
+  subline,
+  directionsHref,
+  directionsLabel,
+}: {
+  title: string;
+  subline: string;
+  directionsHref?: string;
+  directionsLabel?: string;
+}) {
   return (
     <header style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: "var(--space-3)" }}>
       <span aria-hidden style={iconChipStyle}>
@@ -371,14 +512,11 @@ function BoardHeader({ title, subline, live }: { title: string; subline: string;
           {subline}
         </div>
       </div>
-      {live ? (
-        <span style={livePillStyle}>
-          <span
-            className="roam-live-pulse"
-            style={{ width: 6, height: 6, borderRadius: "50%", background: "#1a9e57", flex: "0 0 auto" }}
-          />
-          {live}
-        </span>
+      {directionsHref && directionsLabel ? (
+        <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={directionsLinkStyle}>
+          <Icon name="locate" size={12} aria-hidden />
+          {directionsLabel}
+        </a>
       ) : null}
     </header>
   );
@@ -403,20 +541,102 @@ const iconChipStyle: React.CSSProperties = {
   flex: "0 0 auto",
 };
 
-const livePillStyle: React.CSSProperties = {
+const directionsLinkStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 5,
+  gap: 4,
   flex: "0 0 auto",
   fontFamily: "var(--mono)",
   fontSize: 9.5,
   fontWeight: 700,
   letterSpacing: ".1em",
   textTransform: "uppercase",
-  color: "var(--ink-2)",
+  color: "var(--crimson-700)",
+  textDecoration: "none",
   border: "1px solid var(--line-2)",
   borderRadius: 999,
   padding: "3px 9px 3px 7px",
+};
+
+/** The filter-tabs + sort-toggle row between the header and the list. */
+const controlRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  marginBottom: "var(--space-2)",
+};
+
+const tabsStyle: React.CSSProperties = {
+  display: "inline-flex",
+  gap: 2,
+  background: "var(--paper-2)",
+  borderRadius: 999,
+  padding: 3,
+};
+
+const tabBase: React.CSSProperties = {
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  borderRadius: 999,
+  padding: "4px 10px",
+  lineHeight: 1,
+};
+
+const tabStyle: React.CSSProperties = { ...tabBase, background: "transparent", color: "var(--muted)" };
+
+const tabActiveStyle: React.CSSProperties = {
+  ...tabBase,
+  background: "var(--card)",
+  color: "var(--ink)",
+  boxShadow: "0 1px 2px rgba(0,0,0,.06)",
+};
+
+const sortToggleStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  color: "var(--crimson-700)",
+  padding: "4px 2px",
+};
+
+const showMoreStyle: React.CSSProperties = {
+  width: "100%",
+  marginTop: "var(--space-2)",
+  border: "1px solid var(--line)",
+  background: "var(--paper-2)",
+  cursor: "pointer",
+  borderRadius: 10,
+  padding: "9px 0",
+  fontFamily: "var(--mono)",
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+  color: "var(--ink-2)",
+};
+
+const statusLabelStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  fontFamily: "var(--mono)",
+  fontSize: 8.5,
+  fontWeight: 700,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+  marginTop: 2,
 };
 
 const listStyle: React.CSSProperties = {
@@ -462,8 +682,8 @@ const destStyle: React.CSSProperties = {
 
 const timeCellStyle: React.CSSProperties = {
   display: "inline-flex",
-  alignItems: "center",
-  gap: 7,
+  flexDirection: "column",
+  alignItems: "flex-end",
   justifySelf: "end",
   whiteSpace: "nowrap",
 };

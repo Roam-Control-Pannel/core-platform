@@ -49,6 +49,24 @@ export function directionsUrl(address: string, platform: MapsPlatform): string {
 }
 
 /**
+ * Walking-directions hand-off to a coordinate — used by the transit board's "Directions" action
+ * to route the user on foot to the nearest stop. The maps app fills in the CURRENT location as the
+ * origin, so we only pass the destination + walking mode. iOS → Apple Maps (`dirflg=w`); everywhere
+ * else → Google Maps' universal directions URL (opens the app when installed, the web otherwise).
+ */
+export function directionsToPlaceUrl(lat: number, lng: number, platform: MapsPlatform): string {
+  const ll = `${lat},${lng}`;
+  switch (platform) {
+    case "ios":
+      return `https://maps.apple.com/?daddr=${ll}&dirflg=w`;
+    case "android":
+    case "web":
+    default:
+      return `https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=walking`;
+  }
+}
+
+/**
  * "Open this area in Maps" hand-off — centre the device's default maps app on a place
  * (lat/lng) with a labelled pin. Used by Explore instead of an embedded map provider: the
  * product decision is to defer to the user's own maps app rather than ship a map SDK + key.

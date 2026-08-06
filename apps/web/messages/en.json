@@ -549,6 +549,23 @@
     "realtimeWhereAvailable": "Realtime where available",
     "noDepartures": "No departures in the next while.",
     "more": "+{count} more departures",
+    "walk": "{mins} min walk",
+    "metres": "{distance} m",
+    "directions": "Directions",
+    "timetabled": "Timetabled",
+    "showMore": "Show {count} more",
+    "showLess": "Show less",
+    "filter": {
+      "all": "All",
+      "bus": "Bus",
+      "glider": "Glider",
+      "rail": "Rail",
+      "ferry": "Ferry"
+    },
+    "sort": {
+      "next": "Next out",
+      "route": "By route"
+    },
     "minLate": "{mins} min late",
     "minEarly": "{mins} min early",
     "onTime": "On time (live)",
