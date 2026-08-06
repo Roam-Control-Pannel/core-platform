@@ -59,6 +59,8 @@ export interface EfaConfig {
 
 const COORD_ENDPOINT = "XML_COORD_REQUEST";
 const DM_ENDPOINT = "XML_DM_REQUEST";
+const STOPFINDER_ENDPOINT = "XML_STOPFINDER_REQUEST";
+const TRIP_ENDPOINT = "XML_TRIP_REQUEST2";
 
 /** EFA's WGS84 decimal-degrees format token, used for both input coords and output (spec: uppercase). */
 const WGS84 = "WGS84[DD.DDDDD]";
@@ -295,4 +297,77 @@ export async function fetchDepartures(
     config,
     fetchImpl,
   );
+}
+
+/**
+ * Stop-Finder: resolve a typed name to matching stops / addresses / POIs (the from/to
+ * autocomplete source). Returns raw rapidJSON for @roam/core's parseStopFinder.
+ *
+ * `type_sf=any` searches all object kinds; `anyMaxSizeHitList` caps the hit list. No ext_macro
+ * exists for stop-finder, so we set the output/coord formats explicitly.
+ */
+export async function fetchStopFinder(
+  params: { query: string; limit: number },
+  config: EfaConfig,
+  fetchImpl: FetchImpl = fetch,
+): Promise<unknown> {
+  return efaRequest(
+    STOPFINDER_ENDPOINT,
+    {
+      outputFormat: "rapidJSON",
+      coordOutputFormat: WGS84,
+      type_sf: "any",
+      name_sf: params.query,
+      anyMaxSizeHitList: String(params.limit),
+    },
+    config,
+    fetchImpl,
+  );
+}
+
+/** A trip endpoint (origin or destination): an EFA stop/POI id, or a raw coordinate. */
+export type TripPlace = { stopId: string } | { lat: number; lng: number };
+
+/** Build the `type_<role>` / `name_<role>` pair for one trip endpoint. */
+function tripPlaceParams(role: "origin" | "destination", place: TripPlace): Record<string, string> {
+  if ("stopId" in place) {
+    return { [`type_${role}`]: "any", [`name_${role}`]: place.stopId };
+  }
+  // EFA coord input is <lng>:<lat>:<format>.
+  return { [`type_${role}`]: "coord", [`name_${role}`]: `${place.lng}:${place.lat}:${WGS84}` };
+}
+
+/**
+ * Trip-Request: plan journeys between two endpoints. Returns raw rapidJSON for @roam/core's
+ * parseTrips. `date` (YYYY-MM-DD) + `time` (HH:MM) are the traveller's LOCAL wall-clock (the
+ * journey is in NI, and EFA interprets itdTime in its own local zone, so no timezone maths); omit
+ * both to plan from "now". `arriveBy` switches the time from a departure to an arrival constraint.
+ */
+export async function fetchTrip(
+  params: {
+    origin: TripPlace;
+    destination: TripPlace;
+    date?: string | null;
+    time?: string | null;
+    arriveBy?: boolean;
+    limit: number;
+  },
+  config: EfaConfig,
+  fetchImpl: FetchImpl = fetch,
+): Promise<unknown> {
+  const base: Record<string, string> = {
+    outputFormat: "rapidJSON",
+    coordOutputFormat: WGS84,
+    ...tripPlaceParams("origin", params.origin),
+    ...tripPlaceParams("destination", params.destination),
+    calcNumberOfTrips: String(params.limit),
+    useRealtime: "1",
+    ptOptionsActive: "1",
+  };
+  if (params.date && params.time) {
+    base.itdDate = params.date.replace(/-/g, ""); // YYYYMMDD
+    base.itdTime = params.time.replace(":", ""); // HHMM
+    base.itdTripDateTimeDepArr = params.arriveBy ? "arr" : "dep";
+  }
+  return efaRequest(TRIP_ENDPOINT, base, config, fetchImpl);
 }

@@ -15,9 +15,12 @@ import {
   modeFromProductClass,
   parseCoordStops,
   parseDepartures,
+  parseStopFinder,
+  parseTrips,
   nearestStop,
   parseEfaTime,
   MAX_DEPARTURES,
+  MAX_STOP_MATCHES,
 } from "./index.js";
 
 describe("isWithinNI", () => {
@@ -256,5 +259,117 @@ describe("parseEfaTime (UTC handling)", () => {
   });
   it("honours an explicit offset", () => {
     expect(parseEfaTime("2026-07-01T10:00:00+01:00")).toBe(Date.UTC(2026, 6, 1, 9, 0, 0));
+  });
+});
+
+describe("parseStopFinder", () => {
+  const json = {
+    locations: [
+      { id: "poi:1", name: "Bangor Marina", type: "poi", coord: [54.66, -5.66], matchQuality: 700 },
+      {
+        id: "raw-id",
+        isGlobalId: true,
+        name: "Bangor, Rail Station",
+        type: "stop",
+        coord: [54.66, -5.67],
+        matchQuality: 990,
+        properties: { stopId: "GLOBAL123" },
+      },
+      { id: "addr:9", name: "Main St, Bangor", type: "street", coord: [54.65, -5.67], matchQuality: 990 },
+    ],
+  };
+
+  it("returns matches best-quality first, stops winning ties", () => {
+    const matches = parseStopFinder(json);
+    expect(matches.length).toBe(3);
+    // Two 990s: the stop must rank above the street on the tie-break.
+    expect(matches[0]!.name).toBe("Bangor, Rail Station");
+    expect(matches[1]!.name).toBe("Main St, Bangor");
+    expect(matches[2]!.name).toBe("Bangor Marina");
+  });
+
+  it("uses the global stop id when isGlobalId is set", () => {
+    const [top] = parseStopFinder(json);
+    expect(top!.id).toBe("GLOBAL123");
+    expect(top!.kind).toBe("stop");
+    expect(top!.lat).toBeCloseTo(54.66);
+  });
+
+  it("maps EFA types to coarse kinds and caps the list", () => {
+    const many = { locations: Array.from({ length: 20 }, (_, i) => ({ id: `s${i}`, name: `Stop ${i}`, type: "stop", coord: [54, -6], matchQuality: 100 - i })) };
+    expect(parseStopFinder(many).length).toBe(MAX_STOP_MATCHES);
+  });
+
+  it("tolerates junk", () => {
+    expect(parseStopFinder(null)).toEqual([]);
+    expect(parseStopFinder({})).toEqual([]);
+    expect(parseStopFinder({ locations: [{ name: "no id" }] })).toEqual([]);
+  });
+});
+
+describe("parseTrips", () => {
+  const json = {
+    journeys: [
+      {
+        legs: [
+          {
+            duration: 300,
+            origin: { name: "Start", departureTimePlanned: "2026-08-06T10:00:00Z" },
+            destination: { name: "Stop A", arrivalTimePlanned: "2026-08-06T10:05:00Z" },
+          },
+          {
+            origin: { name: "Stop A", departureTimePlanned: "2026-08-06T10:08:00Z", departureTimeEstimated: "2026-08-06T10:10:00Z" },
+            destination: { name: "Stop B", arrivalTimePlanned: "2026-08-06T10:40:00Z" },
+            transportation: { number: "7", destination: { name: "City Hall" }, product: { class: 5 } },
+          },
+        ],
+      },
+    ],
+  };
+
+  it("parses a walk + bus journey with legs, times and interchanges", () => {
+    const trips = parseTrips(json);
+    expect(trips.length).toBe(1);
+    const trip = trips[0]!;
+    expect(trip.legs.length).toBe(2);
+
+    const [walk, bus] = trip.legs;
+    expect(walk!.kind).toBe("walk");
+    expect(walk!.mode).toBeNull();
+    expect(walk!.line).toBeNull();
+    expect(walk!.durationMin).toBe(5);
+
+    expect(bus!.kind).toBe("transit");
+    expect(bus!.mode).toBe("bus");
+    expect(bus!.line).toBe("7");
+    expect(bus!.headsign).toBe("City Hall");
+    expect(bus!.realtime).toBe(true);
+
+    expect(trip.interchanges).toBe(0); // one transit leg → no changes
+    expect(trip.durationMin).toBe(40); // 10:00 → 10:40
+    expect(trip.realtime).toBe(true);
+    expect(trip.departPlanned).toBe("2026-08-06T10:00:00Z");
+    expect(trip.arrivePlanned).toBe("2026-08-06T10:40:00Z");
+  });
+
+  it("counts interchanges as transit legs minus one", () => {
+    const twoBuses = {
+      journeys: [
+        {
+          legs: [
+            { origin: { name: "A", departureTimePlanned: "2026-08-06T10:00:00Z" }, destination: { name: "B", arrivalTimePlanned: "2026-08-06T10:20:00Z" }, transportation: { number: "1", product: { class: 5 } } },
+            { origin: { name: "B", departureTimePlanned: "2026-08-06T10:25:00Z" }, destination: { name: "C", arrivalTimePlanned: "2026-08-06T10:45:00Z" }, transportation: { number: "2", product: { class: 5 } } },
+          ],
+        },
+      ],
+    };
+    expect(parseTrips(twoBuses)[0]!.interchanges).toBe(1);
+  });
+
+  it("tolerates junk and the `trips` alias", () => {
+    expect(parseTrips(null)).toEqual([]);
+    expect(parseTrips({})).toEqual([]);
+    expect(parseTrips({ journeys: [{ legs: [] }] })).toEqual([]);
+    expect(parseTrips({ trips: json.journeys }).length).toBe(1);
   });
 });
