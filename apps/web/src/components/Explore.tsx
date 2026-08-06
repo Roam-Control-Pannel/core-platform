@@ -42,6 +42,7 @@ import { CATEGORY_GROUPS, useCategoryLabel } from "../lib/categories";
 import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
 import { VenueMap, type MapVenue } from "./VenueMap";
 import { NearbyDepartures } from "./NearbyDepartures";
+import { PlanJourney } from "./PlanJourney";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
@@ -523,6 +524,11 @@ export function Explore() {
 
             {/* NI live transit — self-hiding outside Northern Ireland / when unconfigured */}
             <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />
+
+            {/* NI journey planner — plan a trip to this place; self-hides outside NI */}
+            <div style={{ marginTop: 12 }}>
+              <PlanJourney destName={place.name} destLat={place.lat} destLng={place.lng} />
+            </div>
 
             {/* phones only: the map is collapsed behind a toggle so venue cards lead; the
                 desktop map column carries the same map always-on on web. */}

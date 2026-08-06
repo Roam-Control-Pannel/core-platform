@@ -308,3 +308,231 @@ export function parseDepartures(json: unknown): Departure[] {
   out.sort((a, b) => effectiveMs(a) - effectiveMs(b));
   return out.slice(0, MAX_DEPARTURES);
 }
+
+// ============================================================================
+// Journey planning (Stage 5 · Slice 2) — Stop-Finder + Trip-Request.
+// Pure parsers + types for the "Plan a journey" feature (e.g. Belfast → Bangor).
+// They reuse the same defensive helpers and the mode/time mapping above.
+// ============================================================================
+
+/** Cache a stop-search result this long — named stops barely change, so cache generously. */
+export const STOP_SEARCH_TTL_MS = 10 * 60_000;
+/** Cache a trip plan this long — time-sensitive, so short. */
+export const TRIP_TTL_MS = 45_000;
+/** How many stop-finder matches we keep / show. */
+export const MAX_STOP_MATCHES = 8;
+/** How many journeys we ask EFA to compute / return. */
+export const MAX_TRIP_RESULTS = 5;
+
+/** What a stop-finder match resolves to — a stop, an address, a POI, a locality, or other. */
+export type StopKind = "stop" | "address" | "poi" | "locality" | "other";
+
+/** One match from a name search (the from/to autocomplete source). */
+export interface StopMatch {
+  /** EFA id — pass back into a Trip-Request as `type=any` origin/destination. */
+  id: string;
+  /** Human-readable label, e.g. "Belfast, Europa Buscentre". */
+  name: string;
+  kind: StopKind;
+  /** Coordinate when EFA supplies one (lets the planner fall back to a coord origin). */
+  lat: number | null;
+  lng: number | null;
+}
+
+/** A leg is either a walk or a ridden public-transport service. */
+export type LegKind = "walk" | "transit";
+
+/** One leg of a journey. */
+export interface TripLeg {
+  kind: LegKind;
+  /** Roam mode for a transit leg; null for a walk. */
+  mode: TransitMode | null;
+  /** Public line/route label for a transit leg (e.g. "7", "Enterprise"); null for a walk. */
+  line: string | null;
+  /** Where the service is heading (headsign) for a transit leg; null for a walk. */
+  headsign: string | null;
+  originName: string;
+  destName: string;
+  departPlanned: string | null;
+  departEstimated: string | null;
+  arrivePlanned: string | null;
+  arriveEstimated: string | null;
+  durationMin: number | null;
+  realtime: boolean;
+}
+
+/** One planned journey from origin to destination. */
+export interface Trip {
+  departPlanned: string | null;
+  departEstimated: string | null;
+  arrivePlanned: string | null;
+  arriveEstimated: string | null;
+  /** Total door-to-door minutes. */
+  durationMin: number | null;
+  /** Number of changes between transit services (transit legs − 1, min 0). */
+  interchanges: number;
+  legs: TripLeg[];
+  /** True when any leg carries a realtime estimate. */
+  realtime: boolean;
+}
+
+/** Map an EFA location `type` to our coarse StopKind. */
+function stopKindFromType(type: string | null): StopKind {
+  switch (type) {
+    case "stop":
+    case "platform":
+      return "stop";
+    case "poi":
+      return "poi";
+    case "locality":
+    case "suburb":
+      return "locality";
+    case "street":
+    case "singlehouse":
+    case "address":
+      return "address";
+    default:
+      return "other";
+  }
+}
+
+/**
+ * Parse an EFA Stop-Finder (XML_STOPFINDER_REQUEST) rapidJSON response into name-search matches,
+ * best-match first. Tolerant: anything without a usable id is skipped. Stops are surfaced ahead of
+ * addresses/POIs at equal quality since the planner works most reliably from a stop id.
+ */
+export function parseStopFinder(json: unknown): StopMatch[] {
+  if (!isRecord(json)) return [];
+  const locations = json.locations;
+  if (!Array.isArray(locations)) return [];
+
+  const out: Array<StopMatch & { quality: number }> = [];
+  for (const raw of locations) {
+    if (!isRecord(raw)) continue;
+    const props = isRecord(raw.properties) ? raw.properties : {};
+    // Prefer the global stop id when EFA marks the row global (mirrors parseCoordStops).
+    const id =
+      raw.isGlobalId === true && (asString(props.stopId) ?? asString(props.stopID))
+        ? (asString(props.stopId) ?? asString(props.stopID))
+        : asString(raw.id);
+    if (!id) continue;
+    const name = asString(raw.name) ?? asString(raw.disassembledName) ?? "Place";
+    const kind = stopKindFromType(asString(raw.type));
+    const coord = readCoord(raw);
+    out.push({
+      id,
+      name,
+      kind,
+      lat: coord?.lat ?? null,
+      lng: coord?.lng ?? null,
+      quality: asNumber(raw.matchQuality) ?? 0,
+    });
+  }
+  // Best match first; stops win ties (kind rank 0 = stop).
+  const rank = (k: StopKind) => (k === "stop" ? 0 : 1);
+  out.sort((a, b) => b.quality - a.quality || rank(a.kind) - rank(b.kind));
+  return out.slice(0, MAX_STOP_MATCHES).map(({ quality: _q, ...m }) => m);
+}
+
+/** Whole-minute duration between two ISO timestamps, or null if either is unusable. */
+function tripMinutes(from: string | null, to: string | null): number | null {
+  if (!from || !to) return null;
+  const a = parseEfaTime(from);
+  const b = parseEfaTime(to);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.max(0, Math.round((b - a) / 60_000));
+}
+
+/** EFA product classes that denote a walk/footpath rather than a ridden service. */
+const FOOTPATH_CLASSES = new Set([98, 99, 100]);
+
+/** Parse one EFA journey leg. */
+function parseLeg(raw: Record<string, unknown>): TripLeg {
+  const origin = isRecord(raw.origin) ? raw.origin : {};
+  const destination = isRecord(raw.destination) ? raw.destination : {};
+  const transportation = isRecord(raw.transportation) ? raw.transportation : null;
+  const product = transportation && isRecord(transportation.product) ? transportation.product : {};
+  const productClass = asNumber(product.class);
+
+  const line = transportation
+    ? asString(transportation.number) ??
+      asString(transportation.name) ??
+      asString(transportation.disassembledName)
+    : null;
+
+  // A leg is a walk when there's no ridden service: no transportation, a footpath product class,
+  // or no line to show. Everything else is a transit leg.
+  const isWalk =
+    !transportation || (productClass !== null && FOOTPATH_CLASSES.has(productClass)) || line === null;
+
+  const departPlanned = asString(origin.departureTimePlanned);
+  const departEstimated = asString(origin.departureTimeEstimated);
+  const arrivePlanned = asString(destination.arrivalTimePlanned);
+  const arriveEstimated = asString(destination.arrivalTimeEstimated);
+
+  const durationSec = asNumber(raw.duration);
+  const durationMin =
+    durationSec !== null
+      ? Math.round(durationSec / 60)
+      : tripMinutes(departEstimated ?? departPlanned, arriveEstimated ?? arrivePlanned);
+
+  return {
+    kind: isWalk ? "walk" : "transit",
+    mode: isWalk ? null : modeFromProductClass(productClass),
+    line: isWalk ? null : line,
+    headsign: isWalk ? null : readDestination(transportation ?? {}),
+    originName: asString(origin.name) ?? "—",
+    destName: asString(destination.name) ?? "—",
+    departPlanned,
+    departEstimated,
+    arrivePlanned,
+    arriveEstimated,
+    durationMin,
+    realtime: departEstimated !== null || arriveEstimated !== null,
+  };
+}
+
+/**
+ * Parse an EFA Trip-Request (XML_TRIP_REQUEST2) rapidJSON response into ranked journeys, in the
+ * order EFA returns them (soonest departure first), capped at MAX_TRIP_RESULTS. Tolerant: a
+ * journey with no usable legs is dropped; missing fields degrade rather than throw.
+ */
+export function parseTrips(json: unknown): Trip[] {
+  if (!isRecord(json)) return [];
+  // EFA rapidJSON uses `journeys`; tolerate an older `trips` alias.
+  const journeys = Array.isArray(json.journeys)
+    ? json.journeys
+    : Array.isArray(json.trips)
+      ? json.trips
+      : null;
+  if (!journeys) return [];
+
+  const out: Trip[] = [];
+  for (const j of journeys) {
+    if (!isRecord(j)) continue;
+    const rawLegs = j.legs;
+    if (!Array.isArray(rawLegs) || rawLegs.length === 0) continue;
+    const legs = rawLegs.filter(isRecord).map(parseLeg);
+    if (legs.length === 0) continue;
+
+    const first = legs[0]!;
+    const last = legs[legs.length - 1]!;
+    const transitLegs = legs.filter((l) => l.kind === "transit").length;
+    const departPlanned = first.departPlanned;
+    const departEstimated = first.departEstimated;
+    const arrivePlanned = last.arrivePlanned;
+    const arriveEstimated = last.arriveEstimated;
+
+    out.push({
+      departPlanned,
+      departEstimated,
+      arrivePlanned,
+      arriveEstimated,
+      durationMin: tripMinutes(departEstimated ?? departPlanned, arriveEstimated ?? arrivePlanned),
+      interchanges: Math.max(0, transitLegs - 1),
+      legs,
+      realtime: legs.some((l) => l.realtime),
+    });
+  }
+  return out.slice(0, MAX_TRIP_RESULTS);
+}

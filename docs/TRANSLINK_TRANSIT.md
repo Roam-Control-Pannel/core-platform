@@ -109,7 +109,26 @@ Opendata API"* — and the web card renders it in its footer. Do not remove it.
 4. Switch to a non-NI place (e.g. London) → the card disappears entirely.
 5. Once verified, pin the winning `TRANSLINK_AUTH_MODE` and remove `TRANSLINK_DEBUG`.
 
+## Journey planner (Slice 2)
+
+Point-to-point planning (e.g. Belfast → Bangor), built on two more EFA services:
+
+- **Stop-Finder** (`XML_STOPFINDER_REQUEST`) → `transit.searchStops({ q })` — resolves a typed name
+  to stop/address/POI matches; powers the from/to autocomplete. Heavily cached (`STOP_SEARCH_TTL_MS`).
+- **Trip-Request** (`XML_TRIP_REQUEST2`) → `transit.planTrip({ origin, destination, date?, time?,
+  arriveBy? })` — each endpoint is a stop id **or** a raw coordinate, so the web mounts the planner
+  under a place with the destination pre-filled as that place's coordinate ("journey to {place}").
+  Returns ranked journeys with legs (walk / ride), interchanges and realtime times. Cached briefly
+  (`TRIP_TTL_MS`).
+
+Both go through the SAME `TransitGuard` instance as departures, so the daily fair-use budget and
+per-client throttle are shared across the whole feature. Web surfaces: server hops
+`/api/transit/stops` + `/api/transit/plan`, and the `PlanJourney` component on Explore (self-hides
+outside NI, like the departures card). Parsers (`parseStopFinder`, `parseTrips`) are unit-tested in
+`@roam/core/transit`; the live shapes are confirmed via `TRANSLINK_DEBUG=1` (the `[transit]
+searchStops …` / `planTrip …` log lines) on first deploy.
+
 ## Roadmap (later slices)
 
-- **Slice 2** — `transit.planTrip` (EFA Trip-Request: point-to-point journey planning).
-- **Slice 3** — service alerts / disruptions (EFA AddInfo).
+- **Slice 3** — "Get here by public transport" CTA on venue detail (journey from the user's
+  location → the venue), and service alerts / disruptions (EFA AddInfo).

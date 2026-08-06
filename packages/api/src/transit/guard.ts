@@ -34,18 +34,23 @@ const DAY_MS = 86_400_000;
 /** What a paid answer's admission check returned. */
 export type Admission = { ok: true } | { ok: false; reason: "throttled" | "budget-exhausted" };
 
-/** The cached board shape is whatever the router stores; kept generic so the guard is board-agnostic. */
-interface CacheEntry<T> {
-  value: T;
+/** A cache entry — value type-erased so one guard can cache boards, stop lists AND trip plans. */
+interface CacheEntry {
+  value: unknown;
   expiresAt: number;
 }
 
 /**
  * The guard is a single long-lived instance (constructed once in the router module). All state
  * lives on it; nothing is global, so a test can spin up a fresh guard with its own clock.
+ *
+ * ONE instance backs all Translink calls (departures, stop-search, trip-plan) so the daily budget
+ * and per-client throttle are SHARED across the whole feature. The cache holds mixed value types
+ * keyed by a namespaced string (e.g. `dm:…`, `sf:…`, `trip:…`); getCached is generic at the read
+ * site so each caller recovers its own type, and each call passes its own TTL.
  */
-export class TransitGuard<TBoard> {
-  private cache = new Map<string, CacheEntry<TBoard>>();
+export class TransitGuard {
+  private cache = new Map<string, CacheEntry>();
   private clientHits = new Map<string, number[]>();
   private budgetDay = -1;
   private budgetUsed = 0;
@@ -62,20 +67,20 @@ export class TransitGuard<TBoard> {
     }
   }
 
-  /** Return a cached board if present and unexpired, else null. */
-  getCached(key: string): TBoard | null {
+  /** Return a cached value if present and unexpired, else null. Typed at the call site. */
+  getCached<T>(key: string): T | null {
     const hit = this.cache.get(key);
     if (!hit) return null;
     if (hit.expiresAt <= this.now()) {
       this.cache.delete(key);
       return null;
     }
-    return hit.value;
+    return hit.value as T;
   }
 
-  /** Cache a board for DEPARTURES_TTL_MS. */
-  setCached(key: string, value: TBoard): void {
-    this.cache.set(key, { value, expiresAt: this.now() + transit.DEPARTURES_TTL_MS });
+  /** Cache a value for `ttlMs` (defaults to the departures TTL). */
+  setCached(key: string, value: unknown, ttlMs: number = transit.DEPARTURES_TTL_MS): void {
+    this.cache.set(key, { value, expiresAt: this.now() + ttlMs });
   }
 
   /**

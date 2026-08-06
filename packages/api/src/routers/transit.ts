@@ -28,7 +28,10 @@ import { TransitGuard } from "../transit/guard.js";
 import {
   fetchNearestStops as defaultFetchNearestStops,
   fetchDepartures as defaultFetchDepartures,
+  fetchStopFinder as defaultFetchStopFinder,
+  fetchTrip as defaultFetchTrip,
   type EfaConfig,
+  type TripPlace,
 } from "../transit/client.js";
 
 /** How many candidate stops to ask CoordInfo for (we use the nearest; a few gives resilience). */
@@ -74,11 +77,13 @@ type Board = {
 };
 
 /** The single, long-lived guard for the whole service (cache + budget + throttle state). */
-const guard = new TransitGuard<Board>();
+const guard = new TransitGuard();
 
-/** Production seams for the two EFA calls (swappable in a focused test). */
+/** Production seams for the EFA calls (swappable in a focused test). */
 const fetchNearestStops = defaultFetchNearestStops;
 const fetchDepartures = defaultFetchDepartures;
+const fetchStopFinder = defaultFetchStopFinder;
+const fetchTrip = defaultFetchTrip;
 
 function emptyBoard(status: Board["status"], stop: Board["stop"] = null): Board {
   return { status, stop, departures: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
@@ -97,7 +102,7 @@ async function buildBoard(
   if (!transit.isWithinNI(input.lat, input.lng)) return emptyBoard("outside-region");
 
   const key = transit.cacheKeyForPoint(input.lat, input.lng);
-  const cached = guard.getCached(key);
+  const cached = guard.getCached<Board>(key);
   if (cached) return { ...cached, cached: true };
 
   const admission = guard.admit(clientKey);
@@ -148,6 +153,138 @@ async function buildBoard(
   return board;
 }
 
+/**
+ * Stop-search result for the from/to autocomplete. Local (not exported) so no named type leaks
+ * into AppRouter; `kind` is a plain string here rather than core's StopKind union.
+ */
+type StopList = {
+  status: "ok" | "unconfigured" | "throttled" | "budget-exhausted" | "error";
+  matches: { id: string; name: string; kind: string; lat: number | null; lng: number | null }[];
+  attribution: string;
+  cached: boolean;
+};
+
+/** A planned set of journeys. Local structural type — no core union crosses the wire. */
+type TripPlan = {
+  status: "ok" | "no-trips" | "unconfigured" | "throttled" | "budget-exhausted" | "error";
+  trips: {
+    departPlanned: string | null;
+    departEstimated: string | null;
+    arrivePlanned: string | null;
+    arriveEstimated: string | null;
+    durationMin: number | null;
+    interchanges: number;
+    realtime: boolean;
+    legs: {
+      kind: string;
+      mode: string | null;
+      line: string | null;
+      headsign: string | null;
+      originName: string;
+      destName: string;
+      departPlanned: string | null;
+      departEstimated: string | null;
+      arrivePlanned: string | null;
+      arriveEstimated: string | null;
+      durationMin: number | null;
+      realtime: boolean;
+    }[];
+  }[];
+  attribution: string;
+  cached: boolean;
+};
+
+function emptyStops(status: StopList["status"]): StopList {
+  return { status, matches: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
+}
+function emptyPlan(status: TripPlan["status"]): TripPlan {
+  return { status, trips: [], attribution: transit.TRANSLINK_ATTRIBUTION, cached: false };
+}
+
+/** Resolve a typed name to stop/address/POI matches. Cost-controlled + cached (names are stable). */
+async function buildStopList(
+  config: EfaConfig | null,
+  clientKey: string | null,
+  query: string,
+): Promise<StopList> {
+  if (!config) return emptyStops("unconfigured");
+  const q = query.trim();
+  if (q.length < 2) return { ...emptyStops("ok") };
+
+  const key = `sf:${q.toLowerCase()}`;
+  const cached = guard.getCached<StopList>(key);
+  if (cached) return { ...cached, cached: true };
+
+  const admission = guard.admit(clientKey);
+  if (!admission.ok) return emptyStops(admission.reason);
+  if (!guard.claimRequest()) return emptyStops("budget-exhausted");
+
+  try {
+    const json = await fetchStopFinder({ query: q, limit: transit.MAX_STOP_MATCHES }, config);
+    const matches = transit.parseStopFinder(json);
+    const result: StopList = {
+      status: "ok",
+      matches,
+      attribution: transit.TRANSLINK_ATTRIBUTION,
+      cached: false,
+    };
+    guard.setCached(key, result, transit.STOP_SEARCH_TTL_MS);
+    return result;
+  } catch (e) {
+    console.error("[transit] stop-finder failed:", e);
+    return emptyStops("error");
+  }
+}
+
+/** Plan journeys between two endpoints. Cost-controlled + briefly cached (time-sensitive). */
+async function buildTripPlan(
+  config: EfaConfig | null,
+  clientKey: string | null,
+  input: {
+    origin: TripPlace;
+    destination: TripPlace;
+    date?: string | undefined;
+    time?: string | undefined;
+    arriveBy?: boolean | undefined;
+  },
+): Promise<TripPlan> {
+  if (!config) return emptyPlan("unconfigured");
+
+  const key = `trip:${JSON.stringify([input.origin, input.destination, input.date ?? "", input.time ?? "", input.arriveBy ?? false])}`;
+  const cached = guard.getCached<TripPlan>(key);
+  if (cached) return { ...cached, cached: true };
+
+  const admission = guard.admit(clientKey);
+  if (!admission.ok) return emptyPlan(admission.reason);
+  if (!guard.claimRequest()) return emptyPlan("budget-exhausted");
+
+  try {
+    const json = await fetchTrip(
+      {
+        origin: input.origin,
+        destination: input.destination,
+        date: input.date ?? null,
+        time: input.time ?? null,
+        arriveBy: input.arriveBy ?? false,
+        limit: transit.MAX_TRIP_RESULTS,
+      },
+      config,
+    );
+    const trips = transit.parseTrips(json);
+    const result: TripPlan = {
+      status: trips.length > 0 ? "ok" : "no-trips",
+      trips,
+      attribution: transit.TRANSLINK_ATTRIBUTION,
+      cached: false,
+    };
+    guard.setCached(key, result, transit.TRIP_TTL_MS);
+    return result;
+  } catch (e) {
+    console.error("[transit] trip plan failed:", e);
+    return emptyPlan("error");
+  }
+}
+
 export const transitRouter = router({
   /**
    * Internal: the live departure board for the nearest Translink stop to a point. Anonymous-safe
@@ -170,5 +307,51 @@ export const transitRouter = router({
         );
       }
       return board;
+    }),
+
+  /**
+   * Internal: resolve a typed place name to stop/address/POI matches (the from/to autocomplete).
+   * Cheap + heavily cached; never throws — every outcome is a `status` the UI renders.
+   */
+  searchStops: internalProcedure
+    .input(z.object({ q: z.string().trim().min(2).max(80) }))
+    .query(async ({ ctx, input }): Promise<StopList> => {
+      const result = await buildStopList(ctx.env.transit.config, ctx.clientKey, input.q);
+      if (ctx.env.transit.config?.debug) {
+        console.log(
+          `[transit] searchStops "${input.q}" → status=${result.status} matches=${result.matches.length} cached=${result.cached}`,
+        );
+      }
+      return result;
+    }),
+
+  /**
+   * Internal: plan journeys between two endpoints (each a stop id or a coordinate), optionally at a
+   * given local date/time (depart or arrive). Never throws — outcomes are a `status` field.
+   */
+  planTrip: internalProcedure
+    .input(
+      z.object({
+        origin: z.union([
+          z.object({ stopId: z.string().min(1) }),
+          z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }),
+        ]),
+        destination: z.union([
+          z.object({ stopId: z.string().min(1) }),
+          z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }),
+        ]),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        arriveBy: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }): Promise<TripPlan> => {
+      const result = await buildTripPlan(ctx.env.transit.config, ctx.clientKey, input);
+      if (ctx.env.transit.config?.debug) {
+        console.log(
+          `[transit] planTrip → status=${result.status} trips=${result.trips.length} cached=${result.cached}`,
+        );
+      }
+      return result;
     }),
 });

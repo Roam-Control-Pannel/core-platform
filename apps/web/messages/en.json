@@ -558,6 +558,32 @@
       "body": "Live bus & train departures for {place} are on the way — powered by Translink, across Ireland."
     }
   },
+  "planJourney": {
+    "trigger": "Plan a journey",
+    "title": "Plan a journey",
+    "from": "From",
+    "to": "To",
+    "fromPlaceholder": "Choose a start point…",
+    "toPlaceholder": "Choose a destination…",
+    "swap": "Swap from and to",
+    "leaveNow": "Leave now",
+    "departAt": "Depart at",
+    "arriveBy": "Arrive by",
+    "find": "Find journeys",
+    "searching": "Finding journeys…",
+    "noResults": "No journeys found for that time. Try another time or nearby stops.",
+    "needBoth": "Choose a start point and a destination.",
+    "walk": "Walk",
+    "walkMin": "Walk {mins} min",
+    "change": "change",
+    "changes": "changes",
+    "direct": "Direct",
+    "durationMin": "{mins} min",
+    "live": "Live",
+    "to_": "to",
+    "error": "Couldn't plan that journey. Please try again.",
+    "close": "Close"
+  },
   "birthdayOffer": {
     "intro": "Set a treat and we'll deliver it automatically to followers on their birthday — the ones who've opted in. You never see whose birthday it is, only how many were sent.",
     "sentThisMonth": "Sent this month",
