@@ -548,6 +548,7 @@
     "mAway": "{distance} m away",
     "realtimeWhereAvailable": "Realtime where available",
     "noDepartures": "No departures in the next while.",
+    "more": "+{count} more departures",
     "minLate": "{mins} min late",
     "minEarly": "{mins} min early",
     "onTime": "On time (live)",
