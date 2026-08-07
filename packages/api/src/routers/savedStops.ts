@@ -37,7 +37,12 @@ export const savedStopsRouter = router({
     return { ok: true as const, stops: data ?? [] };
   }),
 
-  /** Save a stop (idempotent on the owner+stop key — re-saving refreshes the name/coords snapshot). */
+  /**
+   * Save a stop. Idempotent and insert-ONLY: `ignoreDuplicates` makes this `ON CONFLICT DO NOTHING`,
+   * so re-saving an already-saved stop is a no-op. This deliberately avoids an UPDATE (the table has
+   * no UPDATE RLS policy — only insert/select/delete) and doesn't refresh the name/coords snapshot,
+   * which barely change. Attempting a plain upsert here would hit the update branch and be RLS-denied.
+   */
   save: protectedProcedure
     .input(
       z.object({
@@ -51,7 +56,10 @@ export const savedStopsRouter = router({
       const profile_id = await callerId(ctx.db);
       const { error } = await ctx.db
         .from("saved_transit_stops")
-        .upsert({ profile_id, stop_id: input.stopId, name: input.name, lat: input.lat, lng: input.lng });
+        .upsert(
+          { profile_id, stop_id: input.stopId, name: input.name, lat: input.lat, lng: input.lng },
+          { onConflict: "profile_id,stop_id", ignoreDuplicates: true },
+        );
       if (error) return { ok: false as const, error: error.message };
       return { ok: true as const };
     }),

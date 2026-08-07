@@ -64,6 +64,9 @@ export function StopBoardPanel({
   const t = useTranslations("nearbyDepartures");
   const [board, setBoard] = useState<Board | null>(initialBoard ?? null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  // A cold open (no initialBoard) whose fetch fails/returns no stop: show a terminal message rather
+  // than an endless "loading…". Only ever surfaces while board is still null.
+  const [coldFailed, setColdFailed] = useState(false);
   const { filter, setFilter, sort, setSort, groups, rows } = useBoardView(board?.departures ?? []);
 
   const stop = board?.stop ?? null;
@@ -90,9 +93,14 @@ export function StopBoardPanel({
       if (data.status === "ok" && data.stop) {
         setBoard(data);
         setUpdatedAt(new Date());
+        setColdFailed(false);
+      } else {
+        // Non-ok: harmless when we already show a board (a warm refresh); marks the cold-open failure.
+        setColdFailed(true);
       }
     } catch {
-      /* keep the last good board; a failed refresh is silent */
+      // Keep the last good board; only a cold open (still null) surfaces this as an error.
+      if (gen.current === mine) setColdFailed(true);
     }
   }, [lat, lng]);
 
@@ -178,7 +186,9 @@ export function StopBoardPanel({
             showSort={(board?.departures.length ?? 0) > 1}
           />
           {board === null ? (
-            <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0" }}>{t("loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0" }}>
+              {coldFailed ? t("loadError") : t("loading")}
+            </div>
           ) : rows.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0" }}>{t("noDepartures")}</div>
           ) : (
