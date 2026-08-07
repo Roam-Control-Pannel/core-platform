@@ -26,6 +26,7 @@ import { plansRouter } from "./plans.js";
 import { seoRouter } from "./seo.js";
 import { marketingRouter } from "./marketing.js";
 import { transitRouter } from "./transit.js";
+import { savedStopsRouter } from "./savedStops.js";
 import { venueActivityRouter } from "./venueActivity.js";
 import { venueMarketingRouter } from "./venueMarketing.js";
 import { suggestionsRouter } from "./suggestions.js";
@@ -66,6 +67,7 @@ export const appRouter = router({
   seo: seoRouter,
   marketing: marketingRouter,
   transit: transitRouter,
+  savedStops: savedStopsRouter,
   venueActivity: venueActivityRouter,
   venueMarketing: venueMarketingRouter,
   suggestions: suggestionsRouter,

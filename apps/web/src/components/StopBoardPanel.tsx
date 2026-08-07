@@ -34,6 +34,7 @@ import {
   walkMinutes,
   listStyle,
 } from "./transitBoard";
+import { SaveStopButton } from "./SaveStopButton";
 
 /** How often the open panel re-polls the board. Above the server's 45s cache TTL's hot window. */
 const REFRESH_MS = 30_000;
@@ -44,21 +45,35 @@ export function StopBoardPanel({
   lat,
   lng,
   platform,
+  stopId,
+  stopName,
   onClose,
 }: {
-  initialBoard: Board;
+  /** The board the widget already holds. Omit when opening cold (e.g. from a saved stop) — the
+   *  panel then fetches on open. */
+  initialBoard?: Board;
   placeName: string;
   lat: number;
   lng: number;
   platform: MapsPlatform;
+  /** Stop identity for the Save button + header while a cold-opened board loads. */
+  stopId?: string;
+  stopName?: string;
   onClose: () => void;
 }) {
   const t = useTranslations("nearbyDepartures");
-  const [board, setBoard] = useState<Board>(initialBoard);
+  const [board, setBoard] = useState<Board | null>(initialBoard ?? null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const { filter, setFilter, sort, setSort, groups, rows } = useBoardView(board.departures);
+  const { filter, setFilter, sort, setSort, groups, rows } = useBoardView(board?.departures ?? []);
 
-  const stop = board.stop;
+  const stop = board?.stop ?? null;
+  // Save reference: the live stop when loaded, else the identity we were opened with.
+  const saveRef =
+    stop
+      ? { stopId: stop.id, name: stop.name, lat: stop.lat, lng: stop.lng }
+      : stopId && stopName
+        ? { stopId, name: stopName, lat, lng }
+        : null;
 
   // Re-fetch the board (used by the interval and after mount). Latest-wins via a generation ref.
   const gen = useRef(0);
@@ -83,6 +98,7 @@ export function StopBoardPanel({
 
   // Auto-refresh while open; also close on Escape and lock the page behind the modal.
   useEffect(() => {
+    if (!initialBoard) void refresh(); // cold open (e.g. from a saved stop) → fetch immediately
     const id = window.setInterval(refresh, REFRESH_MS);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -95,7 +111,7 @@ export function StopBoardPanel({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [refresh, onClose]);
+  }, [refresh, onClose, initialBoard]);
 
   if (typeof document === "undefined") return null;
 
@@ -111,8 +127,12 @@ export function StopBoardPanel({
       })
     : t("refreshesEvery", { secs: REFRESH_MS / 1000 });
 
+  const title = stop?.name ?? stopName ?? t("title");
+  const dLat = stop?.lat ?? lat;
+  const dLng = stop?.lng ?? lng;
+
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={stop?.name ?? t("title")} onClick={onClose} style={scrim}>
+    <div role="dialog" aria-modal="true" aria-label={title} onClick={onClose} style={scrim}>
       <div onClick={(e) => e.stopPropagation()} style={panel}>
         {/* Header */}
         <div style={panelHead}>
@@ -124,7 +144,7 @@ export function StopBoardPanel({
               className="t-h3"
               style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 21, color: "var(--ink)", lineHeight: 1.15 }}
             >
-              {stop?.name ?? t("title")}
+              {title}
             </div>
             {subline ? <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 3 }}>{subline}</div> : null}
           </div>
@@ -135,17 +155,11 @@ export function StopBoardPanel({
 
         {/* Actions */}
         <div style={actionRow}>
-          {stop ? (
-            <a
-              href={directionsToPlaceUrl(stop.lat, stop.lng, platform)}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={actionBtn}
-            >
-              <Icon name="locate" size={14} aria-hidden />
-              {t("directions")}
-            </a>
-          ) : null}
+          <a href={directionsToPlaceUrl(dLat, dLng, platform)} target="_blank" rel="noopener noreferrer" style={actionBtn}>
+            <Icon name="locate" size={14} aria-hidden />
+            {t("directions")}
+          </a>
+          {saveRef ? <SaveStopButton stop={saveRef} variant="action" /> : null}
           <a href={mlinkTicketUrl()} target="_blank" rel="noopener noreferrer" style={{ ...actionBtn, ...actionBtnPrimary }}>
             <Icon name="ticket" size={14} aria-hidden />
             {t("buyTicket")}
@@ -161,9 +175,11 @@ export function StopBoardPanel({
             setFilter={setFilter}
             sort={sort}
             setSort={setSort}
-            showSort={board.departures.length > 1}
+            showSort={(board?.departures.length ?? 0) > 1}
           />
-          {rows.length === 0 ? (
+          {board === null ? (
+            <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0" }}>{t("loading")}</div>
+          ) : rows.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0" }}>{t("noDepartures")}</div>
           ) : (
             <ul style={listStyle}>
@@ -172,7 +188,7 @@ export function StopBoardPanel({
               ))}
             </ul>
           )}
-          <Disruptions alerts={board.alerts} t={t} />
+          <Disruptions alerts={board?.alerts} t={t} />
         </div>
 
         {/* Footer: refresh stamp + attribution */}
@@ -181,7 +197,7 @@ export function StopBoardPanel({
             <span className="roam-live-pulse" aria-hidden style={{ width: 5, height: 5, borderRadius: "50%", background: "#1a9e57" }} />
             {updatedLabel}
           </span>
-          <span style={{ color: "var(--faint)" }}>{board.attribution || TRANSLINK_ATTRIBUTION}</span>
+          <span style={{ color: "var(--faint)" }}>{board?.attribution || TRANSLINK_ATTRIBUTION}</span>
         </div>
       </div>
     </div>,

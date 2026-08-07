@@ -32,6 +32,7 @@ import {
   attributionStyle,
 } from "./transitBoard";
 import { StopBoardPanel } from "./StopBoardPanel";
+import { SaveStopButton } from "./SaveStopButton";
 
 /** How many departures the compact widget shows before deferring the rest to the full panel. */
 const MAX_ROWS = 6;
@@ -155,6 +156,7 @@ function LiveBoard({
         subline={subline}
         directionsHref={directionsToPlaceUrl(stop.lat, stop.lng, platform)}
         directionsLabel={t("directions")}
+        saveButton={<SaveStopButton stop={{ stopId: stop.id, name: stop.name, lat: stop.lat, lng: stop.lng }} />}
       />
 
       <FilterControls
@@ -270,12 +272,15 @@ function BoardHeader({
   subline,
   directionsHref,
   directionsLabel,
+  saveButton,
 }: {
   title: string;
   subline: string;
   directionsHref?: string;
   directionsLabel?: string;
+  saveButton?: React.ReactNode;
 }) {
+  const hasActions = (directionsHref && directionsLabel) || saveButton;
   return (
     <header style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: "var(--space-3)" }}>
       <span aria-hidden style={iconChipStyle}>
@@ -301,11 +306,16 @@ function BoardHeader({
           {subline}
         </div>
       </div>
-      {directionsHref && directionsLabel ? (
-        <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={directionsLinkStyle}>
-          <Icon name="locate" size={12} aria-hidden />
-          {directionsLabel}
-        </a>
+      {hasActions ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flex: "0 0 auto" }}>
+          {directionsHref && directionsLabel ? (
+            <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={directionsLinkStyle}>
+              <Icon name="locate" size={12} aria-hidden />
+              {directionsLabel}
+            </a>
+          ) : null}
+          {saveButton}
+        </div>
       ) : null}
     </header>
   );

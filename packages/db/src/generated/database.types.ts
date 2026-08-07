@@ -1119,6 +1119,41 @@ export type Database = {
           },
         ]
       }
+      saved_transit_stops: {
+        Row: {
+          created_at: string
+          lat: number
+          lng: number
+          name: string
+          profile_id: string
+          stop_id: string
+        }
+        Insert: {
+          created_at?: string
+          lat: number
+          lng: number
+          name: string
+          profile_id: string
+          stop_id: string
+        }
+        Update: {
+          created_at?: string
+          lat?: number
+          lng?: number
+          name?: string
+          profile_id?: string
+          stop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_transit_stops_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_orders: {
         Row: {
           buyer_id: string | null
