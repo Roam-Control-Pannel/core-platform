@@ -14,9 +14,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Icon, type IconName } from "@roam/design";
+import { Icon } from "@roam/design";
 import { getFormatLocale } from "../lib/i18n/runtime";
 import { isWithinNI } from "../lib/transitRegion";
+import { modeBadge } from "./transitBoard";
+import { mlinkTicketUrl } from "../lib/translink";
 
 type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
 type Place = { stopId: string } | { lat: number; lng: number };
@@ -59,21 +61,6 @@ interface ServiceInfo {
   url: string | null;
 }
 
-function modeIcon(mode: Mode | null): IconName {
-  switch (mode) {
-    case "rail":
-      return "train";
-    case "bus":
-      return "bus";
-    case "tram":
-      return "tram";
-    case "ferry":
-      return "ferry";
-    default:
-      return "place";
-  }
-}
-
 /** EFA UTC ISO → epoch ms (append Z when tz-less), mirroring core/transit's parseEfaTime. */
 function parseEfaTime(iso: string): number {
   const hasTz = /[zZ]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
@@ -92,6 +79,35 @@ function placeFromMatch(m: StopMatch): Place {
     return { lat: m.lat, lng: m.lng };
   }
   return { stopId: m.id };
+}
+
+/** The single transit mode shared by all a trip's ridden legs, or null when mixed / none. */
+function uniformMode(legs: Leg[]): Mode | null {
+  const modes = new Set(legs.filter((l) => l.kind === "transit" && l.mode).map((l) => l.mode as Mode));
+  return modes.size === 1 ? ([...modes][0] as Mode) : null;
+}
+
+/** i18n key under planJourney for a mode tag; tram surfaces as "Glider" in NI, coach as "Bus". */
+function modeLabelKey(mode: Mode): "rail" | "bus" | "glider" | "ferry" {
+  switch (mode) {
+    case "rail":
+      return "rail";
+    case "tram":
+      return "glider";
+    case "ferry":
+      return "ferry";
+    default:
+      return "bus";
+  }
+}
+
+/** A transit leg's mode is excluded when its include-toggle is off (bus toggle covers Glider too). */
+function tripUsesExcludedMode(trip: Trip, includeBus: boolean, includeRail: boolean): boolean {
+  return trip.legs.some((l) => {
+    if (l.kind !== "transit" || !l.mode) return false;
+    if (l.mode === "rail") return !includeRail;
+    return !includeBus; // bus / tram (Glider) / coach / other
+  });
 }
 
 export function PlanJourney({
@@ -116,6 +132,11 @@ export function PlanJourney({
   const now = useRef(new Date());
   const [date, setDate] = useState(() => toDateInput(now.current));
   const [time, setTime] = useState(() => toTimeInput(now.current));
+  // Mode-include filters (design surface 1c). Both on by default; unchecking one asks EFA to plan
+  // around that mode and drops any journey still using it.
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [includeBus, setIncludeBus] = useState(true);
+  const [includeRail, setIncludeRail] = useState(true);
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [alerts, setAlerts] = useState<ServiceInfo[]>([]);
   const [status, setStatus] = useState<string>("");
@@ -165,14 +186,19 @@ export function PlanJourney({
         body.time = time;
         body.arriveBy = whenMode === "arrive";
       }
+      if (!includeBus) body.includeBus = false;
+      if (!includeRail) body.includeRail = false;
       const res = await fetch("/api/transit/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = (await res.json()) as { status?: string; trips?: Trip[]; alerts?: ServiceInfo[] };
+      // Correct-either-way: whether or not EFA honoured excludedMeans, never show a journey that
+      // still uses an excluded mode.
+      const filtered = (data.trips ?? []).filter((tr) => !tripUsesExcludedMode(tr, includeBus, includeRail));
       setStatus(data.status ?? "error");
-      setTrips(data.trips ?? []);
+      setTrips(filtered);
       setAlerts(data.alerts ?? []);
     } catch {
       setStatus("error");
@@ -180,7 +206,7 @@ export function PlanJourney({
     } finally {
       setLoading(false);
     }
-  }, [from, to, whenMode, date, time]);
+  }, [from, to, whenMode, date, time, includeBus, includeRail]);
 
   // Self-hiding like NearbyDepartures: when anchored to a place outside NI, Translink can't plan
   // it, so render nothing. (Hooks above always run; only the output is gated.)
@@ -246,6 +272,25 @@ export function PlanJourney({
         ) : null}
       </div>
 
+      <div style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          onClick={() => setOptionsOpen((v) => !v)}
+          aria-expanded={optionsOpen}
+          style={optionsToggle}
+        >
+          {t("options")}
+          {!includeBus || !includeRail ? <span style={optionsDot} aria-hidden /> : null}
+          <span aria-hidden style={{ transform: optionsOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
+        </button>
+        {optionsOpen ? (
+          <div style={optionsBox}>
+            <Check label={t("includeBuses")} checked={includeBus} onChange={setIncludeBus} />
+            <Check label={t("includeTrains")} checked={includeRail} onChange={setIncludeRail} />
+          </div>
+        ) : null}
+      </div>
+
       <button type="button" onClick={() => void find()} disabled={loading} style={findBtn}>
         {loading ? t("searching") : t("find")}
       </button>
@@ -274,46 +319,100 @@ export function PlanJourney({
 function TripCard({ trip, t }: { trip: Trip; t: ReturnType<typeof useTranslations> }) {
   const dep = clock(trip.departEstimated ?? trip.departPlanned);
   const arr = clock(trip.arriveEstimated ?? trip.arrivePlanned);
-  const changesLabel =
-    trip.interchanges === 0 ? t("direct") : `${trip.interchanges} ${trip.interchanges === 1 ? t("change") : t("changes")}`;
+  const uniform = uniformMode(trip.legs);
+  const direct = trip.interchanges === 0;
+  const changesLabel = direct
+    ? t("direct")
+    : `${trip.interchanges} ${trip.interchanges === 1 ? t("change") : t("changes")}`;
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, background: "var(--card)" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontWeight: 600, fontSize: 16, color: "var(--ink-hi)" }}>{dep} → {arr}</span>
-        {trip.durationMin != null ? <span style={{ fontSize: 13, color: "var(--ink-2)" }}>· {t("durationMin", { mins: trip.durationMin })}</span> : null}
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>{changesLabel}</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, fontSize: 16, color: "var(--ink-hi)", fontVariantNumeric: "tabular-nums" }}>
+          {dep} → {arr}
+        </span>
+        {trip.durationMin != null ? (
+          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>· {t("durationMin", { mins: trip.durationMin })}</span>
+        ) : null}
         {trip.realtime ? <span style={liveDot} title={t("live")} /> : null}
+        <span style={{ flex: 1 }} />
+        {uniform ? (
+          <span style={{ ...tagPill, color: modeBadge(uniform).bg, borderColor: "var(--line-2)" }}>
+            {t(modeLabelKey(uniform))}
+          </span>
+        ) : null}
+        <span style={{ ...tagPill, color: direct ? "#1a7f4b" : "var(--muted)", borderColor: "var(--line-2)" }}>
+          {changesLabel}
+        </span>
       </div>
-      <div style={{ display: "grid", gap: 6 }}>
-        {trip.legs.map((leg, i) => (
-          <LegRow key={i} leg={leg} t={t} />
-        ))}
+
+      <LegTimeline legs={trip.legs} t={t} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {legSummary(trip.legs, t)}
+        </span>
+        <a href={mlinkTicketUrl()} target="_blank" rel="noopener noreferrer" style={buyLink}>
+          <Icon name="ticket" size={13} aria-hidden />
+          {t("buy")}
+        </a>
       </div>
     </div>
   );
 }
 
-function LegRow({ leg, t }: { leg: Leg; t: ReturnType<typeof useTranslations> }) {
-  const isWalk = leg.kind === "walk";
-  const dep = clock(leg.departEstimated ?? leg.departPlanned);
+/** A proportional bar of the journey's legs — ridden legs coloured by mode, walks a faint gap. */
+function LegTimeline({ legs, t }: { legs: Leg[]; t: ReturnType<typeof useTranslations> }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-      <span style={{ width: 22, display: "inline-flex", justifyContent: "center", color: "var(--ink-2)" }}>
-        {isWalk ? <span style={{ fontSize: 11, color: "var(--muted)" }}>⏱</span> : <Icon name={modeIcon(leg.mode)} size={16} />}
-      </span>
-      {isWalk ? (
-        <span style={{ color: "var(--ink-2)" }}>{leg.durationMin != null ? t("walkMin", { mins: leg.durationMin }) : t("walk")}</span>
-      ) : (
-        <>
-          <span style={{ fontWeight: 600, color: "var(--ink-hi)", background: "var(--paper-2)", borderRadius: 6, padding: "1px 7px" }}>{leg.line}</span>
-          <span style={{ color: "var(--ink-2)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {leg.originName} {t("to_")} {leg.destName}
-          </span>
-          {dep ? <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{dep}</span> : null}
-        </>
-      )}
+    <div style={timelineTrack}>
+      {legs.map((leg, i) => {
+        const w = Math.max(leg.durationMin ?? 1, 1);
+        if (leg.kind === "walk") {
+          return (
+            <div
+              key={i}
+              title={leg.durationMin != null ? t("walkMin", { mins: leg.durationMin }) : t("walk")}
+              style={{ ...timelineSeg, flex: `${w} 1 0`, minWidth: 20, background: "var(--paper-2)", color: "var(--muted)" }}
+            >
+              <Icon name="locate" size={11} aria-hidden />
+            </div>
+          );
+        }
+        const c = modeBadge(leg.mode ?? "other");
+        return (
+          <div
+            key={i}
+            title={`${leg.line ?? ""} · ${leg.originName} → ${leg.destName}`}
+            style={{ ...timelineSeg, flex: `${w} 1 0`, minWidth: 48, background: c.bg, color: c.fg }}
+          >
+            <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{leg.line}</span>
+            {leg.durationMin != null && w >= 6 ? <span style={{ opacity: 0.85 }}>· {leg.durationMin}m</span> : null}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** One-line prose summary of the legs, e.g. "Walk 6 min · Glider G1 to Titanic Quarter · walk 7 min". */
+function legSummary(legs: Leg[], t: ReturnType<typeof useTranslations>): string {
+  return legs
+    .map((l) =>
+      l.kind === "walk"
+        ? l.durationMin != null
+          ? t("walkMin", { mins: l.durationMin })
+          : t("walk")
+        : `${l.line ?? ""} ${t("to_")} ${l.destName}`.trim(),
+    )
+    .join(" · ");
+}
+
+/** A checkbox row for the mode-include options. */
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "var(--ink-2)", cursor: "pointer" }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ accentColor: "var(--crimson-700)", width: 16, height: 16 }} />
+      {label}
+    </label>
   );
 }
 
@@ -573,4 +672,78 @@ const liveDot: React.CSSProperties = {
   borderRadius: "50%",
   background: "var(--success)",
   display: "inline-block",
+};
+const tagPill: React.CSSProperties = {
+  fontFamily: "var(--mono)",
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+  border: "1px solid var(--line-2)",
+  borderRadius: 999,
+  padding: "3px 8px",
+  whiteSpace: "nowrap",
+};
+const timelineTrack: React.CSSProperties = {
+  display: "flex",
+  gap: 3,
+  height: 26,
+  alignItems: "stretch",
+};
+const timelineSeg: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 4,
+  borderRadius: 6,
+  padding: "0 8px",
+  fontFamily: "var(--ui)",
+  fontSize: 11.5,
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+};
+const buyLink: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  flex: "0 0 auto",
+  textDecoration: "none",
+  fontFamily: "var(--mono)",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  color: "var(--crimson-700)",
+  border: "1px solid var(--line-2)",
+  borderRadius: 999,
+  padding: "4px 10px",
+};
+const optionsToggle: React.CSSProperties = {
+  all: "unset",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  fontFamily: "var(--mono)",
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  color: "var(--ink-2)",
+};
+const optionsDot: React.CSSProperties = {
+  width: 6,
+  height: 6,
+  borderRadius: "50%",
+  background: "var(--crimson-700)",
+  display: "inline-block",
+};
+const optionsBox: React.CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 10,
+  padding: "12px 14px",
+  border: "1px solid var(--line)",
+  borderRadius: 10,
+  background: "var(--paper-2)",
 };

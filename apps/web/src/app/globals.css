@@ -107,6 +107,16 @@
   text-transform: uppercase;
 }
 
+/* Live-feed pulse — used by the transit board's realtime indicators. */
+@keyframes roamPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+.roam-live-pulse { animation: roamPulse 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .roam-live-pulse { animation: none; }
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body { background: var(--paper); color: var(--ink); font-family: var(--ui); -webkit-font-smoothing: antialiased; }

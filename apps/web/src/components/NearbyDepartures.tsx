@@ -1,90 +1,41 @@
 /**
- * NearbyDepartures — the Northern Ireland live-transit card (Translink Opendata, Slice 1).
+ * NearbyDepartures — the Northern Ireland live-transit card (Translink Opendata).
  *
- * Shown on Explore under a place that sits inside NI. It asks the server-side hop
+ * Shown on Home and Explore under a place that sits inside NI. It asks the server-side hop
  * (POST /api/transit/nearby) for the live departure board of the nearest Translink stop and
- * renders it: the stop, up to a handful of upcoming services with realtime "due in" times, and
- * the licence-required attribution. Everything is best-effort and self-hiding — outside NI, or
- * when the feature isn't configured / has nothing to show, the component renders nothing so it
- * never clutters a place that has no transit answer.
+ * renders a compact board: the stop, a handful of upcoming services with realtime "due in" times,
+ * mode filters, disruptions, and the licence-required attribution. A "show all" affordance opens
+ * the fuller StopBoardPanel. Everything is best-effort and self-hiding — outside NI, or when the
+ * feature isn't configured / has nothing to show, the component renders nothing.
  *
  * The NI check runs CLIENT-SIDE first (lib/transitRegion mirrors core's geofence) so we don't
  * even POST for an obviously-out-of-region place; the server geofences again as the real gate.
+ *
+ * The board row primitives (roundel, destination, countdown, filters) live in ./transitBoard and
+ * are shared verbatim with StopBoardPanel so the two surfaces can never drift.
  */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Icon, type IconName } from "@roam/design";
+import { Icon } from "@roam/design";
 import { isWithinNI, isWithinIreland, TRANSLINK_ATTRIBUTION } from "../lib/transitRegion";
-import { getFormatLocale } from "../lib/i18n/runtime";
+import { detectMapsPlatform, directionsToPlaceUrl, type MapsPlatform } from "../lib/directions";
+import {
+  type Board,
+  useBoardView,
+  FilterControls,
+  DepartureRow,
+  Disruptions,
+  walkMinutes,
+  listStyle,
+  attributionStyle,
+} from "./transitBoard";
+import { StopBoardPanel } from "./StopBoardPanel";
+import { SaveStopButton } from "./SaveStopButton";
 
-type Mode = "rail" | "bus" | "tram" | "ferry" | "other" | string;
-
-interface BoardDeparture {
-  line: string;
-  destination: string;
-  mode: Mode;
-  plannedTime: string;
-  expectedTime: string | null;
-  delayMin: number | null;
-  realtime: boolean;
-}
-
-interface Board {
-  status:
-    | "ok"
-    | "no-stop"
-    | "outside-region"
-    | "unconfigured"
-    | "throttled"
-    | "budget-exhausted"
-    | "error";
-  stop: { id: string; name: string; lat: number; lng: number; distanceM: number | null } | null;
-  departures: BoardDeparture[];
-  alerts?: { title: string; content: string | null; priority: string | null; url: string | null }[];
-  attribution: string;
-  cached: boolean;
-}
-
-/** The icon name for a transit mode. */
-function modeIcon(mode: Mode): IconName {
-  switch (mode) {
-    case "rail":
-      return "train";
-    case "bus":
-      return "bus";
-    case "tram":
-      return "tram";
-    case "ferry":
-      return "ferry";
-    default:
-      return "place";
-  }
-}
-
-/**
- * Parse an EFA timestamp to epoch ms. EFA emits UTC ISO 8601; if a value lacks a timezone
- * designator we treat it as UTC (append `Z`) so "due in N min" isn't skewed by the viewer's
- * local offset (e.g. one hour during BST). Mirrors @roam/core/transit's parseEfaTime.
- */
-function parseEfaTime(iso: string): number {
-  const hasTz = /[zZ]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
-  return Date.parse(hasTz ? iso : `${iso}Z`);
-}
-
-/**
- * Format a departure time relative to now: "Due" within a minute, "N min" under an hour, else a
- * local HH:MM. Uses the realtime estimate when present, otherwise the scheduled time.
- */
-function formatWhen(t: ReturnType<typeof useTranslations>, dep: BoardDeparture): string {
-  const at = parseEfaTime(dep.expectedTime ?? dep.plannedTime);
-  if (Number.isNaN(at)) return "";
-  const mins = Math.round((at - Date.now()) / 60_000);
-  if (mins <= 0) return t("due");
-  if (mins < 60) return t("mins", { mins });
-  return new Date(at).toLocaleTimeString(getFormatLocale(), { hour: "2-digit", minute: "2-digit" });
-}
+/** How many departures the compact widget shows before deferring the rest to the full panel. */
+const MAX_ROWS = 6;
 
 export function NearbyDepartures({
   lat,
@@ -136,162 +87,27 @@ export function NearbyDepartures({
   // Outside the island of Ireland → nothing at all (Translink is Ireland-only).
   if (!inIreland) return null;
 
-  // In NI, while we check for a live board, show a compact loading line.
+  // In NI, while we check for a live board, show the header with skeleton rows.
   if (inNI && loading) {
     return (
       <div style={cardStyle}>
-        <div style={{ ...rowStyle, color: "var(--ink-2)" }}>
-          <Icon name="bus" size={16} />
-          <span style={{ fontSize: 13 }}>{t("loading")}</span>
-        </div>
+        <BoardHeader title={t("title")} subline={t("loading")} />
+        <ul style={listStyle}>
+          {[0, 1, 2].map((i) => (
+            <li key={i} style={{ ...skeletonRow, opacity: 1 - i * 0.28 }}>
+              <span style={{ width: 46, height: 24, borderRadius: 7, background: "var(--paper-2)" }} />
+              <span style={{ height: 12, borderRadius: 6, background: "var(--paper-2)" }} />
+              <span style={{ height: 12, width: 42, borderRadius: 6, background: "var(--paper-2)", justifySelf: "end" }} />
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   // A real live board (in NI, with a nearby stop) → render departures.
   if (inNI && board && board.status === "ok" && board.stop) {
-    const { stop, departures } = board;
-    return (
-      <div style={cardStyle}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 8,
-          marginBottom: departures.length ? "var(--space-3)" : 0,
-        }}
-      >
-        <div>
-          <div
-            className="t-h4"
-            style={{ fontFamily: "var(--display)", color: "var(--ink)", lineHeight: 1.2 }}
-          >
-            {t("title")}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 2 }}>
-            {stop.name}
-            {typeof stop.distanceM === "number" ? ` · ${t("mAway", { distance: stop.distanceM })}` : ""}
-          </div>
-        </div>
-        <span
-          aria-hidden
-          title={t("realtimeWhereAvailable")}
-          style={{ fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap" }}
-        >
-          {placeName}
-        </span>
-      </div>
-
-      {departures.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--muted)", paddingBottom: 2 }}>
-          {t("noDepartures")}
-        </div>
-      ) : (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>
-          {departures.map((d, i) => {
-            const when = formatWhen(t, d);
-            const late = typeof d.delayMin === "number" && d.delayMin > 0;
-            const early = typeof d.delayMin === "number" && d.delayMin < 0;
-            return (
-              <li key={`${d.line}-${d.plannedTime}-${i}`} style={rowStyle}>
-                <span aria-hidden style={{ width: 20, display: "inline-flex", justifyContent: "center" }}>
-                  <Icon name={modeIcon(d.mode)} size={16} />
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontFamily: "var(--ui)",
-                    color: "var(--ink)",
-                    minWidth: 44,
-                  }}
-                >
-                  {d.line}
-                </span>
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: "var(--ink-2)",
-                    fontSize: 13.5,
-                  }}
-                >
-                  {d.destination}
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontFamily: "var(--ui)",
-                    color: late ? "var(--crimson-700)" : "var(--ink)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {when}
-                </span>
-                {d.realtime ? (
-                  <span
-                    title={
-                      late
-                        ? t("minLate", { mins: d.delayMin as number })
-                        : early
-                          ? t("minEarly", { mins: Math.abs(d.delayMin as number) })
-                          : t("onTime")
-                    }
-                    aria-label={t("live")}
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      background: late ? "var(--crimson-700)" : "#1a9e57",
-                      flex: "0 0 auto",
-                    }}
-                  />
-                ) : (
-                  <span style={{ width: 7, flex: "0 0 auto" }} />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {board.alerts && board.alerts.length > 0 ? (
-        <div
-          style={{
-            marginTop: "var(--space-3)",
-            padding: "8px 10px",
-            borderRadius: 10,
-            background: board.alerts.some((a) => a.priority === "high" || a.priority === "veryHigh") ? "var(--crimson-tint)" : "var(--paper-2)",
-          }}
-        >
-          <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 3 }}>
-            {t("disruptions")}
-          </div>
-          {board.alerts.slice(0, 3).map((a, i) => (
-            <div key={i} style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>{a.title}</span>
-              {a.content ? <span> — {a.content}</span> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      <div
-        style={{
-          marginTop: "var(--space-3)",
-          paddingTop: "var(--space-2)",
-          borderTop: "1px solid var(--line)",
-          fontSize: 10.5,
-          color: "var(--faint)",
-        }}
-      >
-        {board.attribution || TRANSLINK_ATTRIBUTION}
-      </div>
-    </div>
-    );
+    return <LiveBoard board={board} placeName={placeName} lat={lat} lng={lng} />;
   }
 
   // Anywhere on the island of Ireland without a live board → the "coming soon" placeholder.
@@ -299,11 +115,101 @@ export function NearbyDepartures({
 }
 
 /**
+ * LiveBoard — the compact board itself, split out so it can own the interactive state (mode
+ * filter, sort, the full-panel toggle) with hooks that never sit behind a conditional return.
+ * Mounted only when the parent has an OK board with a stop, so `board.stop` is guaranteed present.
+ */
+function LiveBoard({
+  board,
+  placeName,
+  lat,
+  lng,
+}: {
+  board: Board;
+  placeName: string;
+  lat: number;
+  lng: number;
+}) {
+  const t = useTranslations("nearbyDepartures");
+  const stop = board.stop!;
+  const { filter, setFilter, sort, setSort, groups, rows } = useBoardView(board.departures);
+  const [panelOpen, setPanelOpen] = useState(false);
+  // Detect the maps platform once (client-only) so the Directions link routes to the right app.
+  const [platform] = useState<MapsPlatform>(() =>
+    typeof navigator !== "undefined"
+      ? detectMapsPlatform(navigator.userAgent, navigator.maxTouchPoints, navigator.platform)
+      : "web",
+  );
+
+  const visible = rows.slice(0, MAX_ROWS);
+  const total = board.departures.length;
+  const hasMore = total > visible.length;
+  const subline =
+    typeof stop.distanceM === "number"
+      ? `${stop.name} · ${t("metres", { distance: stop.distanceM })} · ${t("walk", { mins: walkMinutes(stop.distanceM) })}`
+      : stop.name;
+
+  return (
+    <div style={cardStyle}>
+      <BoardHeader
+        title={t("title")}
+        subline={subline}
+        directionsHref={directionsToPlaceUrl(stop.lat, stop.lng, platform)}
+        directionsLabel={t("directions")}
+        saveButton={<SaveStopButton stop={{ stopId: stop.id, name: stop.name, lat: stop.lat, lng: stop.lng }} />}
+      />
+
+      <FilterControls
+        t={t}
+        groups={groups}
+        filter={filter}
+        setFilter={setFilter}
+        sort={sort}
+        setSort={setSort}
+        showSort={board.departures.length > 1}
+      />
+
+      {rows.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--muted)", padding: "var(--space-2) 0 2px" }}>
+          {t("noDepartures")}
+        </div>
+      ) : (
+        <ul style={listStyle}>
+          {visible.map((d, i) => (
+            <DepartureRow key={`${d.line}-${d.plannedTime}-${i}`} d={d} placeName={placeName} t={t} />
+          ))}
+        </ul>
+      )}
+
+      {total > 0 ? (
+        <button type="button" onClick={() => setPanelOpen(true)} style={openBoardStyle}>
+          {hasMore ? t("showAll", { count: total }) : t("openBoard")}
+          <span aria-hidden> →</span>
+        </button>
+      ) : null}
+
+      <Disruptions alerts={board.alerts} t={t} />
+
+      <div style={attributionStyle}>{board.attribution || TRANSLINK_ATTRIBUTION}</div>
+
+      {panelOpen ? (
+        <StopBoardPanel
+          initialBoard={board}
+          placeName={placeName}
+          lat={lat}
+          lng={lng}
+          platform={platform}
+          onClose={() => setPanelOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * TransitComingSoon — the geographical teaser shown across the island of Ireland while live
- * departures aren't available (pending Translink go-live, or outside NI where there's no live
- * board). Deliberately Ireland-only: Translink is an Ireland operator, so this never appears
- * elsewhere. Once NI departures are live, NI places show the real board and this remains the
- * placeholder for the rest of the island.
+ * departures aren't available (outside NI where there's no live board). Deliberately Ireland-only:
+ * Translink is an Ireland operator, so this never appears elsewhere.
  */
 function TransitComingSoon({ placeName }: { placeName: string }) {
   const t = useTranslations("nearbyDepartures");
@@ -356,16 +262,122 @@ function TransitComingSoon({ placeName }: { placeName: string }) {
   );
 }
 
+/**
+ * BoardHeader — the shared crest for the transit card: a crimson bus icon-chip, the title, a
+ * stop · distance · walk-time subline, and an optional right-aligned Directions link that hands
+ * off to the device's maps app. Matches the icon-chip + display-title language of the home widgets.
+ */
+function BoardHeader({
+  title,
+  subline,
+  directionsHref,
+  directionsLabel,
+  saveButton,
+}: {
+  title: string;
+  subline: string;
+  directionsHref?: string;
+  directionsLabel?: string;
+  saveButton?: React.ReactNode;
+}) {
+  const hasActions = (directionsHref && directionsLabel) || saveButton;
+  return (
+    <header style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: "var(--space-3)" }}>
+      <span aria-hidden style={iconChipStyle}>
+        <Icon name="bus" size={15} />
+      </span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          className="t-h4"
+          style={{ fontFamily: "var(--display)", fontWeight: 600, color: "var(--ink)", lineHeight: 1.2 }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontSize: 12.5,
+            color: "var(--ink-2)",
+            marginTop: 2,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {subline}
+        </div>
+      </div>
+      {hasActions ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flex: "0 0 auto" }}>
+          {directionsHref && directionsLabel ? (
+            <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={directionsLinkStyle}>
+              <Icon name="locate" size={12} aria-hidden />
+              {directionsLabel}
+            </a>
+          ) : null}
+          {saveButton}
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
 const cardStyle: React.CSSProperties = {
   border: "1px solid var(--line)",
   borderRadius: 16,
   background: "var(--card)",
-  padding: "var(--space-3) var(--space-4)",
+  padding: "var(--space-4)",
   marginBottom: "var(--space-4)",
 };
 
-const rowStyle: React.CSSProperties = {
-  display: "flex",
+const iconChipStyle: React.CSSProperties = {
+  display: "grid",
+  placeItems: "center",
+  width: 26,
+  height: 26,
+  borderRadius: 9,
+  background: "var(--crimson-tint)",
+  color: "var(--crimson-700)",
+  flex: "0 0 auto",
+};
+
+const directionsLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
   alignItems: "center",
-  gap: 10,
+  gap: 4,
+  flex: "0 0 auto",
+  fontFamily: "var(--mono)",
+  fontSize: 9.5,
+  fontWeight: 700,
+  letterSpacing: ".1em",
+  textTransform: "uppercase",
+  color: "var(--crimson-700)",
+  textDecoration: "none",
+  border: "1px solid var(--line-2)",
+  borderRadius: 999,
+  padding: "3px 9px 3px 7px",
+};
+
+const openBoardStyle: React.CSSProperties = {
+  width: "100%",
+  marginTop: "var(--space-2)",
+  border: "1px solid var(--line)",
+  background: "var(--paper-2)",
+  cursor: "pointer",
+  borderRadius: 10,
+  padding: "9px 0",
+  fontFamily: "var(--mono)",
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: ".08em",
+  textTransform: "uppercase",
+  color: "var(--ink-2)",
+};
+
+const skeletonRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  padding: "7px 0",
+  borderTop: "1px solid var(--line)",
 };

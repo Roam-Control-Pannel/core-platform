@@ -27,6 +27,7 @@ import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import { NearbyDepartures } from "./NearbyDepartures";
+import { SavedStops } from "./SavedStops";
 import { isWithinIreland } from "../lib/transitRegion";
 import { townHallAuthor, timeAgo, type TownHallAuthor } from "../lib/townHall";
 import { getFormatLocale } from "../lib/i18n/runtime";
@@ -75,6 +76,7 @@ export const HOME_WIDGETS: HomeWidget[] = [
     condition: (p) => isWithinIreland(p.lat, p.lng),
     render: ({ place }) => <NearbyDepartures lat={place.lat} lng={place.lng} placeName={place.name} />,
   },
+  { id: "saved-stops", label: "widgets.savedStops", span: "half", render: ({ hasSession }) => <SavedStops hasSession={hasSession} /> },
   { id: "upcoming-plans", label: "widgets.yourPlans", span: "half", render: ({ hasSession }) => <UpcomingPlans hasSession={hasSession} /> },
   { id: "followed-venues", label: "widgets.followedVenues", span: "half", render: ({ hasSession }) => <FollowedVenues hasSession={hasSession} /> },
   { id: "saved-deals", label: "widgets.savedDeals", span: "half", render: ({ hasSession }) => <SavedDeals hasSession={hasSession} /> },

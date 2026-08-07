@@ -44,8 +44,12 @@ export const DEPARTURES_TTL_MS = 45_000;
 /** Radius (m) for the nearest-stop search. Urban walk-to-stop scale. */
 export const STOP_SEARCH_RADIUS_M = 800;
 
-/** Max departures returned on a board — a glanceable list, not a full timetable. */
-export const MAX_DEPARTURES = 8;
+/**
+ * Max departures returned on a board. The compact widget shows only the first handful; the rest
+ * back the mode filters and the "show more" reveal (all within the SAME single Departure-Monitor
+ * call — a larger `limit` costs no extra EFA request). Kept modest so the payload stays glanceable.
+ */
+export const MAX_DEPARTURES = 16;
 
 /** Grid precision for the cache key: 3 decimal places ≈ 111 m, so nearby viewers share a board. */
 const CACHE_KEY_DP = 3;

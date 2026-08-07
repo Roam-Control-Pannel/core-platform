@@ -245,6 +245,18 @@ async function buildStopList(
 }
 
 /** Plan journeys between two endpoints. Cost-controlled + briefly cached (time-sensitive). */
+/**
+ * EFA means-of-transport classes to exclude for the mode-include filters. Rail = intercity/commuter/
+ * metro/city-rail (0–3); the "bus" toggle also covers Glider (tram, 4) and coach (7). Ferry (9) is
+ * never filtered. An empty result means "include everything" (the param is omitted).
+ */
+function excludedMeansFor(includeBus: boolean, includeRail: boolean): string | null {
+  const classes: number[] = [];
+  if (!includeRail) classes.push(0, 1, 2, 3);
+  if (!includeBus) classes.push(4, 5, 6, 7);
+  return classes.length ? classes.join(",") : null;
+}
+
 async function buildTripPlan(
   config: EfaConfig | null,
   clientKey: string | null,
@@ -254,11 +266,16 @@ async function buildTripPlan(
     date?: string | undefined;
     time?: string | undefined;
     arriveBy?: boolean | undefined;
+    includeBus?: boolean | undefined;
+    includeRail?: boolean | undefined;
   },
 ): Promise<TripPlan> {
   if (!config) return emptyPlan("unconfigured");
 
-  const key = `trip:${JSON.stringify([input.origin, input.destination, input.date ?? "", input.time ?? "", input.arriveBy ?? false])}`;
+  const includeBus = input.includeBus ?? true;
+  const includeRail = input.includeRail ?? true;
+  const excludedMeans = excludedMeansFor(includeBus, includeRail);
+  const key = `trip:${JSON.stringify([input.origin, input.destination, input.date ?? "", input.time ?? "", input.arriveBy ?? false, excludedMeans ?? ""])}`;
   const cached = guard.getCached<TripPlan>(key);
   if (cached) return { ...cached, cached: true };
 
@@ -274,6 +291,7 @@ async function buildTripPlan(
         date: input.date ?? null,
         time: input.time ?? null,
         arriveBy: input.arriveBy ?? false,
+        excludedMeans,
         limit: transit.MAX_TRIP_RESULTS,
       },
       config,
@@ -352,6 +370,8 @@ export const transitRouter = router({
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         arriveBy: z.boolean().optional(),
+        includeBus: z.boolean().optional(),
+        includeRail: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }): Promise<TripPlan> => {
