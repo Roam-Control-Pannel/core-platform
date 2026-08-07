@@ -31,11 +31,22 @@ export interface StopRef {
 }
 
 // Module-level cache of the saved stop ids + a tiny pub/sub so all instances re-render on change.
+// `cachedForUser` guards against a stale cache surviving an account switch in the same tab: when the
+// signed-in user id changes (including sign-out → null), the cache is dropped so it reloads.
 let idCache: Set<string> | null = null;
+let cachedForUser: string | null = null;
 let loading = false;
 const listeners = new Set<() => void>();
 function emit(): void {
   for (const l of listeners) l();
+}
+
+/** Drop the cache when the signed-in user changes, so one account never sees another's saved state. */
+function resetCacheIfUserChanged(userId: string | null): void {
+  if (userId !== cachedForUser) {
+    idCache = null;
+    cachedForUser = userId;
+  }
 }
 
 /** Subscribe to save/remove changes (used by the list hook to refetch full rows). */
@@ -52,13 +63,15 @@ function useSavedStopsChange(onChange: () => void): void {
 export function useSavedStops() {
   const trpc = useTrpc();
   const session = useSession();
+  const userId = session?.user?.id ?? null;
   const hasSession = !!session;
   const [, force] = useState(0);
   useSavedStopsChange(useCallback(() => force((n) => n + 1), []));
 
-  // Load the id set once per session.
+  // Load the id set once per signed-in user (resetting first if the account changed).
   useEffect(() => {
-    if (!hasSession || idCache || loading) return;
+    resetCacheIfUserChanged(userId);
+    if (!userId || idCache || loading) return;
     loading = true;
     const q = trpc.savedStops.list as unknown as {
       query: () => Promise<{ ok: boolean; stops?: { stop_id: string }[] }>;
@@ -74,7 +87,7 @@ export function useSavedStops() {
         loading = false;
         emit();
       });
-  }, [trpc, hasSession]);
+  }, [trpc, userId]);
 
   const isSaved = useCallback((stopId: string) => idCache?.has(stopId) ?? false, []);
 
@@ -116,11 +129,12 @@ export function useSavedStops() {
 export function useSavedStopsList() {
   const trpc = useTrpc();
   const session = useSession();
+  const userId = session?.user?.id ?? null;
   const hasSession = !!session;
   const [stops, setStops] = useState<SavedStop[] | null>(null);
 
   const load = useCallback(() => {
-    if (!hasSession) {
+    if (!userId) {
       setStops([]);
       return;
     }
@@ -130,7 +144,7 @@ export function useSavedStopsList() {
     q.query()
       .then((r) => setStops(r.ok ? r.stops ?? [] : []))
       .catch(() => setStops([]));
-  }, [trpc, hasSession]);
+  }, [trpc, userId]);
 
   useEffect(() => {
     load();

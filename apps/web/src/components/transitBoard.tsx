@@ -133,18 +133,23 @@ export function useBoardView(departures: BoardDeparture[]) {
     const filtered =
       filter === "all" ? departures : departures.filter((d) => filterGroupForMode(d.mode) === filter);
     if (sort === "next") return filtered;
-    // "By route": cluster a line's departures together, earliest-departing line first.
+    // "By route": cluster a line's departures together, earliest-departing line first. Unparseable
+    // times sink to the end (Infinity) so sorting stays deterministic instead of NaN-unstable.
+    const ms = (d: BoardDeparture): number => {
+      const v = parseEfaTime(d.expectedTime ?? d.plannedTime);
+      return Number.isNaN(v) ? Infinity : v;
+    };
     const earliest = new Map<string, number>();
     filtered.forEach((d) => {
-      const at = parseEfaTime(d.expectedTime ?? d.plannedTime);
+      const at = ms(d);
       const cur = earliest.get(d.line);
       if (cur === undefined || at < cur) earliest.set(d.line, at);
     });
     return [...filtered].sort(
       (a, b) =>
-        (earliest.get(a.line) ?? 0) - (earliest.get(b.line) ?? 0) ||
+        (earliest.get(a.line) ?? Infinity) - (earliest.get(b.line) ?? Infinity) ||
         a.line.localeCompare(b.line) ||
-        parseEfaTime(a.expectedTime ?? a.plannedTime) - parseEfaTime(b.expectedTime ?? b.plannedTime),
+        ms(a) - ms(b),
     );
   }, [departures, filter, sort]);
 

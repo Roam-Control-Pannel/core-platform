@@ -560,6 +560,7 @@
     "openBoard": "Open full board",
     "nearestStop": "Nearest stop",
     "buyTicket": "Buy a ticket",
+    "loadError": "Couldn't load this stop just now — trying again shortly.",
     "save": "Save",
     "saved": "Saved",
     "savedTitle": "Saved stops",
