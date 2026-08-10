@@ -1863,6 +1863,12 @@
     "browseAll": "Browse Roam"
   },
   "venueShop": {
+    "collection": {
+      "orderAhead": "Order ahead & collect",
+      "readyIn": "Usually ready in ~{mins} min",
+      "paused": "Not taking orders right now",
+      "pausedNote": "This vendor has paused new orders — check back soon."
+    },
     "checkoutFailed": "Couldn't start checkout.",
     "empty": "This venue hasn't stocked its Roam shop yet — check back soon.",
     "kind": {

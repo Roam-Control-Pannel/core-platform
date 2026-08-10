@@ -32,13 +32,14 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useChannel } from "./ChannelProvider";
 import { AuthPanel } from "./AuthPanel";
 import { PostMediaGrid } from "./PostMediaGrid";
 import { FollowButton } from "./FollowButton";
@@ -465,11 +466,22 @@ function ClaimedDetail({
   // Initial tab honours a ?tab= deep link (e.g. the Market's product cards land on the
   // Shop tab); anything unrecognised falls back to Details. Read once at mount — the tab
   // is client state after that, not URL state.
+  const hadExplicitTab = useRef(false);
   const [tab, setTab] = useState<VenueTab>(() => {
     if (typeof window === "undefined") return "details";
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    return wanted === "posts" || wanted === "offers" || wanted === "gallery" || wanted === "shop" ? wanted : "details";
+    const ok = wanted === "posts" || wanted === "offers" || wanted === "gallery" || wanted === "shop";
+    if (ok) hadExplicitTab.current = true;
+    return ok ? (wanted as VenueTab) : "details";
   });
+
+  // On the Food to Go storefront the menu IS the page — default to Shop when the visitor didn't
+  // deep-link a specific tab. Post-mount (the channel resolves after hydration), and never
+  // overrides an explicit ?tab or a tab the visitor has since chosen.
+  const { isF2G } = useChannel();
+  useEffect(() => {
+    if (isF2G && !hadExplicitTab.current) setTab("shop");
+  }, [isF2G]);
 
   return (
     <>
