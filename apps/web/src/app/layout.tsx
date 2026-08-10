@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TrpcProvider } from "../components/TrpcProvider";
-import { ChannelTheme } from "../components/ChannelTheme";
+import { ChannelProvider } from "../components/ChannelProvider";
 import { LocaleProvider } from "../lib/i18n/LocaleProvider";
 import { TopBar } from "../components/TopBar";
 import { TabBar } from "../components/TabBar";
@@ -92,8 +92,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Analytics />
         <LocaleProvider>
           <TrpcProvider>
-            {/* Applies the active channel's branding (Food to Go vs Roam) to the document root. */}
-            <ChannelTheme />
+            {/* Publishes the active channel (Food to Go vs Roam) + applies its palette. */}
+            <ChannelProvider>
             <MeProvider>
             <SideNavProvider>
               <TopBar />
@@ -110,6 +110,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             {/* Headless: syncs saved/current place to the account (cross-device). */}
             <PlacePrefsSync />
             </MeProvider>
+            </ChannelProvider>
           </TrpcProvider>
         </LocaleProvider>
       </body>

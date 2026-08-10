@@ -4,7 +4,7 @@
  * The API is host-blind (Shape B), so the WEB layer decides which branded channel a request is on
  * from its hostname. We classify the host to a channel key and:
  *   - set the `roam_channel` cookie (non-httpOnly) so the browser tRPC client forwards it as
- *     `x-roam-channel` on every call, and the ChannelTheme component can theme the shell;
+ *     `x-roam-channel` on every call, and the ChannelProvider can theme + branch the shell;
  *   - forward `x-roam-channel` on the onward request headers so server components / the web's own
  *     /api proxy routes can read the active channel too.
  *
