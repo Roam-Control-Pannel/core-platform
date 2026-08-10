@@ -13,7 +13,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { f2g } from "@roam/core";
-import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
+import { normaliseStoredImage, venuePrefixOf } from "../images/normalise.js";
 
 const F2G_FLAG = "marketplace.f2g.enabled";
 
@@ -74,5 +75,57 @@ export const f2gRouter = router({
     .input(z.object({ venueId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return f2g.getListingStatus(ctx.db, input.venueId);
+    }),
+
+  /**
+   * Normalise a vendor-uploaded image into one canonical WebP rendition (server GUARANTEE on top of
+   * the browser's best-effort pipeline). The client uploads the original to venue-media under its
+   * venue-id prefix, then calls this with that storage path; we verify the caller owns the claimed
+   * venue AND that the path sits under that venue's prefix, then produce + return the canonical URL
+   * to persist. Byte I/O runs under the service client, so ownership is checked here, first.
+   */
+  normaliseImage: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        storagePath: z.string().trim().min(1).max(300),
+        profile: z.enum(["product", "photo"]).default("product"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // The path must live under this venue's own prefix (defence in depth vs the ownership check).
+      if (venuePrefixOf(input.storagePath) !== input.venueId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Image path is not under this venue." });
+      }
+      // Verify the caller owns the claimed venue (the service client below bypasses RLS).
+      const { data: auth } = await ctx.db.auth.getUser();
+      const uid = auth.user?.id;
+      const { data: owned } = await ctx.db
+        .from("venues")
+        .select("id")
+        .eq("id", input.venueId)
+        .eq("owner_id", uid ?? "")
+        .eq("status", "claimed")
+        .maybeSingle();
+      if (!owned) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only optimise images for a venue you own and have claimed.",
+        });
+      }
+      try {
+        const res = await normaliseStoredImage(
+          escalateToService(ctx.env),
+          ctx.env.supabase.url,
+          input.storagePath,
+          input.profile,
+        );
+        return { ok: true as const, url: res.url, width: res.width, height: res.height };
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Image normalisation failed.",
+        });
+      }
     }),
 });
