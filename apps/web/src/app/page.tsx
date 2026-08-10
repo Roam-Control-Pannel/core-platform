@@ -10,8 +10,8 @@
  */
 export const dynamic = "force-dynamic";
 
-import { Home } from "../components/Home";
+import { HomeSwitch } from "../components/HomeSwitch";
 
 export default function RootPage() {
-  return <Home />;
+  return <HomeSwitch />;
 }

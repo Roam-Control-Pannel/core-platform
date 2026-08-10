@@ -91,7 +91,8 @@
       "townHall": "The Forum",
       "plans": "Plans",
       "chat": "Chat",
-      "you": "You"
+      "you": "You",
+      "orders": "Orders"
     },
     "forBusinesses": "For businesses",
     "create": "Create",
@@ -1843,6 +1844,23 @@
     "reported": "Reported — thanks, we’ll take a look.",
     "reportPrompt": "What’s wrong with this listing? (optional)",
     "reportListing": "Report this listing"
+  },
+  "storefront": {
+    "defaultTitle": "Food to Go",
+    "defaultTagline": "Order ahead. Skip the queue.",
+    "nearHeading": "Vendors near {place}",
+    "orderAhead": "Order ahead",
+    "readyIn": "~{mins} min",
+    "paused": "Paused",
+    "viewMenu": "View menu",
+    "loading": "Finding vendors near you…",
+    "empty": {
+      "title": "No Food to Go vendors near you yet",
+      "body": "We're just getting started here. Try another area, or check back soon."
+    },
+    "more": "Show more",
+    "browseAllHint": "Looking for something else on Roam?",
+    "browseAll": "Browse Roam"
   },
   "venueShop": {
     "checkoutFailed": "Couldn't start checkout.",
