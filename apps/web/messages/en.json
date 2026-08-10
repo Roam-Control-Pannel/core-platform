@@ -1957,6 +1957,7 @@
       "posts": "Posts",
       "offers": "Offers",
       "shop": "Shop",
+      "foodToGo": "Food to Go",
       "notifications": "Notifications",
       "venue": "Venue"
     },
@@ -2024,6 +2025,59 @@
     "ordersCard": {
       "title": "Orders",
       "subtitle": "Sales come in here — mark them collected or redeemed in-venue, or refund."
+    },
+    "foodToGo": {
+      "card": {
+        "title": "Food to Go",
+        "subtitle": "List this venue on the Food to Go marketplace — order-ahead and collect. Customers order on their phone and skip the queue."
+      },
+      "listing": {
+        "title": "List on Food to Go",
+        "on": "Listed",
+        "off": "Not listed",
+        "description": "When listed, your menu and collection details appear on the Food to Go storefront.",
+        "listCta": "List on Food to Go",
+        "unlistCta": "Remove from Food to Go",
+        "working": "Saving…"
+      },
+      "status": {
+        "readyTitle": "You're ready to go live",
+        "readySubtitle": "Everything's set — your storefront is live on Food to Go.",
+        "notReadyTitle": "{count, plural, one {# step to go live} other {# steps to go live}}",
+        "notReadySubtitle": "Finish these to appear on the Food to Go storefront."
+      },
+      "checklist": {
+        "claimed": "Venue claimed",
+        "tagged": "Listed on Food to Go",
+        "hasActiveProduct": "At least one live menu item",
+        "paymentsEnabled": "Online payments switched on",
+        "collectionConfigured": "Order-ahead & collect turned on",
+        "fixMenu": "Add a menu item",
+        "fixPayments": "Set up payments",
+        "done": "Done"
+      },
+      "collection": {
+        "title": "Order-ahead & collect",
+        "subtitle": "How collection works at your venue. Shown to customers on your storefront.",
+        "orderAhead": "Accept order-ahead",
+        "orderAheadHint": "Let customers order and pay before they arrive, then collect.",
+        "paused": "Pause new orders",
+        "pausedHint": "Temporarily stop taking orders when you're too busy. Your listing stays up.",
+        "prepTime": "Typical prep time",
+        "prepTimeUnit": "minutes",
+        "prepTimeHint": "Roughly how long from order to ready. Shown as “usually ready in ~{mins} min”.",
+        "instructions": "Collection instructions",
+        "instructionsPlaceholder": "e.g. Collect from the till by the window",
+        "instructionsHint": "Where and how to collect. Kept short.",
+        "save": "Save collection settings",
+        "saving": "Saving…",
+        "saved": "Saved",
+        "error": "Couldn't save. Please try again."
+      },
+      "disabled": {
+        "title": "Food to Go isn't switched on yet",
+        "body": "This marketplace is coming soon. You'll be able to list your venue here when it launches."
+      }
     },
     "notifyCard": {
       "title": "Send a notification",

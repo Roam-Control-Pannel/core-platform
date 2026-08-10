@@ -44,6 +44,7 @@ import { BirthdayOffer } from "./BirthdayOffer";
 import { VenuePayments } from "./VenuePayments";
 import { VenueShopManager } from "./VenueShopManager";
 import { VenueOrders } from "./VenueOrders";
+import { VenueFoodToGo } from "./VenueFoodToGo";
 import { venuePath } from "../lib/routes";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { formatPence } from "../lib/money";
@@ -51,7 +52,7 @@ import { timeAgo } from "../lib/townHall";
 import styles from "./BizDash.module.css";
 
 /** Tab keys — labels come from the catalogue (venueOwnerEditor.tabs.*). */
-const TABS = ["overview", "audience", "posts", "offers", "shop", "notifications", "venue"] as const;
+const TABS = ["overview", "audience", "posts", "offers", "shop", "foodToGo", "notifications", "venue"] as const;
 type TabKey = (typeof TABS)[number];
 
 /** The venue fields we read to seed the editors (byId returns the full row). */
@@ -154,6 +155,27 @@ function useDashData(venueId: string): DashData {
   return data;
 }
 
+/** Whether the Food to Go marketplace is switched on (feature_flags.marketplace.f2g.enabled). */
+function useF2gEnabled(): boolean {
+  const trpc = useTrpc();
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    trpc.f2g.config
+      .query()
+      .then((c) => {
+        if (!cancelled) setEnabled(!!c.enabled);
+      })
+      .catch(() => {
+        /* dormant by default; a failed read simply keeps the tab hidden */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc]);
+  return enabled;
+}
+
 export function VenueOwnerEditor({ venueId }: { venueId: string }) {
   const t = useTranslations("venueOwnerEditor");
   const trpc = useTrpc();
@@ -222,12 +244,13 @@ function Dashboard({
 }) {
   const t = useTranslations("venueOwnerEditor");
   const data = useDashData(venueId);
+  const f2gEnabled = useF2gEnabled();
 
   return (
     <>
       <IdentityHeader venue={venue} venueId={venueId} />
       <StatRow venue={venue} data={data} />
-      <DashTabs tab={tab} onTab={onTab} />
+      <DashTabs tab={tab} onTab={onTab} f2gEnabled={f2gEnabled} />
 
       {tab === "overview" ? (
         <div className={styles.split}>
@@ -306,6 +329,12 @@ function Dashboard({
             <VenuePayments venueId={venueId} />
           </DashCard>
         </div>
+      ) : null}
+
+      {tab === "foodToGo" && f2gEnabled ? (
+        <DashCard icon="shop" title={t("foodToGo.card.title")} subtitle={t("foodToGo.card.subtitle")}>
+          <VenueFoodToGo venueId={venueId} onNavigate={onTab} />
+        </DashCard>
       ) : null}
 
       {tab === "notifications" ? (
@@ -662,8 +691,10 @@ function StatCard({
 
 /* ── Tabs ────────────────────────────────────────────────────────────────────────────── */
 
-function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
+function DashTabs({ tab, onTab, f2gEnabled }: { tab: TabKey; onTab: (t: TabKey) => void; f2gEnabled: boolean }) {
   const t = useTranslations("venueOwnerEditor");
+  // The Food to Go tab is dormant until the marketplace feature flag is on.
+  const tabs = TABS.filter((k) => k !== "foodToGo" || f2gEnabled);
   return (
     <div
       style={{
@@ -675,7 +706,7 @@ function DashTabs({ tab, onTab }: { tab: TabKey; onTab: (t: TabKey) => void }) {
         scrollbarWidth: "none",
       }}
     >
-      {TABS.map((tabKey) => {
+      {tabs.map((tabKey) => {
         const active = tabKey === tab;
         return (
           <button
