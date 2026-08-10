@@ -1549,6 +1549,44 @@ export type Database = {
           },
         ]
       }
+      venue_collection_settings: {
+        Row: {
+          collection_instructions: string | null
+          created_at: string
+          order_ahead: boolean
+          paused: boolean
+          prep_time_mins: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          collection_instructions?: string | null
+          created_at?: string
+          order_ahead?: boolean
+          paused?: boolean
+          prep_time_mins?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          collection_instructions?: string | null
+          created_at?: string
+          order_ahead?: boolean
+          paused?: boolean
+          prep_time_mins?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_collection_settings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           address: string | null
