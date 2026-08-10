@@ -217,6 +217,71 @@ export type Database = {
           },
         ]
       }
+      channel_domains: {
+        Row: {
+          channel_id: string
+          created_at: string
+          host: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          host: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          host?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_domains_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          is_default: boolean
+          key: string
+          logo_url: string | null
+          name: string
+          tagline: string | null
+          theme: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key: string
+          logo_url?: string | null
+          name: string
+          tagline?: string | null
+          theme?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key?: string
+          logo_url?: string | null
+          name?: string
+          tagline?: string | null
+          theme?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           body: string | null
@@ -1379,6 +1444,49 @@ export type Database = {
             columns: ["blocker_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_channels: {
+        Row: {
+          added_by: string | null
+          channel_id: string
+          created_at: string
+          venue_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          channel_id: string
+          created_at?: string
+          venue_id: string
+        }
+        Update: {
+          added_by?: string | null
+          channel_id?: string
+          created_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_channels_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_channels_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_channels_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]

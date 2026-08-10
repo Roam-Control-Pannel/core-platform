@@ -96,6 +96,30 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /** Tag or untag a venue into a marketplace channel (e.g. Food to Go). */
+  setVenueChannel: adminProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        channelKey: z.string().min(1).max(32),
+        member: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.setVenueChannel(
+          ctx.service,
+          await actor(ctx as ActingCtx),
+          input.venueId,
+          input.channelKey,
+          input.member,
+        );
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to update venue channel.");
+      }
+    }),
+
   /** Resolve a moderation queue item (approve = keep / reject = actioned). */
   resolveReport: adminProcedure
     .input(z.object({ reportId: z.string().uuid(), decision: z.enum(["approved", "rejected"]) }))

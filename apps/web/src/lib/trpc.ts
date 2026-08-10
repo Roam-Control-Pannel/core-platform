@@ -14,6 +14,7 @@
  */
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import type { AppRouter } from "@roam/api";
+import { readChannelCookie } from "./channel";
 
 /** Resolve the API base origin. Falls back to local dev; never throws. */
 function apiUrl(): string {
@@ -31,7 +32,13 @@ export function makeTrpcClient(getAccessToken: () => string | null) {
         url: `${apiUrl()}/trpc`,
         headers() {
           const token = getAccessToken();
-          return token ? { authorization: `Bearer ${token}` } : {};
+          const channel = readChannelCookie();
+          const h: Record<string, string> = {};
+          if (token) h.authorization = `Bearer ${token}`;
+          // The active channel (Food to Go vs Roam). Set by middleware; forwarded so the API
+          // themes/filters by it. Absent = the API defaults to the Roam channel.
+          if (channel) h["x-roam-channel"] = channel;
+          return h;
         },
       }),
     ],

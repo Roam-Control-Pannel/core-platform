@@ -21,6 +21,10 @@ export * as hashtags from "./hashtags/index.js";
 export * as hours from "./hours/index.js";
 export * as photos from "./photos/index.js";
 export * as transit from "./transit/index.js";
+export * as channels from "./channels/index.js";
+// Re-exported at the root so the api's inferred router types can NAME these portably
+// (a namespace-only re-export leaves them reachable only via a deep node_modules path).
+export type { Channel, ChannelTheme, DomainMapping } from "./channels/index.js";
 export * as offers from "./offers/index.js";
 export * as suggestions from "./suggestions/index.js";
 export * as messaging from "./messaging/index.js";

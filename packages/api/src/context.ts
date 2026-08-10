@@ -146,6 +146,13 @@ export interface Context {
    * another client's rate-limit bucket. Used by ingestCategory's per-client fetch limit.
    */
   clientKey: string | null;
+  /**
+   * The active channel key (`x-roam-channel`), lowercased — the branded "view" the caller is on
+   * (default `roam`, or `f2g` for the Food to Go storefront). The web shell resolves the incoming
+   * hostname to a channel and forwards its key here; the API never sees the hostname itself. A
+   * procedure looks this up via @roam/core/channels and falls back to the default if it's unknown.
+   */
+  channelKey: string;
   /** Server env, carried so procedures can lazily build a service client. */
   env: ApiEnv;
 }
@@ -199,7 +206,11 @@ export function makeContextFactory(env: ApiEnv) {
       ? createUserClient(env.supabase, accessToken)
       : createUserClient(env.supabase);
 
-    return { db, accessToken, isInternalCall, clientKey, env };
+    // The branded view the caller is on. Untrusted client input — treated as a hint only: it never
+    // widens authority (RLS is unchanged) and an unknown key resolves back to the default channel.
+    const channelKey = headers.get("x-roam-channel")?.trim().toLowerCase() || "roam";
+
+    return { db, accessToken, isInternalCall, clientKey, channelKey, env };
   };
 }
 
