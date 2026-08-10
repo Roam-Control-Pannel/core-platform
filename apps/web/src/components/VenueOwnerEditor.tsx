@@ -333,7 +333,7 @@ function Dashboard({
 
       {tab === "foodToGo" && f2gEnabled ? (
         <DashCard icon="shop" title={t("foodToGo.card.title")} subtitle={t("foodToGo.card.subtitle")}>
-          <VenueFoodToGo venueId={venueId} onNavigate={onTab} />
+          <VenueFoodToGo venueId={venueId} venueName={venue.name} onNavigate={onTab} />
         </DashCard>
       ) : null}
 

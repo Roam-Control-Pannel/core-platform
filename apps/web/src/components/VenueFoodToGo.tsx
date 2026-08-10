@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, Button, Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
+import { VenueF2GPreview } from "./VenueF2GPreview";
 
 type ChecklistKey =
   | "claimed"
@@ -51,9 +52,11 @@ const CHECKLIST_ORDER: ChecklistKey[] = [
 
 export function VenueFoodToGo({
   venueId,
+  venueName,
   onNavigate,
 }: {
   venueId: string;
+  venueName: string;
   onNavigate: (tab: "shop") => void;
 }) {
   const t = useTranslations("venueOwnerEditor.foodToGo");
@@ -216,6 +219,19 @@ export function VenueFoodToGo({
             void reload();
           }}
         />
+      </Card>
+
+      {/* Storefront preview — how the listing looks to customers, in the f2g palette. */}
+      <Card style={{ padding: "var(--space-4) var(--space-5)" }}>
+        <header style={{ marginBottom: "var(--space-4)" }}>
+          <h3 style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>
+            {t("preview.title")}
+          </h3>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>
+            {t("preview.subtitle")}
+          </p>
+        </header>
+        <VenueF2GPreview venueId={venueId} venueName={venueName} settings={settings} />
       </Card>
     </div>
   );

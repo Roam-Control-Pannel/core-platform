@@ -2077,6 +2077,18 @@
       "disabled": {
         "title": "Food to Go isn't switched on yet",
         "body": "This marketplace is coming soon. You'll be able to list your venue here when it launches."
+      },
+      "preview": {
+        "title": "Storefront preview",
+        "subtitle": "How your listing looks to customers on Food to Go.",
+        "orderAhead": "Order ahead",
+        "collectOnly": "Collection",
+        "readyIn": "Usually ready in ~{mins} min",
+        "paused": "Paused — not taking orders",
+        "empty": "Add menu items on the Shop tab to see your storefront.",
+        "soldOut": "Sold out",
+        "voucher": "Voucher",
+        "free": "Free"
       }
     },
     "notifyCard": {
