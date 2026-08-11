@@ -12,7 +12,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTrpc } from "./TrpcProvider";
-import { useCurrentPlace } from "../lib/currentPlace";
+import { useStorefrontPlace } from "../lib/storefrontPlace";
+import { NI_PLACES, NI_REGION } from "../lib/ni";
 import { PlaceSwitcher } from "./PlaceSwitcher";
 import { F2GVendorCard, type F2GVendor } from "./F2GVendorCard";
 import {
@@ -48,7 +49,7 @@ function sortVendors(list: F2GVendor[], sort: StorefrontSort): F2GVendor[] {
 export function StorefrontHome() {
   const t = useTranslations("storefront");
   const trpc = useTrpc();
-  const { place, setPlace } = useCurrentPlace();
+  const { place, setPlace } = useStorefrontPlace();
   const [vendors, setVendors] = useState<F2GVendor[] | null>(null);
   const [cat, setCat] = useState<StorefrontCategory>("all");
   const [sort, setSort] = useState<StorefrontSort>("fastest");
@@ -101,7 +102,7 @@ export function StorefrontHome() {
             aria-label={t("hero.searchPlaceholder")}
             style={{ flex: "1 1 260px", minWidth: 0, boxSizing: "border-box", padding: "12px 14px", fontSize: 14.5, border: "1px solid var(--line-2)", borderRadius: 12, outline: "none", background: "var(--card)", color: "var(--ink)" }}
           />
-          <PlaceSwitcher value={place} onChange={setPlace} />
+          <PlaceSwitcher value={place} onChange={setPlace} suggested={NI_PLACES} region={NI_REGION} />
         </div>
       </section>
 

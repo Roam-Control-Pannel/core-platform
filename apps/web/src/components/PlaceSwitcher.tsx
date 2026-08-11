@@ -58,9 +58,23 @@ export const PLACES: readonly Place[] = [
 /** The default place when none is chosen — Darlington, the seed's centre of gravity. */
 export const DEFAULT_PLACE: Place = PLACES[0]!;
 
+/** A geographic fence for the switcher — restricts search + geolocation to one region. */
+export interface PlaceRegion {
+  /** Region code forwarded to geo.search so it only returns places inside the region. */
+  code: "ni";
+  /** Human label for the region, used in the out-of-area message. */
+  label: string;
+  /** Whether a coordinate is inside the region (used to validate "Use my location"). */
+  contains: (lat: number, lng: number) => boolean;
+}
+
 export interface PlaceSwitcherProps {
   value: Place;
   onChange: (place: Place) => void;
+  /** Override the suggested places (defaults to PLACES — Roam's England seed centres). */
+  suggested?: readonly Place[];
+  /** Fence search + geolocation to a region (e.g. the NI Food to Go storefront). */
+  region?: PlaceRegion;
 }
 
 /* ── shared row styles (hoisted) ─────────────────────────────────────────────── */
@@ -144,7 +158,7 @@ function PlaceRow({
   );
 }
 
-export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
+export function PlaceSwitcher({ value, onChange, suggested, region }: PlaceSwitcherProps) {
   const t = useTranslations("placeSwitcher");
   const trpc = useTrpc();
   const { saved, isSaved, toggle, remove } = useSavedPlaces();
@@ -205,11 +219,11 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
     setSearchError(null);
     const id = ++reqIdRef.current;
     const search = trpc.geo.search as unknown as {
-      query: (input: { q: string }) => Promise<Place[]>;
+      query: (input: { q: string; region?: "ni" }) => Promise<Place[]>;
     };
     const timer = setTimeout(() => {
       search
-        .query({ q })
+        .query(region ? { q, region: region.code } : { q })
         .then((res) => {
           if (!mountedRef.current || reqIdRef.current !== id) return;
           setResults(res ?? []);
@@ -241,6 +255,12 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
       (pos) => {
         if (!mountedRef.current) return;
         setLocating(false);
+        // Region fence: if the storefront is NI-only and the visitor is outside NI, don't jump
+        // there — say so, and leave the centre where it is (a valid NI place).
+        if (region && !region.contains(pos.coords.latitude, pos.coords.longitude)) {
+          setGeoError(t("outsideRegion", { region: region.label }));
+          return;
+        }
         pick(
           {
             id: "my-location",
@@ -277,7 +297,12 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
   );
 
   const searchMode = query.trim().length >= 2;
-  const suggested = PLACES.filter((p) => !saved.some((s) => s.id === p.id));
+  // Suggested set: the region's towns when fenced (NI storefront), else Roam's seed centres.
+  const suggestedSource = suggested ?? PLACES;
+  // When fenced, only show saved places that fall inside the region (a London pin saved while
+  // browsing Roam must not appear on the NI storefront); unfenced, show all saved places.
+  const savedList = region ? saved.filter((p) => region.contains(p.lat, p.lng)) : saved;
+  const suggestedList = suggestedSource.filter((p) => !savedList.some((s) => s.id === p.id));
 
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
@@ -377,10 +402,10 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                 </button>
               ) : null}
 
-              {saved.length > 0 ? (
+              {savedList.length > 0 ? (
                 <>
                   <div style={sectionLabel}>{t("savedSection")}</div>
-                  {saved.map((p) => (
+                  {savedList.map((p) => (
                     <PlaceRow
                       key={p.id}
                       place={p}
@@ -405,10 +430,10 @@ export function PlaceSwitcher({ value, onChange }: PlaceSwitcherProps) {
                 </>
               ) : null}
 
-              {suggested.length > 0 ? (
+              {suggestedList.length > 0 ? (
                 <>
                   <div style={sectionLabel}>{t("suggestedSection")}</div>
-                  {suggested.map((p) => (
+                  {suggestedList.map((p) => (
                     <PlaceRow
                       key={p.id}
                       place={p}
