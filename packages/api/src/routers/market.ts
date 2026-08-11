@@ -13,8 +13,10 @@
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
+import type { RoamClient } from "@roam/db";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { createCheckoutSession, refundPayment } from "../stripe/client.js";
+import { pushToProfileIds } from "../push/dispatch.js";
 
 /** The catalogue-entry shape both surfaces render. */
 export interface MarketProduct {
@@ -282,9 +284,25 @@ export const marketRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue isn't taking online payments yet." });
       }
 
+      // Order-ahead & collect (Phase 3): a paused venue can't take new orders, and every order
+      // gets an estimated ready-at (now + the venue's prep time) shown to the buyer as a collection
+      // ticket. Absent settings = the app-layer defaults (not paused, 15 min).
+      const { data: collection } = (await service
+        .from("venue_collection_settings")
+        .select("paused, prep_time_mins")
+        .eq("venue_id", prod.venue_id)
+        .maybeSingle()) as { data: { paused: boolean; prep_time_mins: number } | null };
+      if (collection?.paused) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue has paused new orders — please try again shortly." });
+      }
+      const prepMins = collection?.prep_time_mins ?? 15;
+      const readyAt = new Date(Date.now() + prepMins * 60_000).toISOString();
+
       const amount = prod.price_pence * input.quantity;
       const fee = Math.round((amount * ctx.env.stripe.applicationFeeBps) / 10_000);
-      const redeemCode = prod.kind === "service" ? randomBytes(5).toString("hex").toUpperCase() : null;
+      // Every order carries a collection code now (not just vouchers): it's the buyer's ticket to
+      // collect and the code the vendor verifies at the counter.
+      const redeemCode = randomBytes(5).toString("hex").toUpperCase();
 
       const { data: created, error: orderErr } = (await service
         .from("orders")
@@ -299,6 +317,7 @@ export const marketRouter = router({
           application_fee_pence: fee,
           currency: prod.currency,
           redeem_code: redeemCode,
+          ready_at: readyAt,
           referrer_profile_id: input.referrerId ?? null,
         })
         .select("id")) as { data: { id: string }[] | null; error: { message: string } | null };
@@ -329,11 +348,11 @@ export const marketRouter = router({
     const db = ctx.db as unknown as LooseDb;
     const { data, error } = (await db
       .from("orders")
-      .select("id, venue_id, product_title, product_kind, quantity, amount_pence, currency, status, redeem_code, created_at, venues(name, locality)")
+      .select("id, venue_id, product_title, product_kind, quantity, amount_pence, currency, status, redeem_code, ready_at, created_at, venues(name, locality)")
       .order("created_at", { ascending: false })
       .limit(100)) as {
       data:
-        | { id: string; venue_id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; currency: string; status: string; redeem_code: string | null; created_at: string; venues: { name: string; locality: string | null } | { name: string; locality: string | null }[] | null }[]
+        | { id: string; venue_id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; currency: string; status: string; redeem_code: string | null; ready_at: string | null; created_at: string; venues: { name: string; locality: string | null } | { name: string; locality: string | null }[] | null }[]
         | null;
       error: { message: string } | null;
     };
@@ -351,6 +370,7 @@ export const marketRouter = router({
       currency: r.currency,
       status: r.status,
       redeemCode: r.status === "pending" || r.status === "canceled" ? null : r.redeem_code,
+      readyAt: r.ready_at,
       createdAt: r.created_at,
     }));
   }),
@@ -363,12 +383,12 @@ export const marketRouter = router({
       const db = ctx.db as unknown as LooseDb;
       const { data, error } = (await db
         .from("orders")
-        .select("id, product_title, product_kind, quantity, amount_pence, application_fee_pence, currency, status, redeem_code, created_at")
+        .select("id, product_title, product_kind, quantity, amount_pence, application_fee_pence, currency, status, redeem_code, ready_at, created_at")
         .eq("venue_id", input.venueId)
         .order("created_at", { ascending: false })
         .limit(200)) as {
         data:
-          | { id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; application_fee_pence: number; currency: string; status: string; redeem_code: string | null; created_at: string }[]
+          | { id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; application_fee_pence: number; currency: string; status: string; redeem_code: string | null; ready_at: string | null; created_at: string }[]
           | null;
         error: { message: string } | null;
       };
@@ -383,13 +403,53 @@ export const marketRouter = router({
         currency: r.currency,
         status: r.status,
         redeemCode: r.redeem_code,
+        readyAt: r.ready_at,
         createdAt: r.created_at,
       }));
     }),
 
-  /** Owner: mark a PAID order fulfilled — collected (product) or redeemed (voucher). The
-   *  ownership check is explicit (orders writes are service-only), and the eq(status,'paid')
-   *  guard means a stale button press can't overwrite a refund. */
+  /**
+   * Owner: mark a PAID order READY for collection (Food to Go). paid → ready, guarded so a stale
+   * click can't move an already-collected/refunded order. The "your order is ready" notification +
+   * push are wired in Phase 3D. Optional in the flow: a vendor may also go straight paid → collected.
+   */
+  markReady: protectedProcedure
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
+      const { order, service } = await ownedOrder(ctx, input.orderId);
+      const { data } = (await service
+        .from("orders")
+        .update({ status: "ready" })
+        .eq("id", input.orderId)
+        .eq("status", "paid")
+        .select("id")) as { data: { id: string }[] | null };
+      const moved = !!data && data.length > 0;
+
+      // Tell the buyer their order is ready — a bell row + a web push (both best-effort; a failure
+      // here never fails the vendor's action). Only when we actually moved paid → ready.
+      if (moved && order.buyer_id) {
+        await service.from("notifications").insert({
+          recipient_id: order.buyer_id,
+          type: "order_ready",
+          payload: { text: `Ready to collect — ${order.product_title}`, href: "/orders" },
+        });
+        try {
+          await pushToProfileIds(escalateToService(ctx.env) as RoamClient, ctx.env.vapid, [order.buyer_id], {
+            url: "/orders",
+            title: "Ready to collect",
+            body: `${order.product_title} is ready — head over when you can.`,
+          });
+        } catch {
+          /* push is best-effort */
+        }
+      }
+      return { ok: moved };
+    }),
+
+  /** Owner: mark an order fulfilled — collected (product) or redeemed (voucher). Accepts a PAID
+   *  order (direct) or a READY one (order-ahead flow: paid → ready → collected). The ownership
+   *  check is explicit (orders writes are service-only), and the status guard means a stale button
+   *  press can't overwrite a refund. */
   fulfilOrder: protectedProcedure
     .input(z.object({ orderId: z.string().uuid() }))
     .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
@@ -399,7 +459,7 @@ export const marketRouter = router({
         .from("orders")
         .update({ status: next })
         .eq("id", input.orderId)
-        .eq("status", "paid")
+        .in("status", ["paid", "ready"])
         .select("id")) as { data: { id: string }[] | null };
       return { ok: !!data && data.length > 0 };
     }),

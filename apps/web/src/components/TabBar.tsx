@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useChannel } from "./ChannelProvider";
 import styles from "./TabBar.module.css";
 
 function activeKey(pathname: string): "home" | "explore" | "townhall" | "chat" | "you" | null {
@@ -59,12 +60,43 @@ const icons = {
       <path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
     </svg>
   ),
+  orders: (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M6 8h12l-1 11.5H7zM9 8V6.5a3 3 0 0 1 6 0V8" />
+    </svg>
+  ),
 };
 
 export function TabBar() {
   const t = useTranslations("chrome");
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
+  const { isF2G } = useChannel();
+
+  // On the Food to Go storefront the Roam social IA (Town Hall, Chat) is out of place — the mobile
+  // bar becomes a shopfront: browse vendors (Home), your Orders, You.
+  if (isF2G) {
+    const ordersActive = pathname.startsWith("/orders");
+    return (
+      <>
+        <div className={styles.spacer} aria-hidden />
+        <nav className={styles.bar} aria-label={t("primaryNav")}>
+          <Link href="/" className={`${styles.tab} ${active === "home" ? styles.active : ""}`}>
+            {icons.home}
+            {t("nav.home")}
+          </Link>
+          <Link href="/orders" className={`${styles.tab} ${ordersActive ? styles.active : ""}`}>
+            {icons.orders}
+            {t("nav.orders")}
+          </Link>
+          <Link href="/account" className={`${styles.tab} ${active === "you" ? styles.active : ""}`}>
+            {icons.you}
+            {t("nav.you")}
+          </Link>
+        </nav>
+      </>
+    );
+  }
 
   return (
     <>

@@ -30,7 +30,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { places as corePlaces } from "@roam/core";
+import { places as corePlaces, channels as coreChannels } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
 import {
   normaliseVenueDescription,
@@ -478,6 +478,63 @@ export const venuesRouter = router({
       const rows = (data ?? []) as VenuesInCategoryNearRow[];
       // The RPC returns up to pageSize+1; the extra row only tells us another page
       // exists. Slice it off so the client never sees the overflow mechanism.
+      const hasMore = rows.length > input.pageSize;
+      const page = hasMore ? rows.slice(0, input.pageSize) : rows;
+      return {
+        venues: page.map((v) => ({
+          id: v.id,
+          name: v.name,
+          claimed: v.owner_id !== null,
+          status: v.status,
+          category: v.category,
+          categories: v.categories,
+          rating: v.rating,
+          ratingCount: v.rating_count,
+          priceLevel: v.price_level,
+          primaryTypeLabel: v.primary_type_label,
+          businessStatus: v.business_status,
+          distanceM: v.distance_m,
+          lat: v.lat_out,
+          lng: v.lng_out,
+          coverPhotoId: v.cover_photo_id,
+        })),
+        hasMore,
+        nextOffset: input.pageOffset + page.length,
+      };
+    }),
+
+  /**
+   * A brand channel's vendors near a point — the Food to Go storefront home's discovery source.
+   * Resolves the channel key to its id, then calls venues_in_channel_near (which joins
+   * venue_channels), so results are the f2g-tagged venues NEAREST-first, not a truncated global
+   * top-N filtered down. The default channel (roam, shows everything) and unknown keys return empty.
+   */
+  inChannelNear: publicProcedure
+    .input(
+      z.object({
+        channelKey: z.string().trim().min(1).max(32),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        pageOffset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const channel = await coreChannels.getChannelByKey(ctx.db, input.channelKey);
+      if (!channel || channel.isDefault) {
+        return { venues: [], hasMore: false, nextOffset: input.pageOffset };
+      }
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+      const { data, error } = await rpc("venues_in_channel_near", {
+        filter_channel_id: channel.id,
+        origin_lat: input.lat,
+        origin_lng: input.lng,
+        page_size: input.pageSize,
+        page_offset: input.pageOffset,
+      });
+      if (error) throw new Error(`Failed to load channel venues: ${error.message}`);
+
+      const rows = (data ?? []) as VenuesInCategoryNearRow[];
       const hasMore = rows.length > input.pageSize;
       const page = hasMore ? rows.slice(0, input.pageSize) : rows;
       return {

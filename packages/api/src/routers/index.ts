@@ -40,6 +40,8 @@ import { marketRouter } from "./market.js";
 import { listingsRouter } from "./listings.js";
 import { tagsRouter } from "./tags.js";
 import { reviewsRouter } from "./reviews.js";
+import { channelsRouter } from "./channels.js";
+import { f2gRouter } from "./f2g.js";
 import { adminMetricsRouter } from "./adminMetrics.js";
 import { adminActivityRouter } from "./adminActivity.js";
 import { adminSearchRouter } from "./adminSearch.js";
@@ -81,6 +83,8 @@ export const appRouter = router({
   listings: listingsRouter,
   tags: tagsRouter,
   reviews: reviewsRouter,
+  channels: channelsRouter,
+  f2g: f2gRouter,
   adminMetrics: adminMetricsRouter,
   adminActivity: adminActivityRouter,
   adminSearch: adminSearchRouter,

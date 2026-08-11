@@ -91,7 +91,8 @@
       "townHall": "The Forum",
       "plans": "Plans",
       "chat": "Chat",
-      "you": "You"
+      "you": "You",
+      "orders": "Orders"
     },
     "forBusinesses": "For businesses",
     "create": "Create",
@@ -618,6 +619,12 @@
     "changes": "changes",
     "direct": "Direct",
     "durationMin": "{mins} min",
+    "orderAhead": {
+      "title": "Order ahead available",
+      "generic": "Usually ready in ~{prep} min — order ahead and skip the queue.",
+      "readyOnArrival": "Your journey's ~{journey} min — order now and it'll be ready when you arrive.",
+      "waitOnArrival": "Ready in ~{prep} min vs a ~{journey} min journey — order now; about {wait} min to wait when you arrive."
+    },
     "live": "Live",
     "to_": "to",
     "error": "Couldn't plan that journey. Please try again.",
@@ -838,6 +845,8 @@
     },
     "seeAllPhotos": "See all {count} photos",
     "newToRoam": "New to Roam",
+    "orderAheadChip": "Order ahead",
+    "orderAheadCta": "Order ahead & collect",
     "whereToFind": "Where to find it",
     "suggestEditPrompt": "Know this place? Help fellow locals — suggest a photo, the opening hours or a fix.",
     "suggestEdit": "Suggest an edit",
@@ -858,7 +867,8 @@
     "temporarilyClosed": "Temporarily closed",
     "claimed": "Claimed",
     "fromPublicSources": "From public sources",
-    "claimItFree": "Claim it free"
+    "claimItFree": "Claim it free",
+    "orderAhead": "Order ahead"
   },
   "venueMap": {
     "ariaLabel": "Map of venues",
@@ -1844,7 +1854,30 @@
     "reportPrompt": "What’s wrong with this listing? (optional)",
     "reportListing": "Report this listing"
   },
+  "storefront": {
+    "defaultTitle": "Food to Go",
+    "defaultTagline": "Order ahead. Skip the queue.",
+    "nearHeading": "Vendors near {place}",
+    "orderAhead": "Order ahead",
+    "readyIn": "~{mins} min",
+    "paused": "Paused",
+    "viewMenu": "View menu",
+    "loading": "Finding vendors near you…",
+    "empty": {
+      "title": "No Food to Go vendors near you yet",
+      "body": "We're just getting started here. Try another area, or check back soon."
+    },
+    "more": "Show more",
+    "browseAllHint": "Looking for something else on Roam?",
+    "browseAll": "Browse Roam"
+  },
   "venueShop": {
+    "collection": {
+      "orderAhead": "Order ahead & collect",
+      "readyIn": "Usually ready in ~{mins} min",
+      "paused": "Not taking orders right now",
+      "pausedNote": "This vendor has paused new orders — check back soon."
+    },
     "checkoutFailed": "Couldn't start checkout.",
     "empty": "This venue hasn't stocked its Roam shop yet — check back soon.",
     "kind": {
@@ -1867,12 +1900,15 @@
     "status": {
       "pending": "Awaiting payment",
       "paid": "Paid",
+      "ready": "Ready",
       "collected": "Collected",
       "redeemed": "Redeemed",
       "refunded": "Refunded",
       "canceled": "Canceled"
     },
-    "showCode": "Show this code in venue to redeem:"
+    "readyBy": "Ready by ~{time}",
+    "readyNow": "Ready to collect now",
+    "showCode": "Show this code to collect:"
   },
   "friendsList": {
     "fallbackName": "Someone",
@@ -1957,6 +1993,7 @@
       "posts": "Posts",
       "offers": "Offers",
       "shop": "Shop",
+      "foodToGo": "Food to Go",
       "notifications": "Notifications",
       "venue": "Venue"
     },
@@ -2024,6 +2061,71 @@
     "ordersCard": {
       "title": "Orders",
       "subtitle": "Sales come in here — mark them collected or redeemed in-venue, or refund."
+    },
+    "foodToGo": {
+      "card": {
+        "title": "Food to Go",
+        "subtitle": "List this venue on the Food to Go marketplace — order-ahead and collect. Customers order on their phone and skip the queue."
+      },
+      "listing": {
+        "title": "List on Food to Go",
+        "on": "Listed",
+        "off": "Not listed",
+        "description": "When listed, your menu and collection details appear on the Food to Go storefront.",
+        "listCta": "List on Food to Go",
+        "unlistCta": "Remove from Food to Go",
+        "working": "Saving…"
+      },
+      "status": {
+        "readyTitle": "You're ready to go live",
+        "readySubtitle": "Everything's set — your storefront is live on Food to Go.",
+        "notReadyTitle": "{count, plural, one {# step to go live} other {# steps to go live}}",
+        "notReadySubtitle": "Finish these to appear on the Food to Go storefront."
+      },
+      "checklist": {
+        "claimed": "Venue claimed",
+        "tagged": "Listed on Food to Go",
+        "hasActiveProduct": "At least one live menu item",
+        "paymentsEnabled": "Online payments switched on",
+        "collectionConfigured": "Order-ahead & collect turned on",
+        "fixMenu": "Add a menu item",
+        "fixPayments": "Set up payments",
+        "done": "Done"
+      },
+      "collection": {
+        "title": "Order-ahead & collect",
+        "subtitle": "How collection works at your venue. Shown to customers on your storefront.",
+        "orderAhead": "Accept order-ahead",
+        "orderAheadHint": "Let customers order and pay before they arrive, then collect.",
+        "paused": "Pause new orders",
+        "pausedHint": "Temporarily stop taking orders when you're too busy. Your listing stays up.",
+        "prepTime": "Typical prep time",
+        "prepTimeUnit": "minutes",
+        "prepTimeHint": "Roughly how long from order to ready. Shown as “usually ready in ~{mins} min”.",
+        "instructions": "Collection instructions",
+        "instructionsPlaceholder": "e.g. Collect from the till by the window",
+        "instructionsHint": "Where and how to collect. Kept short.",
+        "save": "Save collection settings",
+        "saving": "Saving…",
+        "saved": "Saved",
+        "error": "Couldn't save. Please try again."
+      },
+      "disabled": {
+        "title": "Food to Go isn't switched on yet",
+        "body": "This marketplace is coming soon. You'll be able to list your venue here when it launches."
+      },
+      "preview": {
+        "title": "Storefront preview",
+        "subtitle": "How your listing looks to customers on Food to Go.",
+        "orderAhead": "Order ahead",
+        "collectOnly": "Collection",
+        "readyIn": "Usually ready in ~{mins} min",
+        "paused": "Paused — not taking orders",
+        "empty": "Add menu items on the Shop tab to see your storefront.",
+        "soldOut": "Sold out",
+        "voucher": "Voucher",
+        "free": "Free"
+      }
     },
     "notifyCard": {
       "title": "Send a notification",
@@ -2256,6 +2358,7 @@
     "status": {
       "pending": "pending",
       "paid": "paid",
+      "ready": "ready",
       "collected": "collected",
       "redeemed": "redeemed",
       "refunded": "refunded",
@@ -2271,6 +2374,8 @@
     },
     "roamFee": "Roam fee {fee}",
     "codeWord": "code",
+    "readyBy": "ready ~{time}",
+    "markReady": "Mark ready",
     "markRedeemed": "Mark redeemed",
     "markCollected": "Mark collected",
     "refund": "Refund"

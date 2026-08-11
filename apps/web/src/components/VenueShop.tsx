@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Card, Pill, Icon, Button } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useChannel } from "./ChannelProvider";
 import { formatPence } from "../lib/money";
 
 interface ShopItem {
@@ -25,12 +26,21 @@ interface ShopItem {
   photoUrl: string | null;
 }
 
+interface CollectionSettings {
+  orderAhead: boolean;
+  paused: boolean;
+  prepTimeMins: number;
+  collectionInstructions: string | null;
+}
+
 export function VenueShop({ venueId }: { venueId: string }) {
   const t = useTranslations("venueShop");
   const trpc = useTrpc();
   const session = useSession();
+  const { isF2G } = useChannel();
   const [items, setItems] = useState<ShopItem[] | undefined>(undefined);
   const [sellable, setSellable] = useState(false);
+  const [collection, setCollection] = useState<CollectionSettings | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +60,24 @@ export function VenueShop({ venueId }: { venueId: string }) {
       .catch(() => { if (!cancelled) setItems([]); });
     return () => { cancelled = true; };
   }, [trpc, venueId]);
+
+  // On the Food to Go storefront, surface the venue's order-ahead & collect settings.
+  useEffect(() => {
+    if (!isF2G) return;
+    let cancelled = false;
+    trpc.f2g.collectionSettings
+      .query({ venueId })
+      .then((c) => {
+        if (!cancelled) setCollection(c as CollectionSettings);
+      })
+      .catch(() => {
+        /* the banner just won't render */
+      });
+    return () => { cancelled = true; };
+  }, [trpc, venueId, isF2G]);
+
+  const paused = isF2G && !!collection?.paused;
+  const buyable = sellable && !paused;
 
   const buy = useCallback(async (productId: string, quantity: number) => {
     setBuying(productId);
@@ -79,6 +107,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
 
   return (
     <div>
+      {isF2G && collection ? <CollectionBanner settings={collection} /> : null}
       {error ? <p role="alert" style={{ margin: "0 0 var(--space-3)", color: "var(--crimson-700)", fontSize: 13 }}>{error}</p> : null}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "var(--space-3)" }}>
         {items.map((p) => {
@@ -104,7 +133,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
                   <strong style={{ fontFamily: "var(--display)", fontSize: 16, color: "var(--ink-hi)" }}>{formatPence(p.pricePence, p.currency)}</strong>
                   <Pill variant="neutral" size="sm">{p.kind === "service" ? t("kind.voucher") : soldOut ? t("kind.soldOut") : t("kind.collect")}</Pill>
                 </div>
-                {sellable && !soldOut ? (
+                {buyable && !soldOut ? (
                   session ? (
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       {p.kind === "product" ? (
@@ -134,7 +163,11 @@ export function VenueShop({ venueId }: { venueId: string }) {
           );
         })}
       </div>
-      {!sellable ? (
+      {paused ? (
+        <p style={{ margin: "var(--space-4) 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+          {t("collection.pausedNote")}
+        </p>
+      ) : !sellable ? (
         <p style={{ margin: "var(--space-4) 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
           {t("payoutPending")}
         </p>
@@ -145,6 +178,58 @@ export function VenueShop({ venueId }: { venueId: string }) {
           })}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * CollectionBanner — the Food to Go order-ahead & collect summary shown above the menu. Uses the
+ * neutral/success tokens (not the partially-overridden brand ramp) so it reads cleanly under the
+ * f2g palette. Paused reads as a clear amber notice; otherwise the prep-time expectation is set.
+ */
+function CollectionBanner({ settings }: { settings: CollectionSettings }) {
+  const t = useTranslations("venueShop");
+  const paused = settings.paused;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-3)",
+        padding: "12px 14px",
+        borderRadius: 14,
+        marginBottom: "var(--space-3)",
+        background: paused ? "var(--paper-2)" : "var(--success-tint)",
+        border: `1px solid ${paused ? "var(--line)" : "transparent"}`,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          display: "grid",
+          placeItems: "center",
+          width: 34,
+          height: 34,
+          borderRadius: 10,
+          flexShrink: 0,
+          background: paused ? "var(--line)" : "#fff",
+          color: paused ? "var(--muted)" : "var(--success)",
+        }}
+      >
+        <Icon name={paused ? "ban" : "bag"} size={17} />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: paused ? "var(--ink-2)" : "var(--success)" }}>
+          {paused ? t("collection.paused") : t("collection.orderAhead")}
+        </div>
+        <div style={{ marginTop: 1, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>
+          {paused
+            ? t("collection.pausedNote")
+            : settings.collectionInstructions
+              ? `${t("collection.readyIn", { mins: settings.prepTimeMins })} · ${settings.collectionInstructions}`
+              : t("collection.readyIn", { mins: settings.prepTimeMins })}
+        </div>
+      </div>
     </div>
   );
 }

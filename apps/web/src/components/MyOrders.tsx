@@ -14,6 +14,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
+import { formatClock } from "../lib/readyTime";
 
 interface OrderRow {
   id: string;
@@ -27,6 +28,7 @@ interface OrderRow {
   currency: string;
   status: string;
   redeemCode: string | null;
+  readyAt: string | null;
   createdAt: string;
 }
 
@@ -35,6 +37,7 @@ interface OrderRow {
 const STATUS_KEY: Record<string, { key: string; ok?: boolean }> = {
   pending: { key: "pending" },
   paid: { key: "paid", ok: true },
+  ready: { key: "ready", ok: true },
   collected: { key: "collected", ok: true },
   redeemed: { key: "redeemed", ok: true },
   refunded: { key: "refunded" },
@@ -116,9 +119,17 @@ export function MyOrders() {
                   </div>
                 </div>
                 {o.redeemCode ? (
-                  <div style={{ marginTop: "var(--space-3)", padding: "10px 14px", borderRadius: 12, border: "1px dashed var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{t("showCode")}</span>
-                    <code style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 16, letterSpacing: ".12em", color: "var(--crimson-700)" }}>{o.redeemCode}</code>
+                  <div style={{ marginTop: "var(--space-3)", padding: "10px 14px", borderRadius: 12, border: "1px dashed var(--line)", display: "grid", gap: 8 }}>
+                    {/* Collection ETA / ready signal, above the code (the collection ticket). */}
+                    {o.status === "ready" ? (
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--success)" }}>{t("readyNow")}</div>
+                    ) : o.readyAt && o.status === "paid" ? (
+                      <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{t("readyBy", { time: formatClock(o.readyAt) })}</div>
+                    ) : null}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{t("showCode")}</span>
+                      <code style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 16, letterSpacing: ".12em", color: "var(--crimson-700)" }}>{o.redeemCode}</code>
+                    </div>
                   </div>
                 ) : null}
               </Card>

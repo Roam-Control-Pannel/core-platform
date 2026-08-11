@@ -32,13 +32,15 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { selectHero, galleryOrder, type PhotoRow } from "../lib/venuePhotos";
 import { OfferCard, type ConsumerOffer } from "./OfferCard";
 import Link from "next/link";
 import { Card, Pill, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
+import { useChannel } from "./ChannelProvider";
+import { useVenueOrderAhead } from "../lib/useVenueOrderAhead";
 import { AuthPanel } from "./AuthPanel";
 import { PostMediaGrid } from "./PostMediaGrid";
 import { FollowButton } from "./FollowButton";
@@ -465,15 +467,29 @@ function ClaimedDetail({
   // Initial tab honours a ?tab= deep link (e.g. the Market's product cards land on the
   // Shop tab); anything unrecognised falls back to Details. Read once at mount — the tab
   // is client state after that, not URL state.
+  const hadExplicitTab = useRef(false);
   const [tab, setTab] = useState<VenueTab>(() => {
     if (typeof window === "undefined") return "details";
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    return wanted === "posts" || wanted === "offers" || wanted === "gallery" || wanted === "shop" ? wanted : "details";
+    const ok = wanted === "posts" || wanted === "offers" || wanted === "gallery" || wanted === "shop";
+    if (ok) hadExplicitTab.current = true;
+    return ok ? (wanted as VenueTab) : "details";
   });
+
+  // On the Food to Go storefront the menu IS the page — default to Shop when the visitor didn't
+  // deep-link a specific tab. Post-mount (the channel resolves after hydration), and never
+  // overrides an explicit ?tab or a tab the visitor has since chosen.
+  const { isF2G } = useChannel();
+  useEffect(() => {
+    if (isF2G && !hadExplicitTab.current) setTab("shop");
+  }, [isF2G]);
+
+  // Roam-side Food to Go bridge: is this venue offering order-ahead, and its prep time.
+  const orderAhead = useVenueOrderAhead(venueId);
 
   return (
     <>
-      <VenueHero venue={venue} venueId={venueId} claimed />
+      <VenueHero venue={venue} venueId={venueId} claimed orderAhead={orderAhead.available} />
       <div className={styles.profileGrid}>
         {/* Main column: the owner-content tabs, then reviews. */}
         <div className={styles.profileMain}>
@@ -498,7 +514,7 @@ function ClaimedDetail({
                 </div>
               ) : null}
               <GoodToKnow venue={venue} />
-              <WhereToFind venue={venue} />
+              <WhereToFind venue={venue} orderAheadPrepMins={orderAhead.available ? orderAhead.prepMins : undefined} />
             </div>
           ) : tab === "posts" ? (
             <VenuePostsPanel venueId={venueId} />
@@ -520,6 +536,7 @@ function ClaimedDetail({
           <InfoSidebar
             venue={venue}
             venueId={venueId}
+            onOrderAhead={orderAhead.available ? () => setTab("shop") : undefined}
             followSlot={<FollowButton venueId={venueId} initialFollowing={initialFollowing} emailRedirectTo={typeof window !== "undefined" ? window.location.href : ""} />}
           />
           <RatingCard venueId={venueId} />
@@ -791,7 +808,7 @@ function VenueProfileShell({
 
 /** The hero: the venue's best photo (or a warm gradient) under a dark scrim, with a back button,
  *  a "see all N photos" affordance, and the kicker / title / status chips overlaid. */
-function VenueHero({ venue, venueId, claimed = false }: { venue: VenueDetailData; venueId: string; claimed?: boolean }) {
+function VenueHero({ venue, venueId, claimed = false, orderAhead = false }: { venue: VenueDetailData; venueId: string; claimed?: boolean; orderAhead?: boolean }) {
   const t = useTranslations("venueDetail");
   const trpc = useTrpc();
   const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
@@ -845,7 +862,7 @@ function VenueHero({ venue, venueId, claimed = false }: { venue: VenueDetailData
         <div className={styles.heroBody}>
           {venue.category ? <div className={styles.heroKicker}>{venue.category}</div> : null}
           <h1 className={styles.heroTitle}>{venue.name}</h1>
-          <HeroChips venue={venue} claimed={claimed} />
+          <HeroChips venue={venue} claimed={claimed} orderAhead={orderAhead} />
         </div>
       </div>
       {gallery.length > 0 ? (
@@ -862,7 +879,7 @@ function VenueHero({ venue, venueId, claimed = false }: { venue: VenueDetailData
 }
 
 /** The status/locality/price/new chips over the hero. */
-function HeroChips({ venue, claimed = false }: { venue: VenueDetailData; claimed?: boolean }) {
+function HeroChips({ venue, claimed = false, orderAhead = false }: { venue: VenueDetailData; claimed?: boolean; orderAhead?: boolean }) {
   const t = useTranslations("venueDetail");
   const open = venue.opening_times ? isOpenNow(venue.opening_times, new Date()) : null;
   const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
@@ -873,6 +890,8 @@ function HeroChips({ venue, claimed = false }: { venue: VenueDetailData; claimed
     backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
   };
   const chips: React.ReactNode[] = [];
+  // Food to Go bridge: surface order-ahead availability right on the hero.
+  if (orderAhead) chips.push(<span key="f2g" style={{ ...base, background: "rgba(31,157,85,.95)" }}>🥡 {t("orderAheadChip")}</span>);
   if (open && open.status === "open") {
     chips.push(<span key="open" style={{ ...base, background: "rgba(43,150,80,.92)" }}>● {open.nextChange ? t("hours.openNowCloses", { time: open.nextChange.at }) : t("hours.openNow")}</span>);
   } else if (open && open.status === "closed") {
@@ -906,7 +925,7 @@ function ClaimBanner({ onClaimPressed }: { onClaimPressed: () => void }) {
 }
 
 /** The sticky sidebar: price, primary actions, hours, and contact. */
-function InfoSidebar({ venue, venueId, followSlot }: { venue: VenueDetailData; venueId: string; followSlot?: React.ReactNode }) {
+function InfoSidebar({ venue, venueId, followSlot, onOrderAhead }: { venue: VenueDetailData; venueId: string; followSlot?: React.ReactNode; onOrderAhead?: (() => void) | undefined }) {
   const t = useTranslations("venueDetail");
   const price = venue.price_range ? priceRangeLabel(t, venue.price_range) : null;
   let host: string | null = null;
@@ -921,6 +940,12 @@ function InfoSidebar({ venue, venueId, followSlot }: { venue: VenueDetailData; v
         <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 20, marginBottom: "var(--space-3)" }}>
           {price} <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 400, fontFamily: "var(--ui)" }}>{t("goodToKnow.perPerson")}</span>
         </div>
+      ) : null}
+      {/* Food to Go: the primary action on the sidebar when this venue takes order-ahead. */}
+      {onOrderAhead ? (
+        <button type="button" onClick={onOrderAhead} style={{ all: "unset", cursor: "pointer", display: "block", marginBottom: "var(--space-2)" }}>
+          <Button variant="pri" size="md" block>🥡 {t("orderAheadCta")}</Button>
+        </button>
       ) : null}
       <AddToPlan venueId={venueId} block />
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
@@ -1090,7 +1115,7 @@ function ClaimCard({ onClaimPressed }: { onClaimPressed: () => void }) {
 
 /** "Where to find it" — the address + locality and a Directions hand-off, plus the suggest-an-edit
  *  seam. A live map is a follow-up (venue coordinates aren't exposed on this read yet). */
-function WhereToFind({ venue }: { venue: VenueDetailData }) {
+function WhereToFind({ venue, orderAheadPrepMins }: { venue: VenueDetailData; orderAheadPrepMins?: number | undefined }) {
   const t = useTranslations("venueDetail");
   const hasCoords = typeof venue.lat === "number" && typeof venue.lng === "number";
   if (!venue.address && !venue.locality && !hasCoords) return null;
@@ -1121,7 +1146,7 @@ function WhereToFind({ venue }: { venue: VenueDetailData }) {
       {/* Get here by public transport — NI journey planner to this venue; self-hides outside NI. */}
       {hasCoords ? (
         <div style={{ marginTop: "var(--space-3)" }}>
-          <PlanJourney variant="getHere" destName={venue.name} destLat={venue.lat as number} destLng={venue.lng as number} />
+          <PlanJourney variant="getHere" destName={venue.name} destLat={venue.lat as number} destLng={venue.lng as number} orderAheadPrepMins={orderAheadPrepMins} />
         </div>
       ) : null}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginTop: "var(--space-2)", fontSize: 13, color: "var(--ink-2)", flexWrap: "wrap" }}>

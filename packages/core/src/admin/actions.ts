@@ -12,6 +12,11 @@
  */
 import type { RoamClient } from "@roam/db";
 import { loose } from "./loose.js";
+import {
+  getChannelByKey,
+  tagVenueIntoChannel,
+  untagVenueFromChannel,
+} from "../channels/index.js";
 
 /** Who is acting, for attribution. `email` is a durable snapshot (may be null). */
 export interface AdminActor {
@@ -103,6 +108,30 @@ export async function rejectClaim(
   const { error } = await rpc("reject_venue_claim", { target_claim_id: claimId });
   if (error) throw new Error(`admin: claim rejection failed: ${error.message}`);
   await recordAudit(client, actor, { action: "reject_claim", entityType: "claim", entityId: claimId });
+}
+
+/**
+ * Tag or untag a venue into a marketplace channel (e.g. Food to Go), then audit. Staff may do this
+ * for ANY venue — the venue-owner self-serve path is a separate, RLS-scoped write in the channels
+ * router. `member=true` adds the tag (idempotent); `false` removes it.
+ */
+export async function setVenueChannel(
+  client: RoamClient,
+  actor: AdminActor,
+  venueId: string,
+  channelKey: string,
+  member: boolean,
+): Promise<void> {
+  const channel = await getChannelByKey(client, channelKey);
+  if (!channel) throw new Error(`admin: unknown channel '${channelKey}'`);
+  if (member) await tagVenueIntoChannel(client, channel.id, venueId, actor.id);
+  else await untagVenueFromChannel(client, channel.id, venueId);
+  await recordAudit(client, actor, {
+    action: member ? "tag_venue_channel" : "untag_venue_channel",
+    entityType: "venue",
+    entityId: venueId,
+    detail: { channel: channelKey },
+  });
 }
 
 /**

@@ -236,12 +236,21 @@ function ProductComposer({
         return;
       }
       const { data } = supabase.storage.from(VENUE_MEDIA_BUCKET).getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
+      // Server-normalise into one canonical square WebP so storefront tiles stay uniform. Best-effort:
+      // if it fails, fall back to the browser-prepared upload we just made (never block the vendor).
+      let finalUrl = data.publicUrl;
+      try {
+        const norm = await trpc.f2g.normaliseImage.mutate({ venueId, storagePath: path, profile: "product" });
+        if (norm?.url) finalUrl = norm.url;
+      } catch {
+        /* normalisation is an enhancement, not a gate — keep the original upload */
+      }
+      setPhotoUrl(finalUrl);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
-  }, [venueId]);
+  }, [venueId, trpc]);
 
   const save = useCallback(async () => {
     setError(null);

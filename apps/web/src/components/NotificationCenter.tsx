@@ -34,6 +34,7 @@ const GLYPH: Record<string, IconName> = {
   friend_accept: "handshake",
   venue_message: "bell",
   order_paid: "bag",
+  order_ready: "redeem",
   order_refunded: "card",
   // 0102 coverage additions + the birthday_offer glyph that was missing.
   plan_invite: "plan",
