@@ -859,7 +859,8 @@
     "temporarilyClosed": "Temporarily closed",
     "claimed": "Claimed",
     "fromPublicSources": "From public sources",
-    "claimItFree": "Claim it free"
+    "claimItFree": "Claim it free",
+    "orderAhead": "Order ahead"
   },
   "venueMap": {
     "ariaLabel": "Map of venues",

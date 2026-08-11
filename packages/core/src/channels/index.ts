@@ -218,6 +218,25 @@ export async function venueChannelKeys(
     .filter((k): k is string => !!k);
 }
 
+/**
+ * The subset of the given venue ids that are tagged into a channel — a bulk membership check for a
+ * discovery grid (which of these ~50 venues offer Food to Go). Empty input → empty result.
+ */
+export async function filterVenuesInChannel(
+  client: RoamClient,
+  channelId: string,
+  venueIds: string[],
+): Promise<string[]> {
+  if (venueIds.length === 0) return [];
+  const { data, error } = await (client as any)
+    .from("venue_channels")
+    .select("venue_id")
+    .eq("channel_id", channelId)
+    .in("venue_id", venueIds);
+  if (error) throw new Error(`channels: bulk membership failed: ${error.message}`);
+  return ((data ?? []) as any[]).map((r) => r.venue_id as string);
+}
+
 /** Whether a specific venue is tagged into a channel. */
 export async function isVenueInChannel(
   client: RoamClient,

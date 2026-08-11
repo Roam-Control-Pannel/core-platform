@@ -89,6 +89,26 @@ export const channelsRouter = router({
     }),
 
   /**
+   * Bulk membership: of the given venue ids, which are tagged into the channel. Powers the Roam-side
+   * "Order ahead" badge across a discovery grid without downloading the channel's whole id list.
+   * Returns [] for the default channel (which shows everything) or an unknown key.
+   */
+  venuesInChannel: publicProcedure
+    .input(
+      z.object({
+        key: z.string().min(1).max(32),
+        venueIds: z.array(z.string().uuid()).max(200),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (input.venueIds.length === 0) return { channelId: null, venueIds: [] as string[] };
+      const channel = await channels.getChannelByKey(ctx.db, input.key);
+      if (!channel || channel.isDefault) return { channelId: channel?.id ?? null, venueIds: [] as string[] };
+      const venueIds = await channels.filterVenuesInChannel(ctx.db, channel.id, input.venueIds);
+      return { channelId: channel.id, venueIds };
+    }),
+
+  /**
    * SELF-SERVE onboarding: a venue owner tags their OWN claimed venue into a channel (e.g. lists it
    * on Food to Go). Authority is RLS: the `venue_channels` owner-write policy only permits the write
    * when the caller owns the claimed venue, so a signed-in user can never tag a venue they don't own.

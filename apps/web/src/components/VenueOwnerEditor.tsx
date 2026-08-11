@@ -46,6 +46,7 @@ import { VenueShopManager } from "./VenueShopManager";
 import { VenueOrders } from "./VenueOrders";
 import { VenueFoodToGo } from "./VenueFoodToGo";
 import { venuePath } from "../lib/routes";
+import { useF2gEnabled } from "../lib/useF2gEnabled";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
@@ -153,27 +154,6 @@ function useDashData(venueId: string): DashData {
   }, [trpc, venueId]);
 
   return data;
-}
-
-/** Whether the Food to Go marketplace is switched on (feature_flags.marketplace.f2g.enabled). */
-function useF2gEnabled(): boolean {
-  const trpc = useTrpc();
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    trpc.f2g.config
-      .query()
-      .then((c) => {
-        if (!cancelled) setEnabled(!!c.enabled);
-      })
-      .catch(() => {
-        /* dormant by default; a failed read simply keeps the tab hidden */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc]);
-  return enabled;
 }
 
 export function VenueOwnerEditor({ venueId }: { venueId: string }) {

@@ -36,6 +36,7 @@ import { VenueCard, type VenueCardData } from "./VenueCard";
 import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
 import { AuthPanel } from "./AuthPanel";
 import { useCurrentPlace } from "../lib/currentPlace";
+import { useF2gEnabled } from "../lib/useF2gEnabled";
 import { anonCanOpen, anonRecordOpen, ANON_SEARCH_LIMIT } from "../lib/anonDiscovery";
 import { FeedList } from "./FeedList";
 import { CATEGORY_GROUPS, useCategoryLabel } from "../lib/categories";
@@ -420,6 +421,36 @@ export function Explore() {
     };
   }, [visible, trpc]);
 
+  // Which of the visible venues offer Food to Go — one bulk membership call per new page (same
+  // no-refetch ref pattern as the covers), used to badge cards with "Order ahead". Gated on the
+  // feature flag, so nothing extra is fetched until F2G launches.
+  const f2gEnabled = useF2gEnabled();
+  const [f2gSet, setF2gSet] = useState<Set<string>>(new Set());
+  const requestedF2gIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!f2gEnabled) return;
+    const wanted = visible.map((v) => v.id).filter((id) => !requestedF2gIds.current.has(id));
+    if (wanted.length === 0) return;
+    wanted.forEach((id) => requestedF2gIds.current.add(id));
+    let cancelled = false;
+    trpc.channels.venuesInChannel
+      .query({ key: "f2g", venueIds: wanted })
+      .then((r) => {
+        if (cancelled || !r?.venueIds?.length) return;
+        setF2gSet((prev) => {
+          const next = new Set(prev);
+          for (const id of r.venueIds) next.add(id);
+          return next;
+        });
+      })
+      .catch(() => {
+        /* no badges is a fine fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, trpc, f2gEnabled]);
+
   // Map pins: the whole loaded set (not just the visible page), so the map gives the full
   // local overview while the grid pages. Empty until the API returns lat/lng (migration 0025).
   const mapVenues = useMemo<MapVenue[]>(
@@ -619,6 +650,7 @@ export function Explore() {
                       venue={v}
                       initialFollowing={followingSet.has(v.id)}
                       coverUrl={coverUrls[v.id]}
+                      orderAhead={f2gSet.has(v.id)}
                     />
                   ))}
                 </div>

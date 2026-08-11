@@ -125,6 +125,8 @@ interface VenueCardProps {
    * fallback-then-swap flash. Absent → the card lazily resolves coverPhotoId itself.
    */
   coverUrl?: string | undefined;
+  /** This venue offers Food to Go order-ahead — surfaces an "Order ahead" chip on the cover. */
+  orderAhead?: boolean | undefined;
 }
 
 /* ── Hoisted static styles (allocated once, not per card render) ────────────────── */
@@ -190,6 +192,24 @@ const distancePill: CSSProperties = {
   letterSpacing: ".02em",
   color: "var(--crimson-700)",
   background: "var(--crimson-tint)",
+  boxShadow: "var(--shadow-key)",
+};
+
+// "Order ahead" — a Food to Go trust chip over the cover, bottom-left (top corners are taken by
+// the distance pill + closed badge). Success-tinted so it reads as an available, positive affordance.
+const orderAheadPill: CSSProperties = {
+  position: "absolute",
+  bottom: "var(--space-3)",
+  left: "var(--space-3)",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  padding: "3px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 700,
+  color: "#fff",
+  background: "var(--success)",
   boxShadow: "var(--shadow-key)",
 };
 
@@ -347,9 +367,11 @@ function CardMeta({ venue }: { venue: VenueCardData }) {
 function CoverWithBadge({
   venue,
   coverUrl,
+  orderAhead,
 }: {
   venue: VenueCardData;
   coverUrl: string | undefined;
+  orderAhead: boolean;
 }) {
   const t = useTranslations("venueCard");
   const closed = venue.businessStatus === "CLOSED_TEMPORARILY";
@@ -358,6 +380,11 @@ function CoverWithBadge({
       <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
       {venue.distanceM != null ? <span style={distancePill}>{formatDistance(venue.distanceM)}</span> : null}
       {closed ? <span style={closedBadge}>{t("temporarilyClosed")}</span> : null}
+      {orderAhead ? (
+        <span style={orderAheadPill}>
+          <Icon name="bag" size={11} strokeWidth={2.5} /> {t("orderAhead")}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -420,13 +447,14 @@ export const VenueCard = memo(function VenueCard({
   venue,
   initialFollowing = false,
   coverUrl,
+  orderAhead = false,
 }: VenueCardProps) {
   return (
     <Link href={venuePath(venue.id)} style={linkStyle} className={styles.card}>
       {venue.claimed ? (
-        <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} />
+        <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} orderAhead={orderAhead} />
       ) : (
-        <UnclaimedCard venue={venue} coverUrl={coverUrl} />
+        <UnclaimedCard venue={venue} coverUrl={coverUrl} orderAhead={orderAhead} />
       )}
     </Link>
   );
@@ -436,15 +464,17 @@ function ClaimedCard({
   venue,
   initialFollowing,
   coverUrl,
+  orderAhead,
 }: {
   venue: VenueCardData;
   initialFollowing: boolean;
   coverUrl: string | undefined;
+  orderAhead: boolean;
 }) {
   const t = useTranslations("venueCard");
   return (
     <Card>
-      <CoverWithBadge venue={venue} coverUrl={coverUrl} />
+      <CoverWithBadge venue={venue} coverUrl={coverUrl} orderAhead={orderAhead} />
       <div style={cardBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
@@ -473,12 +503,12 @@ function ClaimedCard({
   );
 }
 
-function UnclaimedCard({ venue, coverUrl }: { venue: VenueCardData; coverUrl: string | undefined }) {
+function UnclaimedCard({ venue, coverUrl, orderAhead }: { venue: VenueCardData; coverUrl: string | undefined; orderAhead: boolean }) {
   const t = useTranslations("venueCard");
   return (
     <Card>
       {/* cover photo when Places (or the owner) has one; else the default illustrated cover */}
-      <CoverWithBadge venue={venue} coverUrl={coverUrl} />
+      <CoverWithBadge venue={venue} coverUrl={coverUrl} orderAhead={orderAhead} />
       <div style={cardBody}>
         <div className="t-h3" style={nameStyle}>
           {venue.name}
