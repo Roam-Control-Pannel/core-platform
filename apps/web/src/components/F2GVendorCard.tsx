@@ -5,11 +5,9 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
-import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
 import { STOREFRONT, milesFromMetres } from "../lib/storefront";
 
@@ -26,27 +24,15 @@ export interface F2GVendor {
   prepMins?: number;
 }
 
-export function F2GVendorCard({ vendor }: { vendor: F2GVendor }) {
+/**
+ * `coverUrl` is resolved in one batch by the parent grid (StorefrontHome) via venues.photoMediaUrls,
+ * not per card — so a 40-vendor storefront paints its covers in a single round-trip instead of 40.
+ */
+export function F2GVendorCard({ vendor, coverUrl }: { vendor: F2GVendor; coverUrl?: string | undefined }) {
   const t = useTranslations("storefront");
-  const trpc = useTrpc();
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const distance = milesFromMetres(vendor.distanceM);
   const tag = (vendor.primaryTypeLabel || vendor.category || "").trim();
   const ready = vendor.prepMins ?? 15;
-
-  useEffect(() => {
-    if (!vendor.coverPhotoId) return;
-    let cancelled = false;
-    trpc.venues.photoMediaUrl
-      .query({ photoId: vendor.coverPhotoId })
-      .then((r) => {
-        if (!cancelled && r?.url) setCoverUrl(r.url);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [trpc, vendor.coverPhotoId]);
 
   return (
     <Link

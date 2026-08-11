@@ -145,7 +145,7 @@ export const marketRouter = router({
    *  can take online payments right now ("is there a Buy button" is public information). */
   listByVenue: publicProcedure
     .input(z.object({ venueId: z.string().uuid() }))
-    .query(async ({ ctx, input }): Promise<{ sellable: boolean; products: MarketProduct[] }> => {
+    .query(async ({ ctx, input }): Promise<{ sellable: boolean; paused: boolean; products: MarketProduct[] }> => {
       const db = ctx.db as unknown as LooseDb;
       const { data, error } = (await db
         .from("venue_products")
@@ -165,7 +165,15 @@ export const marketRouter = router({
           .maybeSingle()) as { data: { charges_enabled: boolean } | null };
         sellable = !!acct?.charges_enabled;
       }
-      return { sellable, products: (data ?? []).map(shape) };
+      // Paused is a venue-wide collection setting: checkout blocks a paused venue on EVERY channel
+      // (the unified collect model), so surface it here — publicly readable — to keep the Buy button
+      // honest on Roam too, not only inside the f2g storefront chrome.
+      const { data: collection } = (await db
+        .from("venue_collection_settings")
+        .select("paused")
+        .eq("venue_id", input.venueId)
+        .maybeSingle()) as { data: { paused: boolean } | null };
+      return { sellable, paused: !!collection?.paused, products: (data ?? []).map(shape) };
     }),
 
   /** Owner: the full catalogue including deactivated entries (RLS scopes the extra rows). */

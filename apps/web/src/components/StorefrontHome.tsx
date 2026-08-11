@@ -58,6 +58,10 @@ export function StorefrontHome() {
   const [query, setQuery] = useState("");
   // NI town cells (~1km) we've already asked to discover, so we trigger the paid ingest once each.
   const attemptedIngest = useRef<Set<string>>(new Set());
+  // Cover images, resolved for the whole grid in ONE batch call (venues.photoMediaUrls) rather than
+  // one round-trip per card — keyed by venue id, guarded by a ref so re-renders never re-fetch.
+  const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
+  const requestedCoverIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +115,41 @@ export function StorefrontHome() {
       cancelled = true;
     };
   }, [trpc, place.lat, place.lng]);
+
+  // Resolve every loaded vendor's cover in one batch (≤40 ids, under the procedure's cap of 60), so
+  // the grid paints real covers in a single round-trip. Keyed by venue id; the ref guards re-fetch.
+  useEffect(() => {
+    if (!vendors) return;
+    const wanted = vendors.filter(
+      (v) => v.coverPhotoId && !requestedCoverIds.current.has(v.coverPhotoId),
+    );
+    if (wanted.length === 0) return;
+    const photoIds = Array.from(new Set(wanted.map((v) => v.coverPhotoId as string)));
+    photoIds.forEach((id) => requestedCoverIds.current.add(id));
+    let cancelled = false;
+    const resolve = trpc.venues.photoMediaUrls as unknown as {
+      query: (input: { photoIds: string[] }) => Promise<{ urls: Record<string, string> }>;
+    };
+    resolve
+      .query({ photoIds })
+      .then((r) => {
+        if (cancelled || !r?.urls) return;
+        setCoverUrls((prev) => {
+          const next = { ...prev };
+          for (const v of wanted) {
+            const u = v.coverPhotoId ? r.urls[v.coverPhotoId] : undefined;
+            if (u) next[v.id] = u;
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        /* leave these cards on the illustrated default cover */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, vendors]);
 
   const shown = useMemo(() => {
     if (!vendors) return [];
@@ -223,7 +262,7 @@ export function StorefrontHome() {
       ) : (
         <Grid>
           {shown.map((v) => (
-            <F2GVendorCard key={v.id} vendor={v} />
+            <F2GVendorCard key={v.id} vendor={v} coverUrl={coverUrls[v.id]} />
           ))}
         </Grid>
       )}
