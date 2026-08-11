@@ -12,6 +12,7 @@ import { useTrpc } from "./TrpcProvider";
 import { Button, Pill } from "@roam/design";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
+import { formatClock } from "../lib/readyTime";
 
 type Filter = "all" | "paid" | "fulfilled" | "refunded";
 /** Filter keys → catalogue label keys (venueOrders.filters.*). */
@@ -22,11 +23,15 @@ const FILTERS: Filter[] = ["all", "paid", "fulfilled", "refunded"];
 const STATUS_KEY: Record<string, string> = {
   pending: "pending",
   paid: "paid",
+  ready: "ready",
   collected: "collected",
   redeemed: "redeemed",
   refunded: "refunded",
   canceled: "canceled",
 };
+
+/** Statuses shown in success green (money in + still-good) vs muted (pending/terminal). */
+const POSITIVE = new Set(["paid", "ready", "collected", "redeemed"]);
 
 interface VOrder {
   id: string;
@@ -38,6 +43,7 @@ interface VOrder {
   currency: string;
   status: string;
   redeemCode: string | null;
+  readyAt: string | null;
   createdAt: string;
 }
 
@@ -59,14 +65,14 @@ export function VenueOrders({ venueId }: { venueId: string }) {
     return () => { cancelled = true; };
   }, [load]);
 
-  const act = useCallback(async (orderId: string, action: "fulfil" | "refund") => {
+  const act = useCallback(async (orderId: string, action: "ready" | "fulfil" | "refund") => {
     if (action === "refund" && !window.confirm(t("refundConfirm"))) return;
     setBusy(orderId);
     setError(null);
     try {
-      const proc = (action === "fulfil" ? trpc.market.fulfilOrder : trpc.market.refundOrder) as unknown as {
-        mutate: (i: { orderId: string }) => Promise<{ ok: boolean }>;
-      };
+      const proc = (
+        action === "ready" ? trpc.market.markReady : action === "fulfil" ? trpc.market.fulfilOrder : trpc.market.refundOrder
+      ) as unknown as { mutate: (i: { orderId: string }) => Promise<{ ok: boolean }> };
       await proc.mutate({ orderId });
       setOrders(await load());
     } catch (e: unknown) {
@@ -83,7 +89,7 @@ export function VenueOrders({ venueId }: { venueId: string }) {
   const shown = useMemo(() => {
     if (!orders) return [];
     if (filter === "all") return orders;
-    if (filter === "paid") return orders.filter((o) => o.status === "paid");
+    if (filter === "paid") return orders.filter((o) => o.status === "paid" || o.status === "ready");
     if (filter === "fulfilled") return orders.filter((o) => o.status === "collected" || o.status === "redeemed");
     return orders.filter((o) => o.status === "refunded");
   }, [orders, filter]);
@@ -94,7 +100,7 @@ export function VenueOrders({ venueId }: { venueId: string }) {
     if (!wanted) return;
     const match = orders?.find((o) => o.redeemCode?.toUpperCase() === wanted);
     if (!match) return setCodeNote(t("code.noMatch"));
-    if (match.status !== "paid") {
+    if (match.status !== "paid" && match.status !== "ready") {
       const statusLabel = STATUS_KEY[match.status] ? t(`status.${STATUS_KEY[match.status]}`) : match.status;
       return setCodeNote(t("code.alreadyStatus", { status: statusLabel }));
     }
@@ -146,15 +152,29 @@ export function VenueOrders({ venueId }: { venueId: string }) {
                 <div style={{ marginTop: 2, fontSize: 12, color: "var(--muted)" }}>
                   {formatPence(o.amountPence, o.currency)} · {t("roamFee", { fee: formatPence(o.feePence, o.currency) })} · {timeAgo(o.createdAt)}
                   {o.redeemCode ? <> · {t("codeWord")} <code style={{ fontFamily: "var(--mono)", fontWeight: 700 }}>{o.redeemCode}</code></> : null}
+                  {o.readyAt && (o.status === "paid" || o.status === "ready") ? <> · {t("readyBy", { time: formatClock(o.readyAt) })}</> : null}
                 </div>
               </div>
-              <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: o.status === "paid" || o.status === "collected" || o.status === "redeemed" ? "var(--success)" : "var(--muted)", background: o.status === "paid" || o.status === "collected" || o.status === "redeemed" ? "var(--success-tint)" : "var(--paper-2)" }}>
+              <span style={{ flexShrink: 0, padding: "3px 9px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: POSITIVE.has(o.status) ? "var(--success)" : "var(--muted)", background: POSITIVE.has(o.status) ? "var(--success-tint)" : "var(--paper-2)" }}>
                 {STATUS_KEY[o.status] ? t(`status.${STATUS_KEY[o.status]}`) : o.status}
               </span>
             </div>
-            {o.status === "paid" ? (
-              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 8 }}>
-                <Button variant="pri" size="sm" onClick={() => void act(o.id, "fulfil")} disabled={busy === o.id}>
+            {o.status === "paid" || o.status === "ready" ? (
+              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: 8, flexWrap: "wrap" }}>
+                {/* Order-ahead: a product can be marked READY (pings the buyer) before it's collected.
+                    Services (vouchers) skip 'ready' — they're redeemed on use. A vendor may also mark
+                    collected straight from paid. */}
+                {o.status === "paid" && o.kind === "product" ? (
+                  <Button variant="pri" size="sm" onClick={() => void act(o.id, "ready")} disabled={busy === o.id}>
+                    {t("markReady")}
+                  </Button>
+                ) : null}
+                <Button
+                  variant={o.status === "ready" ? "pri" : "neutral"}
+                  size="sm"
+                  onClick={() => void act(o.id, "fulfil")}
+                  disabled={busy === o.id}
+                >
                   {o.kind === "service" ? t("markRedeemed") : t("markCollected")}
                 </Button>
                 <Button variant="neutral" size="sm" onClick={() => void act(o.id, "refund")} disabled={busy === o.id}>

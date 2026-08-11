@@ -1891,12 +1891,15 @@
     "status": {
       "pending": "Awaiting payment",
       "paid": "Paid",
+      "ready": "Ready",
       "collected": "Collected",
       "redeemed": "Redeemed",
       "refunded": "Refunded",
       "canceled": "Canceled"
     },
-    "showCode": "Show this code in venue to redeem:"
+    "readyBy": "Ready by ~{time}",
+    "readyNow": "Ready to collect now",
+    "showCode": "Show this code to collect:"
   },
   "friendsList": {
     "fallbackName": "Someone",
@@ -2346,6 +2349,7 @@
     "status": {
       "pending": "pending",
       "paid": "paid",
+      "ready": "ready",
       "collected": "collected",
       "redeemed": "redeemed",
       "refunded": "refunded",
@@ -2361,6 +2365,8 @@
     },
     "roamFee": "Roam fee {fee}",
     "codeWord": "code",
+    "readyBy": "ready ~{time}",
+    "markReady": "Mark ready",
     "markRedeemed": "Mark redeemed",
     "markCollected": "Mark collected",
     "refund": "Refund"
