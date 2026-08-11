@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ingestCategoryCore, ingestTextSearchCore, enrichVenueCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn, type GetDetailsFn } from "./places.js";
+import { ingestCategoryCore, ingestTextSearchCore, ingestFoodToGoCore, enrichVenueCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn, type GetDetailsFn } from "./places.js";
 import { places as corePlaces } from "@roam/core";
 
 /**
@@ -481,5 +481,64 @@ describe("enrichVenueCore — on-demand venue enrichment", () => {
     expect(write!.args.p_phone).toBeNull();
     expect(write!.args.p_attributes).toBeNull();
     expect(out.fields).toEqual({ phone: null, website_url: null, price_range: null, attributes: null });
+  });
+});
+
+/* ── ingestFoodToGoCore — the storefront's open-mode supply ────────────────────────────────── */
+
+const pubPlace: corePlaces.PlaceResult = {
+  // A pub classifies to Food & Drink but is NOT food-to-go, so the food-to-go ingest must DROP it.
+  id: "ChIJ_pub",
+  displayName: { text: "The Crown" },
+  location: { latitude: 54.5959, longitude: -5.9316 },
+  types: ["pub", "bar", "point_of_interest"],
+};
+
+const ftgArgs = { lat: 54.5973, lng: -5.9301, radiusMetres: 2500, clientKey: "203.0.113.9" };
+
+describe("ingestFoodToGoCore", () => {
+  it("asks Places for food-to-go types and does NOT consult coarse freshness", async () => {
+    const { rpc, calls } = fakeRpc({
+      upsert_place_venues: { data: [{ out_id: "v1", out_source_ref: "ChIJ_cafe", out_was_claimed: false }], error: null },
+    });
+    let requestedTypes: readonly string[] | undefined;
+    const searchNearby: SearchNearbyFn = async (params) => {
+      requestedTypes = params.includedTypes;
+      return [cafePlace];
+    };
+    const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
+
+    expect(out.reason).toBe("ingested");
+    expect(out.inserted).toBe(1);
+    // Food-to-go types were requested (café is in the set); coarse freshness was never checked.
+    expect(requestedTypes).toContain("cafe");
+    expect(calls.some((c) => c.fn === "count_fresh_places_venues")).toBe(false);
+    expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(true);
+  });
+
+  it("drops a pub (Food & Drink but not food-to-go) and never upserts it", async () => {
+    const { rpc, calls } = fakeRpc({});
+    const searchNearby: SearchNearbyFn = async () => [pubPlace, carPlace];
+    const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
+
+    expect(out.reason).toBe("no-matching-places");
+    expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
+  });
+
+  it("respects the fetch budget — a denied quota skips the paid call", async () => {
+    const { rpc, calls } = fakeRpc({
+      claim_places_fetch_quota: { data: [{ allowed: false, reason: "budget" }], error: null },
+    });
+    let fetched = false;
+    const searchNearby: SearchNearbyFn = async () => {
+      fetched = true;
+      return [cafePlace];
+    };
+    const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
+
+    expect(out.skipped).toBe(true);
+    expect(out.reason).toBe("budget-exhausted");
+    expect(fetched).toBe(false);
+    expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
   });
 });

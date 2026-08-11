@@ -30,7 +30,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { places as corePlaces } from "@roam/core";
+import { places as corePlaces, f2g as coreF2g } from "@roam/core";
 import { router, internalProcedure } from "../trpc.js";
 import {
   searchNearby as defaultSearchNearby,
@@ -278,6 +278,123 @@ export async function ingestCategoryCore(
 
 /** Seam for the production fetcher. */
 const productionSearchNearby: SearchNearbyFn = defaultSearchNearby;
+
+/* ── Food-to-go supply (the storefront's open-mode ingest) ───────────────────────────────── */
+
+export interface IngestFoodToGoArgs {
+  lat: number;
+  lng: number;
+  radiusMetres: number;
+  clientKey: string | null;
+}
+
+type FoodToGoIngestResult = {
+  skipped: boolean;
+  reason: "ingested" | "no-matching-places" | "budget-exhausted" | "rate-limited";
+  fetched: number;
+  inserted: number;
+  claimedSkipped: number;
+  photosUpserted: number;
+};
+
+/**
+ * PURE orchestration for the Food to Go storefront's open-mode supply. Unlike ingestCategoryCore
+ * it does NOT consult the coarse "Food & Drink" freshness cache — that cache is satisfied by any
+ * Food & Drink venue (e.g. a pub), which would suppress the café/bakery supply the storefront
+ * actually needs. The storefront calls this ONLY when it has zero food-to-go venues near the
+ * point, so reaching here already means an intended fetch; cost stays bounded by the shared fetch
+ * quota (claimed below). It asks Places for food-to-go includedTypes specifically, keeps only
+ * results that classify to Food & Drink AND are food-to-go (isFoodToGo — so a stray restaurant
+ * sharing a type is dropped), then upserts (+ photos) through the same idempotent RPCs.
+ */
+export async function ingestFoodToGoCore(
+  rpc: LooseRpc,
+  searchNearby: SearchNearbyFn,
+  apiKey: string,
+  args: IngestFoodToGoArgs,
+): Promise<FoodToGoIngestResult> {
+  const snapped = corePlaces.snapToIngestGrid(args.lat, args.lng);
+
+  const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
+    p_client_key: args.clientKey,
+    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
+    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+  });
+  if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
+  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
+    | { allowed?: boolean; reason?: string }
+    | undefined;
+  if (!quota?.allowed) {
+    return {
+      skipped: true,
+      reason: quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted",
+      fetched: 0,
+      inserted: 0,
+      claimedSkipped: 0,
+      photosUpserted: 0,
+    };
+  }
+
+  const results = await searchNearby(
+    {
+      lat: snapped.lat,
+      lng: snapped.lng,
+      includedTypes: coreF2g.FOOD_TO_GO_SEARCH_TYPES,
+      radiusMetres: args.radiusMetres,
+      maxResultCount: MAX_RESULTS,
+    },
+    apiKey,
+  );
+
+  const matched: { place: corePlaces.PlaceResult; row: corePlaces.VenueRowFromPlace }[] = [];
+  for (const p of results) {
+    const category = corePlaces.classifyPlaceTypes(p.types ?? []);
+    if (category === null) continue;
+    const row = corePlaces.placeToVenueRow(p, category);
+    if (row === null) continue;
+    if (!coreF2g.isFoodToGo(row.categories)) continue; // keep only genuine food-to-go venues
+    matched.push({ place: p, row });
+  }
+
+  if (matched.length === 0) {
+    return { skipped: false, reason: "no-matching-places", fetched: results.length, inserted: 0, claimedSkipped: 0, photosUpserted: 0 };
+  }
+
+  const { data: upsertData, error: upsertErr } = await rpc("upsert_place_venues", {
+    places: matched.map((m) => m.row),
+  });
+  if (upsertErr) throw new Error(`Venue upsert failed: ${upsertErr.message}`);
+  const upserted = (upsertData ?? []) as UpsertRow[];
+  const claimedSkipped = upserted.filter((r) => r.out_was_claimed).length;
+
+  const unclaimedVenueId = new Map<string, string>();
+  for (const u of upserted) if (!u.out_was_claimed) unclaimedVenueId.set(u.out_source_ref, u.out_id);
+  const photoPayload: PhotoPayloadEntry[] = [];
+  for (const m of matched) {
+    const venueId = unclaimedVenueId.get(m.place.id);
+    if (!venueId) continue;
+    photoPayload.push({
+      venue_id: venueId,
+      photos: corePlaces.placePhotos(m.place).map((ph, i) => ({ ...ph, position: i })),
+    });
+  }
+  let photosUpserted = 0;
+  if (photoPayload.length > 0) {
+    const { data: photoData, error: photoErr } = await rpc("upsert_venue_photos", { payload: photoPayload });
+    if (photoErr) throw new Error(`Photo upsert failed: ${photoErr.message}`);
+    photosUpserted = typeof photoData === "number" ? photoData : Number(photoData ?? 0);
+  }
+
+  return {
+    skipped: false,
+    reason: "ingested",
+    fetched: results.length,
+    inserted: upserted.length - claimedSkipped,
+    claimedSkipped,
+    photosUpserted,
+  };
+}
 
 /* ── Text search (find a venue by name, then ingest it) ──────────────────────────────────── */
 
@@ -538,6 +655,37 @@ export const placesRouter = router({
         if (budgetExhausted || rateLimited) break;
       }
       return { inserted, budgetExhausted, rateLimited };
+    }),
+
+  /**
+   * Internal: fill FOOD-TO-GO supply near a point for the storefront's open mode. Thin wrapper —
+   * resolves the service rpc + env key and delegates to ingestFoodToGoCore (which asks Places for
+   * café/bakery/fast-food types directly, bypassing the coarse "Food & Drink" freshness that pub
+   * coverage would otherwise trip). Budget/rate-limited like every other supply path.
+   */
+  ingestFoodToGo: internalProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusMetres: z.number().int().min(100).max(50_000).default(2500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rpc = ctx.service.rpc.bind(ctx.service) as unknown as LooseRpc;
+      try {
+        return await ingestFoodToGoCore(rpc, productionSearchNearby, ctx.env.places.apiKey, {
+          lat: input.lat,
+          lng: input.lng,
+          radiusMetres: input.radiusMetres,
+          clientKey: ctx.clientKey,
+        });
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Food-to-go ingestion failed.",
+        });
+      }
     }),
 
   /**
