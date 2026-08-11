@@ -22,6 +22,50 @@ import { getChannelByKey, isVenueInChannel } from "../channels/index.js";
 export const F2G_CHANNEL_KEY = "f2g";
 
 // ---------------------------------------------------------------------------
+// Food-to-go eligibility (Google Places leaf types)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Association represents "the food-to-go industry, from fast food outlets to cafés & coffee
+ * shops" — a NARROWER set than Roam's "Food & Drink" group (which also holds pubs, bars and
+ * sit-down restaurants). We approximate a member from the Google Places leaf types a venue
+ * carries (venues.categories): grab-and-go places qualify; drink-led and full-service dining
+ * do not. This is why the storefront's "open" mode shows cafés and chippies but NOT The Crown.
+ *
+ * Only leaves that Roam actually ingests (CATEGORY_PLACES_TYPES["Food & Drink"]) can ever match,
+ * plus a few extra grab-and-go leaves (meal_takeaway, sandwich_shop, deli, bagel_shop) that
+ * Google may attach and which are harmless when absent — so the set can widen without a reingest.
+ */
+export const FOOD_TO_GO_TYPES: ReadonlySet<string> = new Set([
+  "cafe",
+  "coffee_shop",
+  "bakery",
+  "fast_food_restaurant",
+  "meal_takeaway",
+  "sandwich_shop",
+  "deli",
+  "bagel_shop",
+  "donut_shop",
+  "dessert_shop",
+  "ice_cream_shop",
+  "juice_shop",
+]);
+
+/**
+ * Whether a venue is a food-to-go business, from the Google leaf types it carries. A venue
+ * qualifies when ANY of its `categories` leaves is in FOOD_TO_GO_TYPES. Case/whitespace tolerant;
+ * a venue with no leaves never qualifies (we don't guess from the coarse group alone, so a pub
+ * tagged only "Food & Drink" is correctly excluded).
+ */
+export function isFoodToGo(categories: readonly string[] | null | undefined): boolean {
+  if (!categories) return false;
+  for (const c of categories) {
+    if (typeof c === "string" && FOOD_TO_GO_TYPES.has(c.trim().toLowerCase())) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Collection settings
 // ---------------------------------------------------------------------------
 

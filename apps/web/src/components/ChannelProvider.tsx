@@ -29,6 +29,8 @@ export interface ChannelInfo {
   isDefault: boolean;
   theme: { brand?: string; accent?: string; paper?: string; ink?: string };
   logoUrl: string | null;
+  /** 'open' shows all eligible venues near the point; 'members' shows only opted-in venues. */
+  membershipMode: "open" | "members";
 }
 
 export interface ChannelState {

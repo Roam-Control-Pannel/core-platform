@@ -90,6 +90,7 @@ describe("rowToChannel", () => {
       is_default: false,
       theme: { brand: "#E8562A", bogus: "x" },
       logo_url: null,
+      membership_mode: "members",
     });
     expect(ch).toEqual({
       id: "c1",
@@ -99,6 +100,7 @@ describe("rowToChannel", () => {
       isDefault: false,
       theme: { brand: "#E8562A" },
       logoUrl: null,
+      membershipMode: "members",
     });
   });
   it("defaults missing nullable fields", () => {
@@ -112,5 +114,10 @@ describe("rowToChannel", () => {
     expect(ch.tagline).toBeNull();
     expect(ch.logoUrl).toBeNull();
     expect(ch.isDefault).toBe(true);
+  });
+  it("defaults membership_mode to 'open' unless explicitly 'members'", () => {
+    expect(rowToChannel({ id: "c3", key: "roam", name: "Roam", is_default: true, theme: {} }).membershipMode).toBe("open");
+    expect(rowToChannel({ id: "c4", key: "x", name: "X", theme: {}, membership_mode: "bogus" }).membershipMode).toBe("open");
+    expect(rowToChannel({ id: "c5", key: "x", name: "X", theme: {}, membership_mode: "members" }).membershipMode).toBe("members");
   });
 });

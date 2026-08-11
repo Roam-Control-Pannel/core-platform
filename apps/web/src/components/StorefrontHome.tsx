@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTrpc } from "./TrpcProvider";
 import { useStorefrontPlace } from "../lib/storefrontPlace";
@@ -51,21 +51,60 @@ export function StorefrontHome() {
   const trpc = useTrpc();
   const { place, setPlace } = useStorefrontPlace();
   const [vendors, setVendors] = useState<F2GVendor[] | null>(null);
+  const [mode, setMode] = useState<"open" | "members">("open");
+  const [discovering, setDiscovering] = useState(false);
   const [cat, setCat] = useState<StorefrontCategory>("all");
   const [sort, setSort] = useState<StorefrontSort>("fastest");
   const [query, setQuery] = useState("");
+  // NI town cells (~1km) we've already asked to discover, so we trigger the paid ingest once each.
+  const attemptedIngest = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     setVendors(null);
-    trpc.venues.inChannelNear
-      .query({ channelKey: "f2g", lat: place.lat, lng: place.lng, pageSize: 40 })
-      .then((r) => {
-        if (!cancelled) setVendors(r.venues as F2GVendor[]);
-      })
-      .catch(() => {
-        if (!cancelled) setVendors([]);
-      });
+    setDiscovering(false);
+    const cell = `${place.lat.toFixed(2)},${place.lng.toFixed(2)}`;
+
+    async function load() {
+      const args = { channelKey: "f2g", lat: place.lat, lng: place.lng, pageSize: 40 } as const;
+      try {
+        const r = await trpc.venues.storefrontNear.query(args);
+        if (cancelled) return;
+        setMode(r.mode);
+
+        // Open mode + nothing here yet + not tried before → discover this NI town on demand (the
+        // existing budget-guarded Places pull), then re-read once. Members mode never auto-ingests:
+        // its supply is opt-in, so an empty area is simply "no members yet".
+        if (r.mode === "open" && r.venues.length === 0 && !attemptedIngest.current.has(cell)) {
+          attemptedIngest.current.add(cell);
+          setDiscovering(true);
+          try {
+            await fetch("/api/ingest-area", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: place.lat, lng: place.lng }),
+            });
+          } catch {
+            /* best-effort — supply may be gated by budget; we just re-read what exists */
+          }
+          if (cancelled) return;
+          const again = await trpc.venues.storefrontNear.query(args);
+          if (cancelled) return;
+          setDiscovering(false);
+          setVendors(again.venues as F2GVendor[]);
+          return;
+        }
+
+        setVendors(r.venues as F2GVendor[]);
+      } catch {
+        if (!cancelled) {
+          setDiscovering(false);
+          setVendors([]);
+        }
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
@@ -155,6 +194,13 @@ export function StorefrontHome() {
         </div>
       </div>
 
+      {/* Discovering a fresh NI town (open mode, on-demand ingest in flight). */}
+      {discovering ? (
+        <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".04em", color: "var(--muted)", padding: "0 0 12px" }}>
+          {t("discovering", { place: place.name })}
+        </div>
+      ) : null}
+
       {/* Grid */}
       {vendors === null ? (
         <Grid>
@@ -165,8 +211,12 @@ export function StorefrontHome() {
       ) : shown.length === 0 ? (
         <div style={{ textAlign: "center", padding: "56px 16px", maxWidth: 420, margin: "0 auto" }}>
           <div style={{ fontSize: 40, marginBottom: 8 }} aria-hidden>🥡</div>
-          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 700, marginBottom: 6, color: STOREFRONT.navy }}>{t("empty.title")}</div>
-          <p style={{ color: "var(--muted)", lineHeight: 1.55, fontSize: 14 }}>{t("empty.body")}</p>
+          <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 700, marginBottom: 6, color: STOREFRONT.navy }}>
+            {t(mode === "members" ? "empty.membersTitle" : "empty.title", { place: place.name })}
+          </div>
+          <p style={{ color: "var(--muted)", lineHeight: 1.55, fontSize: 14 }}>
+            {t(mode === "members" ? "empty.membersBody" : "empty.body")}
+          </p>
         </div>
       ) : (
         <Grid>

@@ -29,6 +29,9 @@ export interface ChannelTheme {
   ink?: string;
 }
 
+/** How a channel's storefront selects venues (channels.membership_mode). */
+export type MembershipMode = "open" | "members";
+
 /** A branded, filtered view over the core. */
 export interface Channel {
   id: string;
@@ -38,6 +41,12 @@ export interface Channel {
   isDefault: boolean;
   theme: ChannelTheme;
   logoUrl: string | null;
+  /**
+   * 'open'    — the storefront shows all eligible venues near the point (by type).
+   * 'members' — only venues tagged into this channel (venue_channels).
+   * The default channel (roam) is always 'open'-equivalent (it shows everything).
+   */
+  membershipMode: MembershipMode;
 }
 
 /** One hostname → channel-key mapping row, as the pure resolver consumes it. */
@@ -120,6 +129,7 @@ export function rowToChannel(row: any): Channel {
     isDefault: !!row.is_default,
     theme: parseChannelTheme(row.theme),
     logoUrl: row.logo_url ?? null,
+    membershipMode: row.membership_mode === "members" ? "members" : "open",
   };
 }
 
@@ -127,7 +137,7 @@ export function rowToChannel(row: any): Channel {
 // Thin DB reads/writes — resolution against the live domain map.
 // ---------------------------------------------------------------------------
 
-const CHANNEL_COLS = "id, key, name, tagline, is_default, theme, logo_url";
+const CHANNEL_COLS = "id, key, name, tagline, is_default, theme, logo_url, membership_mode";
 
 /** All active channels, default first. */
 export async function listChannels(client: RoamClient): Promise<Channel[]> {
