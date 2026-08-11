@@ -22,6 +22,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { escalateToService } from "./trpc.js";
+import { pushToProfileIds } from "./push/dispatch.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
 import { runCjOffersSync } from "./jobs/syncCjOffers.js";
@@ -405,6 +406,16 @@ export async function handler(request: Request): Promise<Response> {
                 href: "/orders",
               },
             });
+            // A web push to match the bell row (best-effort — never breaks the webhook).
+            try {
+              await pushToProfileIds(escalateToService(env), env.vapid, [order.buyer_id], {
+                url: "/orders",
+                title: "Order confirmed",
+                body: `“${order.product_title}” (${pounds}) — we'll let you know when it's ready.`,
+              });
+            } catch {
+              /* push is best-effort */
+            }
           }
           // The venue owner's bell: "you made a sale". Best-effort — never breaks the webhook.
           const { data: ownerRow } = (await service

@@ -13,8 +13,10 @@
 import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
+import type { RoamClient } from "@roam/db";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { createCheckoutSession, refundPayment } from "../stripe/client.js";
+import { pushToProfileIds } from "../push/dispatch.js";
 
 /** The catalogue-entry shape both surfaces render. */
 export interface MarketProduct {
@@ -414,14 +416,34 @@ export const marketRouter = router({
   markReady: protectedProcedure
     .input(z.object({ orderId: z.string().uuid() }))
     .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
-      const { service } = await ownedOrder(ctx, input.orderId);
+      const { order, service } = await ownedOrder(ctx, input.orderId);
       const { data } = (await service
         .from("orders")
         .update({ status: "ready" })
         .eq("id", input.orderId)
         .eq("status", "paid")
         .select("id")) as { data: { id: string }[] | null };
-      return { ok: !!data && data.length > 0 };
+      const moved = !!data && data.length > 0;
+
+      // Tell the buyer their order is ready — a bell row + a web push (both best-effort; a failure
+      // here never fails the vendor's action). Only when we actually moved paid → ready.
+      if (moved && order.buyer_id) {
+        await service.from("notifications").insert({
+          recipient_id: order.buyer_id,
+          type: "order_ready",
+          payload: { text: `Ready to collect — ${order.product_title}`, href: "/orders" },
+        });
+        try {
+          await pushToProfileIds(escalateToService(ctx.env) as RoamClient, ctx.env.vapid, [order.buyer_id], {
+            url: "/orders",
+            title: "Ready to collect",
+            body: `${order.product_title} is ready — head over when you can.`,
+          });
+        } catch {
+          /* push is best-effort */
+        }
+      }
+      return { ok: moved };
     }),
 
   /** Owner: mark an order fulfilled — collected (product) or redeemed (voucher). Accepts a PAID
