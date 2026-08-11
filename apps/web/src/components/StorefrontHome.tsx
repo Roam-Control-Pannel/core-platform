@@ -79,7 +79,9 @@ export function StorefrontHome() {
           attemptedIngest.current.add(cell);
           setDiscovering(true);
           try {
-            await fetch("/api/ingest-area", {
+            // Food-to-go-specific supply: asks Google for cafés/bakeries/fast-food directly, so a
+            // town whose coarse "Food & Drink" is already covered by pubs still gets real supply.
+            await fetch("/api/ingest-food-to-go", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lat: place.lat, lng: place.lng }),

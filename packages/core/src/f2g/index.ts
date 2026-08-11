@@ -65,6 +65,26 @@ export function isFoodToGo(categories: readonly string[] | null | undefined): bo
   return false;
 }
 
+/**
+ * The Google Places (New) `includedTypes` to request when SUPPLYING food-to-go venues on demand.
+ * A CURATED, proven-valid subset of FOOD_TO_GO_TYPES — every entry is also in Roam's
+ * CATEGORY_PLACES_TYPES["Food & Drink"], so we know Places accepts it (an unknown includedType is
+ * a request error). Asking Google for these types directly is what makes the storefront's supply
+ * cafés/bakeries/fast-food — NOT the prominent pubs a coarse "Food & Drink" search returns first.
+ * (meal_takeaway/sandwich_shop etc. are matched by isFoodToGo but not SEARCHED, as they aren't in
+ * the confirmed Places type set; chippies/takeaways still arrive via fast_food_restaurant.)
+ */
+export const FOOD_TO_GO_SEARCH_TYPES: readonly string[] = [
+  "cafe",
+  "coffee_shop",
+  "bakery",
+  "fast_food_restaurant",
+  "dessert_shop",
+  "donut_shop",
+  "ice_cream_shop",
+  "juice_shop",
+];
+
 // ---------------------------------------------------------------------------
 // Collection settings
 // ---------------------------------------------------------------------------
