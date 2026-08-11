@@ -17,6 +17,32 @@ import type { RoamClient } from "@roam/db";
 import { channels } from "@roam/core";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
+/**
+ * Feature-flag gates for branded channels: a channel key here only resolves live while its flag is
+ * on. This keeps a channel's whole storefront DORMANT until launch — a request on the f2g host
+ * falls back to the default channel (Roam chrome), not a half-built storefront, while the flag is
+ * off. (The vendor dashboard + Roam-side badges gate on the same flag via useF2gEnabled separately.)
+ */
+const CHANNEL_FLAGS: Record<string, string> = { f2g: "marketplace.f2g.enabled" };
+
+/** True when `channelKey` is flag-gated and its flag is currently OFF (so it must not resolve live). */
+export async function channelGatedOff(db: RoamClient, channelKey: string): Promise<boolean> {
+  const flag = CHANNEL_FLAGS[channelKey];
+  if (!flag) return false; // ungated channels (e.g. the default) always resolve
+  const { data } = await (db as unknown as {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data: { enabled: boolean } | null }> };
+      };
+    };
+  })
+    .from("feature_flags")
+    .select("enabled")
+    .eq("key", flag)
+    .maybeSingle();
+  return !data?.enabled;
+}
+
 /** Resolve a channel by key or throw a clean NOT_FOUND — used by the self-serve tag paths. */
 async function requireChannel(db: RoamClient, key: string) {
   const channel = await channels.getChannelByKey(db, key);
@@ -46,7 +72,12 @@ export const channelsRouter = router({
   resolve: publicProcedure
     .input(z.object({ host: z.string().max(255) }))
     .query(async ({ ctx, input }) => {
-      return channels.resolveChannelByHost(ctx.db, input.host);
+      const channel = await channels.resolveChannelByHost(ctx.db, input.host);
+      // A branded channel whose feature flag is off stays dormant: resolve it to the default view.
+      if (channel && !channel.isDefault && (await channelGatedOff(ctx.db, channel.key))) {
+        return (await channels.getDefaultChannel(ctx.db)) ?? channel;
+      }
+      return channel;
     }),
 
   /**
@@ -54,10 +85,13 @@ export const channelsRouter = router({
    * Falls back to the default channel if the header is missing or names an unknown channel.
    */
   current: publicProcedure.query(async ({ ctx }) => {
-    return (
-      (await channels.getChannelByKey(ctx.db, ctx.channelKey)) ??
-      (await channels.getDefaultChannel(ctx.db))
-    );
+    const channel = await channels.getChannelByKey(ctx.db, ctx.channelKey);
+    // Fall back to the default channel when the header names an unknown channel OR a branded channel
+    // whose feature flag is off — the storefront chrome only renders once its flag is live.
+    if (channel && !channel.isDefault && (await channelGatedOff(ctx.db, channel.key))) {
+      return (await channels.getDefaultChannel(ctx.db)) ?? channel;
+    }
+    return channel ?? (await channels.getDefaultChannel(ctx.db));
   }),
 
   /** A channel by its stable key, or null. */
