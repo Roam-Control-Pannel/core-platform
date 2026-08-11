@@ -1855,21 +1855,43 @@
     "reportListing": "Report this listing"
   },
   "storefront": {
-    "defaultTitle": "Food to Go",
-    "defaultTagline": "Order ahead. Skip the queue.",
-    "nearHeading": "Vendors near {place}",
-    "orderAhead": "Order ahead",
-    "readyIn": "~{mins} min",
-    "paused": "Paused",
-    "viewMenu": "View menu",
-    "loading": "Finding vendors near you…",
+    "header": {
+      "home": "Home",
+      "nav": "Storefront",
+      "nav_nearMe": "Near me",
+      "nav_categories": "Categories",
+      "nav_orderAgain": "Order again",
+      "nav_forMembers": "For members",
+      "poweredByRoam": "Powered by Roam",
+      "basket": "Basket",
+      "signIn": "Sign in"
+    },
+    "hero": {
+      "kicker": "Order ahead · Collect",
+      "title": "Food to Go near {place}",
+      "body": "Order from Association member kitchens, pay the counter price, and walk in when it's ready. No commission taken out of your local's margin.",
+      "searchPlaceholder": "Search a place, a dish, a coffee"
+    },
+    "categories": {
+      "all": "All",
+      "coffee": "Coffee",
+      "bakery": "Bakery",
+      "hot_food": "Hot food",
+      "breakfast": "Breakfast",
+      "forecourt": "Forecourt"
+    },
+    "sorts": {
+      "fastest": "Fastest first",
+      "nearest": "Nearest",
+      "top_rated": "Top rated"
+    },
+    "placesCount": "{count, plural, =0 {No places nearby} one {# place nearby} other {# places nearby}}",
+    "readyMin": "Ready ~{mins} min",
     "empty": {
       "title": "No Food to Go vendors near you yet",
       "body": "We're just getting started here. Try another area, or check back soon."
     },
-    "more": "Show more",
-    "browseAllHint": "Looking for something else on Roam?",
-    "browseAll": "Browse Roam"
+    "coBrandFooter": "Payments, accounts and order history are handled by Roam. The Association keeps the storefront."
   },
   "venueShop": {
     "collection": {

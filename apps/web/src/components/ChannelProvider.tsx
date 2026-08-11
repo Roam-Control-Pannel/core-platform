@@ -61,6 +61,9 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
     // Instant branch from the cookie the middleware set (no network).
     const cookieKey = readChannelCookie() ?? DEFAULT_CHANNEL_KEY;
     if (!cancelled) {
+      // Stamp data-channel immediately so channel-scoped CSS (e.g. full-width storefront) applies
+      // before the authoritative theme read returns.
+      if (typeof document !== "undefined") document.documentElement.dataset.channel = cookieKey;
       setState((s) => ({ ...s, key: cookieKey, isF2G: cookieKey === "f2g" }));
     }
 
