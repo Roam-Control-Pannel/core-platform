@@ -3,11 +3,36 @@ import {
   sanitizeCollectionPatch,
   rowToCollectionSettings,
   computeListingStatus,
+  isFoodToGo,
   DEFAULT_COLLECTION_SETTINGS,
   PREP_TIME_MAX,
   COLLECTION_INSTRUCTIONS_MAX,
   type ListingChecklist,
 } from "./index.js";
+
+describe("isFoodToGo", () => {
+  it("accepts grab-and-go leaves (café, coffee, bakery, takeaway, fast food)", () => {
+    expect(isFoodToGo(["coffee_shop", "cafe"])).toBe(true);
+    expect(isFoodToGo(["bakery"])).toBe(true);
+    expect(isFoodToGo(["fast_food_restaurant"])).toBe(true);
+    expect(isFoodToGo(["meal_takeaway"])).toBe(true);
+    expect(isFoodToGo(["sandwich_shop", "restaurant"])).toBe(true); // any qualifying leaf wins
+  });
+
+  it("rejects pubs, bars and sit-down restaurants", () => {
+    expect(isFoodToGo(["pub"])).toBe(false);
+    expect(isFoodToGo(["bar", "restaurant"])).toBe(false);
+    expect(isFoodToGo(["italian_restaurant"])).toBe(false);
+    expect(isFoodToGo(["wine_bar"])).toBe(false);
+  });
+
+  it("is tolerant of case, whitespace, and empty/absent leaves", () => {
+    expect(isFoodToGo([" Coffee_Shop "])).toBe(true);
+    expect(isFoodToGo([])).toBe(false);
+    expect(isFoodToGo(null)).toBe(false);
+    expect(isFoodToGo(undefined)).toBe(false);
+  });
+});
 
 describe("sanitizeCollectionPatch", () => {
   it("returns only the keys the caller set, snake-cased", () => {

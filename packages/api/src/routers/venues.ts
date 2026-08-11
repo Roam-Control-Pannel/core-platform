@@ -229,6 +229,34 @@ interface VenuesInCategoryNearRow {
 }
 
 /**
+ * Map a storefront discovery row (venues_in_channel_near / venues_food_to_go_near — same columns)
+ * to the vendor card the Food to Go storefront renders. One mapper so both membership modes yield
+ * an identical card shape. Inline object (no named type) keeps the inferred AppRouter output
+ * structural/portable, same idiom as the other discovery surfaces.
+ */
+function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number | null }) {
+  return {
+    id: v.id,
+    name: v.name,
+    claimed: v.owner_id !== null,
+    status: v.status,
+    category: v.category,
+    categories: v.categories,
+    rating: v.rating,
+    ratingCount: v.rating_count,
+    priceLevel: v.price_level,
+    primaryTypeLabel: v.primary_type_label,
+    businessStatus: v.business_status,
+    distanceM: v.distance_m,
+    lat: v.lat_out,
+    lng: v.lng_out,
+    coverPhotoId: v.cover_photo_id,
+    // The vendor's prep time for the "ready in ~N min" pill (default 15 when unset).
+    prepMins: v.prep_time_mins ?? 15,
+  };
+}
+
+/**
  * Shape returned by the `request_venue_claim` RPC (migration 0006) — a single
  * venue_claims row. As with venues_near, the function isn't in the generated DB
  * types until `pnpm db:types` is re-run, so we type it explicitly and widen the
@@ -538,25 +566,61 @@ export const venuesRouter = router({
       const hasMore = rows.length > input.pageSize;
       const page = hasMore ? rows.slice(0, input.pageSize) : rows;
       return {
-        venues: page.map((v) => ({
-          id: v.id,
-          name: v.name,
-          claimed: v.owner_id !== null,
-          status: v.status,
-          category: v.category,
-          categories: v.categories,
-          rating: v.rating,
-          ratingCount: v.rating_count,
-          priceLevel: v.price_level,
-          primaryTypeLabel: v.primary_type_label,
-          businessStatus: v.business_status,
-          distanceM: v.distance_m,
-          lat: v.lat_out,
-          lng: v.lng_out,
-          coverPhotoId: v.cover_photo_id,
-          // The vendor's prep time for the "ready in ~N min" pill (default 15 when unset).
-          prepMins: v.prep_time_mins ?? 15,
-        })),
+        venues: page.map(toStorefrontCard),
+        hasMore,
+        nextOffset: input.pageOffset + page.length,
+      };
+    }),
+
+  /**
+   * The storefront's discovery source — picks its query from the channel's OWN membership_mode,
+   * server-side, so the mode is authoritative (a client can't ask for "open" on a members-only
+   * channel):
+   *   'members' → venues_in_channel_near (only venues tagged into the channel).
+   *   'open'    → venues_food_to_go_near (all eligible NI food-to-go venues near the point).
+   * Returns the resolved `mode` so the storefront can adapt its copy. The default channel (roam)
+   * and unknown keys return empty — this surface is for brand channels only.
+   */
+  storefrontNear: publicProcedure
+    .input(
+      z.object({
+        channelKey: z.string().trim().min(1).max(32),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        pageSize: z.number().int().min(1).max(100).default(20),
+        pageOffset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const channel = await coreChannels.getChannelByKey(ctx.db, input.channelKey);
+      if (!channel || channel.isDefault) {
+        return { venues: [], mode: "members" as const, hasMore: false, nextOffset: input.pageOffset };
+      }
+      const rpc = ctx.db.rpc.bind(ctx.db) as unknown as LooseRpc;
+      const mode = channel.membershipMode;
+      const { data, error } =
+        mode === "open"
+          ? await rpc("venues_food_to_go_near", {
+              origin_lat: input.lat,
+              origin_lng: input.lng,
+              page_size: input.pageSize,
+              page_offset: input.pageOffset,
+            })
+          : await rpc("venues_in_channel_near", {
+              filter_channel_id: channel.id,
+              origin_lat: input.lat,
+              origin_lng: input.lng,
+              page_size: input.pageSize,
+              page_offset: input.pageOffset,
+            });
+      if (error) throw new Error(`Failed to load storefront venues: ${error.message}`);
+
+      const rows = (data ?? []) as (VenuesInCategoryNearRow & { prep_time_mins: number | null })[];
+      const hasMore = rows.length > input.pageSize;
+      const page = hasMore ? rows.slice(0, input.pageSize) : rows;
+      return {
+        venues: page.map(toStorefrontCard),
+        mode,
         hasMore,
         nextOffset: input.pageOffset + page.length,
       };

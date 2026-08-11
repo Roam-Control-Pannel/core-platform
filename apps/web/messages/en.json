@@ -1888,9 +1888,12 @@
     },
     "placesCount": "{count, plural, =0 {No places nearby} one {# place nearby} other {# places nearby}}",
     "readyMin": "Ready ~{mins} min",
+    "discovering": "Finding food-to-go near {place}…",
     "empty": {
       "title": "No Food to Go vendors near you yet",
-      "body": "We're just getting started here. Try another area, or check back soon."
+      "body": "We're just getting started here. Try another area, or check back soon.",
+      "membersTitle": "No member kitchens near {place} yet",
+      "membersBody": "This storefront shows Association members. Try another town, or check back as more join."
     },
     "coBrandFooter": "Payments, accounts and order history are handled by Roam. The Association keeps the storefront."
   },
