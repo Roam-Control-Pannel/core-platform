@@ -25,6 +25,7 @@ import { SideNavToggle } from "./SideNav";
 import { GlobalSearch } from "./GlobalSearch";
 import { useMe } from "./MeProvider";
 import { useChannel } from "./ChannelProvider";
+import { StorefrontHeader } from "./StorefrontHeader";
 import { Icon, type IconName } from "@roam/design";
 import styles from "./TopBar.module.css";
 
@@ -65,11 +66,11 @@ export function TopBar() {
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
   const [authOpen, setAuthOpen] = useState(false);
-  const { isF2G, channel } = useChannel();
+  const { isF2G } = useChannel();
 
-  // On the Food to Go storefront, drop the Roam social IA (Explore/Forum/Plans/Chat) and the
-  // Roam-only Create/Sell actions — the chrome becomes a shopfront (browse + your orders + you).
-  const nav = isF2G ? NAV.filter((n) => n.key === "home" || n.key === "you") : NAV;
+  // On the Food to Go storefront, the Roam top bar is replaced wholesale by the Association's
+  // co-branded StorefrontHeader (navy · logo · Powered by Roam · storefront nav · basket).
+  if (isF2G) return <StorefrontHeader />;
 
   return (
     <header className={styles.bar}>
@@ -77,18 +78,12 @@ export function TopBar() {
       <SideNavToggle />
       {/* translate="no": the brand name is never machine-translated. */}
       <Link href="/" className={styles.brand} aria-label={t("brandHome")} translate="no">
-        {isF2G ? (
-          <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 19, color: "var(--crimson)", whiteSpace: "nowrap" }}>
-            {channel?.name ?? "Food to Go"}
-          </span>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- static brand lockup; next/image is overkill in the chrome
-          <img src="/roam-logo.png" alt="Roam" className={styles.logo} />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static brand lockup; next/image is overkill in the chrome */}
+        <img src="/roam-logo.png" alt="Roam" className={styles.logo} />
       </Link>
 
       <nav className={styles.nav} aria-label={t("primaryNav")}>
-        {nav.map((item) => {
+        {NAV.map((item) => {
           const on = active === item.key;
           return (
             <Link
@@ -110,16 +105,12 @@ export function TopBar() {
         <Link href="/business" className={styles.forbiz}>
           {t("forBusinesses")}
         </Link>
-        {!isF2G ? (
-          <>
-            <Link href="/plans" className={styles.create} aria-label={t("create")}>
-              <Icon name="edit" size={14} /> <span className={styles.actionLabel}>{t("create")}</span>
-            </Link>
-            <Link href="/market" className={styles.sell} aria-label={t("sellOnRoam")}>
-              ＋ <span className={styles.actionLabel}>{t("sell")}</span>
-            </Link>
-          </>
-        ) : null}
+        <Link href="/plans" className={styles.create} aria-label={t("create")}>
+          <Icon name="edit" size={14} /> <span className={styles.actionLabel}>{t("create")}</span>
+        </Link>
+        <Link href="/market" className={styles.sell} aria-label={t("sellOnRoam")}>
+          ＋ <span className={styles.actionLabel}>{t("sell")}</span>
+        </Link>
         {session ? (
           <Link href="/orders" className={styles.iconBtn} aria-label={t("yourOrders")}>
             <Icon name="bag" size={17} />

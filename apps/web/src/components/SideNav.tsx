@@ -16,6 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@roam/design";
 import { useSession } from "./TrpcProvider";
+import { useChannel } from "./ChannelProvider";
 import { useMe } from "./MeProvider";
 import { AuthModal } from "./AuthModal";
 import { useSavedPlaces } from "../lib/savedPlaces";
@@ -88,6 +89,7 @@ export function SideNav() {
   const { open, setOpen } = useSideNav();
   const pathname = usePathname() ?? "/";
   const t = useTranslations("chrome.sideNav");
+  const { isF2G } = useChannel();
 
   // Close the drawer whenever the route changes (a shortcut was tapped).
   useEffect(() => {
@@ -103,6 +105,9 @@ export function SideNav() {
       document.body.style.overflow = prev;
     };
   }, [open]);
+
+  // The Food to Go storefront has its own chrome (StorefrontHeader) and no Roam rail/drawer.
+  if (isF2G) return null;
 
   const body = <SideNavBody pathname={pathname} />;
 

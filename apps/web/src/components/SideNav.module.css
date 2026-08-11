@@ -205,6 +205,12 @@
   }
 }
 
+/* Food to Go storefront: no Roam rail, so the content spans full width at every size.
+   Keyed on the data-channel attribute ChannelProvider stamps on <html>. */
+:global(html[data-channel="f2g"]) .content {
+  padding-left: 0;
+}
+
 /* ── mobile drawer ───────────────────────────────────────────────────────────────────────── */
 .drawerRoot {
   position: fixed;

@@ -534,7 +534,7 @@ export const venuesRouter = router({
       });
       if (error) throw new Error(`Failed to load channel venues: ${error.message}`);
 
-      const rows = (data ?? []) as VenuesInCategoryNearRow[];
+      const rows = (data ?? []) as (VenuesInCategoryNearRow & { prep_time_mins: number | null })[];
       const hasMore = rows.length > input.pageSize;
       const page = hasMore ? rows.slice(0, input.pageSize) : rows;
       return {
@@ -554,6 +554,8 @@ export const venuesRouter = router({
           lat: v.lat_out,
           lng: v.lng_out,
           coverPhotoId: v.cover_photo_id,
+          // The vendor's prep time for the "ready in ~N min" pill (default 15 when unset).
+          prepMins: v.prep_time_mins ?? 15,
         })),
         hasMore,
         nextOffset: input.pageOffset + page.length,
