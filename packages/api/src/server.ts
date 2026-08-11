@@ -21,6 +21,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
+import { makeOriginAllowed } from "./cors.js";
 import { escalateToService } from "./trpc.js";
 import { pushToProfileIds } from "./push/dispatch.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
@@ -178,6 +179,10 @@ const allowedOrigins: string[] = (
   .map((o) => o.trim())
   .filter(Boolean);
 
+// Whether a browser origin is permitted — exact match, or a `*` subdomain-wildcard entry so the
+// co-brand channel hosts (nifood2go.roam-local.com, …) all clear CORS without per-domain env churn.
+const isOriginAllowed = makeOriginAllowed(allowedOrigins);
+
 /** Build the CORS headers for a given request origin (echo it only if allowed). */
 function corsHeaders(origin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
@@ -186,7 +191,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && isOriginAllowed(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
   return headers;
