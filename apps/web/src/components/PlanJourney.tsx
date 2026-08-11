@@ -115,11 +115,14 @@ export function PlanJourney({
   destLat,
   destLng,
   variant = "plan",
+  orderAheadPrepMins,
 }: {
   destName?: string;
   destLat?: number;
   destLng?: number;
   variant?: "plan" | "getHere";
+  /** When the destination is a Food to Go venue, its prep time — shown against the journey ETA. */
+  orderAheadPrepMins?: number | undefined;
 }) {
   const t = useTranslations("planJourney");
   const [open, setOpen] = useState(false);
@@ -304,6 +307,9 @@ export function PlanJourney({
 
       {trips && trips.length > 0 ? (
         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+          {orderAheadPrepMins != null ? (
+            <OrderAheadHint prepMins={orderAheadPrepMins} journeyMin={trips[0]?.durationMin ?? null} t={t} />
+          ) : null}
           {trips.map((trip, i) => (
             <TripCard key={i} trip={trip} t={t} />
           ))}
@@ -312,6 +318,39 @@ export function PlanJourney({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The bridge moment: a Food to Go venue's prep time set against the journey ETA, so the two numbers
+ * meet. If prep ≤ journey, ordering now means it's ready on arrival; if prep is longer, we say how
+ * much of a wait to expect. A success-tinted note above the trip cards.
+ */
+function OrderAheadHint({
+  prepMins,
+  journeyMin,
+  t,
+}: {
+  prepMins: number;
+  journeyMin: number | null;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  let detail: string;
+  if (journeyMin == null) {
+    detail = t("orderAhead.generic", { prep: prepMins });
+  } else if (prepMins <= journeyMin) {
+    detail = t("orderAhead.readyOnArrival", { prep: prepMins, journey: journeyMin });
+  } else {
+    detail = t("orderAhead.waitOnArrival", { prep: prepMins, journey: journeyMin, wait: prepMins - journeyMin });
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: 12, background: "var(--success-tint)" }}>
+      <span aria-hidden style={{ fontSize: 16, lineHeight: 1.2 }}>🥡</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>{t("orderAhead.title")}</div>
+        <div style={{ marginTop: 1, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>{detail}</div>
+      </div>
     </div>
   );
 }
