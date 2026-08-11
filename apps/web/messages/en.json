@@ -524,7 +524,8 @@
     "useMyLocation": "Use my location",
     "nearMe": "Near me",
     "yourLocation": "Your location",
-    "geoError": "Couldn't get your location. Pick a place instead."
+    "geoError": "Couldn't get your location. Pick a place instead.",
+    "outsideRegion": "Food to Go serves {region} only — you're outside the area. Pick a town instead."
   },
   "suggested": {
     "title": "Suggested for you",

@@ -60,4 +60,29 @@ describe("geocodeSearch", () => {
     const { impl } = fakeFetch("rate limited", { ok: false, status: 429, statusText: "Too Many Requests" });
     await expect(geocodeSearch("x", impl)).rejects.toThrow(/429/);
   });
+
+  it("sends an NI bounding box and filters to NI when region is 'ni'", async () => {
+    const { impl, calls } = fakeFetch({
+      features: [
+        { type: "Feature", geometry: { coordinates: [-5.9301, 54.5973] }, properties: { osm_type: "N", osm_id: 1, name: "Belfast", state: "Northern Ireland", country: "United Kingdom" } },
+        { type: "Feature", geometry: { coordinates: [-1.5536, 54.5253] }, properties: { osm_type: "N", osm_id: 2, name: "Darlington", country: "United Kingdom" } },
+      ],
+    });
+    const out = await geocodeSearch("bel", impl, { region: "ni" });
+    // Photon is biased with the NI bbox (minLon,minLat,maxLon,maxLat).
+    expect(calls[0]!.url).toContain("bbox=-8.3%2C54%2C-5.3%2C55.45");
+    // And the GB result is filtered out — only Belfast survives.
+    expect(out.map((r) => r.name)).toEqual(["Belfast"]);
+  });
+
+  it("omits the bbox and keeps GB results with no region (Roam default)", async () => {
+    const { impl, calls } = fakeFetch({
+      features: [
+        { type: "Feature", geometry: { coordinates: [-1.5536, 54.5253] }, properties: { osm_type: "N", osm_id: 2, name: "Darlington", country: "United Kingdom" } },
+      ],
+    });
+    const out = await geocodeSearch("dar", impl);
+    expect(calls[0]!.url).not.toContain("bbox=");
+    expect(out.map((r) => r.name)).toEqual(["Darlington"]);
+  });
 });

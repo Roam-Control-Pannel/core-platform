@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePhoton } from "./index.js";
+import { parsePhoton, isNorthernIreland, inBounds, NI_BOUNDS } from "./index.js";
 
 /** A Photon feature with [lon, lat] geometry + properties. */
 function feat(coordinates: [number, number], properties: Record<string, unknown>) {
@@ -173,5 +173,63 @@ describe("parsePhoton", () => {
     expect(parsePhoton(null)).toEqual([]);
     expect(parsePhoton({})).toEqual([]);
     expect(parsePhoton({ features: "nope" })).toEqual([]);
+  });
+});
+
+describe("isNorthernIreland", () => {
+  it("accepts a BT postcode as definitively NI, wherever it sits", () => {
+    // Postcode is the strongest signal — country/coords need not even agree.
+    expect(isNorthernIreland({ postcode: "BT1 5GS" }, 0, 0)).toBe(true);
+    expect(isNorthernIreland({ postcode: "bt48 7nn" }, 54.99, -7.31)).toBe(true);
+  });
+
+  it("rejects the Republic of Ireland even inside the NI bounding box", () => {
+    // Letterkenny (Donegal) and Monaghan both fall in NI_BOUNDS but are country 'Ireland'.
+    expect(isNorthernIreland({ name: "Letterkenny", country: "Ireland" }, 54.95, -7.73)).toBe(false);
+    expect(isNorthernIreland({ name: "Monaghan", country: "Ireland" }, 54.25, -6.97)).toBe(false);
+  });
+
+  it("accepts a feature whose state is Northern Ireland", () => {
+    expect(isNorthernIreland({ name: "Belfast", state: "Northern Ireland", country: "United Kingdom" }, 54.6, -5.93)).toBe(true);
+  });
+
+  it("accepts a UK feature inside the box as a backstop, rejects GB mainland outside it", () => {
+    // Bangor, Co. Down — UK, inside the box, no postcode/state signal → backstop accepts.
+    expect(isNorthernIreland({ name: "Bangor", country: "United Kingdom" }, 54.65, -5.67)).toBe(true);
+    // Darlington — UK but well east of the box → rejected.
+    expect(isNorthernIreland({ name: "Darlington", country: "United Kingdom" }, 54.52, -1.55)).toBe(false);
+  });
+});
+
+describe("parsePhoton region fence", () => {
+  it("keeps NI results and drops GB + ROI when region is 'ni'", () => {
+    const raw = {
+      features: [
+        feat([-5.9301, 54.5973], { osm_type: "N", osm_id: 1, name: "Belfast", state: "Northern Ireland", country: "United Kingdom" }),
+        feat([-1.5536, 54.5253], { osm_type: "N", osm_id: 2, name: "Darlington", state: "England", country: "United Kingdom" }),
+        feat([-7.73, 54.95], { osm_type: "N", osm_id: 3, name: "Letterkenny", country: "Ireland" }),
+      ],
+    };
+    const out = parsePhoton(raw, 6, { region: "ni" });
+    expect(out.map((r) => r.name)).toEqual(["Belfast"]);
+  });
+
+  it("without a region, returns everything (Roam's default behaviour is unchanged)", () => {
+    const raw = {
+      features: [
+        feat([-5.9301, 54.5973], { osm_type: "N", osm_id: 1, name: "Belfast", country: "United Kingdom" }),
+        feat([-1.5536, 54.5253], { osm_type: "N", osm_id: 2, name: "Darlington", country: "United Kingdom" }),
+      ],
+    };
+    expect(parsePhoton(raw).map((r) => r.name)).toEqual(["Belfast", "Darlington"]);
+  });
+});
+
+describe("inBounds / NI_BOUNDS", () => {
+  it("contains Belfast and Derry, excludes Great Britain", () => {
+    expect(inBounds(54.5973, -5.9301, NI_BOUNDS)).toBe(true); // Belfast
+    expect(inBounds(54.9966, -7.3086, NI_BOUNDS)).toBe(true); // Derry/Londonderry
+    expect(inBounds(54.5253, -1.5536, NI_BOUNDS)).toBe(false); // Darlington (GB)
+    expect(inBounds(51.5074, -0.1278, NI_BOUNDS)).toBe(false); // London (GB)
   });
 });

@@ -29,20 +29,35 @@ const OUTPUT_LIMIT = 6;
 /** Injectable fetch so the unit test drives this without a network. */
 export type FetchImpl = typeof fetch;
 
+/** Options for geocodeSearch. `region` fences results to a channel's area (e.g. NI storefront). */
+export interface GeocodeSearchOptions {
+  region?: coreGeocode.GeoRegion;
+}
+
 /**
  * Geocode a free-text query (town name or postcode) to selectable place centres. Returns the
  * parsed, de-duplicated results (possibly empty). Throws on a transport/HTTP failure so the
  * procedure can surface that the lookup did not run; an empty match set is NOT an error.
+ *
+ * `opts.region` fences the search to a region: it biases Photon with a bounding box AND filters
+ * the parsed results, so an NI storefront never surfaces a GB or Republic-of-Ireland place.
  */
 export async function geocodeSearch(
   query: string,
   fetchImpl: FetchImpl = fetch,
+  opts: GeocodeSearchOptions = {},
 ): Promise<coreGeocode.GeocodeResult[]> {
   const params = new URLSearchParams({
     q: query,
     limit: String(FETCH_LIMIT),
     lang: "en",
   });
+  if (opts.region === "ni") {
+    // Photon bbox is minLon,minLat,maxLon,maxLat — bias results toward NI (the router's parse
+    // then hard-filters, so this is only about surfacing the right candidates within the limit).
+    const b = coreGeocode.NI_BOUNDS;
+    params.set("bbox", `${b.minLng},${b.minLat},${b.maxLng},${b.maxLat}`);
+  }
 
   const res = await fetchImpl(`${PHOTON_SEARCH_URL}?${params.toString()}`, {
     method: "GET",
@@ -65,5 +80,5 @@ export async function geocodeSearch(
   }
 
   const json = (await res.json()) as unknown;
-  return coreGeocode.parsePhoton(json, OUTPUT_LIMIT);
+  return coreGeocode.parsePhoton(json, OUTPUT_LIMIT, opts.region ? { region: opts.region } : {});
 }

@@ -31,17 +31,21 @@ const MAX_CACHE_ENTRIES = 500; // soft bound; cleared wholesale when exceeded
 const geocodeCache = new Map<string, CachedSearch>();
 
 export const geoRouter = router({
-  /** Public: geocode a town name or postcode to selectable place centres (cached). */
+  /** Public: geocode a town name or postcode to selectable place centres (cached).
+   *  `region` fences results to a channel's area (e.g. "ni" for the Food to Go storefront) so
+   *  only Northern Ireland places come back; omitted for Roam's worldwide search. */
   search: publicProcedure
-    .input(z.object({ q: z.string().trim().min(2).max(120) }))
+    .input(z.object({ q: z.string().trim().min(2).max(120), region: z.enum(["ni"]).optional() }))
     .query(async ({ input }) => {
-      const key = input.q.toLowerCase().replace(/\s+/g, " ").trim();
+      // Region is part of the cache key: an "ni"-fenced result set must never satisfy an
+      // unfenced query (or another region), and vice versa.
+      const key = `${input.region ?? "all"}:${input.q.toLowerCase().replace(/\s+/g, " ").trim()}`;
       const cached = geocodeCache.get(key);
       if (cached && cached.expires > Date.now()) return cached.results;
 
       let results: CachedSearch["results"];
       try {
-        const raw = await geocodeSearch(input.q);
+        const raw = await geocodeSearch(input.q, undefined, input.region ? { region: input.region } : {});
         results = raw.map((r) => {
           // Inline-typed object (not a named interface) keeps the inferred output structural.
           const place: { id: string; name: string; hint?: string; lat: number; lng: number } = {
