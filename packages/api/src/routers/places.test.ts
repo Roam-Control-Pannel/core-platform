@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ingestCategoryCore, ingestTextSearchCore, ingestFoodToGoCore, enrichVenueCore, type LooseRpc, type SearchNearbyFn, type SearchTextFn, type GetDetailsFn } from "./places.js";
-import { places as corePlaces } from "@roam/core";
+import { places as corePlaces, f2g as coreF2g } from "@roam/core";
 
 /**
  * Unit tests for the PURE orchestration ingestCategoryCore: the freshness skip, the
@@ -494,26 +494,65 @@ const pubPlace: corePlaces.PlaceResult = {
   types: ["pub", "bar", "point_of_interest"],
 };
 
+const takeawayPlace: corePlaces.PlaceResult = {
+  // A chippy: Google types it meal_takeaway + restaurant. With the takeaway leaves in the core
+  // taxonomy, placeToVenueRow now KEEPS meal_takeaway, so isFoodToGo reads it back as food-to-go.
+  id: "ChIJ_takeaway",
+  displayName: { text: "Golden Chippy" },
+  location: { latitude: 54.598, longitude: -5.93 },
+  types: ["meal_takeaway", "restaurant", "point_of_interest"],
+};
+
 const ftgArgs = { lat: 54.5973, lng: -5.9301, radiusMetres: 2500, clientKey: "203.0.113.9" };
 
 describe("ingestFoodToGoCore", () => {
-  it("asks Places for food-to-go types and does NOT consult coarse freshness", async () => {
+  it("fans out ONE searchNearby per food-to-go type and does NOT consult coarse freshness", async () => {
     const { rpc, calls } = fakeRpc({
       upsert_place_venues: { data: [{ out_id: "v1", out_source_ref: "ChIJ_cafe", out_was_claimed: false }], error: null },
     });
-    let requestedTypes: readonly string[] | undefined;
+    const requested: string[][] = [];
     const searchNearby: SearchNearbyFn = async (params) => {
-      requestedTypes = params.includedTypes;
-      return [cafePlace];
+      requested.push([...params.includedTypes]);
+      return [cafePlace]; // same place from every type-search — dedup collapses it to one row
     };
     const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
 
     expect(out.reason).toBe("ingested");
-    expect(out.inserted).toBe(1);
-    // Food-to-go types were requested (café is in the set); coarse freshness was never checked.
-    expect(requestedTypes).toContain("cafe");
+    expect(out.inserted).toBe(1); // deduped by place id across the fan-out
+    // One call per configured type, each requesting exactly ONE type; "cafe" is among them.
+    expect(requested.length).toBe(coreF2g.FOOD_TO_GO_SEARCH_TYPES.length);
+    expect(requested.every((r) => r.length === 1)).toBe(true);
+    expect(requested.flat()).toContain("cafe");
+    // One budget unit claimed per paid call (honest accounting); coarse freshness never checked.
+    expect(calls.filter((c) => c.fn === "claim_places_fetch_quota").length).toBe(coreF2g.FOOD_TO_GO_SEARCH_TYPES.length);
     expect(calls.some((c) => c.fn === "count_fresh_places_venues")).toBe(false);
     expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(true);
+  });
+
+  it("beats the 20-per-call cap: distinct places from different type-searches aggregate", async () => {
+    const { rpc, calls } = fakeRpc({
+      upsert_place_venues: {
+        data: [
+          { out_id: "v1", out_source_ref: "ChIJ_cafe", out_was_claimed: false },
+          { out_id: "v2", out_source_ref: "ChIJ_takeaway", out_was_claimed: false },
+        ],
+        error: null,
+      },
+    });
+    // Each type-search returns a DIFFERENT place — the whole point of fanning out.
+    const searchNearby: SearchNearbyFn = async (params) => {
+      const type = params.includedTypes[0];
+      if (type === "cafe") return [cafePlace];
+      if (type === "meal_takeaway") return [takeawayPlace];
+      return [];
+    };
+    const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
+
+    expect(out.reason).toBe("ingested");
+    expect(out.fetched).toBe(2); // two distinct places aggregated across the fan-out
+    const upsertCall = calls.find((c) => c.fn === "upsert_place_venues");
+    const payload = upsertCall!.args.places as { source_ref: string }[];
+    expect(payload.map((p) => p.source_ref).sort()).toEqual(["ChIJ_cafe", "ChIJ_takeaway"]);
   });
 
   it("drops a pub (Food & Drink but not food-to-go) and never upserts it", async () => {
@@ -525,7 +564,7 @@ describe("ingestFoodToGoCore", () => {
     expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
   });
 
-  it("respects the fetch budget — a denied quota skips the paid call", async () => {
+  it("respects the fetch budget — a denial before the first call skips the paid fetch", async () => {
     const { rpc, calls } = fakeRpc({
       claim_places_fetch_quota: { data: [{ allowed: false, reason: "budget" }], error: null },
     });
@@ -540,5 +579,33 @@ describe("ingestFoodToGoCore", () => {
     expect(out.reason).toBe("budget-exhausted");
     expect(fetched).toBe(false);
     expect(calls.some((c) => c.fn === "upsert_place_venues")).toBe(false);
+  });
+
+  it("keeps the places already fetched when the budget denies mid fan-out", async () => {
+    let claims = 0;
+    const rpc: LooseRpc = async (fn) => {
+      if (fn === "claim_places_fetch_quota") {
+        claims += 1;
+        return { data: [{ allowed: claims <= 1, reason: claims <= 1 ? "allowed" : "budget" }], error: null };
+      }
+      if (fn === "upsert_place_venues") {
+        return { data: [{ out_id: "v1", out_source_ref: "ChIJ_cafe", out_was_claimed: false }], error: null };
+      }
+      return { data: null, error: null };
+    };
+    const searchNearby: SearchNearbyFn = async () => [cafePlace];
+    const out = await ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs);
+
+    // The first type fetched before the budget ran out on the second claim — partial supply kept.
+    expect(out.reason).toBe("ingested");
+    expect(out.inserted).toBe(1);
+  });
+
+  it("surfaces the error when every type-search fails (not a silent no-match)", async () => {
+    const { rpc } = fakeRpc({});
+    const searchNearby: SearchNearbyFn = async () => {
+      throw new Error("Places 503");
+    };
+    await expect(ingestFoodToGoCore(rpc, searchNearby, API_KEY, ftgArgs)).rejects.toThrow("Places 503");
   });
 });
