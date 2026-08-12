@@ -40,6 +40,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
   const { isF2G } = useChannel();
   const [items, setItems] = useState<ShopItem[] | undefined>(undefined);
   const [sellable, setSellable] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [collection, setCollection] = useState<CollectionSettings | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -48,7 +49,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
   useEffect(() => {
     let cancelled = false;
     const list = trpc.market.listByVenue as unknown as {
-      query: (i: { venueId: string }) => Promise<{ sellable: boolean; products: ShopItem[] }>;
+      query: (i: { venueId: string }) => Promise<{ sellable: boolean; paused: boolean; products: ShopItem[] }>;
     };
     list
       .query({ venueId })
@@ -56,6 +57,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
         if (cancelled) return;
         setItems(Array.isArray(r?.products) ? r.products : []);
         setSellable(!!r?.sellable);
+        setPaused(!!r?.paused);
       })
       .catch(() => { if (!cancelled) setItems([]); });
     return () => { cancelled = true; };
@@ -76,7 +78,9 @@ export function VenueShop({ venueId }: { venueId: string }) {
     return () => { cancelled = true; };
   }, [trpc, venueId, isF2G]);
 
-  const paused = isF2G && !!collection?.paused;
+  // `paused` is the venue-wide collection flag from the server (see market.listByVenue): checkout
+  // blocks a paused venue on every channel, so the Buy button hides on Roam too, not only in the
+  // f2g storefront. The collection *banner* below stays f2g-only chrome.
   const buyable = sellable && !paused;
 
   const buy = useCallback(async (productId: string, quantity: number) => {

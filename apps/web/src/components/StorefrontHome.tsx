@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTrpc } from "./TrpcProvider";
 import { useStorefrontPlace } from "../lib/storefrontPlace";
@@ -23,6 +23,10 @@ import {
   type StorefrontCategory,
   type StorefrontSort,
 } from "../lib/storefront";
+
+// Vendors per page. Category + sort operate over everything LOADED, so "Load more" grows the pool
+// the filters see — a town's full supply, not just the nearest page (the RPC paginates via hasMore).
+const PAGE_SIZE = 24;
 
 /** Best-effort match of a vendor's Google label to a storefront category. */
 function matchesCategory(v: F2GVendor, cat: StorefrontCategory): boolean {
@@ -53,22 +57,35 @@ export function StorefrontHome() {
   const [vendors, setVendors] = useState<F2GVendor[] | null>(null);
   const [mode, setMode] = useState<"open" | "members">("open");
   const [discovering, setDiscovering] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [cat, setCat] = useState<StorefrontCategory>("all");
   const [sort, setSort] = useState<StorefrontSort>("fastest");
   const [query, setQuery] = useState("");
   // NI town cells (~1km) we've already asked to discover, so we trigger the paid ingest once each.
   const attemptedIngest = useRef<Set<string>>(new Set());
+  // Bumped on every place change so an in-flight "load more" for the previous place is discarded
+  // instead of appending stale vendors to the new town.
+  const loadSeq = useRef(0);
+  // Cover images, resolved for the whole grid in ONE batch call (venues.photoMediaUrls) rather than
+  // one round-trip per card — keyed by venue id, guarded by a ref so re-renders never re-fetch.
+  const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
+  const requestedCoverIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
+    loadSeq.current++; // invalidate any in-flight "load more" from the previous place
     setVendors(null);
     setDiscovering(false);
+    setHasMore(false);
+    setNextOffset(0);
     const cell = `${place.lat.toFixed(2)},${place.lng.toFixed(2)}`;
 
     async function load() {
-      const args = { channelKey: "f2g", lat: place.lat, lng: place.lng, pageSize: 40 } as const;
+      const args = { channelKey: "f2g", lat: place.lat, lng: place.lng, pageSize: PAGE_SIZE, pageOffset: 0 } as const;
       try {
-        const r = await trpc.venues.storefrontNear.query(args);
+        let r = await trpc.venues.storefrontNear.query(args);
         if (cancelled) return;
         setMode(r.mode);
 
@@ -90,14 +107,14 @@ export function StorefrontHome() {
             /* best-effort — supply may be gated by budget; we just re-read what exists */
           }
           if (cancelled) return;
-          const again = await trpc.venues.storefrontNear.query(args);
+          r = await trpc.venues.storefrontNear.query(args);
           if (cancelled) return;
           setDiscovering(false);
-          setVendors(again.venues as F2GVendor[]);
-          return;
         }
 
         setVendors(r.venues as F2GVendor[]);
+        setHasMore(r.hasMore);
+        setNextOffset(r.nextOffset);
       } catch {
         if (!cancelled) {
           setDiscovering(false);
@@ -111,6 +128,66 @@ export function StorefrontHome() {
       cancelled = true;
     };
   }, [trpc, place.lat, place.lng]);
+
+  // "Load more": fetch the next page and APPEND, so category/sort see the town's full supply, not
+  // just the nearest page. Guarded by loadSeq so a page arriving after the user switched towns is
+  // dropped rather than appended to the wrong place.
+  const loadMore = useCallback(async () => {
+    const seq = loadSeq.current;
+    setLoadingMore(true);
+    try {
+      const r = await trpc.venues.storefrontNear.query({
+        channelKey: "f2g",
+        lat: place.lat,
+        lng: place.lng,
+        pageSize: PAGE_SIZE,
+        pageOffset: nextOffset,
+      });
+      if (seq !== loadSeq.current) return; // place changed mid-flight — discard
+      setVendors((prev) => [...(prev ?? []), ...(r.venues as F2GVendor[])]);
+      setHasMore(r.hasMore);
+      setNextOffset(r.nextOffset);
+    } catch {
+      /* leave the grid as-is; the button stays for a retry */
+    } finally {
+      if (seq === loadSeq.current) setLoadingMore(false);
+    }
+  }, [trpc, place.lat, place.lng, nextOffset]);
+
+  // Resolve every loaded vendor's cover in one batch (≤40 ids, under the procedure's cap of 60), so
+  // the grid paints real covers in a single round-trip. Keyed by venue id; the ref guards re-fetch.
+  useEffect(() => {
+    if (!vendors) return;
+    const wanted = vendors.filter(
+      (v) => v.coverPhotoId && !requestedCoverIds.current.has(v.coverPhotoId),
+    );
+    if (wanted.length === 0) return;
+    const photoIds = Array.from(new Set(wanted.map((v) => v.coverPhotoId as string)));
+    photoIds.forEach((id) => requestedCoverIds.current.add(id));
+    let cancelled = false;
+    const resolve = trpc.venues.photoMediaUrls as unknown as {
+      query: (input: { photoIds: string[] }) => Promise<{ urls: Record<string, string> }>;
+    };
+    resolve
+      .query({ photoIds })
+      .then((r) => {
+        if (cancelled || !r?.urls) return;
+        setCoverUrls((prev) => {
+          const next = { ...prev };
+          for (const v of wanted) {
+            const u = v.coverPhotoId ? r.urls[v.coverPhotoId] : undefined;
+            if (u) next[v.id] = u;
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        /* leave these cards on the illustrated default cover */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, vendors]);
 
   const shown = useMemo(() => {
     if (!vendors) return [];
@@ -223,10 +300,37 @@ export function StorefrontHome() {
       ) : (
         <Grid>
           {shown.map((v) => (
-            <F2GVendorCard key={v.id} vendor={v} />
+            <F2GVendorCard key={v.id} vendor={v} coverUrl={coverUrls[v.id]} />
           ))}
         </Grid>
       )}
+
+      {/* Load more — grows the pool category + sort see, so they cover the town, not just page 1. */}
+      {vendors !== null && hasMore ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: "28px 0 0" }}>
+          <button
+            type="button"
+            onClick={() => void loadMore()}
+            disabled={loadingMore}
+            style={{
+              all: "unset",
+              cursor: loadingMore ? "default" : "pointer",
+              padding: "11px 22px",
+              borderRadius: 10,
+              border: `1px solid ${STOREFRONT.navy}`,
+              color: STOREFRONT.navy,
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: ".05em",
+              textTransform: "uppercase",
+              opacity: loadingMore ? 0.6 : 1,
+            }}
+          >
+            {loadingMore ? t("loadingMore") : t("loadMore")}
+          </button>
+        </div>
+      ) : null}
 
       {/* Co-brand footer */}
       <p style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid var(--line)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>

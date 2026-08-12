@@ -1895,7 +1895,9 @@
       "membersTitle": "No member kitchens near {place} yet",
       "membersBody": "This storefront shows Association members. Try another town, or check back as more join."
     },
-    "coBrandFooter": "Payments, accounts and order history are handled by Roam. The Association keeps the storefront."
+    "coBrandFooter": "Payments, accounts and order history are handled by Roam. The Association keeps the storefront.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…"
   },
   "venueShop": {
     "collection": {

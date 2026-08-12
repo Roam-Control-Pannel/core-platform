@@ -124,6 +124,9 @@ export async function setVenueChannel(
 ): Promise<void> {
   const channel = await getChannelByKey(client, channelKey);
   if (!channel) throw new Error(`admin: unknown channel '${channelKey}'`);
+  // The default channel shows every venue, so tagging into it is meaningless and would pollute
+  // membership assumptions — reject it here too, mirroring the self-serve requireChannel guard.
+  if (channel.isDefault) throw new Error(`admin: the default channel '${channelKey}' can't be tagged into`);
   if (member) await tagVenueIntoChannel(client, channel.id, venueId, actor.id);
   else await untagVenueFromChannel(client, channel.id, venueId);
   await recordAudit(client, actor, {

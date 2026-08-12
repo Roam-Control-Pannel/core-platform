@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { RoamClient } from "@roam/db";
 import { getActivityFeed } from "./activity.js";
 import { getSignupTrend } from "./metrics.js";
+import { setVenueChannel } from "./actions.js";
 
 /**
  * A minimal chainable stand-in for the Supabase query builder — enough for the admin
@@ -114,5 +115,21 @@ describe("getActivityFeed", () => {
     expect(feed).toHaveLength(3);
     // Newest three (p4, p3, p2).
     expect(feed.map((f) => f.id)).toEqual(["post:p4", "post:p3", "post:p2"]);
+  });
+});
+
+describe("setVenueChannel", () => {
+  const actor = { id: "admin1", email: "staff@roam.test" };
+
+  it("refuses to tag a venue into the default channel (mirrors the self-serve guard)", async () => {
+    const client = makeClient({
+      recent: { channels: [{ id: "c-roam", key: "roam", name: "Roam", is_default: true, theme: {} }] },
+    });
+    await expect(setVenueChannel(client, actor, "v1", "roam", true)).rejects.toThrow(/default channel/i);
+  });
+
+  it("throws NOT_FOUND-style error for an unknown channel", async () => {
+    const client = makeClient({ recent: { channels: [] } });
+    await expect(setVenueChannel(client, actor, "v1", "nope", true)).rejects.toThrow(/unknown channel/i);
   });
 });
