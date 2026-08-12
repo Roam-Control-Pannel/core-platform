@@ -14,6 +14,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "check": "turbo run lint typecheck test",
+    "f2g:reingest": "node scripts/reingest-food-to-go.mjs",
     "db:migrate": "supabase migration up",
     "db:types": "supabase gen types typescript --project-id kyancopdkxotzzkzqsmf > packages/db/src/generated/database.types.ts",
     "db:reset": "supabase db reset",
