@@ -32,9 +32,11 @@ export const F2G_CHANNEL_KEY = "f2g";
  * carries (venues.categories): grab-and-go places qualify; drink-led and full-service dining
  * do not. This is why the storefront's "open" mode shows cafés and chippies but NOT The Crown.
  *
- * Only leaves that Roam actually ingests (CATEGORY_PLACES_TYPES["Food & Drink"]) can ever match,
- * plus a few extra grab-and-go leaves (meal_takeaway, sandwich_shop, deli, bagel_shop) that
- * Google may attach and which are harmless when absent — so the set can widen without a reingest.
+ * Every leaf here is one Roam actually ingests (all are in CATEGORY_PLACES_TYPES["Food & Drink"]),
+ * so a matching leaf genuinely round-trips: Places attaches it, placeToVenueRow persists it, and
+ * isFoodToGo reads it back. The grab-and-go takeaway leaves (meal_takeaway, sandwich_shop, deli,
+ * bagel_shop) are the bulk of a high street's food-to-go — they must stay in step with the core
+ * taxonomy (adding one here without adding it there would silently never match).
  */
 export const FOOD_TO_GO_TYPES: ReadonlySet<string> = new Set([
   "cafe",
@@ -66,19 +68,26 @@ export function isFoodToGo(categories: readonly string[] | null | undefined): bo
 }
 
 /**
- * The Google Places (New) `includedTypes` to request when SUPPLYING food-to-go venues on demand.
- * A CURATED, proven-valid subset of FOOD_TO_GO_TYPES — every entry is also in Roam's
- * CATEGORY_PLACES_TYPES["Food & Drink"], so we know Places accepts it (an unknown includedType is
- * a request error). Asking Google for these types directly is what makes the storefront's supply
- * cafés/bakeries/fast-food — NOT the prominent pubs a coarse "Food & Drink" search returns first.
- * (meal_takeaway/sandwich_shop etc. are matched by isFoodToGo but not SEARCHED, as they aren't in
- * the confirmed Places type set; chippies/takeaways still arrive via fast_food_restaurant.)
+ * The Google Places (New) `includedTypes` we SEARCH when supplying food-to-go venues on demand.
+ * Every entry is a real Table A primary type AND is in Roam's CATEGORY_PLACES_TYPES["Food & Drink"],
+ * so a match round-trips (Places accepts the request, placeToVenueRow persists the leaf, isFoodToGo
+ * reads it back). Asking Google for these types directly is what makes the storefront's supply
+ * cafés/bakeries/takeaways/fast-food — NOT the prominent pubs a coarse "Food & Drink" search
+ * returns first.
+ *
+ * The open-mode ingest issues ONE searchNearby PER type (each capped at 20 by Places), so this list
+ * is also the per-cell fan-out: more types = broader supply (independent takeaways, sandwich bars
+ * and delis included) at the cost of one paid call each. Keep it a subset of FOOD_TO_GO_TYPES.
  */
 export const FOOD_TO_GO_SEARCH_TYPES: readonly string[] = [
   "cafe",
   "coffee_shop",
   "bakery",
   "fast_food_restaurant",
+  "meal_takeaway",
+  "sandwich_shop",
+  "deli",
+  "bagel_shop",
   "dessert_shop",
   "donut_shop",
   "ice_cream_shop",

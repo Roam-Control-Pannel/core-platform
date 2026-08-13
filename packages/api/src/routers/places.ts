@@ -302,10 +302,19 @@ type FoodToGoIngestResult = {
  * it does NOT consult the coarse "Food & Drink" freshness cache — that cache is satisfied by any
  * Food & Drink venue (e.g. a pub), which would suppress the café/bakery supply the storefront
  * actually needs. The storefront calls this ONLY when it has zero food-to-go venues near the
- * point, so reaching here already means an intended fetch; cost stays bounded by the shared fetch
- * quota (claimed below). It asks Places for food-to-go includedTypes specifically, keeps only
- * results that classify to Food & Drink AND are food-to-go (isFoodToGo — so a stray restaurant
- * sharing a type is dropped), then upserts (+ photos) through the same idempotent RPCs.
+ * point, so reaching here already means an intended fetch.
+ *
+ * VOLUME: Places caps searchNearby at 20 results per call and does not paginate, so one call for
+ * the whole food-to-go type set returns only the ~20 most prominent places near the point — far
+ * too few for a city. Instead we fan out ONE searchNearby per food-to-go type (each ≤20), deduped
+ * by place id, lifting the ceiling to ~20×(number of types). Each paid call claims one unit of the
+ * shared fetch quota BEFORE it runs, so spend is accounted honestly and a mid-loop denial simply
+ * stops the fan-out while keeping whatever was already fetched. A single type's transport error is
+ * skipped (its budget unit is already spent, parity with the one-call path), not fatal — but if
+ * EVERY call fails we surface the error rather than pretend nothing was nearby.
+ *
+ * We keep only results that classify to Food & Drink AND are food-to-go (isFoodToGo — so a stray
+ * restaurant sharing a type is dropped), then upsert (+ photos) through the same idempotent RPCs.
  */
 export async function ingestFoodToGoCore(
   rpc: LooseRpc,
@@ -315,38 +324,55 @@ export async function ingestFoodToGoCore(
 ): Promise<FoodToGoIngestResult> {
   const snapped = corePlaces.snapToIngestGrid(args.lat, args.lng);
 
-  const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
-    p_client_key: args.clientKey,
-    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
-    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
-  });
-  if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
-  const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
-    | { allowed?: boolean; reason?: string }
-    | undefined;
-  if (!quota?.allowed) {
-    return {
-      skipped: true,
-      reason: quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted",
-      fetched: 0,
-      inserted: 0,
-      claimedSkipped: 0,
-      photosUpserted: 0,
-    };
+  const byId = new Map<string, corePlaces.PlaceResult>();
+  let successfulCalls = 0;
+  let denial: "budget-exhausted" | "rate-limited" | null = null;
+  let lastError: unknown = null;
+
+  for (const type of coreF2g.FOOD_TO_GO_SEARCH_TYPES) {
+    // Claim one budget unit per intended paid call.
+    const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
+      p_client_key: args.clientKey,
+      p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
+      p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
+      p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+    });
+    if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
+    const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
+      | { allowed?: boolean; reason?: string }
+      | undefined;
+    if (!quota?.allowed) {
+      denial = quota?.reason === "client-rate" ? "rate-limited" : "budget-exhausted";
+      break; // budget/rate exhausted — stop the fan-out, keep what we have
+    }
+
+    try {
+      const results = await searchNearby(
+        {
+          lat: snapped.lat,
+          lng: snapped.lng,
+          includedTypes: [type],
+          radiusMetres: args.radiusMetres,
+          maxResultCount: MAX_RESULTS,
+        },
+        apiKey,
+      );
+      successfulCalls++;
+      for (const p of results) if (p.id) byId.set(p.id, p);
+    } catch (e) {
+      lastError = e; // budget unit already spent; try the next type rather than aborting
+    }
   }
 
-  const results = await searchNearby(
-    {
-      lat: snapped.lat,
-      lng: snapped.lng,
-      includedTypes: coreF2g.FOOD_TO_GO_SEARCH_TYPES,
-      radiusMetres: args.radiusMetres,
-      maxResultCount: MAX_RESULTS,
-    },
-    apiKey,
-  );
+  if (successfulCalls === 0) {
+    // Denied before any paid call ran → report the denial. Every call failed → surface the error.
+    if (denial) {
+      return { skipped: true, reason: denial, fetched: 0, inserted: 0, claimedSkipped: 0, photosUpserted: 0 };
+    }
+    if (lastError) throw lastError instanceof Error ? lastError : new Error("Food-to-go fetch failed");
+  }
 
+  const results = [...byId.values()];
   const matched: { place: corePlaces.PlaceResult; row: corePlaces.VenueRowFromPlace }[] = [];
   for (const p of results) {
     const category = corePlaces.classifyPlaceTypes(p.types ?? []);

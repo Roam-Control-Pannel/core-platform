@@ -30,14 +30,19 @@ export function milesFromMetres(m?: number | null): string | null {
   return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
 }
 
-/** Storefront category chips (display order). "all" is the default, no filter. */
+/**
+ * Storefront category chips (display order). "all" is the default, no filter.
+ * NB: every chip must map to leaf types the open-mode supply actually ingests (see
+ * @roam/core/f2g FOOD_TO_GO_TYPES / FOOD_TO_GO_SEARCH_TYPES). "forecourt" (convenience
+ * stores / petrol stations) is deliberately absent — those leaves live in the Shopping /
+ * Automotive groups and are never supplied here, so the chip would always be empty.
+ */
 export const STOREFRONT_CATEGORIES = [
   "all",
   "coffee",
   "bakery",
   "hot_food",
   "breakfast",
-  "forecourt",
 ] as const;
 export type StorefrontCategory = (typeof STOREFRONT_CATEGORIES)[number];
 

@@ -1878,8 +1878,7 @@
       "coffee": "Coffee",
       "bakery": "Bakery",
       "hot_food": "Hot food",
-      "breakfast": "Breakfast",
-      "forecourt": "Forecourt"
+      "breakfast": "Breakfast"
     },
     "sorts": {
       "fastest": "Fastest first",

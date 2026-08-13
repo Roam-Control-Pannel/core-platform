@@ -50,6 +50,12 @@ export type CategoryId = (typeof CATEGORIES)[number];
 export const CATEGORY_PLACES_TYPES: Record<CategoryId, readonly string[]> = {
   "Food & Drink": [
     "restaurant", "cafe", "bar", "bakery", "fast_food_restaurant",
+    // Grab-and-go leaves: independent takeaways, sandwich bars, delis and bagel shops —
+    // the bulk of a high street's food-to-go supply. Kept here (not just in @roam/core/f2g)
+    // so placeToVenueRow actually PERSISTS them as `categories` leaves; without this a chippy
+    // typed ["meal_takeaway","restaurant"] is stored as just ["restaurant"] and never reads
+    // back as food-to-go. All four are real Table A primary types (see index.test snapshot).
+    "meal_takeaway", "sandwich_shop", "deli", "bagel_shop",
     "american_restaurant", "asian_fusion_restaurant", "brazilian_restaurant",
     "chinese_restaurant", "french_restaurant", "indian_restaurant",
     "italian_restaurant", "japanese_restaurant", "mexican_restaurant",

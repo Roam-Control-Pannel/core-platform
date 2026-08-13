@@ -37,7 +37,6 @@ function matchesCategory(v: F2GVendor, cat: StorefrontCategory): boolean {
     bakery: ["bakery", "bakehouse", "patisserie", "bread"],
     hot_food: ["takeaway", "fast food", "chippy", "chip", "kebab", "burger", "pizza", "indian", "chinese", "curry", "hot food"],
     breakfast: ["breakfast", "brunch", "deli"],
-    forecourt: ["forecourt", "petrol", "service station", "convenience", "garage"],
   };
   return needles[cat].some((n) => hay.includes(n));
 }

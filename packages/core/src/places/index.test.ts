@@ -268,6 +268,7 @@ describe("Google Places Table A validity", () => {
       "steak_house", "sushi_restaurant", "thai_restaurant", "vegan_restaurant",
       "vegetarian_restaurant", "bar_and_grill", "beer_garden", "pub", "wine_bar",
       "coffee_shop", "dessert_shop", "donut_shop", "ice_cream_shop", "juice_shop",
+      "meal_takeaway", "sandwich_shop", "deli", "bagel_shop",
       // Shopping
       "store", "shopping_mall", "supermarket", "grocery_store", "convenience_store",
       "clothing_store", "shoe_store", "department_store", "jewelry_store",
