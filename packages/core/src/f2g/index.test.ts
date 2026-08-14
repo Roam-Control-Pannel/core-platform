@@ -4,11 +4,29 @@ import {
   rowToCollectionSettings,
   computeListingStatus,
   isFoodToGo,
+  isVenueInFoodToGoRegion,
   DEFAULT_COLLECTION_SETTINGS,
   PREP_TIME_MAX,
   COLLECTION_INSTRUCTIONS_MAX,
   type ListingChecklist,
 } from "./index.js";
+
+/** Minimal client stub for venues.select("lat, lng").eq("id", …).maybeSingle(). */
+function venueClient(row: { lat: number | null; lng: number | null } | null, errorMessage?: string) {
+  return {
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({
+            data: row,
+            error: errorMessage ? { message: errorMessage } : null,
+          }),
+        }),
+      }),
+    }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+}
 
 describe("isFoodToGo", () => {
   it("accepts grab-and-go leaves (café, coffee, bakery, takeaway, fast food)", () => {
@@ -118,5 +136,30 @@ describe("computeListingStatus", () => {
     expect(s.ready).toBe(false);
     expect(s.missing).toHaveLength(5);
     expect(s.missing[0]).toBe("claimed");
+  });
+});
+
+describe("isVenueInFoodToGoRegion", () => {
+  it("accepts venues inside Northern Ireland", async () => {
+    // Belfast, Derry, Enniskillen — all inside NI_BOUNDS.
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 54.5973, lng: -5.9301 }), "v")).toBe(true);
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 54.9966, lng: -7.3086 }), "v")).toBe(true);
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 54.3446, lng: -7.6316 }), "v")).toBe(true);
+  });
+
+  it("rejects venues outside Northern Ireland", async () => {
+    // Darlington (the reported case), London, Dublin — all outside the box.
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 54.5235, lng: -1.5597 }), "v")).toBe(false);
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 51.5074, lng: -0.1278 }), "v")).toBe(false);
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: 53.3498, lng: -6.2603 }), "v")).toBe(false);
+  });
+
+  it("treats a venue with no coordinates as out of region", async () => {
+    expect(await isVenueInFoodToGoRegion(venueClient({ lat: null, lng: null }), "v")).toBe(false);
+    expect(await isVenueInFoodToGoRegion(venueClient(null), "v")).toBe(false);
+  });
+
+  it("surfaces a read error rather than silently passing", async () => {
+    await expect(isVenueInFoodToGoRegion(venueClient(null, "boom"), "v")).rejects.toThrow(/region read failed/);
   });
 });

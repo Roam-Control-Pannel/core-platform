@@ -17,9 +17,33 @@
  */
 import type { RoamClient } from "@roam/db";
 import { getChannelByKey, isVenueInChannel } from "../channels/index.js";
+import { NI_BOUNDS, inBounds } from "../geocode/index.js";
 
 /** The F2G channel key readiness is measured against. */
 export const F2G_CHANNEL_KEY = "f2g";
+
+/**
+ * Whether a venue sits inside the Food to Go region (Northern Ireland). Food to Go is an NI-only
+ * marketplace: the storefront discovery RPC (venues_food_to_go_near) fences results to NI_BOUNDS,
+ * so a venue outside the box could never appear there. We gate the SUPPLY side — listing into the
+ * channel and editing collection settings — by the SAME box, so "can list" ⟺ "could appear", and a
+ * business outside NI (e.g. a Darlington café) is never offered the surface.
+ *
+ * Reads the venue's generated lat/lng (migration 0086). A venue with no coordinates is treated as
+ * OUT of region — we never opt a venue in on the strength of missing data.
+ */
+export async function isVenueInFoodToGoRegion(client: RoamClient, venueId: string): Promise<boolean> {
+  const { data, error } = await (client as any)
+    .from("venues")
+    .select("lat, lng")
+    .eq("id", venueId)
+    .maybeSingle();
+  if (error) throw new Error(`f2g: venue region read failed: ${error.message}`);
+  const lat = data?.lat;
+  const lng = data?.lng;
+  if (typeof lat !== "number" || typeof lng !== "number") return false;
+  return inBounds(lat, lng, NI_BOUNDS);
+}
 
 // ---------------------------------------------------------------------------
 // Food-to-go eligibility (Google Places leaf types)

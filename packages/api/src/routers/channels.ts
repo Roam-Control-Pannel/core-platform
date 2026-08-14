@@ -14,7 +14,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
-import { channels } from "@roam/core";
+import { channels, f2g } from "@roam/core";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
 
 /**
@@ -152,6 +152,18 @@ export const channelsRouter = router({
     .input(z.object({ venueId: z.string().uuid(), channelKey: z.string().min(1).max(32) }))
     .mutation(async ({ ctx, input }) => {
       const channel = await requireChannel(ctx.db, input.channelKey);
+      // Food to Go is an NI-only marketplace: a venue outside Northern Ireland can never list on
+      // it (it would never surface on the NI-fenced storefront anyway). Enforced server-side so a
+      // direct API call can't bypass the hidden-in-UI Food to Go tab.
+      if (
+        input.channelKey === f2g.F2G_CHANNEL_KEY &&
+        !(await f2g.isVenueInFoodToGoRegion(ctx.db, input.venueId))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Food to Go is only available to venues in Northern Ireland.",
+        });
+      }
       const { data: me } = await ctx.db.auth.getUser();
       try {
         await channels.tagVenueIntoChannel(ctx.db, channel.id, input.venueId, me.user?.id ?? null);
