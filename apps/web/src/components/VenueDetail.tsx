@@ -370,9 +370,13 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
 
 function BackLink() {
   const t = useTranslations("venueDetail");
+  const { isF2G } = useChannel();
   return (
     <Link
-      href="/explore"
+      // On a brand storefront (f2g) "back" returns to that storefront home (/ → HomeSwitch renders
+      // StorefrontHome); on Roam it returns to the Explore browse page. Never dump a storefront
+      // visitor onto Roam's generic /explore (wrong channel, defaults to City of London).
+      href={isF2G ? "/" : "/explore"}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -811,6 +815,7 @@ function VenueProfileShell({
 function VenueHero({ venue, venueId, claimed = false, orderAhead = false }: { venue: VenueDetailData; venueId: string; claimed?: boolean; orderAhead?: boolean }) {
   const t = useTranslations("venueDetail");
   const trpc = useTrpc();
+  const { isF2G } = useChannel();
   const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
 
@@ -847,7 +852,7 @@ function VenueHero({ venue, venueId, claimed = false, orderAhead = false }: { ve
           <img className={styles.heroImg} src={heroUrl} alt="" />
         ) : null}
         <div className={styles.heroScrim} aria-hidden />
-        <Link href="/explore" aria-label={t("back")} className={`${styles.heroBtn} ${styles.heroBack}`}>
+        <Link href={isF2G ? "/" : "/explore"} aria-label={t("back")} className={`${styles.heroBtn} ${styles.heroBack}`}>
           <span aria-hidden>←</span>
         </Link>
         {gallery.length > 0 ? (
@@ -1435,6 +1440,7 @@ function DetailSkeleton() {
 
 function NotFoundState() {
   const t = useTranslations("venueDetail");
+  const { isF2G } = useChannel();
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
@@ -1443,7 +1449,7 @@ function NotFoundState() {
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
         {t("notFound.body")}
       </p>
-      <Link href="/explore" style={{ textDecoration: "none" }}>
+      <Link href={isF2G ? "/" : "/explore"} style={{ textDecoration: "none" }}>
         <Pill variant="ghost-crim">← {t("notFound.backToExplore")}</Pill>
       </Link>
     </div>
