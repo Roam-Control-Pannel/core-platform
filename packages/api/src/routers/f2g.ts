@@ -52,6 +52,14 @@ export const f2gRouter = router({
     .input(z.object({ venueId: z.string().uuid(), ...collectionPatch }))
     .mutation(async ({ ctx, input }) => {
       const { venueId, ...patch } = input;
+      // Food to Go is an NI-only marketplace — never let a venue outside Northern Ireland
+      // configure collection, even by calling the API directly (the UI hides the tab too).
+      if (!(await f2g.isVenueInFoodToGoRegion(ctx.db, venueId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Food to Go is only available to venues in Northern Ireland.",
+        });
+      }
       try {
         const settings = await f2g.upsertCollectionSettings(ctx.db, venueId, patch);
         return { ok: true as const, settings };

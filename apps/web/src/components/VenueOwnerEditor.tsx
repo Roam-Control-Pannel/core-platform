@@ -47,6 +47,7 @@ import { VenueOrders } from "./VenueOrders";
 import { VenueFoodToGo } from "./VenueFoodToGo";
 import { venuePath } from "../lib/routes";
 import { useF2gEnabled } from "../lib/useF2gEnabled";
+import { isInNI } from "../lib/ni";
 import { isOpenNow, type OpeningTimesRead } from "../lib/openNow";
 import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
@@ -73,6 +74,9 @@ interface OwnerVenue {
   locality: string | null;
   region: string | null;
   category: string | null;
+  // Generated from geo (migration 0086). Used to gate the NI-only Food to Go surface.
+  lat: number | null;
+  lng: number | null;
 }
 
 type ByIdQuery = { query: (input: { venueId: string }) => Promise<OwnerVenue | null> };
@@ -224,7 +228,14 @@ function Dashboard({
 }) {
   const t = useTranslations("venueOwnerEditor");
   const data = useDashData(venueId);
-  const f2gEnabled = useF2gEnabled();
+  // Food to Go is an NI-only marketplace, so the surface is offered only when the feature flag is
+  // on AND this venue sits inside Northern Ireland — a business elsewhere (e.g. Darlington) never
+  // sees the tab. The API enforces the same fence, so hiding it here is UX, not the security line.
+  const f2gEnabled =
+    useF2gEnabled() &&
+    typeof venue.lat === "number" &&
+    typeof venue.lng === "number" &&
+    isInNI(venue.lat, venue.lng);
 
   return (
     <>
