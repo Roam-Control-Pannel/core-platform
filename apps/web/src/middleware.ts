@@ -12,12 +12,30 @@
  * the authority via the API; a mis-hint just resolves back to the default channel there.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { channelKeyForHost, CHANNEL_COOKIE } from "./lib/channel";
+import { channelKeyForHost, CHANNEL_COOKIE, DEFAULT_CHANNEL_KEY } from "./lib/channel";
+
+/**
+ * Paths that belong to the Roam experience only and must not render under a brand channel's chrome.
+ * `/explore` is Roam's place-anchored browse (all categories, City-of-London default) — a brand
+ * storefront has its own discovery at `/`, so on a brand channel these redirect there. Kept narrow
+ * on purpose: routes a storefront legitimately shares (e.g. /orders, /business) are NOT listed.
+ */
+function isRoamOnlyPath(pathname: string): boolean {
+  return pathname === "/explore" || pathname.startsWith("/explore/");
+}
 
 export function middleware(req: NextRequest): NextResponse {
   const host =
     req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
   const channelKey = channelKeyForHost(host);
+
+  // Food to Go is a self-contained storefront: its discovery surface is the storefront home (/),
+  // not Roam's place-anchored /explore (which defaults to City of London and shows every category).
+  // A brand channel must never fall through to that generic browse, so redirect /explore to the
+  // storefront home. Server-side here so it catches direct URLs and history, not just in-app links.
+  if (channelKey !== DEFAULT_CHANNEL_KEY && isRoamOnlyPath(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
 
   // Forward the resolved channel on the onward request headers.
   const requestHeaders = new Headers(req.headers);
