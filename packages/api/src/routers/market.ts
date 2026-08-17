@@ -14,9 +14,28 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
+import { f2g } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
-import { createCheckoutSession, refundPayment } from "../stripe/client.js";
+import { createCheckoutSession, createCartCheckoutSession, refundPayment } from "../stripe/client.js";
+import { geocodeSearch } from "../geocode/client.js";
 import { pushToProfileIds } from "../push/dispatch.js";
+
+/** Map a checkDeliverable reason to a buyer-facing checkout error message. */
+function deliverabilityMessage(reason: f2g.DeliverabilityReason): string {
+  switch (reason) {
+    case "delivery_unavailable":
+      return "This venue isn't delivering right now.";
+    case "outside_ni":
+      return "Delivery is only available within Northern Ireland.";
+    case "no_destination":
+      return "We couldn't locate that address — please check the postcode.";
+    case "postcode_blocked":
+    case "outside_area":
+      return "Sorry, this venue doesn't deliver to that address.";
+    default:
+      return "Sorry, this venue can't deliver to that address.";
+  }
+}
 
 /** The catalogue-entry shape both surfaces render. */
 export interface MarketProduct {
@@ -67,6 +86,52 @@ function shape(r: Row): MarketProduct {
 
 type LooseDb = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** The DB row shape read by myOrders / venueOrders (delivery fields + joined basket items). */
+interface OrderReadRow {
+  id: string;
+  venue_id: string;
+  product_title: string;
+  product_kind: string;
+  quantity: number;
+  amount_pence: number;
+  application_fee_pence?: number;
+  delivery_fee_pence: number | null;
+  currency: string;
+  status: string;
+  fulfilment_type: string | null;
+  redeem_code: string | null;
+  ready_at: string | null;
+  delivery_eta_at: string | null;
+  out_for_delivery_at: string | null;
+  delivered_at: string | null;
+  delivery_address: unknown;
+  created_at: string;
+  venues?: { name: string; locality: string | null } | { name: string; locality: string | null }[] | null;
+  order_items?: { product_title: string; unit_price_pence: number; quantity: number }[] | null;
+}
+
+/** Normalise a stored delivery_address jsonb into a safe display shape (structural inference). */
+function shapeAddress(a: unknown) {
+  if (!a || typeof a !== "object") return null;
+  const o = a as Record<string, unknown>;
+  const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
+  const line1 = str(o.line1);
+  const postcode = str(o.postcode);
+  if (!line1 && !postcode) return null;
+  return {
+    line1: line1 ?? "",
+    line2: str(o.line2),
+    locality: str(o.locality),
+    postcode: postcode ?? "",
+    notes: str(o.notes),
+  };
+}
+
+/** Map joined order_items rows into the basket line shape the order surfaces render. */
+function shapeItems(items: { product_title: string; unit_price_pence: number; quantity: number }[] | null | undefined) {
+  return (items ?? []).map((i) => ({ title: i.product_title, unitPricePence: i.unit_price_pence, quantity: i.quantity }));
+}
+
 const productFields = {
   kind: z.enum(["product", "service"]),
   title: z.string().trim().min(3).max(120),
@@ -82,7 +147,7 @@ async function ownedOrder(
   ctx: { db: unknown; env: Parameters<typeof escalateToService>[0] },
   orderId: string,
 ): Promise<{
-  order: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number };
+  order: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number };
   service: LooseDb;
 }> {
   const { data: auth } = await (ctx.db as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
@@ -91,9 +156,9 @@ async function ownedOrder(
   const service = escalateToService(ctx.env) as unknown as LooseDb;
   const { data: order } = (await service
     .from("orders")
-    .select("id, venue_id, product_kind, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence")
+    .select("id, venue_id, product_kind, fulfilment_type, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence")
     .eq("id", orderId)
-    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number } | null };
+    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number } | null };
   if (!order) throw new TRPCError({ code: "NOT_FOUND" });
   const { data: venue } = (await service
     .from("venues")
@@ -350,18 +415,222 @@ export const marketRouter = router({
       return { url: session.url };
     }),
 
+  /**
+   * Buyer: check out a CART (Food to Go) — one or more product lines, collected or delivered, in a
+   * single order + Stripe session. For delivery: the address is geocoded server-side (NI-fenced,
+   * authoritative — client coordinates are never trusted), checked against the venue's delivery
+   * settings (deliverable area + minimum order), and a flat delivery fee is added as its own Stripe
+   * line. Platform commission is on the GOODS subtotal only, so the vendor keeps the delivery fee.
+   * Services/vouchers stay on the single-item `checkout` above; this cart is food products only.
+   */
+  checkoutCart: protectedProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        items: z
+          .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(20) }))
+          .min(1)
+          .max(50),
+        fulfilment: z.enum(["collection", "delivery"]).default("collection"),
+        address: z
+          .object({
+            line1: z.string().trim().min(1).max(120),
+            line2: z.string().trim().max(120).nullish(),
+            locality: z.string().trim().max(120).nullish(),
+            postcode: z.string().trim().min(2).max(12),
+            notes: z.string().trim().max(300).nullish(),
+          })
+          .nullish(),
+        referrerId: z.string().uuid().nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }): Promise<{ url: string }> => {
+      if (!ctx.env.stripe.secretKey) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payments aren't configured on this environment yet." });
+      }
+      const { data: auth } = await (ctx.db as unknown as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
+      const buyerId = auth.user?.id;
+      if (!buyerId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const service = escalateToService(ctx.env) as unknown as LooseDb;
+
+      // Load every requested product for this venue, active-only, and merge duplicate lines.
+      const ids = [...new Set(input.items.map((i) => i.productId))];
+      const { data: prods } = (await service
+        .from("venue_products")
+        .select(COLS)
+        .in("id", ids)
+        .eq("venue_id", input.venueId)
+        .eq("active", true)) as { data: Row[] | null };
+      const byId = new Map((prods ?? []).map((p) => [p.id, p]));
+      const qtyById = new Map<string, number>();
+      for (const it of input.items) qtyById.set(it.productId, (qtyById.get(it.productId) ?? 0) + it.quantity);
+
+      const lines: { productId: string; title: string; unitPricePence: number; quantity: number }[] = [];
+      let currency = "gbp";
+      for (const [pid, qty] of qtyById) {
+        const p = byId.get(pid);
+        if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "An item in your basket is no longer available." });
+        if (p.kind !== "product") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Vouchers can only be bought one at a time, not in a basket." });
+        }
+        if (p.stock != null && p.stock < qty) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: p.stock === 0 ? `Sold out — ${p.title}.` : `Only ${p.stock} of ${p.title} left.` });
+        }
+        currency = p.currency;
+        lines.push({ productId: pid, title: p.title, unitPricePence: p.price_pence, quantity: qty });
+      }
+      if (lines.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Your basket is empty." });
+
+      const { data: acct } = (await service
+        .from("venue_payment_accounts")
+        .select("stripe_account_id, charges_enabled")
+        .eq("venue_id", input.venueId)
+        .maybeSingle()) as { data: { stripe_account_id: string; charges_enabled: boolean } | null };
+      if (!acct?.charges_enabled) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue isn't taking online payments yet." });
+      }
+
+      const goodsSubtotal = lines.reduce((s, l) => s + l.unitPricePence * l.quantity, 0);
+      let deliveryFeePence = 0;
+      let deliveryAddressJson: Record<string, unknown> | null = null;
+      let readyAt: string | null = null;
+      let deliveryEtaAt: string | null = null;
+
+      if (input.fulfilment === "delivery") {
+        if (!input.address) throw new TRPCError({ code: "BAD_REQUEST", message: "A delivery address is required." });
+        const settings = await f2g.getDeliverySettings(service as unknown as RoamClient, input.venueId);
+        if (!settings.deliveryEnabled || settings.paused) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue isn't delivering right now." });
+        }
+        if (goodsSubtotal < settings.minOrderPence) {
+          const min = `£${(settings.minOrderPence / 100).toFixed(2)}`;
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: `The minimum order for delivery is ${min}.` });
+        }
+        const { data: venue } = (await service
+          .from("venues")
+          .select("lat, lng")
+          .eq("id", input.venueId)
+          .maybeSingle()) as { data: { lat: number | null; lng: number | null } | null };
+        if (typeof venue?.lat !== "number" || typeof venue?.lng !== "number") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue's location isn't set, so we can't check delivery." });
+        }
+        // Geocode the address server-side, NI-fenced — the authoritative coordinate for the fence.
+        const query = [input.address.line1, input.address.postcode].filter(Boolean).join(", ");
+        let hit: { lat: number; lng: number } | undefined;
+        try {
+          const geo = await geocodeSearch(query, undefined, { region: "ni" });
+          hit = geo[0];
+        } catch {
+          /* geocode failure → treated as no destination below */
+        }
+        const check = f2g.checkDeliverable({
+          settings,
+          venue: { lat: venue.lat, lng: venue.lng },
+          destLat: hit?.lat ?? null,
+          destLng: hit?.lng ?? null,
+          destPostcode: input.address.postcode,
+        });
+        if (!check.deliverable) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: deliverabilityMessage(check.reason) });
+        }
+        deliveryFeePence = settings.deliveryFeePence;
+        deliveryEtaAt = new Date(Date.now() + settings.etaMins * 60_000).toISOString();
+        deliveryAddressJson = {
+          line1: input.address.line1,
+          line2: input.address.line2 ?? null,
+          locality: input.address.locality ?? null,
+          postcode: input.address.postcode.toUpperCase(),
+          notes: input.address.notes ?? null,
+          lat: hit?.lat ?? null,
+          lng: hit?.lng ?? null,
+        };
+      } else {
+        const collection = await f2g.getCollectionSettings(service as unknown as RoamClient, input.venueId);
+        if (collection.paused) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue has paused new orders — please try again shortly." });
+        }
+        readyAt = new Date(Date.now() + collection.prepTimeMins * 60_000).toISOString();
+      }
+
+      const totals = f2g.computeOrderTotals(
+        lines.map((l) => ({ unitPricePence: l.unitPricePence, quantity: l.quantity })),
+        deliveryFeePence,
+        ctx.env.stripe.applicationFeeBps,
+      );
+      const redeemCode = randomBytes(5).toString("hex").toUpperCase();
+      const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
+      const summaryTitle = lines.length === 1 ? lines[0]!.title : `${lines[0]!.title} +${lines.length - 1} more`;
+
+      const { data: created, error: orderErr } = (await service
+        .from("orders")
+        .insert({
+          venue_id: input.venueId,
+          buyer_id: buyerId,
+          product_id: lines.length === 1 ? lines[0]!.productId : null,
+          product_title: summaryTitle,
+          product_kind: "product",
+          quantity: itemCount,
+          amount_pence: totals.goodsSubtotalPence,
+          application_fee_pence: totals.applicationFeePence,
+          delivery_fee_pence: totals.deliveryFeePence,
+          fulfilment_type: input.fulfilment,
+          delivery_address: deliveryAddressJson,
+          currency,
+          redeem_code: redeemCode,
+          ready_at: readyAt,
+          delivery_eta_at: deliveryEtaAt,
+          referrer_profile_id: input.referrerId ?? null,
+        })
+        .select("id")) as { data: { id: string }[] | null; error: { message: string } | null };
+      const order = created?.[0];
+      if (orderErr || !order) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't start checkout: ${orderErr?.message ?? "order not created"}` });
+      }
+
+      const { error: itemsErr } = (await service.from("order_items").insert(
+        lines.map((l) => ({
+          order_id: order.id,
+          product_id: l.productId,
+          product_title: l.title,
+          unit_price_pence: l.unitPricePence,
+          quantity: l.quantity,
+        })),
+      )) as { error: { message: string } | null };
+      if (itemsErr) {
+        // The basket lines are essential — roll the header back rather than leave a lineless order.
+        await service.from("orders").delete().eq("id", order.id);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't start checkout: ${itemsErr.message}` });
+      }
+
+      const base = ctx.env.stripe.webOrigin.replace(/\/$/, "");
+      const session = await createCartCheckoutSession({ secretKey: ctx.env.stripe.secretKey }, {
+        destinationAccount: acct.stripe_account_id,
+        applicationFeePence: totals.applicationFeePence,
+        currency,
+        lines: lines.map((l) => ({ title: l.title, unitAmountPence: l.unitPricePence, quantity: l.quantity })),
+        deliveryFeePence: totals.deliveryFeePence,
+        deliveryLabel: "Delivery",
+        orderId: order.id,
+        successUrl: `${base}/orders?placed=${order.id}`,
+        cancelUrl: `${base}/orders?canceled=${order.id}`,
+      });
+      await service.from("orders").update({ stripe_checkout_session_id: session.id }).eq("id", order.id);
+      return { url: session.url };
+    }),
+
   /** Buyer: my orders, newest first (RLS: buyer_id = auth.uid()). Redeem codes surface
    *  only once paid — a pending order shows none. */
   myOrders: protectedProcedure.query(async ({ ctx }) => {
     const db = ctx.db as unknown as LooseDb;
     const { data, error } = (await db
       .from("orders")
-      .select("id, venue_id, product_title, product_kind, quantity, amount_pence, currency, status, redeem_code, ready_at, created_at, venues(name, locality)")
+      .select(
+        "id, venue_id, product_title, product_kind, quantity, amount_pence, delivery_fee_pence, currency, status, fulfilment_type, redeem_code, ready_at, delivery_eta_at, out_for_delivery_at, delivered_at, delivery_address, created_at, venues(name, locality), order_items(product_title, unit_price_pence, quantity)",
+      )
       .order("created_at", { ascending: false })
       .limit(100)) as {
-      data:
-        | { id: string; venue_id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; currency: string; status: string; redeem_code: string | null; ready_at: string | null; created_at: string; venues: { name: string; locality: string | null } | { name: string; locality: string | null }[] | null }[]
-        | null;
+      data: OrderReadRow[] | null;
       error: { message: string } | null;
     };
     if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load your orders: ${error.message}` });
@@ -375,10 +644,17 @@ export const marketRouter = router({
       kind: r.product_kind,
       quantity: r.quantity,
       amountPence: r.amount_pence,
+      deliveryFeePence: r.delivery_fee_pence ?? 0,
       currency: r.currency,
       status: r.status,
+      fulfilment: r.fulfilment_type === "delivery" ? ("delivery" as const) : ("collection" as const),
       redeemCode: r.status === "pending" || r.status === "canceled" ? null : r.redeem_code,
       readyAt: r.ready_at,
+      deliveryEtaAt: r.delivery_eta_at,
+      outForDeliveryAt: r.out_for_delivery_at,
+      deliveredAt: r.delivered_at,
+      deliveryAddress: shapeAddress(r.delivery_address),
+      items: shapeItems(r.order_items),
       createdAt: r.created_at,
     }));
   }),
@@ -391,13 +667,13 @@ export const marketRouter = router({
       const db = ctx.db as unknown as LooseDb;
       const { data, error } = (await db
         .from("orders")
-        .select("id, product_title, product_kind, quantity, amount_pence, application_fee_pence, currency, status, redeem_code, ready_at, created_at")
+        .select(
+          "id, venue_id, product_title, product_kind, quantity, amount_pence, application_fee_pence, delivery_fee_pence, currency, status, fulfilment_type, redeem_code, ready_at, delivery_eta_at, out_for_delivery_at, delivered_at, delivery_address, created_at, order_items(product_title, unit_price_pence, quantity)",
+        )
         .eq("venue_id", input.venueId)
         .order("created_at", { ascending: false })
         .limit(200)) as {
-        data:
-          | { id: string; product_title: string; product_kind: string; quantity: number; amount_pence: number; application_fee_pence: number; currency: string; status: string; redeem_code: string | null; ready_at: string | null; created_at: string }[]
-          | null;
+        data: OrderReadRow[] | null;
         error: { message: string } | null;
       };
       if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to load orders: ${error.message}` });
@@ -407,11 +683,18 @@ export const marketRouter = router({
         kind: r.product_kind,
         quantity: r.quantity,
         amountPence: r.amount_pence,
-        feePence: r.application_fee_pence,
+        feePence: r.application_fee_pence ?? 0,
+        deliveryFeePence: r.delivery_fee_pence ?? 0,
         currency: r.currency,
         status: r.status,
+        fulfilment: r.fulfilment_type === "delivery" ? ("delivery" as const) : ("collection" as const),
         redeemCode: r.redeem_code,
         readyAt: r.ready_at,
+        deliveryEtaAt: r.delivery_eta_at,
+        outForDeliveryAt: r.out_for_delivery_at,
+        deliveredAt: r.delivered_at,
+        deliveryAddress: shapeAddress(r.delivery_address),
+        items: shapeItems(r.order_items),
         createdAt: r.created_at,
       }));
     }),
@@ -472,6 +755,77 @@ export const marketRouter = router({
       return { ok: !!data && data.length > 0 };
     }),
 
+  /**
+   * Owner: mark a DELIVERY order out for delivery. paid|ready → out_for_delivery, guarded so a
+   * stale click can't move a delivered/refunded order. Notifies the buyer (bell + push, best-effort).
+   */
+  markOutForDelivery: protectedProcedure
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
+      const { order, service } = await ownedOrder(ctx, input.orderId);
+      if (order.fulfilment_type !== "delivery") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This isn't a delivery order." });
+      }
+      const { data } = (await service
+        .from("orders")
+        .update({ status: "out_for_delivery", out_for_delivery_at: new Date().toISOString() })
+        .eq("id", input.orderId)
+        .in("status", ["paid", "ready"])
+        .select("id")) as { data: { id: string }[] | null };
+      const moved = !!data && data.length > 0;
+      if (moved && order.buyer_id) {
+        await service.from("notifications").insert({
+          recipient_id: order.buyer_id,
+          type: "order_out_for_delivery",
+          payload: { text: `Out for delivery — ${order.product_title}`, href: "/orders" },
+        });
+        try {
+          await pushToProfileIds(escalateToService(ctx.env) as RoamClient, ctx.env.vapid, [order.buyer_id], {
+            url: "/orders",
+            title: "Out for delivery",
+            body: `${order.product_title} is on its way.`,
+          });
+        } catch {
+          /* push is best-effort */
+        }
+      }
+      return { ok: moved };
+    }),
+
+  /** Owner: mark a DELIVERY order delivered. out_for_delivery → delivered, guarded. Notifies the buyer. */
+  markDelivered: protectedProcedure
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }): Promise<{ ok: boolean }> => {
+      const { order, service } = await ownedOrder(ctx, input.orderId);
+      if (order.fulfilment_type !== "delivery") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This isn't a delivery order." });
+      }
+      const { data } = (await service
+        .from("orders")
+        .update({ status: "delivered", delivered_at: new Date().toISOString() })
+        .eq("id", input.orderId)
+        .eq("status", "out_for_delivery")
+        .select("id")) as { data: { id: string }[] | null };
+      const moved = !!data && data.length > 0;
+      if (moved && order.buyer_id) {
+        await service.from("notifications").insert({
+          recipient_id: order.buyer_id,
+          type: "order_delivered",
+          payload: { text: `Delivered — ${order.product_title}. Enjoy!`, href: "/orders" },
+        });
+        try {
+          await pushToProfileIds(escalateToService(ctx.env) as RoamClient, ctx.env.vapid, [order.buyer_id], {
+            url: "/orders",
+            title: "Delivered",
+            body: `${order.product_title} has been delivered. Enjoy!`,
+          });
+        } catch {
+          /* push is best-effort */
+        }
+      }
+      return { ok: moved };
+    }),
+
   /** Owner: fully refund a paid/fulfilled order — Stripe pulls the funds back from the venue
    *  and returns Roam's fee; the buyer is made whole. */
   refundOrder: protectedProcedure
@@ -481,7 +835,10 @@ export const marketRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payments aren't configured on this environment yet." });
       }
       const { order, service } = await ownedOrder(ctx, input.orderId);
-      if (!["paid", "collected", "redeemed"].includes(order.status) || !order.stripe_payment_intent_id) {
+      if (
+        !["paid", "ready", "out_for_delivery", "delivered", "collected", "redeemed"].includes(order.status) ||
+        !order.stripe_payment_intent_id
+      ) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only a paid order can be refunded." });
       }
       await refundPayment({ secretKey: ctx.env.stripe.secretKey }, { paymentIntent: order.stripe_payment_intent_id });

@@ -15,6 +15,9 @@ import { TRPCError } from "@trpc/server";
 import { f2g } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { normaliseStoredImage, venuePrefixOf } from "../images/normalise.js";
+import { geocodeSearch } from "../geocode/client.js";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const F2G_FLAG = "marketplace.f2g.enabled";
 
@@ -121,6 +124,60 @@ export const f2gRouter = router({
             : msg,
         });
       }
+    }),
+
+  /**
+   * Pre-payment delivery quote for a basket: is this address deliverable, and what's the fee?
+   * Public (pre-checkout). Geocodes the address server-side (NI-fenced) and runs the SAME
+   * checkDeliverable + minimum-order rules the cart checkout enforces, so the buyer sees the outcome
+   * before paying. Never trusts client coordinates. Returns "below_minimum" when the area is fine
+   * but the basket is under the venue's minimum order.
+   */
+  quoteDelivery: publicProcedure
+    .input(
+      z.object({
+        venueId: z.string().uuid(),
+        line1: z.string().trim().min(1).max(120),
+        postcode: z.string().trim().min(2).max(12),
+        subtotalPence: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const settings = await f2g.getDeliverySettings(ctx.db, input.venueId);
+      const { data: venue } = (await (ctx.db as any)
+        .from("venues")
+        .select("lat, lng")
+        .eq("id", input.venueId)
+        .maybeSingle()) as { data: { lat: number | null; lng: number | null } | null };
+      const hasVenueCoords = typeof venue?.lat === "number" && typeof venue?.lng === "number";
+      let hit: { lat: number; lng: number } | undefined;
+      if (hasVenueCoords) {
+        try {
+          const geo = await geocodeSearch([input.line1, input.postcode].filter(Boolean).join(", "), undefined, {
+            region: "ni",
+          });
+          hit = geo[0];
+        } catch {
+          /* geocode failure → no destination below */
+        }
+      }
+      const check = f2g.checkDeliverable({
+        settings,
+        venue: { lat: venue?.lat ?? 0, lng: venue?.lng ?? 0 },
+        destLat: hasVenueCoords ? (hit?.lat ?? null) : null,
+        destLng: hasVenueCoords ? (hit?.lng ?? null) : null,
+        destPostcode: input.postcode,
+      });
+      const meetsMinimum = input.subtotalPence >= settings.minOrderPence;
+      return {
+        deliverable: check.deliverable && meetsMinimum,
+        reason: check.deliverable && !meetsMinimum ? ("below_minimum" as const) : check.reason,
+        feePence: settings.deliveryFeePence,
+        minOrderPence: settings.minOrderPence,
+        etaMins: settings.etaMins,
+        deliveryEnabled: settings.deliveryEnabled && !settings.paused,
+        distanceM: check.distanceM,
+      };
     }),
 
   /**

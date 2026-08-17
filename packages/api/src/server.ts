@@ -387,8 +387,8 @@ export async function handler(request: Request): Promise<Response> {
           .update({ status: "paid", stripe_payment_intent_id: session.payment_intent ?? null })
           .eq("id", orderId)
           .eq("status", "pending")
-          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, amount_pence")) as {
-          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; amount_pence: number }[] | null;
+          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, fulfilment_type, amount_pence")) as {
+          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; fulfilment_type: string | null; amount_pence: number }[] | null;
         };
         const order = updated?.[0];
         if (order) {
@@ -410,7 +410,9 @@ export async function handler(request: Request): Promise<Response> {
                 text:
                   order.product_kind === "service"
                     ? `Payment confirmed — “${order.product_title}” (${pounds}). Your redeem code is in Your orders.`
-                    : `Payment confirmed — “${order.product_title}” (${pounds}). Collect it in venue.`,
+                    : order.fulfilment_type === "delivery"
+                      ? `Payment confirmed — “${order.product_title}” (${pounds}). We'll let you know when it's on its way.`
+                      : `Payment confirmed — “${order.product_title}” (${pounds}). Collect it in venue.`,
                 href: "/orders",
               },
             });
@@ -439,17 +441,33 @@ export async function handler(request: Request): Promise<Response> {
             });
           }
         }
-        if (order?.product_id) {
-          const { data: prod } = (await service
-            .from("venue_products")
-            .select("stock")
-            .eq("id", order.product_id)
-            .maybeSingle()) as { data: { stock: number | null } | null };
-          if (prod && prod.stock != null) {
-            await service
+        if (order) {
+          // Decrement tracked stock. Cart orders (Food to Go) carry order_items — decrement each
+          // line; the legacy single-item checkout has no items rows, so fall back to the header
+          // product. Idempotency of the paid transition above means this runs once per order.
+          const { data: items } = (await service
+            .from("order_items")
+            .select("product_id, quantity")
+            .eq("order_id", order.id)) as { data: { product_id: string | null; quantity: number }[] | null };
+          const toDecrement =
+            items && items.length > 0
+              ? items
+              : order.product_id
+                ? [{ product_id: order.product_id, quantity: order.quantity }]
+                : [];
+          for (const line of toDecrement) {
+            if (!line.product_id) continue;
+            const { data: prod } = (await service
               .from("venue_products")
-              .update({ stock: Math.max(0, prod.stock - order.quantity) })
-              .eq("id", order.product_id);
+              .select("stock")
+              .eq("id", line.product_id)
+              .maybeSingle()) as { data: { stock: number | null } | null };
+            if (prod && prod.stock != null) {
+              await service
+                .from("venue_products")
+                .update({ stock: Math.max(0, prod.stock - line.quantity) })
+                .eq("id", line.product_id);
+            }
           }
         }
       }
