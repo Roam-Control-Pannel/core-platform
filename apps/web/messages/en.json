@@ -822,6 +822,8 @@
       "googleFigure": "Google ★ {rating} ({count})",
       "roamFigure": "Roam ★ {rating} ({count})",
       "yourReview": "Your review",
+      "showMore": "Show more reviews",
+      "loadingMore": "Loading…",
       "write": "Write a review",
       "post": "Post review",
       "update": "Update review",
