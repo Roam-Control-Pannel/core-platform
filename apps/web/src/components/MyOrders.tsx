@@ -16,6 +16,14 @@ import { formatPence } from "../lib/money";
 import { timeAgo } from "../lib/townHall";
 import { formatClock } from "../lib/readyTime";
 
+interface OrderAddress {
+  line1: string;
+  line2: string | null;
+  locality: string | null;
+  postcode: string;
+  notes: string | null;
+}
+
 interface OrderRow {
   id: string;
   venueId: string;
@@ -25,10 +33,14 @@ interface OrderRow {
   kind: string;
   quantity: number;
   amountPence: number;
+  deliveryFeePence: number;
   currency: string;
   status: string;
+  fulfilment: "collection" | "delivery";
   redeemCode: string | null;
   readyAt: string | null;
+  deliveryEtaAt: string | null;
+  deliveryAddress: OrderAddress | null;
   createdAt: string;
 }
 
@@ -38,6 +50,8 @@ const STATUS_KEY: Record<string, { key: string; ok?: boolean }> = {
   pending: { key: "pending" },
   paid: { key: "paid", ok: true },
   ready: { key: "ready", ok: true },
+  out_for_delivery: { key: "outForDelivery", ok: true },
+  delivered: { key: "delivered", ok: true },
   collected: { key: "collected", ok: true },
   redeemed: { key: "redeemed", ok: true },
   refunded: { key: "refunded" },
@@ -112,13 +126,32 @@ export function MyOrders() {
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 16 }}>{formatPence(o.amountPence, o.currency)}</div>
+                    <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 16 }}>{formatPence(o.amountPence + o.deliveryFeePence, o.currency)}</div>
                     <span style={{ display: "inline-block", marginTop: 4, padding: "3px 10px", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 10, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: s.ok ? "var(--success)" : "var(--muted)", background: s.ok ? "var(--success-tint)" : "var(--paper-2)" }}>
                       {s.label}
                     </span>
                   </div>
                 </div>
-                {o.redeemCode ? (
+                {o.fulfilment === "delivery" ? (
+                  <div style={{ marginTop: "var(--space-3)", padding: "10px 14px", borderRadius: 12, border: "1px dashed var(--line)", display: "grid", gap: 6 }}>
+                    {/* Delivery tracking, in place of a collection code. */}
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: o.status === "delivered" ? "var(--success)" : "var(--ink-hi)" }}>
+                      {o.status === "delivered"
+                        ? t("delivery.delivered")
+                        : o.status === "out_for_delivery"
+                          ? t("delivery.onWay")
+                          : o.deliveryEtaAt && (o.status === "paid" || o.status === "ready")
+                            ? t("delivery.eta", { time: formatClock(o.deliveryEtaAt) })
+                            : t("delivery.preparing")}
+                    </div>
+                    {o.deliveryAddress ? (
+                      <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>
+                        {t("delivery.to")}: {o.deliveryAddress.line1}
+                        {o.deliveryAddress.locality ? `, ${o.deliveryAddress.locality}` : ""} · {o.deliveryAddress.postcode}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : o.redeemCode ? (
                   <div style={{ marginTop: "var(--space-3)", padding: "10px 14px", borderRadius: 12, border: "1px dashed var(--line)", display: "grid", gap: 8 }}>
                     {/* Collection ETA / ready signal, above the code (the collection ticket). */}
                     {o.status === "ready" ? (

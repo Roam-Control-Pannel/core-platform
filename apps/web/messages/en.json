@@ -1917,7 +1917,37 @@
     "buy": "Buy",
     "signInToBuy": "Sign in to buy",
     "payoutPending": "Buying through Roam opens once this venue finishes its payout setup — for now, visit or message the venue to purchase.",
-    "paymentsNote": "Payments are handled securely by Stripe. Products are collected in venue; vouchers come with a redeem code in <link>your orders</link>."
+    "paymentsNote": "Payments are handled securely by Stripe. Products are collected in venue; vouchers come with a redeem code in <link>your orders</link>.",
+    "basket": {
+      "title": "Your basket",
+      "add": "Add",
+      "increase": "Add one",
+      "decrease": "Remove one",
+      "subtotal": "Subtotal",
+      "total": "Total",
+      "checkout": "Go to checkout",
+      "opening": "Opening checkout…"
+    },
+    "fulfilment": {
+      "collect": "Collect",
+      "deliver": "Deliver"
+    },
+    "delivery": {
+      "line1": "Address",
+      "line2": "Flat, unit, etc. (optional)",
+      "city": "Town / city",
+      "postcode": "Postcode",
+      "notes": "Notes for the driver (optional)",
+      "check": "Check delivery",
+      "checking": "Checking…",
+      "checkFailed": "Couldn't check delivery — please try again.",
+      "enterAddress": "Enter your address and postcode to check delivery.",
+      "deliverable": "Great — we can deliver here, in about {eta} min.",
+      "minNotMet": "Your basket is under this venue's {min} minimum for delivery.",
+      "notDeliverable": "Sorry, this venue doesn't deliver to that address.",
+      "fee": "Delivery fee",
+      "free": "Free"
+    }
   },
   "myOrders": {
     "signedOutIntro": "Sign in to see your orders.",
@@ -1928,6 +1958,8 @@
       "pending": "Awaiting payment",
       "paid": "Paid",
       "ready": "Ready",
+      "outForDelivery": "Out for delivery",
+      "delivered": "Delivered",
       "collected": "Collected",
       "redeemed": "Redeemed",
       "refunded": "Refunded",
@@ -1935,7 +1967,14 @@
     },
     "readyBy": "Ready by ~{time}",
     "readyNow": "Ready to collect now",
-    "showCode": "Show this code to collect:"
+    "showCode": "Show this code to collect:",
+    "delivery": {
+      "preparing": "Preparing your order for delivery.",
+      "eta": "Estimated delivery by ~{time}",
+      "onWay": "Out for delivery — on its way!",
+      "delivered": "Delivered. Enjoy!",
+      "to": "Deliver to"
+    }
   },
   "friendsList": {
     "fallbackName": "Someone",
@@ -2418,10 +2457,16 @@
       "pending": "pending",
       "paid": "paid",
       "ready": "ready",
+      "outForDelivery": "out for delivery",
+      "delivered": "delivered",
       "collected": "collected",
       "redeemed": "redeemed",
       "refunded": "refunded",
       "canceled": "canceled"
+    },
+    "fulfilment": {
+      "collection": "Collect",
+      "delivery": "Delivery"
     },
     "code": {
       "placeholder": "Redeem a code…",
@@ -2432,11 +2477,15 @@
       "redeemedNote": "✓ Redeemed — {title}"
     },
     "roamFee": "Roam fee {fee}",
+    "inclDelivery": "incl. {fee} delivery",
+    "deliverTo": "Deliver to",
     "codeWord": "code",
     "readyBy": "ready ~{time}",
     "markReady": "Mark ready",
     "markRedeemed": "Mark redeemed",
     "markCollected": "Mark collected",
+    "markOutForDelivery": "Out for delivery",
+    "markDelivered": "Mark delivered",
     "refund": "Refund"
   },
   "businessDashboard": {

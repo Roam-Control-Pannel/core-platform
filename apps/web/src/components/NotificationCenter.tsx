@@ -44,6 +44,8 @@ const GLYPH: Record<string, IconName> = {
   claim_approved: "check",
   claim_rejected: "ban",
   order_received: "bag",
+  order_out_for_delivery: "locate",
+  order_delivered: "check",
   friends_nearby: "locate",
   birthday_offer: "cake",
   // 0103 engagement coverage.
