@@ -31,16 +31,26 @@ interface CollectionSummary {
   prepTimeMins: number;
 }
 
+interface DeliverySummary {
+  deliveryEnabled: boolean;
+  paused: boolean;
+  deliveryFeePence: number;
+  radiusM: number | null;
+}
+
 const F2G_FALLBACK = { brand: "#E8562A", accent: "#1F9D55" };
+const MILE_M = 1609.344;
 
 export function VenueF2GPreview({
   venueId,
   venueName,
   settings,
+  delivery,
 }: {
   venueId: string;
   venueName: string;
   settings: CollectionSummary;
+  delivery?: DeliverySummary;
 }) {
   const t = useTranslations("venueOwnerEditor.foodToGo.preview");
   const trpc = useTrpc();
@@ -117,6 +127,19 @@ export function VenueF2GPreview({
               <Icon name="clock" size={12} strokeWidth={2.5} /> {t("readyIn", { mins: settings.prepTimeMins })}
             </PreviewChip>
           )}
+          {delivery && delivery.deliveryEnabled && !delivery.paused ? (
+            <PreviewChip tone="accent" accent={theme.accent}>
+              <Icon name="bag" size={12} strokeWidth={2.5} />{" "}
+              {delivery.radiusM != null
+                ? t("deliversRadius", {
+                    miles: (delivery.radiusM / MILE_M).toFixed(1),
+                    fee: delivery.deliveryFeePence > 0 ? formatPence(delivery.deliveryFeePence) : t("free"),
+                  })
+                : t("delivers", {
+                    fee: delivery.deliveryFeePence > 0 ? formatPence(delivery.deliveryFeePence) : t("free"),
+                  })}
+            </PreviewChip>
+          ) : null}
         </div>
       </div>
 

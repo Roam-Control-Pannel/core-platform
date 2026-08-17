@@ -18,6 +18,7 @@
 import type { RoamClient } from "@roam/db";
 import { getChannelByKey, isVenueInChannel } from "../channels/index.js";
 import { NI_BOUNDS, inBounds } from "../geocode/index.js";
+import { distanceMetres, type LatLng } from "../geo/index.js";
 
 /** The F2G channel key readiness is measured against. */
 export const F2G_CHANNEL_KEY = "f2g";
@@ -232,6 +233,303 @@ function camelize(dbPatch: Record<string, unknown>): Partial<CollectionSettings>
   if ("collection_instructions" in dbPatch)
     out.collectionInstructions = (dbPatch.collection_instructions as string | null) ?? null;
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Delivery settings (Phase 7)
+// ---------------------------------------------------------------------------
+
+/**
+ * A venue's deliver-to-you capability (venue_delivery_settings, migration 0123). Delivery sits
+ * alongside collection — a venue can offer either, both, or neither. The delivery AREA is a radius
+ * from the venue and/or a postcode allow-list, minus a postcode block-list; the flat fee is the
+ * vendor's to keep (platform commission is on the goods subtotal only).
+ */
+export interface DeliverySettings {
+  deliveryEnabled: boolean;
+  paused: boolean;
+  deliveryFeePence: number;
+  minOrderPence: number;
+  /** Max straight-line distance from the venue, in metres. null = no radius limit (postcode-only). */
+  radiusM: number | null;
+  /** Postcode districts we ALSO deliver to even if outside the radius (e.g. ["BT1","BT2"]). */
+  postcodeAllow: string[];
+  /** Postcode districts we NEVER deliver to even if inside the radius. Block wins over allow. */
+  postcodeBlock: string[];
+  etaMins: number;
+  deliveryNotes: string | null;
+}
+
+/** Defaults a venue with no stored row behaves as (mirrors migration 0123 column defaults). */
+export const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
+  deliveryEnabled: false,
+  paused: false,
+  deliveryFeePence: 0,
+  minOrderPence: 0,
+  radiusM: null,
+  postcodeAllow: [],
+  postcodeBlock: [],
+  etaMins: 45,
+  deliveryNotes: null,
+};
+
+/** Bounds mirrored from the DB check constraints, so the app rejects before Postgres does. */
+export const DELIVERY_FEE_MAX_PENCE = 5_000_000;
+export const MIN_ORDER_MAX_PENCE = 5_000_000;
+export const DELIVERY_RADIUS_MAX_M = 50_000;
+export const DELIVERY_ETA_MIN = 0;
+export const DELIVERY_ETA_MAX = 240;
+export const DELIVERY_NOTES_MAX = 500;
+/** Guard rails on the postcode lists (not DB-enforced; keeps a fat-fingered paste sane). */
+export const POSTCODE_LIST_MAX = 200;
+export const POSTCODE_TOKEN_MAX = 8;
+
+/** A partial owner edit to delivery settings. Each key `| undefined` for exactOptionalPropertyTypes. */
+export interface DeliverySettingsPatch {
+  deliveryEnabled?: boolean | undefined;
+  paused?: boolean | undefined;
+  deliveryFeePence?: number | undefined;
+  minOrderPence?: number | undefined;
+  radiusM?: number | null | undefined;
+  postcodeAllow?: string[] | undefined;
+  postcodeBlock?: string[] | undefined;
+  etaMins?: number | undefined;
+  deliveryNotes?: string | null | undefined;
+}
+
+/** Normalise a postcode to a comparable token: upper-cased, all whitespace removed. */
+export function normalizePostcode(raw: string | null | undefined): string {
+  return (raw ?? "").toUpperCase().replace(/\s+/g, "");
+}
+
+/**
+ * The OUTWARD code of a normalised UK postcode (the district). A UK inward code is always the last
+ * three chars (digit + two letters), so the outward is everything before them: "BT14AB" → "BT1",
+ * "BT145CD" → "BT14". Shorter fragments (a partial the user typed) are returned as-is.
+ */
+export function postcodeOutward(normalised: string): string {
+  return normalised.length > 3 ? normalised.slice(0, -3) : normalised;
+}
+
+/**
+ * Does an allow/block token match a destination's outward code? An alpha-only token is an AREA
+ * ("BT" matches every BT district); a token containing a digit is a specific DISTRICT and must
+ * match exactly ("BT1" matches BT1 but NOT BT14). Both are compared as normalised outward codes.
+ */
+export function postcodeMatches(token: string, destOutward: string): boolean {
+  const t = normalizePostcode(token);
+  if (!t || !destOutward) return false;
+  const tOut = postcodeOutward(t);
+  return /\d/.test(tOut) ? destOutward === tOut : destOutward.startsWith(tOut);
+}
+
+/** Why an address is / isn't deliverable — a stable reason the API and UI can branch on. */
+export type DeliverabilityReason =
+  | "ok"
+  | "delivery_unavailable" // delivery off or paused
+  | "no_destination" // missing destination coordinates
+  | "postcode_blocked" // in the block-list
+  | "outside_ni" // destination is not in Northern Ireland
+  | "outside_area"; // outside the radius and not in the allow-list
+
+export interface DeliverabilityResult {
+  deliverable: boolean;
+  reason: DeliverabilityReason;
+  /** Straight-line venue→destination distance in metres, when coordinates allow it. */
+  distanceM: number | null;
+}
+
+/**
+ * PURE: decide whether a venue can deliver to a destination, given its delivery settings, its own
+ * coordinates, and the (geocoded) destination. Order of precedence:
+ *   1. delivery must be enabled and not paused;
+ *   2. a destination coordinate is required (the checkout geocodes the address);
+ *   3. the block-list wins over everything;
+ *   4. the destination must be inside Northern Ireland (same fence as the supply side);
+ *   5. the allow-list overrides the radius (deliver even if further away);
+ *   6. otherwise it must be within the radius (a null radius with no allow-match ⇒ out of area).
+ * Minimum-order is a basket concern, checked separately at checkout — not here.
+ */
+export function checkDeliverable(args: {
+  settings: DeliverySettings;
+  venue: LatLng;
+  destLat: number | null | undefined;
+  destLng: number | null | undefined;
+  destPostcode: string | null | undefined;
+}): DeliverabilityResult {
+  const { settings, venue } = args;
+  if (!settings.deliveryEnabled || settings.paused) {
+    return { deliverable: false, reason: "delivery_unavailable", distanceM: null };
+  }
+  const hasCoords = typeof args.destLat === "number" && typeof args.destLng === "number";
+  const destOutward = postcodeOutward(normalizePostcode(args.destPostcode));
+
+  if (destOutward && settings.postcodeBlock.some((t) => postcodeMatches(t, destOutward))) {
+    return { deliverable: false, reason: "postcode_blocked", distanceM: null };
+  }
+  if (!hasCoords) return { deliverable: false, reason: "no_destination", distanceM: null };
+  const dest: LatLng = { lat: args.destLat as number, lng: args.destLng as number };
+  if (!inBounds(dest.lat, dest.lng, NI_BOUNDS)) {
+    return { deliverable: false, reason: "outside_ni", distanceM: null };
+  }
+  const distanceM = Math.round(distanceMetres(venue, dest));
+  if (destOutward && settings.postcodeAllow.some((t) => postcodeMatches(t, destOutward))) {
+    return { deliverable: true, reason: "ok", distanceM };
+  }
+  if (settings.radiusM !== null && distanceM <= settings.radiusM) {
+    return { deliverable: true, reason: "ok", distanceM };
+  }
+  return { deliverable: false, reason: "outside_area", distanceM };
+}
+
+/** Map a venue_delivery_settings row to the domain shape. */
+export function rowToDeliverySettings(row: any): DeliverySettings {
+  return {
+    deliveryEnabled: !!row.delivery_enabled,
+    paused: !!row.paused,
+    deliveryFeePence: typeof row.delivery_fee_pence === "number" ? row.delivery_fee_pence : 0,
+    minOrderPence: typeof row.min_order_pence === "number" ? row.min_order_pence : 0,
+    radiusM: typeof row.radius_m === "number" ? row.radius_m : null,
+    postcodeAllow: Array.isArray(row.postcode_allow) ? row.postcode_allow : [],
+    postcodeBlock: Array.isArray(row.postcode_block) ? row.postcode_block : [],
+    etaMins: typeof row.eta_mins === "number" ? row.eta_mins : 45,
+    deliveryNotes: row.delivery_notes ?? null,
+  };
+}
+
+/** Normalise, de-dupe and cap a postcode list into comparable tokens (drops empties). */
+function sanitizePostcodeList(list: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const tok = normalizePostcode(raw).slice(0, POSTCODE_TOKEN_MAX);
+    if (!tok || seen.has(tok)) continue;
+    seen.add(tok);
+    out.push(tok);
+    if (out.length >= POSTCODE_LIST_MAX) break;
+  }
+  return out;
+}
+
+/** Clamp an integer pence value into [0, max], throwing on a non-integer (a clear API contract). */
+function clampPence(n: number, max: number, label: string): number {
+  if (!Number.isInteger(n)) throw new Error(`${label} must be an integer number of pence`);
+  return Math.min(max, Math.max(0, n));
+}
+
+/**
+ * PURE: validate + normalise an owner's delivery patch into a snake_case DB patch. Clamps money and
+ * ETA into range, normalises the postcode lists, trims notes (empty → null). Throws on a non-integer
+ * money/eta/radius value. Returns only the keys the caller actually set (mirrors sanitizeCollectionPatch).
+ */
+export function sanitizeDeliveryPatch(patch: DeliverySettingsPatch): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (patch.deliveryEnabled !== undefined) out.delivery_enabled = !!patch.deliveryEnabled;
+  if (patch.paused !== undefined) out.paused = !!patch.paused;
+  if (patch.deliveryFeePence !== undefined)
+    out.delivery_fee_pence = clampPence(patch.deliveryFeePence, DELIVERY_FEE_MAX_PENCE, "deliveryFeePence");
+  if (patch.minOrderPence !== undefined)
+    out.min_order_pence = clampPence(patch.minOrderPence, MIN_ORDER_MAX_PENCE, "minOrderPence");
+  if (patch.radiusM !== undefined) {
+    if (patch.radiusM === null) out.radius_m = null;
+    else {
+      if (!Number.isInteger(patch.radiusM)) throw new Error("radiusM must be an integer number of metres");
+      out.radius_m = Math.min(DELIVERY_RADIUS_MAX_M, Math.max(0, patch.radiusM));
+    }
+  }
+  if (patch.postcodeAllow !== undefined) out.postcode_allow = sanitizePostcodeList(patch.postcodeAllow);
+  if (patch.postcodeBlock !== undefined) out.postcode_block = sanitizePostcodeList(patch.postcodeBlock);
+  if (patch.etaMins !== undefined) {
+    if (!Number.isInteger(patch.etaMins)) throw new Error("etaMins must be an integer number of minutes");
+    out.eta_mins = Math.min(DELIVERY_ETA_MAX, Math.max(DELIVERY_ETA_MIN, patch.etaMins));
+  }
+  if (patch.deliveryNotes !== undefined) {
+    const v = patch.deliveryNotes;
+    const trimmed = typeof v === "string" ? v.trim().slice(0, DELIVERY_NOTES_MAX) : "";
+    out.delivery_notes = trimmed.length ? trimmed : null;
+  }
+  return out;
+}
+
+/** Read a venue's delivery settings, or the defaults (delivery off) if never configured. */
+export async function getDeliverySettings(
+  client: RoamClient,
+  venueId: string,
+): Promise<DeliverySettings> {
+  const { data, error } = await (client as any)
+    .from("venue_delivery_settings")
+    .select(
+      "delivery_enabled, paused, delivery_fee_pence, min_order_pence, radius_m, postcode_allow, postcode_block, eta_mins, delivery_notes",
+    )
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  if (error) throw new Error(`f2g: delivery settings read failed: ${error.message}`);
+  return data ? rowToDeliverySettings(data) : { ...DEFAULT_DELIVERY_SETTINGS };
+}
+
+/**
+ * Upsert a venue's delivery settings from an owner patch (RLS gates the write to the claimed
+ * venue's owner). Returns the settings as they now stand.
+ */
+export async function upsertDeliverySettings(
+  client: RoamClient,
+  venueId: string,
+  patch: DeliverySettingsPatch,
+): Promise<DeliverySettings> {
+  const dbPatch = sanitizeDeliveryPatch(patch);
+  const { data, error } = await (client as any)
+    .from("venue_delivery_settings")
+    .upsert({ venue_id: venueId, ...dbPatch }, { onConflict: "venue_id" })
+    .select(
+      "delivery_enabled, paused, delivery_fee_pence, min_order_pence, radius_m, postcode_allow, postcode_block, eta_mins, delivery_notes",
+    )
+    .maybeSingle();
+  if (error) throw new Error(`f2g: delivery settings write failed: ${error.message}`);
+  return data ? rowToDeliverySettings(data) : { ...DEFAULT_DELIVERY_SETTINGS };
+}
+
+// ---------------------------------------------------------------------------
+// Order totals (goods subtotal + delivery fee; commission on goods only)
+// ---------------------------------------------------------------------------
+
+/** One priced basket line (a snapshot of unit price × quantity). */
+export interface OrderLine {
+  unitPricePence: number;
+  quantity: number;
+}
+
+/** The money breakdown of an order: goods + delivery, with commission taken on goods only. */
+export interface OrderTotals {
+  goodsSubtotalPence: number;
+  deliveryFeePence: number;
+  /** Platform commission — computed on the goods subtotal ONLY, never on the delivery fee. */
+  applicationFeePence: number;
+  /** What the buyer pays: goods + delivery. */
+  totalPence: number;
+}
+
+/**
+ * PURE: total up a basket. The platform commission (`applicationFeePence`) is a fraction of the
+ * GOODS subtotal only, so the vendor keeps the whole delivery fee. `applicationFeeBps` is the
+ * platform fee in basis points (e.g. 500 = 5%). Negative/fractional inputs are floored to 0/ints.
+ */
+export function computeOrderTotals(
+  lines: readonly OrderLine[],
+  deliveryFeePence: number,
+  applicationFeeBps: number,
+): OrderTotals {
+  const goodsSubtotalPence = lines.reduce(
+    (sum, l) => sum + Math.max(0, Math.round(l.unitPricePence)) * Math.max(0, Math.round(l.quantity)),
+    0,
+  );
+  const delivery = Math.max(0, Math.round(deliveryFeePence));
+  const applicationFeePence = Math.round((goodsSubtotalPence * Math.max(0, applicationFeeBps)) / 10_000);
+  return {
+    goodsSubtotalPence,
+    deliveryFeePence: delivery,
+    applicationFeePence,
+    totalPence: goodsSubtotalPence + delivery,
+  };
 }
 
 // ---------------------------------------------------------------------------

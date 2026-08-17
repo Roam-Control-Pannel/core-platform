@@ -42,6 +42,18 @@ interface CollectionSettings {
   collectionInstructions: string | null;
 }
 
+interface DeliverySettings {
+  deliveryEnabled: boolean;
+  paused: boolean;
+  deliveryFeePence: number;
+  minOrderPence: number;
+  radiusM: number | null;
+  postcodeAllow: string[];
+  postcodeBlock: string[];
+  etaMins: number;
+  deliveryNotes: string | null;
+}
+
 const CHECKLIST_ORDER: ChecklistKey[] = [
   "claimed",
   "tagged",
@@ -63,16 +75,19 @@ export function VenueFoodToGo({
   const trpc = useTrpc();
   const [status, setStatus] = useState<ListingStatus | null>(null);
   const [settings, setSettings] = useState<CollectionSettings | null>(null);
+  const [delivery, setDelivery] = useState<DeliverySettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listBusy, setListBusy] = useState(false);
 
   const reload = useCallback(async () => {
-    const [s, c] = await Promise.all([
+    const [s, c, d] = await Promise.all([
       trpc.f2g.listingStatus.query({ venueId }),
       trpc.f2g.collectionSettings.query({ venueId }),
+      trpc.f2g.deliverySettings.query({ venueId }),
     ]);
     setStatus(s as ListingStatus);
     setSettings(c as CollectionSettings);
+    setDelivery(d as DeliverySettings);
   }, [trpc, venueId]);
 
   useEffect(() => {
@@ -110,7 +125,7 @@ export function VenueFoodToGo({
       </p>
     );
   }
-  if (!status || !settings) {
+  if (!status || !settings || !delivery) {
     return <div style={{ height: 320, borderRadius: 20, background: "var(--paper-2)" }} aria-hidden />;
   }
 
@@ -221,6 +236,26 @@ export function VenueFoodToGo({
         />
       </Card>
 
+      {/* Delivery settings — optional; sits alongside collection. */}
+      <Card style={{ padding: "var(--space-4) var(--space-5)" }}>
+        <header style={{ marginBottom: "var(--space-4)" }}>
+          <h3 style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 17, margin: 0 }}>
+            {t("delivery.title")}
+          </h3>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>
+            {t("delivery.subtitle")}
+          </p>
+        </header>
+        <DeliveryForm
+          venueId={venueId}
+          initial={delivery}
+          onSaved={(next) => {
+            setDelivery(next);
+            void reload();
+          }}
+        />
+      </Card>
+
       {/* Storefront preview — how the listing looks to customers, in the f2g palette. */}
       <Card style={{ padding: "var(--space-4) var(--space-5)" }}>
         <header style={{ marginBottom: "var(--space-4)" }}>
@@ -231,7 +266,7 @@ export function VenueFoodToGo({
             {t("preview.subtitle")}
           </p>
         </header>
-        <VenueF2GPreview venueId={venueId} venueName={venueName} settings={settings} />
+        <VenueF2GPreview venueId={venueId} venueName={venueName} settings={settings} delivery={delivery} />
       </Card>
     </div>
   );
@@ -354,6 +389,258 @@ function CollectionForm({
         {saved ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--success)" }}>
             <Icon name="check" size={14} strokeWidth={3} /> {t("collection.saved")}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ── Delivery settings form ───────────────────────────────────────────────────────────── */
+
+const MILE_M = 1609.344;
+const penceToPounds = (p: number): string => (p / 100).toFixed(2);
+const poundsToPence = (s: string): number => Math.max(0, Math.round((Number(s) || 0) * 100));
+const metresToMiles = (m: number): string => (m / MILE_M).toFixed(1);
+const milesToMetres = (s: string): number => Math.max(0, Math.round((Number(s) || 0) * MILE_M));
+const splitPostcodes = (s: string): string[] =>
+  s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+const twoUp: React.CSSProperties = {
+  display: "grid",
+  gap: "var(--space-4)",
+  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+};
+
+function DeliveryForm({
+  venueId,
+  initial,
+  onSaved,
+}: {
+  venueId: string;
+  initial: DeliverySettings;
+  onSaved: (next: DeliverySettings) => void;
+}) {
+  const t = useTranslations("venueOwnerEditor.foodToGo");
+  const trpc = useTrpc();
+  const [enabled, setEnabled] = useState(initial.deliveryEnabled);
+  const [paused, setPaused] = useState(initial.paused);
+  const [fee, setFee] = useState(penceToPounds(initial.deliveryFeePence));
+  const [minOrder, setMinOrder] = useState(penceToPounds(initial.minOrderPence));
+  const [radius, setRadius] = useState(initial.radiusM != null ? metresToMiles(initial.radiusM) : "");
+  const [allow, setAllow] = useState(initial.postcodeAllow.join(", "));
+  const [block, setBlock] = useState(initial.postcodeBlock.join(", "));
+  const [eta, setEta] = useState(String(initial.etaMins));
+  const [notes, setNotes] = useState(initial.deliveryNotes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const dirty = () => setSaved(false);
+
+  const save = useCallback(async () => {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const res = await trpc.f2g.setDeliverySettings.mutate({
+        venueId,
+        deliveryEnabled: enabled,
+        paused,
+        deliveryFeePence: poundsToPence(fee),
+        minOrderPence: poundsToPence(minOrder),
+        radiusM: radius.trim() === "" ? null : milesToMetres(radius),
+        postcodeAllow: splitPostcodes(allow),
+        postcodeBlock: splitPostcodes(block),
+        etaMins: Math.min(240, Math.max(0, Math.round(Number(eta) || 0))),
+        deliveryNotes: notes.trim() ? notes.trim() : null,
+      });
+      const s = res.settings as DeliverySettings;
+      onSaved(s);
+      // Reflect the server-normalised values back into the form.
+      setFee(penceToPounds(s.deliveryFeePence));
+      setMinOrder(penceToPounds(s.minOrderPence));
+      setRadius(s.radiusM != null ? metresToMiles(s.radiusM) : "");
+      setAllow(s.postcodeAllow.join(", "));
+      setBlock(s.postcodeBlock.join(", "));
+      setEta(String(s.etaMins));
+      setSaved(true);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : t("delivery.error"));
+    } finally {
+      setSaving(false);
+    }
+  }, [trpc, venueId, enabled, paused, fee, minOrder, radius, allow, block, eta, notes, onSaved, t]);
+
+  return (
+    <div style={{ display: "grid", gap: "var(--space-4)" }}>
+      <ToggleRow
+        label={t("delivery.enabled")}
+        hint={t("delivery.enabledHint")}
+        on={enabled}
+        onToggle={() => {
+          setEnabled((v) => !v);
+          dirty();
+        }}
+      />
+      <ToggleRow
+        label={t("delivery.paused")}
+        hint={t("delivery.pausedHint")}
+        on={paused}
+        onToggle={() => {
+          setPaused((v) => !v);
+          dirty();
+        }}
+      />
+
+      <div style={twoUp}>
+        <div>
+          <label style={labelStyle} htmlFor="f2g-fee">
+            {t("delivery.fee")}
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, color: "var(--ink-2)" }}>£</span>
+            <input
+              id="f2g-fee"
+              inputMode="decimal"
+              value={fee}
+              onChange={(e) => {
+                setFee(e.target.value.replace(/[^\d.]/g, "").slice(0, 8));
+                dirty();
+              }}
+              style={{ ...field, width: 110 }}
+            />
+          </div>
+          <p style={hintStyle}>{t("delivery.feeHint")}</p>
+        </div>
+        <div>
+          <label style={labelStyle} htmlFor="f2g-min">
+            {t("delivery.minOrder")}
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14, color: "var(--ink-2)" }}>£</span>
+            <input
+              id="f2g-min"
+              inputMode="decimal"
+              value={minOrder}
+              onChange={(e) => {
+                setMinOrder(e.target.value.replace(/[^\d.]/g, "").slice(0, 8));
+                dirty();
+              }}
+              style={{ ...field, width: 110 }}
+            />
+          </div>
+          <p style={hintStyle}>{t("delivery.minOrderHint")}</p>
+        </div>
+      </div>
+
+      <div>
+        <label style={labelStyle} htmlFor="f2g-radius">
+          {t("delivery.radius")}
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            id="f2g-radius"
+            inputMode="decimal"
+            value={radius}
+            placeholder={t("delivery.radiusPlaceholder")}
+            onChange={(e) => {
+              setRadius(e.target.value.replace(/[^\d.]/g, "").slice(0, 5));
+              dirty();
+            }}
+            style={{ ...field, width: 110 }}
+          />
+          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{t("delivery.radiusUnit")}</span>
+        </div>
+        <p style={hintStyle}>{t("delivery.radiusHint")}</p>
+      </div>
+
+      <div style={twoUp}>
+        <div>
+          <label style={labelStyle} htmlFor="f2g-allow">
+            {t("delivery.postcodeAllow")}
+          </label>
+          <input
+            id="f2g-allow"
+            value={allow}
+            placeholder="BT1, BT2, BT9"
+            onChange={(e) => {
+              setAllow(e.target.value.toUpperCase());
+              dirty();
+            }}
+            style={field}
+          />
+          <p style={hintStyle}>{t("delivery.postcodeAllowHint")}</p>
+        </div>
+        <div>
+          <label style={labelStyle} htmlFor="f2g-block">
+            {t("delivery.postcodeBlock")}
+          </label>
+          <input
+            id="f2g-block"
+            value={block}
+            placeholder="BT48"
+            onChange={(e) => {
+              setBlock(e.target.value.toUpperCase());
+              dirty();
+            }}
+            style={field}
+          />
+          <p style={hintStyle}>{t("delivery.postcodeBlockHint")}</p>
+        </div>
+      </div>
+
+      <div>
+        <label style={labelStyle} htmlFor="f2g-eta">
+          {t("delivery.eta")}
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            id="f2g-eta"
+            inputMode="numeric"
+            value={eta}
+            onChange={(e) => {
+              setEta(e.target.value.replace(/[^\d]/g, "").slice(0, 3));
+              dirty();
+            }}
+            style={{ ...field, width: 96 }}
+          />
+          <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{t("delivery.etaUnit")}</span>
+        </div>
+        <p style={hintStyle}>{t("delivery.etaHint", { mins: Math.max(0, Math.round(Number(eta) || 0)) })}</p>
+      </div>
+
+      <div>
+        <label style={labelStyle} htmlFor="f2g-notes">
+          {t("delivery.notes")}
+        </label>
+        <textarea
+          id="f2g-notes"
+          value={notes}
+          maxLength={500}
+          placeholder={t("delivery.notesPlaceholder")}
+          onChange={(e) => {
+            setNotes(e.target.value);
+            dirty();
+          }}
+          rows={2}
+          style={{ ...field, resize: "vertical", minHeight: 56 }}
+        />
+        <p style={hintStyle}>{t("delivery.notesHint")}</p>
+      </div>
+
+      {error ? (
+        <p role="alert" style={{ margin: 0, fontSize: 13, color: "var(--crimson-700)" }}>
+          {error}
+        </p>
+      ) : null}
+
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <Button variant="pri" onClick={save} disabled={saving}>
+          {saving ? t("delivery.saving") : t("delivery.save")}
+        </Button>
+        {saved ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--success)" }}>
+            <Icon name="check" size={14} strokeWidth={3} /> {t("delivery.saved")}
           </span>
         ) : null}
       </div>
