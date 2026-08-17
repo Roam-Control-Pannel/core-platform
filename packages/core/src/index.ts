@@ -31,6 +31,12 @@ export type {
   CollectionSettingsPatch,
   ListingChecklist,
   ListingStatus,
+  DeliverySettings,
+  DeliverySettingsPatch,
+  DeliverabilityResult,
+  DeliverabilityReason,
+  OrderLine,
+  OrderTotals,
 } from "./f2g/index.js";
 export * as offers from "./offers/index.js";
 export * as suggestions from "./suggestions/index.js";

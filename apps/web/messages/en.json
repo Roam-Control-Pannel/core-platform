@@ -2137,6 +2137,36 @@
         "saved": "Saved",
         "error": "Couldn't save. Please try again."
       },
+      "delivery": {
+        "title": "Delivery",
+        "subtitle": "Offer delivery alongside collection. Available to Northern Ireland venues.",
+        "enabled": "Offer delivery",
+        "enabledHint": "Let customers have their order delivered instead of collecting.",
+        "paused": "Pause delivery",
+        "pausedHint": "Temporarily stop taking delivery orders — e.g. no driver right now. Collection stays on.",
+        "fee": "Delivery fee",
+        "feeHint": "A flat fee added to the order. You keep it in full — commission is on the food only.",
+        "minOrder": "Minimum order",
+        "minOrderHint": "Smallest order (before the delivery fee) you'll deliver. Leave 0 for no minimum.",
+        "radius": "Delivery radius",
+        "radiusUnit": "miles",
+        "radiusPlaceholder": "e.g. 3",
+        "radiusHint": "How far you'll deliver from your venue. Leave blank to deliver by postcode only.",
+        "postcodeAllow": "Also deliver to",
+        "postcodeAllowHint": "Postcode districts you'll deliver to even if outside the radius (e.g. BT1, BT2).",
+        "postcodeBlock": "Never deliver to",
+        "postcodeBlockHint": "Postcode districts you won't deliver to, even inside the radius (e.g. BT48).",
+        "eta": "Typical delivery time",
+        "etaUnit": "minutes",
+        "etaHint": "Roughly how long from order to delivered. Shown to customers as “~{mins} min”.",
+        "notes": "Delivery note",
+        "notesPlaceholder": "e.g. We deliver Fri–Sun evenings",
+        "notesHint": "Optional note shown to customers. Kept short.",
+        "save": "Save delivery settings",
+        "saving": "Saving…",
+        "saved": "Saved",
+        "error": "Couldn't save. Please try again."
+      },
       "disabled": {
         "title": "Food to Go isn't switched on yet",
         "body": "This marketplace is coming soon. You'll be able to list your venue here when it launches."
@@ -2151,7 +2181,9 @@
         "empty": "Add menu items on the Shop tab to see your storefront.",
         "soldOut": "Sold out",
         "voucher": "Voucher",
-        "free": "Free"
+        "free": "Free",
+        "delivers": "Delivers · {fee}",
+        "deliversRadius": "Delivers within {miles} mi · {fee}"
       }
     },
     "notifyCard": {

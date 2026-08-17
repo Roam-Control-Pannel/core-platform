@@ -25,6 +25,19 @@ const collectionPatch = {
   collectionInstructions: z.string().trim().max(f2g.COLLECTION_INSTRUCTIONS_MAX).nullish(),
 };
 
+const deliveryPatch = {
+  deliveryEnabled: z.boolean().optional(),
+  paused: z.boolean().optional(),
+  deliveryFeePence: z.number().int().min(0).max(f2g.DELIVERY_FEE_MAX_PENCE).optional(),
+  minOrderPence: z.number().int().min(0).max(f2g.MIN_ORDER_MAX_PENCE).optional(),
+  // null clears the radius (postcode-only area); a number is the metre radius.
+  radiusM: z.number().int().min(0).max(f2g.DELIVERY_RADIUS_MAX_M).nullish(),
+  postcodeAllow: z.array(z.string().trim().max(f2g.POSTCODE_TOKEN_MAX)).max(f2g.POSTCODE_LIST_MAX).optional(),
+  postcodeBlock: z.array(z.string().trim().max(f2g.POSTCODE_TOKEN_MAX)).max(f2g.POSTCODE_LIST_MAX).optional(),
+  etaMins: z.number().int().min(f2g.DELIVERY_ETA_MIN).max(f2g.DELIVERY_ETA_MAX).optional(),
+  deliveryNotes: z.string().trim().max(f2g.DELIVERY_NOTES_MAX).nullish(),
+};
+
 export const f2gRouter = router({
   /** Whether the Food to Go feature is live. Public: the shell reads it to show/hide the surface. */
   config: publicProcedure.query(async ({ ctx }) => {
@@ -65,6 +78,42 @@ export const f2gRouter = router({
         return { ok: true as const, settings };
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to save collection settings.";
+        throw new TRPCError({
+          code: /row-level security/i.test(msg) ? "FORBIDDEN" : "BAD_REQUEST",
+          message: /row-level security/i.test(msg)
+            ? "You can only edit a venue you own and have claimed."
+            : msg,
+        });
+      }
+    }),
+
+  /** A venue's delivery settings (or the defaults — delivery off — if never configured). Public. */
+  deliverySettings: publicProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      return f2g.getDeliverySettings(ctx.db, input.venueId);
+    }),
+
+  /**
+   * Owner-writes their venue's delivery settings. RLS on venue_delivery_settings scopes the write
+   * to the claimed venue's owner; the NI region gate matches setCollectionSettings (delivery is the
+   * same NI-only marketplace, so a business outside Northern Ireland can never enable it).
+   */
+  setDeliverySettings: protectedProcedure
+    .input(z.object({ venueId: z.string().uuid(), ...deliveryPatch }))
+    .mutation(async ({ ctx, input }) => {
+      const { venueId, ...patch } = input;
+      if (!(await f2g.isVenueInFoodToGoRegion(ctx.db, venueId))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Food to Go is only available to venues in Northern Ireland.",
+        });
+      }
+      try {
+        const settings = await f2g.upsertDeliverySettings(ctx.db, venueId, patch);
+        return { ok: true as const, settings };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to save delivery settings.";
         throw new TRPCError({
           code: /row-level security/i.test(msg) ? "FORBIDDEN" : "BAD_REQUEST",
           message: /row-level security/i.test(msg)
