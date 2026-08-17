@@ -246,6 +246,11 @@ export function VenueFoodToGo({
             {t("delivery.subtitle")}
           </p>
         </header>
+        <OrderReadinessNote
+          paymentsEnabled={status.paymentsEnabled}
+          hasActiveProduct={status.hasActiveProduct}
+          onNavigate={onNavigate}
+        />
         <DeliveryForm
           venueId={venueId}
           initial={delivery}
@@ -645,6 +650,63 @@ function DeliveryForm({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/* ── Order-readiness note ─────────────────────────────────────────────────────────────── */
+
+/**
+ * A plain-language reminder that taking ANY order (collection or delivery) needs two things beyond
+ * the settings on this page: online payments switched on, and at least one live menu item. Shown in
+ * the delivery card so a vendor who's just turned delivery on isn't confused when orders can't be
+ * placed. Reuses the listing-status booleans; each unmet prerequisite links to the Shop tab to fix.
+ */
+function OrderReadinessNote({
+  paymentsEnabled,
+  hasActiveProduct,
+  onNavigate,
+}: {
+  paymentsEnabled: boolean;
+  hasActiveProduct: boolean;
+  onNavigate: (tab: "shop") => void;
+}) {
+  const t = useTranslations("venueOwnerEditor.foodToGo");
+  if (paymentsEnabled && hasActiveProduct) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "var(--space-4)", fontSize: 13, color: "var(--success)" }}>
+        <Icon name="check" size={15} strokeWidth={3} /> {t("orderReady.ready")}
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginBottom: "var(--space-4)", padding: "12px 14px", borderRadius: 12, background: "var(--paper-2)", border: "1px solid var(--line)" }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{t("orderReady.title")}</div>
+      <p style={{ margin: "3px 0 8px", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45 }}>{t("orderReady.body")}</p>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
+        {!paymentsEnabled ? (
+          <PrereqRow label={t("orderReady.payments")} fix={t("orderReady.fixPayments")} onFix={() => onNavigate("shop")} />
+        ) : null}
+        {!hasActiveProduct ? (
+          <PrereqRow label={t("orderReady.menu")} fix={t("orderReady.fixMenu")} onFix={() => onNavigate("shop")} />
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+function PrereqRow({ label, fix, onFix }: { label: string; fix: string; onFix: () => void }) {
+  return (
+    <li style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--ink-2)" }}>
+      <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: "var(--crimson)", flexShrink: 0 }} />
+      <span style={{ flex: 1 }}>{label}</span>
+      <button
+        type="button"
+        onClick={onFix}
+        style={{ all: "unset", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--crimson-700)", whiteSpace: "nowrap" }}
+      >
+        {fix} <span aria-hidden>→</span>
+      </button>
+    </li>
   );
 }
 

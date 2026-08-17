@@ -115,8 +115,12 @@ function loadEnv(): ApiEnv {
         process.env.WEB_ORIGIN ??
         (process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:3000").split(",")[0]!.trim(),
       // Platform commission in basis points (500 = 5%). Read at charge time, so tuning it is
-      // an env change, never a deploy of new code.
-      applicationFeeBps: Number(process.env.PLATFORM_FEE_BPS ?? "500"),
+      // an env change, never a deploy of new code. Guard a malformed value back to 5% so a typo
+      // can't ship a NaN application fee that Stripe rejects only at the point of sale.
+      applicationFeeBps: (() => {
+        const n = Number(process.env.PLATFORM_FEE_BPS ?? "500");
+        return Number.isFinite(n) && n >= 0 ? n : 500;
+      })(),
     },
   };
 }
@@ -387,87 +391,97 @@ export async function handler(request: Request): Promise<Response> {
           .update({ status: "paid", stripe_payment_intent_id: session.payment_intent ?? null })
           .eq("id", orderId)
           .eq("status", "pending")
-          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, fulfilment_type, amount_pence")) as {
-          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; fulfilment_type: string | null; amount_pence: number }[] | null;
+          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, fulfilment_type, amount_pence, delivery_fee_pence")) as {
+          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; fulfilment_type: string | null; amount_pence: number; delivery_fee_pence: number | null }[] | null;
         };
         const order = updated?.[0];
         if (order) {
-          // The marketplace nervous system: the sale lands in the venue's Activity feed, and
-          // the buyer's bell confirms payment (with the voucher pointer where relevant).
-          // Both best-effort — a failed insert never breaks payment confirmation.
-          const pounds = `£${(order.amount_pence / 100).toFixed(order.amount_pence % 100 === 0 ? 0 : 2)}`;
-          await service.from("venue_activity").insert({
-            venue_id: order.venue_id,
-            type: "sale",
-            actor_id: order.buyer_id,
-            payload: { orderId: order.id, offerTitle: order.product_title, amountPence: order.amount_pence },
-          });
-          if (order.buyer_id) {
-            await service.from("notifications").insert({
-              recipient_id: order.buyer_id,
-              type: "order_paid",
-              payload: {
-                text:
-                  order.product_kind === "service"
-                    ? `Payment confirmed — “${order.product_title}” (${pounds}). Your redeem code is in Your orders.`
-                    : order.fulfilment_type === "delivery"
-                      ? `Payment confirmed — “${order.product_title}” (${pounds}). We'll let you know when it's on its way.`
-                      : `Payment confirmed — “${order.product_title}” (${pounds}). Collect it in venue.`,
-                href: "/orders",
-              },
-            });
-            // A web push to match the bell row (best-effort — never breaks the webhook).
-            try {
-              await pushToProfileIds(escalateToService(env), env.vapid, [order.buyer_id], {
-                url: "/orders",
-                title: "Order confirmed",
-                body: `“${order.product_title}” (${pounds}) — we'll let you know when it's ready.`,
-              });
-            } catch {
-              /* push is best-effort */
-            }
-          }
-          // The venue owner's bell: "you made a sale". Best-effort — never breaks the webhook.
-          const { data: ownerRow } = (await service
-            .from("venues")
-            .select("owner_id")
-            .eq("id", order.venue_id)
-            .maybeSingle()) as { data: { owner_id: string | null } | null };
-          if (ownerRow?.owner_id && ownerRow.owner_id !== order.buyer_id) {
-            await service.from("notifications").insert({
-              recipient_id: ownerRow.owner_id,
-              type: "order_received",
-              payload: { text: `New order — “${order.product_title}” (${pounds}).`, href: "/dashboard" },
-            });
-          }
-        }
-        if (order) {
-          // Decrement tracked stock. Cart orders (Food to Go) carry order_items — decrement each
-          // line; the legacy single-item checkout has no items rows, so fall back to the header
-          // product. Idempotency of the paid transition above means this runs once per order.
-          const { data: items } = (await service
-            .from("order_items")
-            .select("product_id, quantity")
-            .eq("order_id", order.id)) as { data: { product_id: string | null; quantity: number }[] | null };
-          const toDecrement =
-            items && items.length > 0
-              ? items
-              : order.product_id
-                ? [{ product_id: order.product_id, quantity: order.quantity }]
-                : [];
-          for (const line of toDecrement) {
-            if (!line.product_id) continue;
-            const { data: prod } = (await service
-              .from("venue_products")
-              .select("stock")
-              .eq("id", line.product_id)
-              .maybeSingle()) as { data: { stock: number | null } | null };
-            if (prod && prod.stock != null) {
-              await service
+          // What the buyer actually paid = goods subtotal + any delivery fee. Cart orders store the
+          // two separately (amount_pence is goods-only); a collection/single-item order has no fee.
+          const totalPence = order.amount_pence + (order.delivery_fee_pence ?? 0);
+          const pounds = `£${(totalPence / 100).toFixed(totalPence % 100 === 0 ? 0 : 2)}`;
+
+          // Decrement tracked stock FIRST — the money-adjacent side effect. Cart orders carry
+          // order_items (decrement each line); the legacy single-item checkout has none, so fall
+          // back to the header product. Wrapped so a transient failure never 500s the webhook —
+          // which would make Stripe retry, find the order already paid, and skip stock entirely.
+          try {
+            const { data: items } = (await service
+              .from("order_items")
+              .select("product_id, quantity")
+              .eq("order_id", order.id)) as { data: { product_id: string | null; quantity: number }[] | null };
+            const toDecrement =
+              items && items.length > 0
+                ? items
+                : order.product_id
+                  ? [{ product_id: order.product_id, quantity: order.quantity }]
+                  : [];
+            for (const line of toDecrement) {
+              if (!line.product_id) continue;
+              const { data: prod } = (await service
                 .from("venue_products")
-                .update({ stock: Math.max(0, prod.stock - line.quantity) })
-                .eq("id", line.product_id);
+                .select("stock")
+                .eq("id", line.product_id)
+                .maybeSingle()) as { data: { stock: number | null } | null };
+              if (prod && prod.stock != null) {
+                await service
+                  .from("venue_products")
+                  .update({ stock: Math.max(0, prod.stock - line.quantity) })
+                  .eq("id", line.product_id);
+              }
             }
+          } catch {
+            /* stock decrement is best-effort — never fail payment confirmation */
+          }
+
+          // The marketplace nervous system: the sale lands in the venue's Activity feed, and the
+          // buyer's bell confirms payment. All best-effort — wrapped so an insert failure can't 500
+          // the webhook (same retry trap as the stock note above).
+          try {
+            await service.from("venue_activity").insert({
+              venue_id: order.venue_id,
+              type: "sale",
+              actor_id: order.buyer_id,
+              payload: { orderId: order.id, offerTitle: order.product_title, amountPence: totalPence },
+            });
+            if (order.buyer_id) {
+              await service.from("notifications").insert({
+                recipient_id: order.buyer_id,
+                type: "order_paid",
+                payload: {
+                  text:
+                    order.product_kind === "service"
+                      ? `Payment confirmed — “${order.product_title}” (${pounds}). Your redeem code is in Your orders.`
+                      : order.fulfilment_type === "delivery"
+                        ? `Payment confirmed — “${order.product_title}” (${pounds}). We'll let you know when it's on its way.`
+                        : `Payment confirmed — “${order.product_title}” (${pounds}). Collect it in venue.`,
+                  href: "/orders",
+                },
+              });
+              try {
+                await pushToProfileIds(escalateToService(env), env.vapid, [order.buyer_id], {
+                  url: "/orders",
+                  title: "Order confirmed",
+                  body: `“${order.product_title}” (${pounds}) — we'll let you know when it's ready.`,
+                });
+              } catch {
+                /* push is best-effort */
+              }
+            }
+            const { data: ownerRow } = (await service
+              .from("venues")
+              .select("owner_id")
+              .eq("id", order.venue_id)
+              .maybeSingle()) as { data: { owner_id: string | null } | null };
+            if (ownerRow?.owner_id && ownerRow.owner_id !== order.buyer_id) {
+              await service.from("notifications").insert({
+                recipient_id: ownerRow.owner_id,
+                type: "order_received",
+                payload: { text: `New order — “${order.product_title}” (${pounds}).`, href: "/dashboard" },
+              });
+            }
+          } catch {
+            /* activity + notifications are best-effort — never fail payment confirmation */
           }
         }
       }
