@@ -2208,6 +2208,15 @@
         "saved": "Saved",
         "error": "Couldn't save. Please try again."
       },
+      "orderReady": {
+        "title": "Before customers can order",
+        "body": "Delivery (and collection) orders need two more things set up on your Shop tab — otherwise customers see your listing but can't check out:",
+        "ready": "You're set up to take orders — payments are on and your menu is live.",
+        "payments": "Turn on online payments (Stripe)",
+        "fixPayments": "Set up payments",
+        "menu": "Add at least one item to your menu",
+        "fixMenu": "Add an item"
+      },
       "disabled": {
         "title": "Food to Go isn't switched on yet",
         "body": "This marketplace is coming soon. You'll be able to list your venue here when it launches."
