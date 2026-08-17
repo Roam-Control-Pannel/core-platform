@@ -22,6 +22,7 @@ export interface F2GVendor {
   coverPhotoId?: string | null;
   businessStatus?: string | null;
   prepMins?: number;
+  delivers?: boolean;
 }
 
 /**
@@ -105,6 +106,26 @@ export function F2GVendorCard({ vendor, coverUrl }: { vendor: F2GVendor; coverUr
           >
             {t("readyMin", { mins: ready })}
           </span>
+          {vendor.delivers ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "3px 8px",
+                borderRadius: 6,
+                background: STOREFRONT.navy,
+                color: STOREFRONT.onNavy,
+                fontFamily: "var(--mono)",
+                fontSize: 10.5,
+                fontWeight: 700,
+                letterSpacing: ".03em",
+                textTransform: "uppercase",
+              }}
+            >
+              <Icon name="locate" size={11} strokeWidth={2.5} /> {t("delivers")}
+            </span>
+          ) : null}
           {distance ? <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{distance}</span> : null}
         </div>
       </div>
