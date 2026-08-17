@@ -171,6 +171,58 @@ export async function createCheckoutSession(
 }
 
 /**
+ * Create a hosted Checkout session for a multi-line CART sale (Food to Go). Like
+ * createCheckoutSession but with several product lines and an optional delivery-fee line. The
+ * delivery fee is a plain line item that routes to the venue in full — `applicationFeePence` is the
+ * platform commission on the GOODS only, so the vendor keeps the whole delivery fee. Destination
+ * charge + metadata.order_id identical to the single-item flow.
+ */
+export async function createCartCheckoutSession(
+  cfg: StripeConfig,
+  input: {
+    destinationAccount: string;
+    applicationFeePence: number;
+    currency: string;
+    lines: { title: string; unitAmountPence: number; quantity: number }[];
+    deliveryFeePence?: number;
+    deliveryLabel?: string;
+    orderId: string;
+    successUrl: string;
+    cancelUrl: string;
+  },
+): Promise<{ id: string; url: string }> {
+  const line_items = input.lines.map((l) => ({
+    quantity: l.quantity,
+    price_data: {
+      currency: input.currency,
+      unit_amount: l.unitAmountPence,
+      product_data: { name: l.title },
+    },
+  }));
+  if (input.deliveryFeePence && input.deliveryFeePence > 0) {
+    line_items.push({
+      quantity: 1,
+      price_data: {
+        currency: input.currency,
+        unit_amount: input.deliveryFeePence,
+        product_data: { name: input.deliveryLabel ?? "Delivery" },
+      },
+    });
+  }
+  return stripeRequest(cfg, "POST", "/v1/checkout/sessions", {
+    mode: "payment",
+    line_items,
+    payment_intent_data: {
+      application_fee_amount: input.applicationFeePence,
+      transfer_data: { destination: input.destinationAccount },
+    },
+    metadata: { order_id: input.orderId },
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+  });
+}
+
+/**
  * Refund a marketplace payment in full: pull the funds back from the connected account
  * (reverse_transfer) and return Roam's commission too (refund_application_fee) — the buyer
  * is made whole; Stripe's processing fee is the platform's cost of the refund.
