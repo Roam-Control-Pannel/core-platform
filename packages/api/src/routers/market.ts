@@ -147,7 +147,7 @@ async function ownedOrder(
   ctx: { db: unknown; env: Parameters<typeof escalateToService>[0] },
   orderId: string,
 ): Promise<{
-  order: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number };
+  order: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null };
   service: LooseDb;
 }> {
   const { data: auth } = await (ctx.db as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
@@ -156,9 +156,9 @@ async function ownedOrder(
   const service = escalateToService(ctx.env) as unknown as LooseDb;
   const { data: order } = (await service
     .from("orders")
-    .select("id, venue_id, product_kind, fulfilment_type, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence")
+    .select("id, venue_id, product_kind, fulfilment_type, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence, delivery_fee_pence")
     .eq("id", orderId)
-    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number } | null };
+    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null } | null };
   if (!order) throw new TRPCError({ code: "NOT_FOUND" });
   const { data: venue } = (await service
     .from("venues")
@@ -849,7 +849,9 @@ export const marketRouter = router({
         .select("id")) as { data: { id: string }[] | null };
       // Tell the buyer (best-effort — the refund itself has already succeeded).
       if (order.buyer_id) {
-        const pounds = `£${(order.amount_pence / 100).toFixed(order.amount_pence % 100 === 0 ? 0 : 2)}`;
+        // The refund reverses the FULL payment intent (goods + delivery), so quote the full total.
+        const refundedPence = order.amount_pence + (order.delivery_fee_pence ?? 0);
+        const pounds = `£${(refundedPence / 100).toFixed(refundedPence % 100 === 0 ? 0 : 2)}`;
         await service.from("notifications").insert({
           recipient_id: order.buyer_id,
           type: "order_refunded",
