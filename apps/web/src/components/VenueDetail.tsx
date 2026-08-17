@@ -351,9 +351,7 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
         <UnclaimedDetail
           venue={venue}
           claimUi={claimUi}
-          claimError={claimError}
           onClaimPressed={onClaimPressed}
-          onAuthed={submitClaim}
           venueId={venueId}
         />
       )}
@@ -364,6 +362,19 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       {/* Quiet report affordance — the user-facing half of the moderation backstop. Shown on
           any real venue (not the loading / not-found / error states). */}
       {venue ? <ReportVenue venueId={venueId} /> : null}
+
+      {/* Claim entry, at the very bottom of the page (below "what's on" + the report link): the red
+          "is this your business?" banner while idle, and the live claim/auth flow once pressed —
+          shown only for a genuinely unclaimed venue. */}
+      {venue && venue.owner_id === null && venue.status !== "pending_claim" ? (
+        <div style={{ marginTop: "var(--space-8)" }}>
+          {claimUi === "idle" ? (
+            <ClaimBanner onClaimPressed={onClaimPressed} />
+          ) : (
+            <ClaimSection venueId={venueId} claimUi={claimUi} claimError={claimError} onClaimPressed={onClaimPressed} onAuthed={submitClaim} />
+          )}
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -733,34 +744,22 @@ function PanelSkeleton() {
 function UnclaimedDetail({
   venue,
   claimUi,
-  claimError,
   onClaimPressed,
-  onAuthed,
   venueId,
 }: {
   venue: VenueDetailData;
   claimUi: ClaimUiState;
-  claimError: string | null;
   onClaimPressed: () => void;
-  onAuthed: () => void;
   venueId: string;
 }) {
   const claiming = claimUi !== "idle";
   return (
+    // The claim entry (red banner + live claim flow) is rendered at the very BOTTOM of the page by
+    // the top-level VenueDetail, not here — so this shell only carries the sidebar claim card.
     <VenueProfileShell
       venue={venue}
       venueId={venueId}
-      // Claim entry: the pink banner when idle; the live claim flow (auth / submitting /
-      // confirmation) once pressed.
-      topEntry={
-        claiming ? (
-          <div style={{ marginTop: "var(--space-4)" }}>
-            <ClaimSection venueId={venueId} claimUi={claimUi} claimError={claimError} onClaimPressed={onClaimPressed} onAuthed={onAuthed} />
-          </div>
-        ) : (
-          <ClaimBanner onClaimPressed={onClaimPressed} />
-        )
-      }
+      topEntry={null}
       sidebarEntry={claiming ? null : <ClaimCard onClaimPressed={onClaimPressed} />}
     />
   );
@@ -1537,6 +1536,9 @@ function claimReturnUrl(venueId: string): string {
 /** How many Roam reviews a venue needs before its Roam rating replaces Google's in the headline. */
 const ROAM_RATING_OVERRIDE_MIN = ROAM_RATING_MIN;
 
+/** Reviews fetched per page in the venue reviews list (matches the `reviews.list` default). */
+const REVIEWS_PAGE = 20;
+
 interface RoamReview {
   id: string;
   rating: number;
@@ -1579,6 +1581,11 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Paged list of everyone's reviews: page 0 on mount, more on demand. A full page (length ===
+  // REVIEWS_PAGE) means there may be more; a short page means we've reached the end.
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   // Google reviews: fetched on demand (a paid Places call), not on mount. null = not yet asked.
   const [googleReviews, setGoogleReviews] = useState<GoogleReviewView[] | null>(null);
   const [googleMapsUri, setGoogleMapsUri] = useState<string | null>(null);
@@ -1606,9 +1613,11 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
   const load = useCallback(async () => {
     const sumQ = trpc.reviews.summary as unknown as { query: (i: { venueId: string }) => Promise<ReviewSummary> };
     const listQ = trpc.reviews.list as unknown as { query: (i: { venueId: string; limit: number; offset: number }) => Promise<{ reviews: RoamReview[] }> };
-    const [s, l] = await Promise.all([sumQ.query({ venueId }), listQ.query({ venueId, limit: 20, offset: 0 })]);
+    const [s, l] = await Promise.all([sumQ.query({ venueId }), listQ.query({ venueId, limit: REVIEWS_PAGE, offset: 0 })]);
     setSummary(s);
-    setReviews(l.reviews ?? []);
+    const first = l.reviews ?? [];
+    setReviews(first);
+    setHasMore(first.length === REVIEWS_PAGE);
     if (me) {
       const mineQ = trpc.reviews.mine as unknown as { query: (i: { venueId: string }) => Promise<{ review: { rating: number; body: string | null } | null }> };
       const r = await mineQ.query({ venueId });
@@ -1619,6 +1628,25 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
       setMine(null);
     }
   }, [trpc, venueId, me]);
+
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true);
+    try {
+      const listQ = trpc.reviews.list as unknown as { query: (i: { venueId: string; limit: number; offset: number }) => Promise<{ reviews: RoamReview[] }> };
+      const l = await listQ.query({ venueId, limit: REVIEWS_PAGE, offset: reviews.length });
+      const next = l.reviews ?? [];
+      // De-dupe defensively in case a review shifted pages between fetches (e.g. a new post).
+      setReviews((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...next.filter((r) => !seen.has(r.id))];
+      });
+      setHasMore(next.length === REVIEWS_PAGE);
+    } catch {
+      /* leave the list as-is; the button stays so they can retry */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [trpc, venueId, reviews.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1664,7 +1692,11 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
     }
   }, [trpc, venueId, load, t]);
 
+  // Show the caller's own review pinned first (labelled), then everyone else's — so a venue whose
+  // only Roam review is yours no longer renders an empty list.
+  const myReview = me ? reviews.find((r) => r.authorId === me) ?? null : null;
   const others = reviews.filter((r) => r.authorId !== me);
+  const listed = myReview ? [myReview, ...others] : others;
   const roamPrimary = !!summary && summary.roamRating != null && summary.roamCount >= ROAM_RATING_OVERRIDE_MIN;
 
   return (
@@ -1737,21 +1769,36 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
         <div style={{ fontSize: 13.5, color: "var(--ink-2)", marginBottom: "var(--space-4)" }}>{t("reviews.signInToReview")}</div>
       )}
 
-      {/* Everyone else's reviews. */}
-      {others.length > 0 ? (
+      {/* The reviews — the caller's own pinned first (labelled), then everyone else's. */}
+      {listed.length > 0 ? (
         <div style={{ display: "grid", gap: "var(--space-3)" }}>
-          {others.map((r) => (
-            <Card key={r.id} flat style={{ padding: "var(--space-3) var(--space-4)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 6 }}>
-                <ReviewAvatar name={r.authorName} handle={r.authorHandle} avatar={r.authorAvatar} />
-                <span style={{ fontWeight: 600, fontSize: 13.5 }}>{r.authorName || (r.authorHandle ? `@${r.authorHandle}` : t("reviews.someone"))}</span>
-                <span style={{ flex: 1 }} />
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>{shortDate(r.createdAt)}</span>
-              </div>
-              <Stars n={r.rating} />
-              {r.body ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.body}</p> : null}
-            </Card>
-          ))}
+          {listed.map((r) => {
+            const isMine = r.authorId === me;
+            return (
+              <Card key={r.id} flat style={{ padding: "var(--space-3) var(--space-4)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 6 }}>
+                  <ReviewAvatar name={r.authorName} handle={r.authorHandle} avatar={r.authorAvatar} />
+                  <span style={{ fontWeight: 600, fontSize: 13.5 }}>{r.authorName || (r.authorHandle ? `@${r.authorHandle}` : t("reviews.someone"))}</span>
+                  {isMine ? (
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--crimson-700)", background: "var(--crimson-tint)", border: "1px solid var(--crimson-tint-2)", borderRadius: 999, padding: "1px 8px" }}>
+                      {t("reviews.yourReview")}
+                    </span>
+                  ) : null}
+                  <span style={{ flex: 1 }} />
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{shortDate(r.createdAt)}</span>
+                </div>
+                <Stars n={r.rating} />
+                {r.body ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.body}</p> : null}
+              </Card>
+            );
+          })}
+          {hasMore ? (
+            <div>
+              <Button variant="neutral" size="sm" onClick={() => void loadMore()} disabled={loadingMore}>
+                {loadingMore ? t("reviews.loadingMore") : t("reviews.showMore")}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

@@ -267,6 +267,10 @@ function Dashboard({
             <DashCard icon="idea" title={t("marketingCard.title")} subtitle={t("marketingCard.subtitle")}>
               <MarketingSuggestions venueId={venueId} />
             </DashCard>
+            {/* The ideas the assistant has ready right now — renders itself only once suggestions
+                are on (auto-enabled at activation), so a freshly-claimed venue sees starters here
+                immediately without switching to the Offers tab. */}
+            <SuggestedForYou venueId={venueId} />
           </div>
         </div>
       ) : null}
