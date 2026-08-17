@@ -234,7 +234,7 @@ interface VenuesInCategoryNearRow {
  * an identical card shape. Inline object (no named type) keeps the inferred AppRouter output
  * structural/portable, same idiom as the other discovery surfaces.
  */
-function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number | null }) {
+function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number | null; delivers?: boolean | null }) {
   return {
     id: v.id,
     name: v.name,
@@ -253,6 +253,8 @@ function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number 
     coverPhotoId: v.cover_photo_id,
     // The vendor's prep time for the "ready in ~N min" pill (default 15 when unset).
     prepMins: v.prep_time_mins ?? 15,
+    // Whether the venue currently offers delivery (open-mode RPC only; false in members mode).
+    delivers: !!v.delivers,
   };
 }
 

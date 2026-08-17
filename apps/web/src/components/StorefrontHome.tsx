@@ -61,6 +61,7 @@ export function StorefrontHome() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [cat, setCat] = useState<StorefrontCategory>("all");
   const [sort, setSort] = useState<StorefrontSort>("fastest");
+  const [deliversOnly, setDeliversOnly] = useState(false);
   const [query, setQuery] = useState("");
   // NI town cells (~1km) we've already asked to discover, so we trigger the paid ingest once each.
   const attemptedIngest = useRef<Set<string>>(new Set());
@@ -194,10 +195,11 @@ export function StorefrontHome() {
     const filtered = vendors.filter(
       (v) =>
         matchesCategory(v, cat) &&
+        (!deliversOnly || v.delivers === true) &&
         (!q || v.name.toLowerCase().includes(q) || (v.primaryTypeLabel ?? v.category ?? "").toLowerCase().includes(q)),
     );
     return sortVendors(filtered, sort);
-  }, [vendors, cat, sort, query]);
+  }, [vendors, cat, sort, deliversOnly, query]);
 
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: "0 20px 64px" }}>
@@ -248,6 +250,25 @@ export function StorefrontHome() {
             </button>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setDeliversOnly((v) => !v)}
+          aria-pressed={deliversOnly}
+          style={{
+            all: "unset",
+            cursor: "pointer",
+            padding: "8px 14px",
+            borderRadius: 10,
+            fontSize: 13.5,
+            fontWeight: 700,
+            marginLeft: "auto",
+            border: `1px solid ${deliversOnly ? STOREFRONT.navy : "var(--line-2)"}`,
+            background: deliversOnly ? STOREFRONT.navy : "transparent",
+            color: deliversOnly ? STOREFRONT.onNavy : "var(--ink-2)",
+          }}
+        >
+          {t("deliversFilter")}
+        </button>
       </div>
 
       {/* Count + sort */}

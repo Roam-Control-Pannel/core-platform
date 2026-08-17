@@ -1887,6 +1887,8 @@
     },
     "placesCount": "{count, plural, =0 {No places nearby} one {# place nearby} other {# places nearby}}",
     "readyMin": "Ready ~{mins} min",
+    "delivers": "Delivers",
+    "deliversFilter": "Delivers",
     "discovering": "Finding food-to-go near {place}…",
     "empty": {
       "title": "No Food to Go vendors near you yet",
