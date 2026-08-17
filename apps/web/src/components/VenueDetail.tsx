@@ -329,6 +329,22 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
     }
   }, [session, submitClaim]);
 
+  // The claim/auth flow lives in the bottom block (below the fold). Whether it was triggered from
+  // the sidebar claim card near the top or the bottom banner, scroll it into view on the
+  // idle → active transition so the flow is never off-screen and appearing to do nothing.
+  const claimEntryRef = useRef<HTMLDivElement | null>(null);
+  const prevClaimUi = useRef(claimUi);
+  useEffect(() => {
+    if (prevClaimUi.current === "idle" && claimUi !== "idle") {
+      claimEntryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    prevClaimUi.current = claimUi;
+  }, [claimUi]);
+
+  // A genuinely unclaimed venue (drives both the UnclaimedDetail branch below and the bottom claim
+  // entry) — kept as one predicate so the two can't drift apart.
+  const isUnclaimed = venue != null && venue.owner_id === null && venue.status !== "pending_claim";
+
   return (
     <main style={{ maxWidth: 1000, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <BackLink />
@@ -366,8 +382,8 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
       {/* Claim entry, at the very bottom of the page (below "what's on" + the report link): the red
           "is this your business?" banner while idle, and the live claim/auth flow once pressed —
           shown only for a genuinely unclaimed venue. */}
-      {venue && venue.owner_id === null && venue.status !== "pending_claim" ? (
-        <div style={{ marginTop: "var(--space-8)" }}>
+      {isUnclaimed ? (
+        <div ref={claimEntryRef} style={{ marginTop: "var(--space-8)" }}>
           {claimUi === "idle" ? (
             <ClaimBanner onClaimPressed={onClaimPressed} />
           ) : (
