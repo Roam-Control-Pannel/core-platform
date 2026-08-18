@@ -329,21 +329,27 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
     }
   }, [session, submitClaim]);
 
-  // The claim/auth flow lives in the bottom block (below the fold). Whether it was triggered from
-  // the sidebar claim card near the top or the bottom banner, scroll it into view on the
-  // idle → active transition so the flow is never off-screen and appearing to do nothing.
-  const claimEntryRef = useRef<HTMLDivElement | null>(null);
-  const prevClaimUi = useRef(claimUi);
-  useEffect(() => {
-    if (prevClaimUi.current === "idle" && claimUi !== "idle") {
-      claimEntryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    prevClaimUi.current = claimUi;
-  }, [claimUi]);
-
   // A genuinely unclaimed venue (drives both the UnclaimedDetail branch below and the bottom claim
   // entry) — kept as one predicate so the two can't drift apart.
   const isUnclaimed = venue != null && venue.owner_id === null && venue.status !== "pending_claim";
+
+  // The claim/auth flow lives in the bottom block (below the fold). Whether it was triggered from
+  // the sidebar claim card, the bottom banner, or the ?claim=1 OAuth resume, scroll it into view
+  // once it's active. A latch (not a transition check) is used deliberately: on the resume path
+  // claimUi flips to "submitting" BEFORE the venue loads and the block mounts, so we scroll on the
+  // later render when isUnclaimed turns true and the ref exists — not just on the idle→active edge.
+  const claimEntryRef = useRef<HTMLDivElement | null>(null);
+  const claimScrolled = useRef(false);
+  useEffect(() => {
+    if (claimUi === "idle") {
+      claimScrolled.current = false;
+      return;
+    }
+    if (!claimScrolled.current && claimEntryRef.current) {
+      claimEntryRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      claimScrolled.current = true;
+    }
+  }, [claimUi, isUnclaimed]);
 
   return (
     <main style={{ maxWidth: 1000, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -1590,12 +1596,16 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
 
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [reviews, setReviews] = useState<RoamReview[]>([]);
-  const [mine, setMine] = useState<{ rating: number; body: string | null } | null>(null);
+  const [mine, setMine] = useState<RoamReview | null>(null);
+  // When you already have a review it shows once as a pinned card with Edit/Remove; the form opens
+  // (editing = true) only to edit it, or is shown outright to write your first review.
+  const [editing, setEditing] = useState(false);
 
   const [draftRating, setDraftRating] = useState(0);
   const [draftBody, setDraftBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
 
   // Paged list of everyone's reviews: page 0 on mount, more on demand. A full page (length ===
   // REVIEWS_PAGE) means there may be more; a short page means we've reached the end.
@@ -1635,7 +1645,7 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
     setReviews(first);
     setHasMore(first.length === REVIEWS_PAGE);
     if (me) {
-      const mineQ = trpc.reviews.mine as unknown as { query: (i: { venueId: string }) => Promise<{ review: { rating: number; body: string | null } | null }> };
+      const mineQ = trpc.reviews.mine as unknown as { query: (i: { venueId: string }) => Promise<{ review: RoamReview | null }> };
       const r = await mineQ.query({ venueId });
       setMine(r.review);
       setDraftRating(r.review?.rating ?? 0);
@@ -1644,6 +1654,19 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
       setMine(null);
     }
   }, [trpc, venueId, me]);
+
+  // After the caller posts / edits / removes their OWN review, refresh just the rating headline and
+  // their own review. The paged list of everyone else's reviews — and the reader's scroll position
+  // and any "Show more" pages they've expanded — are left untouched.
+  const refreshMine = useCallback(async () => {
+    const sumQ = trpc.reviews.summary as unknown as { query: (i: { venueId: string }) => Promise<ReviewSummary> };
+    const mineQ = trpc.reviews.mine as unknown as { query: (i: { venueId: string }) => Promise<{ review: RoamReview | null }> };
+    const [s, r] = await Promise.all([sumQ.query({ venueId }), mineQ.query({ venueId })]);
+    setSummary(s);
+    setMine(r.review);
+    setDraftRating(r.review?.rating ?? 0);
+    setDraftBody(r.review?.body ?? "");
+  }, [trpc, venueId]);
 
   const loadMore = useCallback(async () => {
     setLoadingMore(true);
@@ -1684,13 +1707,14 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
     const save = trpc.reviews.save as unknown as { mutate: (i: { venueId: string; rating: number; body: string | null }) => Promise<unknown> };
     try {
       await save.mutate({ venueId, rating: draftRating, body: draftBody.trim() || null });
-      await load();
+      setEditing(false);
+      await refreshMine();
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("reviews.saveError"));
     } finally {
       setBusy(false);
     }
-  }, [trpc, venueId, draftRating, draftBody, load, t]);
+  }, [trpc, venueId, draftRating, draftBody, refreshMine, t]);
 
   const remove = useCallback(async () => {
     setBusy(true);
@@ -1698,21 +1722,28 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
     const del = trpc.reviews.remove as unknown as { mutate: (i: { venueId: string }) => Promise<unknown> };
     try {
       await del.mutate({ venueId });
-      setDraftRating(0);
-      setDraftBody("");
-      await load();
+      setEditing(false);
+      await refreshMine(); // mine → null, drafts reset; the write form returns
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("reviews.saveError"));
     } finally {
       setBusy(false);
     }
-  }, [trpc, venueId, load, t]);
+  }, [trpc, venueId, refreshMine, t]);
 
-  // Show the caller's own review pinned first (labelled), then everyone else's — so a venue whose
-  // only Roam review is yours no longer renders an empty list.
-  const myReview = me ? reviews.find((r) => r.authorId === me) ?? null : null;
+  // Bring the form into view when editing opens from the pinned card (which sits below the form).
+  useEffect(() => {
+    if (editing) formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [editing]);
+
+  // The caller's own review comes from `mine` — always available, even when it's not on the first
+  // fetched page (a venue with many newer reviews) — pinned first and labelled. Everyone else's
+  // comes from the paged list. While the edit form is open the form represents the review, so we
+  // don't also pin the card (no double display). `showForm` gates the write/edit form.
+  const myReview = mine;
   const others = reviews.filter((r) => r.authorId !== me);
-  const listed = myReview ? [myReview, ...others] : others;
+  const listed = myReview && !editing ? [myReview, ...others] : others;
+  const showForm = !!me && (!mine || editing);
   const roamPrimary = !!summary && summary.roamRating != null && summary.roamCount >= ROAM_RATING_OVERRIDE_MIN;
 
   return (
@@ -1750,40 +1781,52 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
       </div>
 
       {/* Write / edit the caller's own review. */}
-      {me ? (
-        <Card flat style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-          {mine ? (
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: "var(--space-2)" }}>{t("reviews.yourReview")}</div>
-          ) : (
-            <div style={{ marginBottom: "var(--space-2)" }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{venueName ? t("reviews.promptNamed", { name: venueName }) : t("reviews.write")}</div>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("reviews.promptSub")}</div>
-            </div>
-          )}
-          <StarInput value={draftRating} onChange={setDraftRating} label={t("reviews.ratingAria")} />
-          <textarea
-            value={draftBody}
-            onChange={(e) => setDraftBody(e.target.value)}
-            placeholder={t("reviews.placeholder")}
-            rows={3}
-            maxLength={4000}
-            style={{ width: "100%", boxSizing: "border-box", marginTop: "var(--space-2)", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)", outline: "none", resize: "vertical" }}
-          />
-          {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{err}</div> : null}
-          <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)", alignItems: "center" }}>
-            <Button variant="pri" size="sm" onClick={() => void submit()} disabled={busy || draftRating < 1}>
-              {busy ? t("reviews.saving") : mine ? t("reviews.update") : t("reviews.post")}
-            </Button>
+      {showForm ? (
+        <div ref={formRef}>
+          <Card flat style={{ padding: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             {mine ? (
-              <button type="button" onClick={() => void remove()} disabled={busy} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13, textDecoration: "underline" }}>
-                {t("reviews.remove")}
-              </button>
-            ) : null}
-          </div>
-        </Card>
-      ) : (
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: "var(--space-2)" }}>{t("reviews.yourReview")}</div>
+            ) : (
+              <div style={{ marginBottom: "var(--space-2)" }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{venueName ? t("reviews.promptNamed", { name: venueName }) : t("reviews.write")}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("reviews.promptSub")}</div>
+              </div>
+            )}
+            <StarInput value={draftRating} onChange={setDraftRating} label={t("reviews.ratingAria")} />
+            <textarea
+              value={draftBody}
+              onChange={(e) => setDraftBody(e.target.value)}
+              placeholder={t("reviews.placeholder")}
+              rows={3}
+              maxLength={4000}
+              style={{ width: "100%", boxSizing: "border-box", marginTop: "var(--space-2)", padding: "10px 12px", background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", fontFamily: "var(--ui)", fontSize: 15, color: "var(--ink)", outline: "none", resize: "vertical" }}
+            />
+            {err ? <div role="alert" style={{ color: "var(--crimson-700)", fontSize: 13, marginTop: "var(--space-2)" }}>{err}</div> : null}
+            <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)", alignItems: "center" }}>
+              <Button variant="pri" size="sm" onClick={() => void submit()} disabled={busy || draftRating < 1}>
+                {busy ? t("reviews.saving") : mine ? t("reviews.update") : t("reviews.post")}
+              </Button>
+              {mine ? (
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  onClick={() => { setEditing(false); setErr(null); setDraftRating(mine.rating); setDraftBody(mine.body ?? ""); }}
+                  disabled={busy}
+                >
+                  {t("reviews.cancel")}
+                </Button>
+              ) : null}
+              {mine ? (
+                <button type="button" onClick={() => void remove()} disabled={busy} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13, textDecoration: "underline" }}>
+                  {t("reviews.remove")}
+                </button>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+      ) : !me ? (
         <div style={{ fontSize: 13.5, color: "var(--ink-2)", marginBottom: "var(--space-4)" }}>{t("reviews.signInToReview")}</div>
-      )}
+      ) : null}
 
       {/* The reviews — the caller's own pinned first (labelled), then everyone else's. */}
       {listed.length > 0 ? (
@@ -1805,6 +1848,20 @@ function VenueReviews({ venueId, placeId, venueName }: { venueId: string; placeI
                 </div>
                 <Stars n={r.rating} />
                 {r.body ? <p style={{ margin: "6px 0 0", lineHeight: 1.55, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.body}</p> : null}
+                {isMine ? (
+                  <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-2)", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => { setEditing(true); setErr(null); setDraftRating(r.rating); setDraftBody(r.body ?? ""); }}
+                      style={{ all: "unset", cursor: "pointer", color: "var(--crimson-700)", fontSize: 13, fontWeight: 600 }}
+                    >
+                      {t("reviews.edit")}
+                    </button>
+                    <button type="button" onClick={() => void remove()} disabled={busy} style={{ all: "unset", cursor: "pointer", color: "var(--muted)", fontSize: 13, textDecoration: "underline" }}>
+                      {t("reviews.remove")}
+                    </button>
+                  </div>
+                ) : null}
               </Card>
             );
           })}

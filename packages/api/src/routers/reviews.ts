@@ -121,7 +121,11 @@ export const reviewsRouter = router({
       };
     }),
 
-  /** Protected: the caller's own review for a venue (to prefill the editor), or null. */
+  /**
+   * Protected: the caller's own review for a venue (to prefill the editor AND render it pinned in
+   * the list), or null. Returns author display fields too so the client can show the caller's
+   * review as a full card without needing it to fall on the first fetched page.
+   */
   mine: protectedProcedure
     .input(z.object({ venueId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
@@ -137,7 +141,26 @@ export const reviewsRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Couldn't load your review: ${error.message}` });
       }
       if (!data) return { review: null };
-      return { review: { id: data.id, rating: data.rating, body: data.body, createdAt: data.created_at, updatedAt: data.updated_at } };
+      // Author display fields (best-effort): the caller's own profile, so the pinned own-review card
+      // matches the shape of the public list rows. A missing profile just yields nulls.
+      const { data: prof } = (await db
+        .from("profiles")
+        .select("display_name, handle, avatar_url")
+        .eq("id", me)
+        .maybeSingle()) as PgResult<{ display_name: string | null; handle: string | null; avatar_url: string | null } | null>;
+      return {
+        review: {
+          id: data.id,
+          rating: data.rating,
+          body: data.body,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          authorId: me,
+          authorName: prof?.display_name ?? null,
+          authorHandle: prof?.handle ?? null,
+          authorAvatar: prof?.avatar_url ?? null,
+        },
+      };
     }),
 
   /**
