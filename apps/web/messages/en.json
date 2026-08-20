@@ -972,6 +972,8 @@
     "shopDeal": "Shop deal",
     "ends": "Ends {date}",
     "loadFailed": "Couldn't load deals just now.",
+    "unavailableTitle": "Deals aren't in your area yet",
+    "unavailableBody": "Roam's partner deals are UK-only for now — we're working on bringing offers to more countries.",
     "emptyTitle": "No deals just now",
     "emptyBody": "Fresh offers from our partner brands will appear here soon — check back shortly.",
     "detail": {

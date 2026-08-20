@@ -22,6 +22,7 @@ import { useTrpc } from "./TrpcProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { buildDealLink } from "../lib/dealLink";
 import { getFormatLocale } from "../lib/i18n/runtime";
+import { useIsUkVisitor } from "../lib/useVisitorMarket";
 
 export interface Deal {
   id: string;
@@ -249,8 +250,23 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
 }
 
 /** Full /deals page body: category chips + an interleaved, paginated deal grid. */
+/** Shown when the visitor isn't in a market where Roam's (UK-only) partner deals apply. */
+function DealsUnavailable() {
+  const t = useTranslations("deals");
+  return (
+    <Card flat style={{ padding: "var(--space-8)", textAlign: "center" }}>
+      <div style={{ display: "grid", placeItems: "center", width: 46, height: 46, margin: "0 auto var(--space-3)", borderRadius: 12, background: "var(--paper-2)", color: "var(--muted)" }}>
+        <Icon name="tag" size={22} />
+      </div>
+      <div className="t-h3" style={{ fontFamily: "var(--display)", fontWeight: 600, marginBottom: 6 }}>{t("unavailableTitle")}</div>
+      <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.5 }}>{t("unavailableBody")}</p>
+    </Card>
+  );
+}
+
 export function Deals() {
   const t = useTranslations("deals");
+  const isUk = useIsUkVisitor();
   const [category, setCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -275,6 +291,10 @@ export function Deals() {
         </p>
       </header>
 
+      {isUk === false ? (
+        <DealsUnavailable />
+      ) : (
+      <>
       {/* Search bar — filter offers by title or brand. */}
       <div style={{ position: "relative", marginBottom: "var(--space-3)", maxWidth: 420 }}>
         <span aria-hidden style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", display: "grid", placeItems: "center" }}>
@@ -315,7 +335,7 @@ export function Deals() {
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
           <p style={{ color: "var(--muted)", margin: 0 }}>{t("loadFailed")}</p>
         </Card>
-      ) : deals === undefined ? (
+      ) : deals === undefined || isUk === undefined ? (
         <DealsGrid>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} style={{ height: 250, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />)}</DealsGrid>
       ) : deals.length === 0 ? (
         <Card flat style={{ padding: "var(--space-8)", textAlign: "center" }}>
@@ -337,6 +357,8 @@ export function Deals() {
           ) : null}
         </>
       )}
+      </>
+      )}
     </main>
   );
 }
@@ -354,6 +376,7 @@ function DealsGrid({ children }: { children: React.ReactNode }) {
 export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDeal?: Deal | null }) {
   const t = useTranslations("deals");
   const trpc = useTrpc();
+  const isUk = useIsUkVisitor();
   const [deal, setDeal] = useState<Deal | null | undefined>(initialDeal);
   const [error, setError] = useState(false);
 
@@ -380,11 +403,13 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
         <span aria-hidden>←</span> {t("title")}
       </Link>
 
-      {error ? (
+      {isUk === false ? (
+        <DealsUnavailable />
+      ) : error ? (
         <Card flat style={{ padding: "var(--space-5)", textAlign: "center" }}>
           <p style={{ color: "var(--muted)", margin: 0 }}>{t("detail.loadFailed")}</p>
         </Card>
-      ) : deal === undefined ? (
+      ) : deal === undefined || isUk === undefined ? (
         <div style={{ height: 300, borderRadius: "var(--r-lg)", background: "var(--paper-2)" }} />
       ) : deal === null ? (
         <Card flat style={{ padding: "var(--space-6)", textAlign: "center" }}>
@@ -450,8 +475,11 @@ export function DealDetail({ dealId, initialDeal }: { dealId: string; initialDea
  */
 export function DealsHomeWidget() {
   const t = useTranslations("deals");
+  const isUk = useIsUkVisitor();
   const deals = useDealsPreview(3);
-  if (!deals || deals.length === 0) return null;
+  // UK-only affiliate supply: render nothing until the visitor is confirmed to be in the UK, so a
+  // non-UK visitor never gets a flash of UK deals on their home.
+  if (isUk !== true || !deals || deals.length === 0) return null;
   return (
     <Card style={{ padding: "var(--space-4)" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
