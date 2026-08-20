@@ -19,6 +19,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc.js";
 import { geocodeSearch } from "../geocode/client.js";
+import { getMarket, marketForCoords, normalizeCountryCode } from "@roam/core/markets";
 
 /** A cached search result — the SAME inline shape the resolver returns (kept in lockstep). */
 type CachedSearch = {
@@ -68,5 +69,59 @@ export const geoRouter = router({
       if (geocodeCache.size >= MAX_CACHE_ENTRIES) geocodeCache.clear();
       geocodeCache.set(key, { results, expires: Date.now() + GEOCODE_TTL_MS });
       return results;
+    }),
+
+  /**
+   * Public: resolve a visitor's MARKET (country) from an ISO country code and/or a coordinate.
+   * Prefers the ISO code (from the host edge headers); falls back to a bounding-box match on the
+   * coordinate. `known:false` means we don't operate a registered market there yet — the caller
+   * should show the seeding / pioneer experience (never UK content), NOT a default-market fallback.
+   *
+   * Return is inline-typed (not @roam/core's `Market`) so the inferred AppRouter output stays
+   * portable — same rule as `search` above (a named core type would leak a non-portable path).
+   */
+  market: publicProcedure
+    .input(
+      z.object({
+        country: z.string().trim().length(2).optional(),
+        lat: z.number().min(-90).max(90).optional(),
+        lng: z.number().min(-180).max(180).optional(),
+      }),
+    )
+    .query(({ input }) => {
+      const m =
+        getMarket(input.country) ??
+        (input.lat != null && input.lng != null ? marketForCoords(input.lat, input.lng) : undefined);
+      const countryCode = normalizeCountryCode(input.country) ?? m?.code ?? null;
+
+      // One uniform, inline shape for both known and unknown markets (nullable metadata), so the
+      // client reads a single descriptor and branches on `known`.
+      const out: {
+        known: boolean;
+        countryCode: string | null;
+        name: string | null;
+        currency: string | null;
+        units: "metric" | "imperial";
+        status: "live" | "seeding";
+        defaultPlace: { name: string; hint?: string; lat: number; lng: number } | null;
+      } = {
+        known: m !== undefined,
+        countryCode,
+        name: m?.name ?? null,
+        currency: m?.currency ?? null,
+        units: m?.units ?? "metric",
+        status: m?.status ?? "seeding",
+        defaultPlace: null,
+      };
+      if (m) {
+        const place: { name: string; hint?: string; lat: number; lng: number } = {
+          name: m.defaultPlace.name,
+          lat: m.defaultPlace.lat,
+          lng: m.defaultPlace.lng,
+        };
+        if (m.defaultPlace.hint !== undefined) place.hint = m.defaultPlace.hint;
+        out.defaultPlace = place;
+      }
+      return out;
     }),
 });

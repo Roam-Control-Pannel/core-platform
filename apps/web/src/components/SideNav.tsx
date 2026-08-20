@@ -21,6 +21,7 @@ import { useMe } from "./MeProvider";
 import { AuthModal } from "./AuthModal";
 import { useSavedPlaces } from "../lib/savedPlaces";
 import { useCurrentPlace } from "../lib/currentPlace";
+import { useIsUkVisitor } from "../lib/useVisitorMarket";
 import styles from "./SideNav.module.css";
 
 /* ── open/close context (shared by the TopBar toggle + the drawer) ───────────────────────── */
@@ -130,12 +131,14 @@ export function SideNav() {
 
 function SideNavBody({ pathname }: { pathname: string }) {
   const t = useTranslations("chrome.sideNav");
+  // Deals is UK-only affiliate supply — drop it from the rail for a confirmed non-UK visitor.
+  const isUk = useIsUkVisitor();
   return (
     <nav className={styles.nav} aria-label={t("label")}>
       <ProfileCard />
       <div className={styles.list}>
         <OwnedBusinesses pathname={pathname} />
-        {SHORTCUTS.map((s) => (
+        {SHORTCUTS.filter((s) => s.href !== "/deals" || isUk !== false).map((s) => (
           <Link key={s.labelKey} href={s.href} className={`${styles.item} ${isActive(pathname, s.match) ? styles.active : ""}`}>
             <span className={styles.itemIcon} aria-hidden>
               <Icon name={s.icon} size={18} />
