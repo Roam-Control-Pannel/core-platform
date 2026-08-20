@@ -27,7 +27,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Seg, Pill, Icon, type IconName } from "@roam/design";
@@ -813,10 +813,20 @@ function VenueGridSkeleton() {
   );
 }
 
+const emptyCtaPrimary: CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 999,
+  background: "var(--crimson)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none",
+};
+const emptyCtaSecondary: CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 999,
+  background: "var(--card)", color: "var(--ink)", border: "1px solid var(--line)", fontWeight: 600, fontSize: 14, textDecoration: "none",
+};
+
 function EmptyState({ searched, outOfArea, placeName }: { searched?: boolean; outOfArea?: boolean; placeName?: string }) {
   const t = useTranslations("explore");
-  // Out-of-area: the place is a GUESS (IP/default) and has no venues yet — be honest that Roam
-  // isn't live there rather than implying the town is simply quiet. Points them to search/switch.
+  // Out-of-area: the place is a GUESS (IP/default) with no venues yet — anchored to the visitor's
+  // OWN place (from their IP), so this is their area anywhere in the world. Rather than a dead-end
+  // "not live here", frame it as a founding-local invitation: they get to start things off.
   const title = outOfArea ? t("empty.outOfAreaTitle", { place: placeName ?? "" }) : searched ? t("empty.searchTitle") : t("empty.title");
   const body = outOfArea ? t("empty.outOfAreaBody") : searched ? t("empty.searchBody") : t("empty.body");
   return (
@@ -824,9 +834,15 @@ function EmptyState({ searched, outOfArea, placeName }: { searched?: boolean; ou
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
         {title}
       </div>
-      <p style={{ color: "var(--muted)", maxWidth: 360, margin: "0 auto" }}>
+      <p style={{ color: "var(--muted)", maxWidth: 380, margin: "0 auto" }}>
         {body}
       </p>
+      {outOfArea ? (
+        <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "center", flexWrap: "wrap", marginTop: "var(--space-4)" }}>
+          <Link href="/town-hall" style={emptyCtaPrimary}>{t("empty.outOfAreaForum")}</Link>
+          <Link href="/market" style={emptyCtaSecondary}>{t("empty.outOfAreaSell")}</Link>
+        </div>
+      ) : null}
     </div>
   );
 }
