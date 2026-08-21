@@ -31,6 +31,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { places as corePlaces, f2g as coreF2g } from "@roam/core";
+import { PLACES_POLICY } from "../places/budget.js";
 import { router, internalProcedure } from "../trpc.js";
 import {
   searchNearby as defaultSearchNearby,
@@ -169,9 +170,9 @@ export async function ingestCategoryCore(
   // reads whatever supply already exists (browsing is never blocked on supply).
   const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
     p_client_key: args.clientKey,
-    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
-    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+    p_daily_cap: PLACES_POLICY.dailyFetchBudget,
+    p_client_cap: PLACES_POLICY.clientFetchLimit,
+    p_client_window_secs: PLACES_POLICY.clientWindowSecs,
   });
   if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
   // The function returns a single-row table -> PostgREST yields an array of one row.
@@ -333,9 +334,9 @@ export async function ingestFoodToGoCore(
     // Claim one budget unit per intended paid call.
     const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
       p_client_key: args.clientKey,
-      p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
-      p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-      p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+      p_daily_cap: PLACES_POLICY.dailyFetchBudget,
+      p_client_cap: PLACES_POLICY.clientFetchLimit,
+      p_client_window_secs: PLACES_POLICY.clientWindowSecs,
     });
     if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
     const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
@@ -468,9 +469,9 @@ export async function ingestTextSearchCore(
 ): Promise<TextSearchResult> {
   const { data: quotaData, error: quotaErr } = await rpc("claim_places_fetch_quota", {
     p_client_key: args.clientKey,
-    p_daily_cap: corePlaces.PLACES_DAILY_FETCH_BUDGET,
-    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+    p_daily_cap: PLACES_POLICY.dailyFetchBudget,
+    p_client_cap: PLACES_POLICY.clientFetchLimit,
+    p_client_window_secs: PLACES_POLICY.clientWindowSecs,
   });
   if (quotaErr) throw new Error(`Fetch-quota check failed: ${quotaErr.message}`);
   const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
@@ -569,9 +570,9 @@ export async function enrichVenueCore(
 ): Promise<EnrichResult> {
   const { data: quotaData, error: quotaErr } = await rpc("claim_places_detail_quota", {
     p_client_key: args.clientKey,
-    p_daily_cap: corePlaces.PLACES_DETAILS_DAILY_BUDGET,
-    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+    p_daily_cap: PLACES_POLICY.detailsDailyBudget,
+    p_client_cap: PLACES_POLICY.clientFetchLimit,
+    p_client_window_secs: PLACES_POLICY.clientWindowSecs,
   });
   if (quotaErr) throw new Error(`Detail-quota check failed: ${quotaErr.message}`);
   const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as
@@ -914,9 +915,9 @@ export async function googleReviewsCore(
 
   const { data: quotaData, error: quotaErr } = await rpc("claim_places_detail_quota", {
     p_client_key: args.clientKey,
-    p_daily_cap: corePlaces.PLACES_DETAILS_DAILY_BUDGET,
-    p_client_cap: corePlaces.PLACES_CLIENT_FETCH_LIMIT,
-    p_client_window_secs: corePlaces.PLACES_CLIENT_WINDOW_SECS,
+    p_daily_cap: PLACES_POLICY.detailsDailyBudget,
+    p_client_cap: PLACES_POLICY.clientFetchLimit,
+    p_client_window_secs: PLACES_POLICY.clientWindowSecs,
   });
   if (quotaErr) throw new Error(`Detail-quota check failed: ${quotaErr.message}`);
   const quota = (Array.isArray(quotaData) ? quotaData[0] : quotaData) as { allowed?: boolean } | undefined;
