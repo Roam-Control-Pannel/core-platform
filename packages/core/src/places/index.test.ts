@@ -7,6 +7,7 @@ import {
   classifyPlaceTypes,
   placeToVenueRow,
   placeLocality,
+  placeCountryCode,
   hubCategoryTier,
   weightedVenueRating,
   RATING_PRIOR_MEAN,
@@ -187,6 +188,35 @@ describe("placeToVenueRow", () => {
     );
     expect(row).not.toBeNull();
     expect(row!.business_status).toBe("CLOSED_TEMPORARILY");
+  });
+
+  it("derives country_code from the country address component, else null", () => {
+    const withCountry = placeToVenueRow(
+      {
+        ...darlingtonSushi,
+        addressComponents: [
+          { longText: "Darlington", shortText: "Darlington", types: ["postal_town"] },
+          { longText: "United Kingdom", shortText: "GB", types: ["country", "political"] },
+        ],
+      },
+      "Food & Drink",
+    );
+    expect(withCountry!.country_code).toBe("GB");
+    // Fixture without address components → null (never invented).
+    expect(placeToVenueRow(darlingtonSushi, "Food & Drink")!.country_code).toBeNull();
+  });
+});
+
+describe("placeCountryCode", () => {
+  it("reads the country component's shortText, uppercased", () => {
+    expect(
+      placeCountryCode({ id: "x", addressComponents: [{ shortText: "us", types: ["country"] }] }),
+    ).toBe("US");
+  });
+  it("is null with no country component, or a non-2-letter code", () => {
+    expect(placeCountryCode({ id: "x", addressComponents: [{ shortText: "London", types: ["locality"] }] })).toBeNull();
+    expect(placeCountryCode({ id: "x", addressComponents: [{ shortText: "USA", types: ["country"] }] })).toBeNull();
+    expect(placeCountryCode({ id: "x" })).toBeNull();
   });
 });
 

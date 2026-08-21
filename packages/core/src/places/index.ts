@@ -608,6 +608,12 @@ export interface VenueRowFromPlace {
    * Places strip, the Market's town feed, hub indexability and the sitemap's venue towns.
    */
   locality: string | null;
+  /**
+   * The venue's country as an ISO-3166-1 alpha-2 code (from Places' `country` address component,
+   * e.g. "GB", "US"), or null when Places gives no country. Populates venues.country_code — the
+   * per-country scope for market analytics and non-radius reads. Radius discovery never needs it.
+   */
+  country_code: string | null;
   source_attribution: string;
   opening_times: OpeningTimes | null;
 }
@@ -632,6 +638,21 @@ export function placeLocality(place: PlaceResult): string | null {
     return null;
   };
   return byType("postal_town") ?? byType("locality");
+}
+
+/**
+ * The venue's country as an ISO-3166-1 alpha-2 code, from Places' `country` address component
+ * (`shortText`, e.g. "GB", "US"), uppercased — or null when Places gives no country component or
+ * a non-2-letter value. Pure; tolerant of partial components. Feeds venues.country_code.
+ */
+export function placeCountryCode(place: PlaceResult): string | null {
+  for (const c of place.addressComponents ?? []) {
+    if (c.types?.includes("country")) {
+      const code = (c.shortText ?? "").trim().toUpperCase();
+      if (/^[A-Z]{2}$/.test(code)) return code;
+    }
+  }
+  return null;
 }
 
 /**
@@ -746,6 +767,7 @@ export function placeToVenueRow(
     ...placeCardFields(place),
     address: place.formattedAddress?.trim() || null,
     locality: placeLocality(place),
+    country_code: placeCountryCode(place),
     source_attribution: ATTRIBUTION,
     opening_times: placeOpeningTimes(place),
   };
