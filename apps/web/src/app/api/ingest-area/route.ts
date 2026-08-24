@@ -37,6 +37,18 @@ function clientIpFrom(request: Request): string | null {
   return request.headers.get("x-real-ip")?.trim() || null;
 }
 
+// Backstop to the client-side intent gate (Explore only auto-ingests for a deliberately chosen
+// place): a crawler / headless preview-renderer / link-unfurler / uptime monitor that POSTs here
+// directly must not trigger a paid Places fetch. Matches well-known bot, headless-render and
+// unfurler/monitor tokens; a missing User-Agent (real browsers always send one) is treated as a bot.
+const BOT_UA =
+  /bot|crawl|spider|slurp|headless|prerender|phantomjs|puppeteer|playwright|lighthouse|facebookexternalhit|slackbot|telegrambot|discordbot|whatsapp|linkedinbot|bingpreview|uptimerobot|pingdom|statuscake|screenshot/i;
+
+function isLikelyBot(ua: string | null): boolean {
+  if (!ua || !ua.trim()) return true;
+  return BOT_UA.test(ua);
+}
+
 function isCrossOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return false;
@@ -52,6 +64,11 @@ function isCrossOrigin(request: Request): boolean {
 export async function POST(request: Request): Promise<Response> {
   if (isCrossOrigin(request)) {
     return NextResponse.json({ error: "Cross-origin requests are not allowed." }, { status: 403 });
+  }
+  // Non-human traffic never pays for a Places fetch (see BOT_UA). A benign, ingest-free result so
+  // the caller just renders whatever supply already exists.
+  if (isLikelyBot(request.headers.get("user-agent"))) {
+    return NextResponse.json({ inserted: 0, budgetExhausted: false, rateLimited: false, skipped: "bot" }, { status: 200 });
   }
   let body: unknown;
   try {

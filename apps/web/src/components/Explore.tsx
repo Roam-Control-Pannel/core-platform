@@ -33,7 +33,7 @@ import { useTranslations } from "next-intl";
 import { Seg, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
-import { PlaceSwitcher, type Place } from "./PlaceSwitcher";
+import { PlaceSwitcher, type Place, type PlaceSource } from "./PlaceSwitcher";
 import { AuthPanel } from "./AuthPanel";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { useF2gEnabled } from "../lib/useF2gEnabled";
@@ -77,6 +77,18 @@ const PAGE_SIZE = 15;
 // without pre-seeding the planet: coverage is pulled the first time someone looks at a place.
 const NEARBY_RADIUS_M = 30_000;
 const MIN_NEARBY = 3;
+
+// A demand ingest is a PAID Places fetch, so it must reflect a real person's INTENT — never a
+// passive cold load on an IP-guessed centre. A bot / preview renderer / uptime monitor is
+// geolocated to its DATACENTER's city ("detected"), or falls back to the hard "default"; letting
+// those auto-ingest pulls junk venues for cloud regions (Ashburn, Boardman, …) and burns budget.
+// So we only ingest when the visitor CHOSE the place — searched it, shared precise location, saved
+// it, or tapped a suggested centre. A real first-timer who lands on their detected city self-seeds
+// the moment they act (the pioneer empty state invites exactly that).
+const DELIBERATE_PLACE_SOURCES: ReadonlySet<PlaceSource> = new Set(["search", "current", "saved", "suggested"]);
+function isDeliberatePlace(source: PlaceSource | undefined): boolean {
+  return source !== undefined && DELIBERATE_PLACE_SOURCES.has(source);
+}
 
 /** Map an inCategoryNear / near row to the card shape, carrying leaf categories + cover/coords. */
 function toCardData(v: {
@@ -179,9 +191,10 @@ export function Explore() {
         const nearby = rows.filter(
           (r) => typeof r.distanceM === "number" && r.distanceM < NEARBY_RADIUS_M,
         );
-        if (nearby.length < MIN_NEARBY) {
-          // Demand-driven supply: pull the starter categories for this point, then re-read.
-          // Non-fatal — if discovery fails or is gated server-side, we render what already exists.
+        if (nearby.length < MIN_NEARBY && isDeliberatePlace(place.source)) {
+          // Demand-driven supply: pull the starter categories for this point, then re-read. Gated
+          // on a DELIBERATE place (above) so a passive IP-detected/default centre never pays for a
+          // fetch. Non-fatal — if discovery fails or is gated server-side, we render what exists.
           setDiscovering(true);
           try {
             await fetch("/api/ingest-area", {
