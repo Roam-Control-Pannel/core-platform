@@ -19,6 +19,7 @@ import { useCurrentPlace } from "../lib/currentPlace";
 import { useRecentSearches } from "../lib/recentSearches";
 import { formatEventWhen } from "../lib/events";
 import { EMPTY_RESULTS, totalCount, listingPrice, distanceLabel, type SearchResultsData } from "../lib/searchResult";
+import { useVisitorMarket } from "../lib/useVisitorMarket";
 import styles from "./GlobalSearch.module.css";
 
 interface RowData {
@@ -37,6 +38,7 @@ interface SectionData {
 
 export function GlobalSearch() {
   const t = useTranslations("chrome.search");
+  const { market } = useVisitorMarket();
   const trpc = useTrpc();
   const router = useRouter();
   const { place } = useCurrentPlace();
@@ -101,7 +103,7 @@ export function GlobalSearch() {
     }
     const s: SectionData[] = [];
     if (results.people.length) s.push({ label: t("groups.people"), rows: results.people.map((p) => ({ key: p.id, icon: "person", primary: p.name, secondary: p.handle ? `@${p.handle}` : undefined, avatarUrl: p.avatarUrl, url: p.url })) });
-    if (results.venues.length) s.push({ label: t("groups.places"), rows: results.venues.map((v) => ({ key: v.id, icon: "place", primary: v.name, secondary: [v.category, distanceLabel(v.distanceM)].filter(Boolean).join(" · ") || undefined, url: v.url })) });
+    if (results.venues.length) s.push({ label: t("groups.places"), rows: results.venues.map((v) => ({ key: v.id, icon: "place", primary: v.name, secondary: [v.category, distanceLabel(v.distanceM, market?.units ?? "metric")].filter(Boolean).join(" · ") || undefined, url: v.url })) });
     if (results.events.length) s.push({ label: t("groups.events"), rows: results.events.map((e) => ({ key: e.id, icon: "event", primary: e.title, secondary: `${formatEventWhen(e.startsAt, null)} · ${e.localityLabel}`, url: e.url })) });
     if (results.topics.length) s.push({ label: t("groups.community"), rows: results.topics.map((tp) => ({ key: tp.id, icon: "landmark", primary: tp.title, secondary: tp.localityLabel, url: tp.url })) });
     if (results.listings.length) s.push({ label: t("groups.marketplace"), rows: results.listings.map((l) => ({ key: l.id, icon: "shop", primary: l.title, secondary: [listingPrice(l.pricePence, l.mode), l.locality].filter(Boolean).join(" · "), url: l.url })) });

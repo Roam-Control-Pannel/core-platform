@@ -38,6 +38,7 @@ import { FollowButton } from "./FollowButton";
 import { AddToPlanIconButton } from "./AddToPlan";
 import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
+import { useVisitorMarket } from "../lib/useVisitorMarket";
 
 /**
  * Local mirror of @roam/core's geo.formatDistance. Core is a Node-ESM package (its
@@ -47,7 +48,12 @@ import { venuePath } from "../lib/routes";
  * is a pure presentation helper; it lives here. (If a shared browser-safe core subset
  * ever exists, swap this back to that import.)
  */
-function formatDistance(metres: number): string {
+function formatDistance(metres: number, units: "metric" | "imperial" = "metric"): string {
+  if (units === "imperial") {
+    const miles = metres / 1609.344;
+    if (miles < 0.1) return `${Math.round((metres * 3.28084) / 10) * 10} ft`;
+    return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
+  }
   if (metres < 1000) return `${Math.round(metres)} m`;
   const km = metres / 1000;
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
@@ -374,11 +380,12 @@ function CoverWithBadge({
   orderAhead: boolean;
 }) {
   const t = useTranslations("venueCard");
+  const { market } = useVisitorMarket();
   const closed = venue.businessStatus === "CLOSED_TEMPORARILY";
   return (
     <div style={coverWrap}>
       <CardCover coverPhotoId={venue.coverPhotoId} resolvedUrl={coverUrl} fallback={<FallbackCover />} />
-      {venue.distanceM != null ? <span style={distancePill}>{formatDistance(venue.distanceM)}</span> : null}
+      {venue.distanceM != null ? <span style={distancePill}>{formatDistance(venue.distanceM, market?.units ?? "metric")}</span> : null}
       {closed ? <span style={closedBadge}>{t("temporarilyClosed")}</span> : null}
       {orderAhead ? (
         <span style={orderAheadPill}>

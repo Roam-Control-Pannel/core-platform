@@ -39,8 +39,20 @@ export function distanceMetres(a: LatLng, b: LatLng): number {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** Human-friendly distance string. Metric; localisation of units is a UI concern. */
-export function formatDistance(metres: number): string {
+/** Measurement system for distances — a market attribute (see @roam/core/markets). */
+export type DistanceUnits = "metric" | "imperial";
+
+/**
+ * Human-friendly distance string in the requested units. Defaults to metric (km/m) so existing
+ * callers are unchanged; "imperial" renders miles (feet under 0.1 mi) for US-style markets. The
+ * unit choice is a UI concern — callers pass the viewer's market units.
+ */
+export function formatDistance(metres: number, units: DistanceUnits = "metric"): string {
+  if (units === "imperial") {
+    const miles = metres / 1609.344;
+    if (miles < 0.1) return `${Math.round((metres * 3.28084) / 10) * 10} ft`;
+    return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
+  }
   if (metres < 1000) return `${Math.round(metres)} m`;
   const km = metres / 1000;
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;

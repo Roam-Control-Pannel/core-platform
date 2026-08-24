@@ -20,6 +20,7 @@ import { Card, Button, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { PresencePill } from "./PresenceStatus";
 import { FriendsMap } from "./FriendsMap";
+import { useVisitorMarket } from "../lib/useVisitorMarket";
 import styles from "./NearbyFriends.module.css";
 
 type Availability = "free_to_meet" | "out_and_about" | "heads_down";
@@ -40,7 +41,12 @@ interface FriendNearby {
 const TTL_CHOICES = [1, 4, 8] as const;
 
 /** Local mirror of @roam/core's geo.formatDistance (same rationale as VenueCard). */
-function formatDistance(metres: number): string {
+function formatDistance(metres: number, units: "metric" | "imperial" = "metric"): string {
+  if (units === "imperial") {
+    const miles = metres / 1609.344;
+    if (miles < 0.1) return `${Math.round((metres * 3.28084) / 10) * 10} ft`;
+    return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
+  }
   if (metres < 1000) return `${Math.round(metres)} m`;
   const km = metres / 1000;
   return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
@@ -78,6 +84,7 @@ function Avatar({ p, size }: { p: FriendNearby; size: number }) {
 
 export function NearbyFriends() {
   const t = useTranslations("presence");
+  const { market } = useVisitorMarket();
   const trpc = useTrpc();
   const session = useSession();
   const hasSession = !!session;
@@ -220,7 +227,7 @@ export function NearbyFriends() {
                 <Avatar p={p} size={32} />
                 <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName(t, p)}</span>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("distanceAway", { distance: formatDistance(p.distance_m) })}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("distanceAway", { distance: formatDistance(p.distance_m, market?.units ?? "metric") })}</span>
                 </span>
               </Link>
               {p.availability ? <PresencePill availability={p.availability} note={p.note} /> : null}
