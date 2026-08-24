@@ -14,7 +14,7 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
-import { f2g } from "@roam/core";
+import { f2g, markets } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { createCheckoutSession, createCartCheckoutSession, refundPayment } from "../stripe/client.js";
 import { geocodeSearch } from "../geocode/client.js";
@@ -262,6 +262,16 @@ export const marketRouter = router({
     .input(z.object({ venueId: z.string().uuid(), ...productFields }))
     .mutation(async ({ ctx, input }): Promise<{ ok: boolean; product?: MarketProduct }> => {
       const db = ctx.db as unknown as LooseDb;
+      // Price the product in the VENUE's own market currency (from its country): GBP for a UK
+      // venue, USD for a US one, etc. Everything downstream — the shop display (formatPence),
+      // the cart, and Stripe checkout — already follows the stored `currency`, so setting it
+      // correctly here is the whole job. Unknown/absent country → GBP (Stripe wants lower-case).
+      const { data: venueRow } = (await db
+        .from("venues")
+        .select("country_code")
+        .eq("id", input.venueId)
+        .maybeSingle()) as { data: { country_code: string | null } | null; error: unknown };
+      const currency = markets.getMarket(venueRow?.country_code)?.currency.toLowerCase() ?? "gbp";
       const { data, error } = (await db
         .from("venue_products")
         .insert({
@@ -270,7 +280,7 @@ export const marketRouter = router({
           title: input.title,
           description: input.description ?? null,
           price_pence: input.pricePence,
-          currency: "gbp",
+          currency,
           stock: input.stock ?? null,
           photo_url: input.photoUrl ?? null,
         })
