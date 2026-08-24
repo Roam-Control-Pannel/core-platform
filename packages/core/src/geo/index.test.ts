@@ -39,6 +39,18 @@ describe("formatDistance", () => {
   it("uses whole km at/over 10km", () => {
     expect(formatDistance(15000)).toBe("15 km");
   });
+  it("defaults to metric when no units are given (back-compat)", () => {
+    expect(formatDistance(2500)).toBe("2.5 km");
+  });
+  it("imperial: feet under 0.1 mi", () => {
+    expect(formatDistance(120, "imperial")).toBe("390 ft"); // 120 m ≈ 393.7 ft → 390
+  });
+  it("imperial: one decimal miles under 10 mi", () => {
+    expect(formatDistance(2500, "imperial")).toBe("1.6 mi"); // 2500 m ≈ 1.553 mi → 1.6
+  });
+  it("imperial: whole miles at/over 10 mi", () => {
+    expect(formatDistance(20000, "imperial")).toBe("12 mi"); // 20 km ≈ 12.43 mi → 12
+  });
 });
 
 describe("sortByProximity", () => {

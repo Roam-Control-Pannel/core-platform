@@ -99,7 +99,12 @@ export function listingPrice(pricePence: number | null, mode: string): string {
 }
 
 /** Rounded distance for a venue result: "320 m" / "2.4 km". Null when unknown (non-local search). */
-export function distanceLabel(distanceM: number | null): string | null {
+export function distanceLabel(distanceM: number | null, units: "metric" | "imperial" = "metric"): string | null {
   if (distanceM == null) return null;
+  if (units === "imperial") {
+    const miles = distanceM / 1609.344;
+    if (miles < 0.1) return `${Math.round((distanceM * 3.28084) / 10) * 10} ft`;
+    return miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`;
+  }
   return distanceM < 1000 ? `${Math.round(distanceM)} m` : `${(distanceM / 1000).toFixed(1)} km`;
 }
