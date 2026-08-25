@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { RoamClient } from "@roam/db";
 import { getActivityFeed } from "./activity.js";
 import { getSignupTrend } from "./metrics.js";
+import { getMarketsBreakdown } from "./overview.js";
 import { setVenueChannel } from "./actions.js";
 
 /**
@@ -115,6 +116,73 @@ describe("getActivityFeed", () => {
     expect(feed).toHaveLength(3);
     // Newest three (p4, p3, p2).
     expect(feed.map((f) => f.id)).toEqual(["post:p4", "post:p3", "post:p2"]);
+  });
+});
+
+/**
+ * A count-aware mock: every read here is a HEAD `count` query (countWhere). The builder
+ * accumulates the filters applied and, on await, returns how many of the fixture venue rows
+ * satisfy all of them — exercising the real per-bucket bucketing in getMarketsBreakdown.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function countClient(
+  venues: Array<{ country_code: string | null; owner_id: string | null; created_at: string }>,
+): RoamClient {
+  return {
+    from(_table: string) {
+      const preds: Array<(r: any) => boolean> = [];
+      const q: any = {
+        select: () => q,
+        eq: (col: string, val: any) => (preds.push((r) => r[col] === val), q),
+        is: (col: string, val: any) =>
+          (preds.push((r) => (val === null ? r[col] == null : r[col] === val)), q),
+        not: (col: string, _op: string, val: any) =>
+          (preds.push((r) => !(val === null ? r[col] == null : r[col] === val)), q),
+        gte: (col: string, val: any) => (preds.push((r) => r[col] >= val), q),
+        then: (resolve: (v: any) => unknown) =>
+          Promise.resolve({ count: venues.filter((r) => preds.every((p) => p(r))).length, error: null }).then(resolve),
+      };
+      return q;
+    },
+  } as unknown as RoamClient;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+describe("getMarketsBreakdown", () => {
+  const now = new Date().toISOString();
+  const old = "2020-01-01T00:00:00.000Z";
+
+  it("buckets venues by market, derives Other + Unknown, and computes claimed/recent", async () => {
+    const client = countClient([
+      { country_code: "GB", owner_id: "o1", created_at: now }, // GB claimed + recent
+      { country_code: "GB", owner_id: "o2", created_at: old }, // GB claimed
+      { country_code: "GB", owner_id: null, created_at: old }, // GB unclaimed
+      { country_code: "IE", owner_id: null, created_at: old }, // Other (unregistered)
+      { country_code: null, owner_id: "o3", created_at: old }, // Unknown claimed
+      { country_code: null, owner_id: null, created_at: old }, // Unknown
+    ]);
+
+    const rows = await getMarketsBreakdown(client, 30);
+    const by = (name: string) => rows.find((r) => r.name === name)!;
+
+    // Registered markets first, biggest supply first → GB before United States.
+    expect(rows[0]!.name).toBe("United Kingdom");
+    expect(rows.map((r) => r.name)).toEqual(["United Kingdom", "United States", "Other", "Unknown"]);
+
+    expect(by("United Kingdom")).toMatchObject({ code: "GB", status: "live", total: 3, claimed: 2, claimedPct: 67, newRecent: 1 });
+    expect(by("United States")).toMatchObject({ code: "US", status: "seeding", total: 0, claimed: 0, claimedPct: 0, newRecent: 0 });
+    expect(by("Other")).toMatchObject({ code: null, status: null, total: 1, claimed: 0 });
+    expect(by("Unknown")).toMatchObject({ code: null, status: null, total: 2, claimed: 1, claimedPct: 50 });
+  });
+
+  it("omits Other and Unknown when every venue is in a registered market", async () => {
+    const client = countClient([
+      { country_code: "GB", owner_id: "o1", created_at: old },
+      { country_code: "US", owner_id: null, created_at: now },
+    ]);
+    const rows = await getMarketsBreakdown(client, 30);
+    expect(rows.map((r) => r.name)).toEqual(["United Kingdom", "United States"]);
+    expect(rows.every((r) => r.code !== null)).toBe(true);
   });
 });
 

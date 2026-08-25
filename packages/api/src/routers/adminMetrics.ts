@@ -109,4 +109,18 @@ export const adminMetricsRouter = router({
         });
       }
     }),
+
+  /** Per-country venue supply (total / claimed / new-in-window) for the Markets card. */
+  marketsBreakdown: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(90).default(30) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.getMarketsBreakdown(ctx.service, input.days);
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: e instanceof Error ? e.message : "Failed to load markets breakdown.",
+        });
+      }
+    }),
 });

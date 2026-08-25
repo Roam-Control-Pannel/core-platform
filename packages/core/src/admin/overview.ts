@@ -10,6 +10,7 @@
  */
 import type { RoamClient } from "@roam/db";
 import { countWhere, isoAgo, loose, DAY_MS } from "./loose.js";
+import { MARKETS, getMarket, type MarketStatus } from "../markets/index.js";
 
 export interface OverviewStats {
   members: { total: number; new7d: number; new30d: number };
@@ -181,3 +182,105 @@ export async function getTopPlaces(
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
+
+export interface MarketSupply {
+  /**
+   * ISO-3166-1 alpha-2 (uppercase) for a registered market; null for the two aggregate rows
+   * ("Other" and "Unknown"), which are told apart by `name`. UI keys rows on `name`.
+   */
+  code: string | null;
+  /** Registry name for a market; "Other" / "Unknown" for the aggregate rows. */
+  name: string;
+  /** Registry status for a market; null for the aggregate rows. */
+  status: MarketStatus | null;
+  /** Total venues in this bucket. */
+  total: number;
+  /** Venues with an owner (claimed). */
+  claimed: number;
+  /** claimed / total as a whole-number percent (0 when the bucket is empty). */
+  claimedPct: number;
+  /** Venues created within the last `days` days. */
+  newRecent: number;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Per-country venue SUPPLY for the Roam HQ "Markets" card: how much supply each market holds,
+ * how much of it is claimed, and how much arrived recently.
+ *
+ * Every number is an exact, indexed HEAD count on venues.country_code (idx_venues_country_code) —
+ * accurate regardless of table size, unlike a JS tally over a row-capped select.
+ *
+ * Rows: one per REGISTERED market (from the registry, so a live-but-empty market like US still
+ * appears), then a derived "Other" bucket for venues in countries we don't yet operate (global
+ * self-seed), then "Unknown" for venues with no country_code yet (awaiting backfill / self-heal).
+ * "Other" and "Unknown" are only emitted when non-empty.
+ */
+export async function getMarketsBreakdown(
+  client: RoamClient,
+  days = 30,
+): Promise<MarketSupply[]> {
+  const since = isoAgo(days * DAY_MS);
+  const claimedQ = (q: any) => q.not("owner_id", "is", null);
+  const recentQ = (q: any) => q.gte("created_at", since);
+
+  const codes = Object.keys(MARKETS);
+  const perMarket = await Promise.all(
+    codes.map(async (code) => {
+      const [total, claimed, newRecent] = await Promise.all([
+        countWhere(client, "venues", (q) => q.eq("country_code", code)),
+        countWhere(client, "venues", (q) => claimedQ(q.eq("country_code", code))),
+        countWhere(client, "venues", (q) => recentQ(q.eq("country_code", code))),
+      ]);
+      return { code, total, claimed, newRecent };
+    }),
+  );
+
+  const [
+    unknownTotal, unknownClaimed, unknownRecent,
+    grandTotal, grandClaimed, grandRecent,
+  ] = await Promise.all([
+    countWhere(client, "venues", (q) => q.is("country_code", null)),
+    countWhere(client, "venues", (q) => claimedQ(q.is("country_code", null))),
+    countWhere(client, "venues", (q) => recentQ(q.is("country_code", null))),
+    countWhere(client, "venues"),
+    countWhere(client, "venues", claimedQ),
+    countWhere(client, "venues", recentQ),
+  ]);
+
+  const row = (
+    code: string | null,
+    name: string,
+    status: MarketStatus | null,
+    total: number,
+    claimed: number,
+    newRecent: number,
+  ): MarketSupply => ({
+    code,
+    name,
+    status,
+    total,
+    claimed,
+    claimedPct: total > 0 ? Math.round((claimed / total) * 100) : 0,
+    newRecent,
+  });
+
+  const rows: MarketSupply[] = perMarket
+    .map((m) => {
+      const market = getMarket(m.code)!; // codes come straight from the registry
+      return row(m.code, market.name, market.status, m.total, m.claimed, m.newRecent);
+    })
+    .sort((a, b) => b.total - a.total);
+
+  // "Other" = venues with a country_code we don't operate a market for (grand − known − unknown).
+  const sum = (pick: (m: (typeof perMarket)[number]) => number) => perMarket.reduce((s, m) => s + pick(m), 0);
+  const otherTotal = Math.max(0, grandTotal - sum((m) => m.total) - unknownTotal);
+  const otherClaimed = Math.max(0, grandClaimed - sum((m) => m.claimed) - unknownClaimed);
+  const otherRecent = Math.max(0, grandRecent - sum((m) => m.newRecent) - unknownRecent);
+  if (otherTotal > 0) rows.push(row(null, "Other", null, otherTotal, otherClaimed, otherRecent));
+
+  if (unknownTotal > 0) rows.push(row(null, "Unknown", null, unknownTotal, unknownClaimed, unknownRecent));
+
+  return rows;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
