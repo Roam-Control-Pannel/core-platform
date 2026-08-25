@@ -49,6 +49,7 @@ export function OverviewView({ onGoModeration }: { onGoModeration: () => void })
         <LiveActivityPanel version={version} />
         <div style={{ display: "grid", gap: 20, alignContent: "start" }}>
           <NeedsYouPanel version={version} onGoModeration={onGoModeration} />
+          <MarketsPanel version={version} />
           <TopPlacesPanel version={version} />
         </div>
       </div>
@@ -384,6 +385,82 @@ function NeedRow({ label, value, hot = false }: { label: string; value: number; 
       <span style={{ fontSize: 13.5, color: C.inkSoft }}>{label}</span>
       <span style={{ fontFamily: F.display, fontWeight: 700, fontSize: 20, color: hot ? C.red : C.ink }}>{value.toLocaleString()}</span>
     </div>
+  );
+}
+
+/* ----------------------------------------------------------------- markets */
+
+interface MarketSupply {
+  code: string | null;
+  name: string;
+  status: "live" | "seeding" | null;
+  total: number;
+  claimed: number;
+  claimedPct: number;
+  newRecent: number;
+}
+
+function MarketsPanel({ version }: { version: number }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<MarketSupply[] | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (trpc.adminMetrics.marketsBreakdown.query({ days: 30 }) as Promise<MarketSupply[]>)
+      .then((d) => !cancelled && setRows(d))
+      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : "Failed to load."));
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, version]);
+
+  return (
+    <Panel style={{ padding: 24 }}>
+      <Label>Markets · venue supply</Label>
+      {error ? <div style={{ marginTop: 14 }}><ErrorLine message={error} /></div> : !rows ? (
+        <div style={{ display: "grid", gap: 8, marginTop: 14 }}>{Array.from({ length: 3 }).map((_, i) => <SkeletonBlock key={i} height={40} />)}</div>
+      ) : rows.length === 0 ? (
+        <div style={{ color: C.muted, fontSize: 13, marginTop: 12 }}>No venues yet.</div>
+      ) : (
+        <div style={{ marginTop: 6 }}>
+          {rows.map((m) => (
+            <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: `1px solid ${C.line}` }}>
+              <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, color: C.ink }}>{m.name}</span>
+                {m.status ? <MarketBadge status={m.status} /> : null}
+              </span>
+              <span style={{ textAlign: "right" }}>
+                <span style={{ fontFamily: F.display, fontWeight: 700, fontSize: 18, color: C.ink }}>{fmt(m.total)}</span>
+                <span style={{ display: "block", fontFamily: F.mono, fontSize: 10.5, color: C.muted, marginTop: 2 }}>
+                  {m.claimedPct}% claimed{m.newRecent > 0 ? ` · +${fmt(m.newRecent)} · 30d` : ""}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function MarketBadge({ status }: { status: "live" | "seeding" }) {
+  const live = status === "live";
+  return (
+    <span
+      style={{
+        fontFamily: F.mono,
+        fontSize: 9.5,
+        letterSpacing: ".06em",
+        textTransform: "uppercase",
+        padding: "2px 6px",
+        borderRadius: 3,
+        color: live ? C.ink : C.muted,
+        border: `1px solid ${live ? C.ink : C.line}`,
+      }}
+    >
+      {live ? "Live" : "Seeding"}
+    </span>
   );
 }
 
