@@ -1155,7 +1155,9 @@
     },
     "founding": {
       "count": "{count, plural, one {# founding member so far} other {# founding members so far}}",
-      "you": "you're #{rank}"
+      "you": "you're #{rank}",
+      "pioneerNotice": "You're one of {place}'s founders — we'll let you know as neighbours join the conversation.",
+      "dismiss": "Dismiss"
     },
     "starters": {
       "title": "Get {place} talking",
