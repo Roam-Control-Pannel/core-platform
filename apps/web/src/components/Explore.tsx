@@ -44,6 +44,7 @@ import { placeMapsUrl, detectMapsPlatform } from "../lib/directions";
 import { VenueMap, type MapVenue } from "./VenueMap";
 import { NearbyDepartures } from "./NearbyDepartures";
 import { PlanJourney } from "./PlanJourney";
+import { FoundingBanner } from "./FoundingBanner";
 import styles from "./Explore.module.css";
 
 type Mode = "browse" | "feed";
@@ -609,6 +610,10 @@ export function Explore() {
                 </div>
               ) : null}
             </div>
+
+            {/* Founding invitation — shown on the All view when this town's COMMUNITY is still
+                cold (few/no Forum topics or listings), even if the venue directory is full. */}
+            {activeCategory === null ? <FoundingBanner place={place} /> : null}
 
             {/* sub-category sliding strip — leaf types in the loaded category view */}
             {subCategories.length > 0 ? (
