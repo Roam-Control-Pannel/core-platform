@@ -102,6 +102,22 @@ export const listingsRouter = router({
       return (data ?? []).map(shape);
     }),
 
+  /** Public: how many LIVE listings a town has — the marketplace half of the "is this locality
+   *  still cold?" pulse behind Explore's founding invitation. A head count (no rows travel), same
+   *  locality display-name keying as `browse`, so the two stay aligned. */
+  localCount: publicProcedure
+    .input(z.object({ localityName: z.string().trim().min(1).max(120) }))
+    .query(async ({ ctx, input }): Promise<{ count: number }> => {
+      const db = ctx.db as unknown as LooseDb;
+      const { count, error } = (await db
+        .from("market_listings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "live")
+        .ilike("locality", input.localityName)) as { count: number | null; error: { message: string } | null };
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to count listings: ${error.message}` });
+      return { count: count ?? 0 };
+    }),
+
   /** Public: one listing (live for everyone; owners can open their own sold/removed). */
   byId: publicProcedure
     .input(z.object({ listingId: z.string().uuid() }))

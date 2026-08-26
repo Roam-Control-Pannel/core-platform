@@ -687,6 +687,13 @@
       "outOfAreaForum": "Start your Forum",
       "outOfAreaSell": "Sell something"
     },
+    "founding": {
+      "title": "Be one of the first in {place}",
+      "body": "The places are here — but the community's still quiet. Start a conversation in the Forum or list something in the marketplace, and help {place} come to life.",
+      "forum": "Start your Forum",
+      "sell": "Sell something",
+      "dismiss": "Not now"
+    },
     "errors": {
       "loadFailed": "Failed to load venues.",
       "title": "Couldn't load venues"
