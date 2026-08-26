@@ -86,6 +86,9 @@ export function TownHall() {
   const [sort, setSort] = useState<Sort>("hot");
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [composing, setComposing] = useState(false);
+  // After a first post in a quiet town, we confirm the visitor is a founder and that we'll ping
+  // them as neighbours join (the 0108 locality_newcomer notification makes that promise true).
+  const [foundingNotice, setFoundingNotice] = useState(false);
   // Composer seed (from a starter question) + a nonce so each "start" remounts the composer fresh.
   const [seed, setSeed] = useState<{ title: string; category: CategoryId | null; nonce: number }>({ title: "", category: null, nonce: 0 });
   const startTopic = useCallback((title = "", cat: CategoryId | null = null) => {
@@ -109,6 +112,7 @@ export function TownHall() {
 
   useEffect(() => {
     let cancelled = false;
+    setFoundingNotice(false); // a place/sort/category change clears any prior founder confirmation
     load()
       .then((list) => {
         if (!cancelled) setTopics(list);
@@ -124,7 +128,15 @@ export function TownHall() {
   const onPosted = useCallback(() => {
     setComposing(false);
     void load().then((list) => setTopics(list)).catch(() => {});
-  }, [load]);
+    // Set the founding expectation. If the poster is an EARLY founder — still within the phase where
+    // earlier founders get pinged as newcomers arrive (viewerRank < cap; the 0108 trigger's 2nd–25th
+    // window) — reassure them a first post in a quiet town isn't shouting into a void: they'll hear
+    // as neighbours join. Rank ≥ cap means the town is already self-sustaining, so we stay quiet.
+    const q = trpc.townHall.foundingStats as unknown as { query: (i: { localityName: string }) => Promise<FoundingStats> };
+    q.query({ localityName: place.name })
+      .then((s) => setFoundingNotice(s.viewerRank != null && s.viewerRank < s.cap))
+      .catch(() => {});
+  }, [load, trpc, place.name]);
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
@@ -185,6 +197,39 @@ export function TownHall() {
           <FoundingCounter localityName={place.name} />
         </div>
       </section>
+
+      {/* Founder confirmation — shown after a first post in a still-quiet town, so a pioneer knows
+          they're founding it and that we'll pull them back as neighbours arrive (0108 delivers it). */}
+      {foundingNotice ? (
+        <div
+          role="status"
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "var(--space-3)",
+            padding: "var(--space-4)",
+            marginBottom: "var(--space-5)",
+            borderRadius: 14,
+            border: "1px solid var(--line)",
+            background: "var(--crimson-tint)",
+          }}
+        >
+          <span aria-hidden style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 10, background: "var(--card)", color: "var(--crimson-700)", display: "grid", placeItems: "center" }}>
+            <Icon name="star" size={17} />
+          </span>
+          <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--ink)" }}>
+            {t("founding.pioneerNotice", { place: place.name })}
+          </p>
+          <button
+            type="button"
+            onClick={() => setFoundingNotice(false)}
+            aria-label={t("founding.dismiss")}
+            style={{ all: "unset", cursor: "pointer", flexShrink: 0, padding: 4, color: "var(--muted)", display: "grid", placeItems: "center" }}
+          >
+            <Icon name="close" size={15} />
+          </button>
+        </div>
+      ) : null}
 
       {/* Controls: place + sort, then the category chips. */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
