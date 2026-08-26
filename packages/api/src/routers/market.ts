@@ -477,7 +477,11 @@ export const marketRouter = router({
       for (const it of input.items) qtyById.set(it.productId, (qtyById.get(it.productId) ?? 0) + it.quantity);
 
       const lines: { productId: string; title: string; unitPricePence: number; quantity: number }[] = [];
-      let currency = "gbp";
+      // One basket = one venue = one Stripe payout = one currency. Prices are integer minor units
+      // with no cross-currency meaning, so a basket that mixes currencies (e.g. a legacy GBP item
+      // beside a newer USD one on a venue whose market changed) cannot be charged safely — we REFUSE
+      // it rather than silently billing every line in whichever currency happened to sort last.
+      let currency: string | null = null;
       for (const [pid, qty] of qtyById) {
         const p = byId.get(pid);
         if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "An item in your basket is no longer available." });
@@ -487,10 +491,15 @@ export const marketRouter = router({
         if (p.stock != null && p.stock < qty) {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: p.stock === 0 ? `Sold out — ${p.title}.` : `Only ${p.stock} of ${p.title} left.` });
         }
+        if (currency !== null && p.currency !== currency) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This basket mixes items priced in different currencies — please order them separately." });
+        }
         currency = p.currency;
         lines.push({ productId: pid, title: p.title, unitPricePence: p.price_pence, quantity: qty });
       }
       if (lines.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Your basket is empty." });
+      // Every line shares this by the guard above; the fallback only covers a currency-less legacy row.
+      const cartCurrency = currency ?? "gbp";
 
       const { data: acct } = (await service
         .from("venue_payment_accounts")
@@ -586,7 +595,7 @@ export const marketRouter = router({
           delivery_fee_pence: totals.deliveryFeePence,
           fulfilment_type: input.fulfilment,
           delivery_address: deliveryAddressJson,
-          currency,
+          currency: cartCurrency,
           redeem_code: redeemCode,
           ready_at: readyAt,
           delivery_eta_at: deliveryEtaAt,
@@ -617,7 +626,7 @@ export const marketRouter = router({
       const session = await createCartCheckoutSession({ secretKey: ctx.env.stripe.secretKey }, {
         destinationAccount: acct.stripe_account_id,
         applicationFeePence: totals.applicationFeePence,
-        currency,
+        currency: cartCurrency,
         lines: lines.map((l) => ({ title: l.title, unitAmountPence: l.unitPricePence, quantity: l.quantity })),
         deliveryFeePence: totals.deliveryFeePence,
         deliveryLabel: "Delivery",
