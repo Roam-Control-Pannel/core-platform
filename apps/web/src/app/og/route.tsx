@@ -6,8 +6,9 @@
  * logo placeholder.
  *
  * Rendered with next/og's ImageResponse (satori): flexbox-only inline styles, with Archivo (the
- * platform display/body face) bundled as two WOFFs beside this route — satori can't read the CSS
- * @import, so the font bytes are loaded and handed in explicitly. Hierarchy comes from weight +
+ * platform display/body face) bundled as WOFFs beside this route (latin + latin-ext, 400 + 700) —
+ * satori can't read the CSS @import, so the font bytes are loaded and handed in explicitly (fail-safe:
+ * a load error falls back to satori's default font). Hierarchy comes from weight +
  * size + the brand palette (packages/design tokens, hex-inlined here because this runs outside the
  * CSS-var pipeline). Inputs are query params, length-capped; text is rendered as text (JSX), never
  * markup. Response is CDN-cacheable.
@@ -15,19 +16,56 @@
 import { ImageResponse } from "next/og";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs"; // reads the bundled WOFFs; matches the repo's other font routes
 
-/** Load Archivo (400 + 700) from the WOFFs bundled next to this route, once, memoised. Satori
- *  accepts ttf/otf/woff (not woff2); @fontsource ships woff, so these render everywhere. */
-let fontsPromise: Promise<{ name: string; data: ArrayBuffer; weight: 400 | 700; style: "normal" }[]> | null = null;
-function loadFonts() {
-  fontsPromise ??= Promise.all([
-    fetch(new URL("./archivo-400.woff", import.meta.url)).then((r) => r.arrayBuffer()),
-    fetch(new URL("./archivo-700.woff", import.meta.url)).then((r) => r.arrayBuffer()),
-  ]).then(([regular, bold]) => [
-    { name: "Archivo", data: regular, weight: 400 as const, style: "normal" as const },
-    { name: "Archivo", data: bold, weight: 700 as const, style: "normal" as const },
-  ]);
-  return fontsPromise;
+type SatoriFont = { name: string; data: ArrayBuffer; weight: 400 | 700; style: "normal" };
+
+/**
+ * Load Archivo from the WOFFs bundled next to this route (latin + latin-ext, 400 + 700), memoised
+ * on SUCCESS only. Satori accepts ttf/otf/woff (not woff2); @fontsource ships woff.
+ *
+ * FAIL-SAFE: a failed load resolves to [] (never a rejected promise) so ImageResponse falls back to
+ * next/og's own default font and the card still renders — a font hiccup must never 500 a share card.
+ * The memo is cleared on failure so a transient error can retry on the next request.
+ */
+let fontsCache: SatoriFont[] | null = null;
+let fontsInFlight: Promise<SatoriFont[]> | null = null;
+async function loadFonts(): Promise<SatoriFont[]> {
+  if (fontsCache) return fontsCache;
+  fontsInFlight ??= (async () => {
+    try {
+      const load = (file: string) => fetch(new URL(file, import.meta.url)).then((r) => r.arrayBuffer());
+      // latin + latin-ext together cover every Roam locale's accented place names (é, ü, ł, ș, …).
+      // Archivo has no Cyrillic/Greek/CJK; a title needing those falls back to the default (see GET).
+      const [r, rExt, b, bExt] = await Promise.all([
+        load("./archivo-400.woff"),
+        load("./archivo-ext-400.woff"),
+        load("./archivo-700.woff"),
+        load("./archivo-ext-700.woff"),
+      ]);
+      fontsCache = [
+        { name: "Archivo", data: r, weight: 400, style: "normal" },
+        { name: "Archivo", data: rExt, weight: 400, style: "normal" },
+        { name: "Archivo", data: b, weight: 700, style: "normal" },
+        { name: "Archivo", data: bExt, weight: 700, style: "normal" },
+      ];
+      return fontsCache;
+    } catch {
+      return []; // fall back to next/og's default font; try again next request
+    } finally {
+      fontsInFlight = null;
+    }
+  })();
+  return fontsInFlight;
+}
+
+/**
+ * Archivo covers the Latin script (incl. Latin-ext) + combining marks + common punctuation/digits.
+ * If the card text needs anything else (Cyrillic, Greek, CJK, …), skip the custom font so satori uses
+ * its broad-coverage default rather than rendering tofu boxes for glyphs Archivo doesn't have.
+ */
+function archivoCovers(text: string): boolean {
+  return /^[\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]*$/u.test(text);
 }
 
 // Brand palette — packages/design/src/tokens/color.ts values, inlined.
@@ -56,7 +94,8 @@ export async function GET(req: Request) {
   // Long titles step down so they fit in three lines at most.
   const titleSize = title.length > 80 ? 46 : title.length > 44 ? 56 : 68;
 
-  const fonts = await loadFonts();
+  // Use Archivo when the card text is Latin-script; otherwise let satori's default cover the glyphs.
+  const fonts = archivoCovers(`${title} ${sub} ${badge}`) ? await loadFonts() : [];
 
   return new ImageResponse(
     (
