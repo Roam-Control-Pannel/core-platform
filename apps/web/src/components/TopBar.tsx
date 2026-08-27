@@ -1,12 +1,13 @@
 /**
  * TopBar — the global app top bar (Discovery design's .topbar / .webnav), rendered once
- * in the root layout above every page. Brand mark + primary nav (Explore · Plans · Chat ·
- * You) + Sign in / avatar + ＋Create. It is the app's identity and primary navigation; it
- * replaces the ad-hoc links that used to live inside Explore's header.
+ * in the root layout above every page. Brand mark + primary nav (Home · Explore · The Forum ·
+ * Plans · Chat) + Sign in / avatar + ＋Create. It is the app's identity and primary navigation; it
+ * replaces the ad-hoc links that used to live inside Explore's header. The account surface has no
+ * nav tab — it's reached from the avatar top-right, so a "You" tab would just duplicate it.
  *
  * Honest seams: Plans and ＋Create are Stage-2 (Social) surfaces that don't exist yet, so
  * they render as visibly-dormant items rather than dead links — present in the IA, plainly
- * not active. Chat → /threads and You → /following are wired to the surfaces that DO exist.
+ * not active. Chat → /threads is wired to the surface that DOES exist.
  *
  * Sign-in lives here now (not in Explore): signed-out → a "Sign in" button opening the
  * shared AuthModal; signed-in → an avatar linking to the account-ish surface (/following).
@@ -29,33 +30,30 @@ import { StorefrontHeader } from "./StorefrontHeader";
 import { Icon, type IconName } from "@roam/design";
 import styles from "./TopBar.module.css";
 
-type NavKey = "home" | "explore" | "townhall" | "plans" | "chat" | "you";
+type NavKey = "home" | "explore" | "townhall" | "plans" | "chat";
 
-/** Primary nav — icon + label tabs. Each item's icon is its section's glyph. */
+/** Primary nav — icon + label tabs. Each item's icon is its section's glyph. "You" is deliberately
+ *  NOT here: the account surface is reached from the avatar top-right, so a nav tab would duplicate
+ *  it and crowd the bar. Its paths still light no primary tab (see activeKey). */
 const NAV: { key: NavKey; href: string; icon: IconName; labelKey: string }[] = [
   { key: "home", href: "/", icon: "home", labelKey: "nav.home" },
   { key: "explore", href: "/explore", icon: "search", labelKey: "nav.explore" },
   { key: "townhall", href: "/town-hall", icon: "landmark", labelKey: "nav.townHall" },
   { key: "plans", href: "/plans", icon: "plan", labelKey: "nav.plans" },
   { key: "chat", href: "/threads", icon: "chat", labelKey: "nav.chat" },
-  { key: "you", href: "/account", icon: "person", labelKey: "nav.you" },
 ];
 
 /** Which primary nav item the current path belongs to (for the active pill). Basecamp is
  *  deliberately NOT a nav item — it's reached from the Home header cards + rail — but it should
  *  light the Home pill, since it's Home's companion surface. */
-function activeKey(pathname: string): "home" | "explore" | "townhall" | "plans" | "chat" | "you" | null {
+function activeKey(pathname: string): NavKey | null {
   if (pathname === "/" || pathname.startsWith("/home") || pathname.startsWith("/basecamp")) return "home";
   if (pathname.startsWith("/explore") || pathname.startsWith("/venue")) return "explore";
   if (pathname.startsWith("/town-hall")) return "townhall";
   if (pathname.startsWith("/plans")) return "plans";
   if (pathname.startsWith("/threads")) return "chat";
-  if (
-    pathname.startsWith("/account") ||
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/following")
-  )
-    return "you";
+  // /account, /dashboard, /following intentionally light no primary tab — their affordance is the
+  // avatar top-right, not a nav pill.
   return null;
 }
 
