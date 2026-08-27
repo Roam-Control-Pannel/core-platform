@@ -20,6 +20,7 @@ import { Card, Button, Seg, Icon } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { PlaceSwitcher } from "./PlaceSwitcher";
+import { FounderPushOptIn } from "./FounderPushOptIn";
 import { useCurrentPlace } from "../lib/currentPlace";
 import { TopicUpvote } from "./TopicUpvote";
 import { AuthorLink } from "./AuthorLink";
@@ -217,9 +218,13 @@ export function TownHall() {
           <span aria-hidden style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 10, background: "var(--card)", color: "var(--crimson-700)", display: "grid", placeItems: "center" }}>
             <Icon name="star" size={17} />
           </span>
-          <p style={{ flex: 1, minWidth: 0, margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--ink)" }}>
-            {t("founding.pioneerNotice", { place: place.name })}
-          </p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--ink)" }}>
+              {t("founding.pioneerNotice", { place: place.name })}
+            </p>
+            {/* Turn the promise into a push opt-in, right where it's most compelling. */}
+            <FounderPushOptIn />
+          </div>
           <button
             type="button"
             onClick={() => setFoundingNotice(false)}
