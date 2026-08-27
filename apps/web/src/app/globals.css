@@ -1,7 +1,7 @@
 /* GENERATED from @roam/design — do not hand-edit.
    Source of truth: packages/design/src/tokens. Regenerate via apps/web gen:css. */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
   --crimson: #C2123F;
@@ -26,9 +26,9 @@
   --faint: #AAA093;
   --line: #E4DED6;
   --line-2: #D6CEC3;
-  --display: 'Space Grotesk', system-ui, sans-serif;
-  --ui: 'Schibsted Grotesk', system-ui, sans-serif;
-  --mono: 'Space Mono', ui-monospace, monospace;
+  --display: 'Archivo', system-ui, sans-serif;
+  --ui: 'Archivo', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
   --space-0: 0px;
   --space-1: 4px;
   --space-2: 8px;
@@ -58,49 +58,49 @@
 }
 
 .t-display {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 56px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .t-h1 {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 32px;
   font-weight: 600;
   letter-spacing: 0em;
 }
 
 .t-h2 {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 24px;
   font-weight: 600;
   letter-spacing: 0em;
 }
 
 .t-h3 {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 600;
   letter-spacing: 0em;
 }
 
 .t-body {
-  font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0em;
 }
 
 .t-body-s {
-  font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 400;
   letter-spacing: 0em;
 }
 
 .t-mono-label {
-  font-family: 'Space Mono', ui-monospace, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
