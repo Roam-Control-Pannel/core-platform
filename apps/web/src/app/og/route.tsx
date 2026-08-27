@@ -5,14 +5,30 @@
  * badge ("TOWN HALL · DARLINGTON") and subtitle, the Roam wordmark — instead of the tiny square
  * logo placeholder.
  *
- * Rendered with next/og's ImageResponse (satori): flexbox-only inline styles, bundled Inter as
- * the (only) font — hierarchy comes from size + the brand palette (packages/design tokens,
- * hex-inlined here because this runs outside the CSS-var pipeline). Inputs are query params,
- * length-capped; text is rendered as text (JSX), never markup. Response is CDN-cacheable.
+ * Rendered with next/og's ImageResponse (satori): flexbox-only inline styles, with Archivo (the
+ * platform display/body face) bundled as two WOFFs beside this route — satori can't read the CSS
+ * @import, so the font bytes are loaded and handed in explicitly. Hierarchy comes from weight +
+ * size + the brand palette (packages/design tokens, hex-inlined here because this runs outside the
+ * CSS-var pipeline). Inputs are query params, length-capped; text is rendered as text (JSX), never
+ * markup. Response is CDN-cacheable.
  */
 import { ImageResponse } from "next/og";
 
 export const dynamic = "force-dynamic";
+
+/** Load Archivo (400 + 700) from the WOFFs bundled next to this route, once, memoised. Satori
+ *  accepts ttf/otf/woff (not woff2); @fontsource ships woff, so these render everywhere. */
+let fontsPromise: Promise<{ name: string; data: ArrayBuffer; weight: 400 | 700; style: "normal" }[]> | null = null;
+function loadFonts() {
+  fontsPromise ??= Promise.all([
+    fetch(new URL("./archivo-400.woff", import.meta.url)).then((r) => r.arrayBuffer()),
+    fetch(new URL("./archivo-700.woff", import.meta.url)).then((r) => r.arrayBuffer()),
+  ]).then(([regular, bold]) => [
+    { name: "Archivo", data: regular, weight: 400 as const, style: "normal" as const },
+    { name: "Archivo", data: bold, weight: 700 as const, style: "normal" as const },
+  ]);
+  return fontsPromise;
+}
 
 // Brand palette — packages/design/src/tokens/color.ts values, inlined.
 const CRIMSON = "#C2123F";
@@ -40,6 +56,8 @@ export async function GET(req: Request) {
   // Long titles step down so they fit in three lines at most.
   const titleSize = title.length > 80 ? 46 : title.length > 44 ? 56 : 68;
 
+  const fonts = await loadFonts();
+
   return new ImageResponse(
     (
       <div
@@ -52,7 +70,7 @@ export async function GET(req: Request) {
           background: PAPER,
           padding: "64px 72px 56px",
           position: "relative",
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "Archivo, sans-serif",
         }}
       >
         {/* Crimson brand strip along the bottom edge. */}
@@ -61,7 +79,7 @@ export async function GET(req: Request) {
         {/* Wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 26, height: 26, borderRadius: 26, background: CRIMSON, display: "flex" }} />
-          <div style={{ fontSize: 38, color: INK, letterSpacing: -1, display: "flex" }}>Roam</div>
+          <div style={{ fontSize: 38, fontWeight: 700, color: INK, letterSpacing: -1, display: "flex" }}>Roam</div>
         </div>
 
         {/* Badge · title · subtitle */}
@@ -70,6 +88,7 @@ export async function GET(req: Request) {
             <div
               style={{
                 fontSize: 22,
+                fontWeight: 700,
                 color: CRIMSON_700,
                 letterSpacing: 3,
                 textTransform: "uppercase",
@@ -79,7 +98,7 @@ export async function GET(req: Request) {
               {badge}
             </div>
           ) : null}
-          <div style={{ fontSize: titleSize, color: INK, lineHeight: 1.12, letterSpacing: -1.5, display: "flex" }}>{title}</div>
+          <div style={{ fontSize: titleSize, fontWeight: 700, color: INK, lineHeight: 1.12, letterSpacing: -1.5, display: "flex" }}>{title}</div>
           {sub ? <div style={{ fontSize: 28, color: INK_2, lineHeight: 1.35, display: "flex" }}>{sub}</div> : null}
         </div>
 
@@ -98,6 +117,6 @@ export async function GET(req: Request) {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 },
+    { width: 1200, height: 630, fonts },
   );
 }
