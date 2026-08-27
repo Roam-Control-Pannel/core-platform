@@ -74,8 +74,8 @@ under *Authentication → URL Configuration*, so confirmed sign-ups land back on
 
 - The logo loads from `https://www.roam-local.com/roam-logo.png` (already deployed in
   `apps/web/public`). If you move the asset, update the `<img src>` in each file.
-- Layout is table-based with inline styles and web-safe fonts (Georgia for headings, system
-  sans for body) — the only combination that renders consistently across Gmail, Outlook,
+- Layout is table-based with inline styles and web-safe fonts (a system sans throughout —
+  bold for headings, regular for body) — the only combination that renders consistently across Gmail, Outlook,
   Apple Mail, and mobile clients. Brand colours mirror the design tokens
   (crimson `#C2123F`, ink `#211D1A`, paper `#F6F3EF`, line `#E4DED6`).
 - Each template degrades gracefully if images are blocked: the `alt="Roam"` text shows, and
