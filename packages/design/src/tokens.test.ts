@@ -28,10 +28,10 @@ describe("colour tokens (authoritative handoff values)", () => {
 });
 
 describe("typography tokens", () => {
-  it("uses the three handoff families", () => {
-    expect(font.display).toContain("Space Grotesk");
-    expect(font.ui).toContain("Schibsted Grotesk");
-    expect(font.mono).toContain("Space Mono");
+  it("uses the modernist grotesk families", () => {
+    expect(font.display).toContain("Archivo");
+    expect(font.ui).toContain("Archivo");
+    expect(font.mono).toContain("JetBrains Mono");
   });
   it("display scale matches the handoff (56/600/-1%)", () => {
     expect(type.display.size).toBe(56);
@@ -74,7 +74,7 @@ describe("rootCss() derivation", () => {
     expect(css).toContain("--ink-hi: #1A1714;");
   });
   it("emits font, spacing, radius and elevation vars", () => {
-    expect(css).toContain("--display: 'Space Grotesk', system-ui, sans-serif;");
+    expect(css).toContain("--display: 'Archivo', system-ui, sans-serif;");
     expect(css).toContain("--space-4: 16px;");
     expect(css).toContain("--r-md: 12px;");
     expect(css).toContain("--r-full: 9999px;");

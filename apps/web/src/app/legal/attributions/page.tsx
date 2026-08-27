@@ -29,8 +29,8 @@ export default function AttributionsPage() {
 
       <h2>Typefaces</h2>
       <p>
-        Roam&apos;s type is set in Space Grotesk, Schibsted Grotesk and Space Mono, served via Google
-        Fonts under the SIL Open Font License.
+        Roam&apos;s type is set in Archivo and JetBrains Mono, served via Google Fonts under the SIL
+        Open Font License.
       </p>
 
       <h2>Open-source software</h2>

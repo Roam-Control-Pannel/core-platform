@@ -1,19 +1,20 @@
 /**
- * Typography tokens — three families (all Google Fonts, open-source) and the type
- * scale, from the Foundations handoff.
+ * Typography tokens — a modernist grotesk system (all Google Fonts, open-source) and the
+ * type scale.
  *
- *   display — Space Grotesk     (headings, brand moments)
- *   ui      — Schibsted Grotesk  (UI / body — the workhorse)
- *   mono    — Space Mono         (labels / data / eyebrows, uppercase tracked)
+ *   display — Archivo        (headings, brand moments)
+ *   ui      — Archivo        (UI / body — the workhorse; one family, weight does the work)
+ *   mono    — JetBrains Mono  (labels / data / eyebrows, uppercase tracked)
  *
- * The scale is "size/weight/tracking" per the handoff. Sizes in px (callers convert
- * to rem/sp as their platform needs); tracking in em.
+ * The scale is "size/weight/tracking". Sizes in px (callers convert to rem/sp as their
+ * platform needs); tracking in em. NOTE: the actual @font-face loading is the Google-Fonts
+ * @import at the top of each app's globals.css — keep those in lockstep with these names.
  */
 
 export const font = {
-  display: "'Space Grotesk', system-ui, sans-serif",
-  ui: "'Schibsted Grotesk', system-ui, sans-serif",
-  mono: "'Space Mono', ui-monospace, monospace",
+  display: "'Archivo', system-ui, sans-serif",
+  ui: "'Archivo', system-ui, sans-serif",
+  mono: "'JetBrains Mono', ui-monospace, monospace",
 } as const;
 
 /** Type scale. weight is a CSS font-weight; tracking is letter-spacing in em. */

@@ -3,8 +3,8 @@
  *
  * A deliberately different register from the consumer app's warm pastel system: a
  * data-dense, black/white/red "internal terminal" look — hairline grid, heavy grotesk
- * numerals, one hot-red accent. Fonts are the ones globals.css already loads (Space
- * Grotesk / Schibsted Grotesk / Space Mono), so no new font payload.
+ * numerals, one hot-red accent. Fonts are the ones globals.css already loads (Archivo for
+ * display + UI, JetBrains Mono for micro-labels), so no new font payload.
  */
 export const C = {
   bg: "#F4F3F1", // page — warm off-white
@@ -22,9 +22,9 @@ export const C = {
 } as const;
 
 export const F = {
-  display: "var(--display)", // Space Grotesk — headlines, big numbers
-  ui: "var(--ui)", // Schibsted Grotesk — body
-  mono: "var(--mono)", // Space Mono — micro-labels
+  display: "var(--display)", // Archivo — headlines, big numbers
+  ui: "var(--ui)", // Archivo — body
+  mono: "var(--mono)", // JetBrains Mono — micro-labels
 } as const;
 
 /** A bordered white surface — the base of every card in the grid. */
