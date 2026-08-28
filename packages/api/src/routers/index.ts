@@ -46,6 +46,7 @@ import { adminMetricsRouter } from "./adminMetrics.js";
 import { adminActivityRouter } from "./adminActivity.js";
 import { adminSearchRouter } from "./adminSearch.js";
 import { adminActionsRouter } from "./adminActions.js";
+import { ownerDigestRouter } from "./ownerDigest.js";
 
 export const appRouter = router({
   credits: creditsRouter,
@@ -89,6 +90,7 @@ export const appRouter = router({
   adminActivity: adminActivityRouter,
   adminSearch: adminSearchRouter,
   adminActions: adminActionsRouter,
+  ownerDigest: ownerDigestRouter,
 });
 
 /** The contract every shell imports for end-to-end types. */

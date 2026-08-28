@@ -28,6 +28,7 @@ import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
 import { runCjOffersSync } from "./jobs/syncCjOffers.js";
 import { runCjLogoSync } from "./jobs/syncCjLogos.js";
+import { runOwnerDigest } from "./jobs/deliverOwnerDigest.js";
 import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
@@ -263,6 +264,35 @@ export async function handler(request: Request): Promise<Response> {
         500,
         cors,
       );
+    }
+  }
+
+  // Internal cron route: the daily owner activity digest email. Same internal-secret gate as the
+  // birthday route; dormant (status "unconfigured") until the Brevo sender + unsubscribe secret are
+  // set. Idempotent per-owner per-day via the owner_digest_state watermark.
+  if (pathname === "/jobs/deliver-owner-digest") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (!ctx.isInternalCall) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runOwnerDigest(
+        service,
+        {
+          brevoApiKey: ctx.env.brevo.apiKey,
+          sender: { email: ctx.env.brevo.senderEmail, name: ctx.env.brevo.senderName },
+          unsubscribeSecret: ctx.env.ownerDigest.unsubscribeSecret,
+          webOrigin: ctx.env.stripe.webOrigin,
+        },
+        (m) => console.log(m),
+      );
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
     }
   }
 
