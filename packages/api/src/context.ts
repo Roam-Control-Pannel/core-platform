@@ -61,6 +61,17 @@ export interface ApiEnv {
     apiKey: string | null;
     newUserListId: number;
     businessListId: number;
+    /** From-address for app-sent transactional mail (the owner digest). Must be a verified Brevo sender. */
+    senderEmail: string;
+    senderName: string;
+  };
+  /**
+   * Owner activity digest email. `unsubscribeSecret` null disables the unsubscribe route (and, in
+   * practice, the digest — the job refuses to send mail it can't attach a working unsubscribe link
+   * to). `webOrigin` (Stripe block) is reused for the unsubscribe + dashboard links.
+   */
+  ownerDigest: {
+    unsubscribeSecret: string | null;
   };
   /**
    * Translink Opendata (NI transit) config. `config` null disables the feature (nearbyDepartures
