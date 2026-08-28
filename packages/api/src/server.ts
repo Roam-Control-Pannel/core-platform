@@ -67,6 +67,12 @@ function loadEnv(): ApiEnv {
       apiKey: process.env.BREVO_API_KEY ?? null,
       newUserListId: Number(process.env.BREVO_LIST_NEW_USERS ?? "93"),
       businessListId: Number(process.env.BREVO_LIST_BUSINESSES ?? "3"),
+      senderEmail: process.env.BREVO_SENDER_EMAIL ?? "no-reply@roam-local.com",
+      senderName: process.env.BREVO_SENDER_NAME ?? "Roam",
+    },
+    ownerDigest: {
+      // Optional: unset leaves the unsubscribe route disabled and the owner digest dormant.
+      unsubscribeSecret: process.env.OWNER_DIGEST_UNSUBSCRIBE_SECRET ?? null,
     },
     transit: {
       // Optional: unset TRANSLINK_API_KEY leaves config null and the NI transit feature dormant
