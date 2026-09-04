@@ -27,7 +27,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Card, Pill, PollCard } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
-import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
+import { PLACES, type Place } from "./PlaceSwitcher";
+import { useCurrentPlace } from "../lib/currentPlace";
 
 interface LiveMeetup {
   id: string;
@@ -334,9 +335,16 @@ export function MeetupPanel({ threadId }: { threadId: string }) {
 function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: boolean }) {
   const t = useTranslations("meetupPanel");
   const trpc = useTrpc();
+  const { place: currentPlace } = useCurrentPlace();
   const [open, setOpen] = useState(false);
-  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
+  const [place, setPlace] = useState<Place>(currentPlace);
   const [venues, setVenues] = useState<VenueRow[] | null | undefined>(undefined);
+  // Open on the visitor's actual current place, and keep following it until they explicitly pick a
+  // town here — never a hard-coded default.
+  const pickedPlace = useRef(false);
+  useEffect(() => {
+    if (!pickedPlace.current) setPlace(currentPlace);
+  }, [currentPlace]);
 
   useEffect(() => {
     if (!open) return;
@@ -369,7 +377,7 @@ function VenuePicker({ onPick, busy }: { onPick: (v: VenueRow) => void; busy: bo
     <Card flat style={{ padding: "var(--space-4)", marginTop: "var(--space-3)" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
         {PLACES.map((p) => (
-          <Button key={p.id} variant={p.id === place.id ? "pri" : "neutral"} size="sm" onClick={() => setPlace(p)}>
+          <Button key={p.id} variant={p.id === place.id ? "pri" : "neutral"} size="sm" onClick={() => { pickedPlace.current = true; setPlace(p); }}>
             {p.name}
           </Button>
         ))}

@@ -47,15 +47,19 @@ export interface Place {
 }
 
 /**
- * Suggested place centres covering the seeded venues. Search + saved places extend this; it
- * is no longer the only way to choose a place. (When a places table exists these become rows.)
+ * Suggested place centres — the main Northern Ireland towns the switcher offers and the quick-pick
+ * chips the meetup / share pickers show. Search + saved places extend this. These mirror the
+ * storefront's NI_PLACES (see lib/ni.ts); keep the two in step until a shared places table lands.
  */
 export const PLACES: readonly Place[] = [
-  { id: "darlington", name: "Darlington", hint: "County Durham", lat: 54.5253, lng: -1.5536 },
-  { id: "stockton", name: "Stockton-on-Tees", hint: "County Durham", lat: 54.5705, lng: -1.311 },
+  { id: "ni-belfast", name: "Belfast", hint: "County Antrim", lat: 54.5973, lng: -5.9301 },
+  { id: "ni-derry", name: "Derry/Londonderry", hint: "County Londonderry", lat: 54.9966, lng: -7.3086 },
+  { id: "ni-lisburn", name: "Lisburn", hint: "County Antrim", lat: 54.5162, lng: -6.0581 },
+  { id: "ni-newry", name: "Newry", hint: "County Down", lat: 54.1751, lng: -6.3402 },
+  { id: "ni-bangor", name: "Bangor", hint: "County Down", lat: 54.6538, lng: -5.6683 },
 ] as const;
 
-/** The default place when none is chosen — Darlington, the seed's centre of gravity. */
+/** The default place when none is chosen — Belfast, the platform's Northern Ireland centre. */
 export const DEFAULT_PLACE: Place = PLACES[0]!;
 
 /** A geographic fence for the switcher — restricts search + geolocation to one region. */
