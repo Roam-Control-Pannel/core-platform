@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import * as Location from "expo-location";
 
 // The named fallback origin. When the device location is denied or unavailable we re-root
-// Discover here so the list still loads — Darlington is Roam's proof locality.
-export const DARLINGTON = { lat: 54.5253, lng: -1.5849 } as const;
+// Discover here so the list still loads — Belfast is Roam's Northern Ireland centre.
+export const BELFAST = { lat: 54.5973, lng: -5.9301 } as const;
 
 export type Origin = { lat: number; lng: number };
 
 // Discriminated union of the resolution states. The screen renders each one honestly:
 //  - resolving: asking for permission / waiting on the first fix (show a spinner)
 //  - ready:     a real device fix; origin is the device's coords ("near you")
-//  - fallback:  denied or unavailable; origin is Darlington ("near Darlington")
+//  - fallback:  denied or unavailable; origin is Belfast ("near Belfast")
 export type DeviceOrigin =
   | { status: "resolving"; origin: null }
   | { status: "ready"; origin: Origin }
@@ -37,7 +37,7 @@ export function useDeviceOrigin(): DeviceOrigin {
 
         if (status !== "granted") {
           // User declined (or it's restricted) — fall back, don't block discovery.
-          setState({ status: "fallback", origin: DARLINGTON });
+          setState({ status: "fallback", origin: BELFAST });
           return;
         }
 
@@ -53,7 +53,7 @@ export function useDeviceOrigin(): DeviceOrigin {
       } catch {
         // Location services off, no fix obtainable, or the module threw — fall back so the
         // screen is never stuck resolving.
-        if (active) setState({ status: "fallback", origin: DARLINGTON });
+        if (active) setState({ status: "fallback", origin: BELFAST });
       }
     })();
 

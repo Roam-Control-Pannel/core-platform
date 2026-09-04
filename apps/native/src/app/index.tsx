@@ -18,11 +18,11 @@ import { useDeviceOrigin } from "../lib/useDeviceOrigin";
 import { getSupabaseNative } from "../lib/supabase";
 
 // Native Discover. Fetches venues.near (publicProcedure — public browsing works with no
-// session) from a fixed Darlington origin and renders the near->far list. Claimed venues
+// session) from a fixed Belfast origin and renders the near->far list. Claimed venues
 // carry a Follow control: the first GATED action on native. Signed in -> social.followVenue
 // runs immediately; signed out -> the AuthSheet rises (just-in-time auth) and the follow
 // RESUMES on sign-in. The query origin comes from useDeviceOrigin (real device fix,
-// with a Darlington fallback when location is denied/unavailable).
+// with a Belfast fallback when location is denied/unavailable).
 
 interface VenueRow {
   id: string;
@@ -116,7 +116,7 @@ export default function DiscoverScreen() {
         <View style={styles.headerMain}>
           <Text style={styles.brand}>Roam</Text>
           <Text style={styles.subtitle}>
-            Discover · {deviceOrigin.status === "ready" ? "near you" : "near Darlington"}
+            Discover · {deviceOrigin.status === "ready" ? "near you" : "near Belfast"}
           </Text>
         </View>
         {session && (

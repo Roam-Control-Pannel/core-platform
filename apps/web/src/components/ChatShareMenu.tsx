@@ -10,7 +10,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Card, Icon, type IconName } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
-import { PLACES, DEFAULT_PLACE, type Place } from "./PlaceSwitcher";
+import { PLACES, type Place } from "./PlaceSwitcher";
+import { useCurrentPlace } from "../lib/currentPlace";
 import type { MessageKind } from "../lib/chatKinds";
 import { uploadChatImage } from "../lib/uploadChatImage";
 
@@ -193,8 +194,15 @@ interface VenueRow { id: string; name: string }
 function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
   const t = useTranslations("chatShareMenu");
   const trpc = useTrpc();
-  const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
+  const { place: currentPlace } = useCurrentPlace();
+  const [place, setPlace] = useState<Place>(currentPlace);
   const [venues, setVenues] = useState<VenueRow[] | null | undefined>(undefined);
+  // Open on the visitor's actual current place, and follow it until they pick a town here — never
+  // a hard-coded default.
+  const pickedPlace = useRef(false);
+  useEffect(() => {
+    if (!pickedPlace.current) setPlace(currentPlace);
+  }, [currentPlace]);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,7 +218,7 @@ function VenuePicker({ onPick }: { onPick: (v: VenueRow) => void }) {
     <>
       <div style={{ display: "flex", gap: 6, marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
         {PLACES.map((p) => (
-          <Button key={p.id} variant={p.id === place.id ? "pri" : "neutral"} size="sm" onClick={() => setPlace(p)}>
+          <Button key={p.id} variant={p.id === place.id ? "pri" : "neutral"} size="sm" onClick={() => { pickedPlace.current = true; setPlace(p); }}>
             {p.name}
           </Button>
         ))}

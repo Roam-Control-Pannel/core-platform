@@ -79,8 +79,8 @@ export const MARKETS: Readonly<Record<string, Market>> = {
     // Shetland (~60.86N), St Kilda (~-8.6W)/Fermanagh, Lowestoft (~1.76E). The NI Food to Go
     // fence (../geocode NI_BOUNDS) is a stricter sub-box within this and is unrelated.
     bounds: { minLat: 49.8, maxLat: 61.0, minLng: -8.65, maxLng: 1.8 },
-    // Darlington — the current seed's centre of gravity (kept for continuity with DEFAULT_PLACE).
-    defaultPlace: { name: "Darlington", hint: "County Durham", lat: 54.5253, lng: -1.5536 },
+    // Belfast — the platform's Northern Ireland operating centre (matches the web DEFAULT_PLACE).
+    defaultPlace: { name: "Belfast", hint: "County Antrim", lat: 54.5973, lng: -5.9301 },
     status: "live",
   },
   US: {
