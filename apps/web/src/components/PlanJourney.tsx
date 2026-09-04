@@ -128,8 +128,15 @@ export function PlanJourney({
   const [open, setOpen] = useState(false);
   const hasDest = typeof destLat === "number" && typeof destLng === "number";
   const [from, setFrom] = useState<{ label: string; place: Place } | null>(null);
+  // Pre-fill the destination ONLY for the venue "get here" variant, where it's a specific place
+  // the user is travelling to. The generic Explore planner ("plan") must NOT inherit its
+  // destination from the browsing locality: that place can be an out-of-area seed default
+  // (Darlington) or carry a stale name that disagrees with its coordinates, which would surface a
+  // nonsensical Translink destination. Region-gating below still uses the coords; only the
+  // pre-fill is withheld, so "plan" opens with an empty, user-chosen destination.
+  const prefillDest = variant === "getHere" && hasDest && typeof destName === "string";
   const [to, setTo] = useState<{ label: string; place: Place } | null>(
-    hasDest && destName ? { label: destName, place: { lat: destLat!, lng: destLng! } } : null,
+    prefillDest ? { label: destName!, place: { lat: destLat!, lng: destLng! } } : null,
   );
   const [whenMode, setWhenMode] = useState<"now" | "depart" | "arrive">("now");
   const now = useRef(new Date());
@@ -538,6 +545,11 @@ function StopField({
       <input
         value={q}
         placeholder={placeholder}
+        // Custom autocomplete backed by Stop-Finder — suppress the browser's own autofill so it
+        // can't drop a stored value (e.g. "Darlington") into an empty From/To field.
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
         onChange={(e) => {
           setQ(e.target.value);
           selectedLabel.current = null;
