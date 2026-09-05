@@ -4,7 +4,7 @@
  * Re-roots Explore by feeding `venues.near` a chosen centre (lat/lng). Three ways to choose:
  *   1. SEARCH — type a town or postcode; geocoded server-side via geo.search (Nominatim,
  *      debounced + cached). Pick a result to browse there.
- *   2. SAVED — pin localities (Darlington, Yarm, Westminster…) kept per-device (localStorage,
+ *   2. SAVED — pin localities (Belfast, Bangor, Newry…) kept per-device (localStorage,
  *      via useSavedPlaces) so they're one tap away. Save the current place, or any result.
  *   3. SUGGESTED / geolocation — the built-in seed centres, plus "Use my location".
  *
@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useTrpc } from "./TrpcProvider";
 import { useSavedPlaces } from "../lib/savedPlaces";
+import { NI_PLACES } from "../lib/ni";
 import styles from "./PlaceSwitcher.module.css";
 
 /** Small filled location pin — crisper than an ambiguous dot for the location chip. */
@@ -48,16 +49,11 @@ export interface Place {
 
 /**
  * Suggested place centres — the main Northern Ireland towns the switcher offers and the quick-pick
- * chips the meetup / share pickers show. Search + saved places extend this. These mirror the
- * storefront's NI_PLACES (see lib/ni.ts); keep the two in step until a shared places table lands.
+ * chips the meetup / share pickers show. Derived from the single canonical NI list in lib/ni.ts (the
+ * top few centres) so the main app and the storefront can never drift apart; search + saved places
+ * extend this set.
  */
-export const PLACES: readonly Place[] = [
-  { id: "ni-belfast", name: "Belfast", hint: "County Antrim", lat: 54.5973, lng: -5.9301 },
-  { id: "ni-derry", name: "Derry/Londonderry", hint: "County Londonderry", lat: 54.9966, lng: -7.3086 },
-  { id: "ni-lisburn", name: "Lisburn", hint: "County Antrim", lat: 54.5162, lng: -6.0581 },
-  { id: "ni-newry", name: "Newry", hint: "County Down", lat: 54.1751, lng: -6.3402 },
-  { id: "ni-bangor", name: "Bangor", hint: "County Down", lat: 54.6538, lng: -5.6683 },
-] as const;
+export const PLACES: readonly Place[] = NI_PLACES.slice(0, 5);
 
 /** The default place when none is chosen — Belfast, the platform's Northern Ireland centre. */
 export const DEFAULT_PLACE: Place = PLACES[0]!;
@@ -75,7 +71,7 @@ export interface PlaceRegion {
 export interface PlaceSwitcherProps {
   value: Place;
   onChange: (place: Place) => void;
-  /** Override the suggested places (defaults to PLACES — Roam's England seed centres). */
+  /** Override the suggested places (defaults to PLACES — Roam's Northern Ireland town centres). */
   suggested?: readonly Place[];
   /** Fence search + geolocation to a region (e.g. the NI Food to Go storefront). */
   region?: PlaceRegion;
