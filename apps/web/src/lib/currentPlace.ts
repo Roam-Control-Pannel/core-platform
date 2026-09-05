@@ -1,7 +1,7 @@
 /**
  * Current place — the place the user is browsing, persisted per-device so it FOLLOWS them
  * between surfaces (Explore ↔ Town Hall) and survives a reload. Without this, each route's
- * own `useState(DEFAULT_PLACE)` would reset to Darlington on every navigation, and a
+ * own `useState(DEFAULT_PLACE)` would reset to Belfast on every navigation, and a
  * per-locality Town Hall would never agree with the Explore you just came from.
  *
  * WHY localStorage stays the primary store: choosing where to browse is part of the "browse
