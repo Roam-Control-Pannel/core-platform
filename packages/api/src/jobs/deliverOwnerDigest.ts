@@ -54,7 +54,7 @@ type Loose = {
   auth: { admin: { getUserById: (id: string) => Promise<{ data: { user: { email?: string | null } | null } | null }> } };
 };
 
-interface NotifRow { recipient_id: string; type: string; payload: any; created_at: string }
+interface NotifRow { id: string; recipient_id: string; type: string; payload: any; created_at: string }
 
 /** Join a possibly-relative href to the web origin; pass absolute http(s) through unchanged. */
 function absolute(webOrigin: string, href: string): string {
@@ -78,15 +78,33 @@ export async function runOwnerDigest(
   const runStartIso = new Date().toISOString();
   const floorIso = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
-  const { data: notifsRaw, error: notifErr } = await db
-    .from("notifications")
-    .select("recipient_id, type, payload, created_at")
-    .in("type", OWNER_DIGEST_TYPES as unknown as string[])
-    .gte("created_at", floorIso)
-    .order("created_at", { ascending: true })
-    .limit(5000);
-  if (notifErr) throw new Error(`owner digest: notifications read failed: ${notifErr.message}`);
-  const notifs = (notifsRaw ?? []) as NotifRow[];
+  // Read EVERY qualifying notification in the 7-day window, paging through in a stable
+  // (created_at, id) order. The previous single `.limit(5000)` ascending scan returned only the
+  // OLDEST 5000 rows platform-wide, so once weekly volume passed that cap every returned row
+  // predated each owner's watermark → byRecipient empty → 0 sent, logged as a clean "ok" while
+  // nobody got a digest. PAGE_SIZE stays within PostgREST's max-rows cap; MAX_PAGES is a safety
+  // bound so a pathological week can't loop unboundedly.
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 200;
+  const notifs: NotifRow[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * PAGE_SIZE;
+    const { data, error: notifErr } = await db
+      .from("notifications")
+      .select("id, recipient_id, type, payload, created_at")
+      .in("type", OWNER_DIGEST_TYPES as unknown as string[])
+      .gte("created_at", floorIso)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (notifErr) throw new Error(`owner digest: notifications read failed: ${notifErr.message}`);
+    const rows = (data ?? []) as NotifRow[];
+    notifs.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    if (page === MAX_PAGES - 1) {
+      log(`owner digest: hit the ${MAX_PAGES}-page scan cap (${MAX_PAGES * PAGE_SIZE} rows) — window may be truncated.`);
+    }
+  }
   if (notifs.length === 0) {
     log("No owner activity in the last 7 days.");
     return { candidates: 0, sent: 0, failed: 0, skippedOptOut: 0, status: "ok" };
