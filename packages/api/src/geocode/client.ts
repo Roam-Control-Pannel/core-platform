@@ -32,6 +32,10 @@ export type FetchImpl = typeof fetch;
 /** Options for geocodeSearch. `region` fences results to a channel's area (e.g. NI storefront). */
 export interface GeocodeSearchOptions {
   region?: coreGeocode.GeoRegion;
+  /** Ordering emphasis passed through to parsePhoton. Use "address" for delivery destinations so
+   *  the result is the precise house/street point, not the town centroid; default is the
+   *  browse-centre order. */
+  prefer?: "centre" | "address";
 }
 
 /**
@@ -80,5 +84,8 @@ export async function geocodeSearch(
   }
 
   const json = (await res.json()) as unknown;
-  return coreGeocode.parsePhoton(json, OUTPUT_LIMIT, opts.region ? { region: opts.region } : {});
+  return coreGeocode.parsePhoton(json, OUTPUT_LIMIT, {
+    ...(opts.region ? { region: opts.region } : {}),
+    ...(opts.prefer ? { prefer: opts.prefer } : {}),
+  });
 }

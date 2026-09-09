@@ -155,6 +155,7 @@ export const f2gRouter = router({
         try {
           const geo = await geocodeSearch([input.line1, input.postcode].filter(Boolean).join(", "), undefined, {
             region: "ni",
+            prefer: "address",
           });
           hit = geo[0];
         } catch {

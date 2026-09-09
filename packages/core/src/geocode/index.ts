@@ -76,6 +76,28 @@ function placeRank(f: PhotonFeature): number {
   return 30; // unknown / other
 }
 
+/**
+ * How suitable a Photon feature is as a precise DELIVERY POINT, higher = better — the inverse
+ * emphasis of placeRank. A house/street coordinate is the actual destination; a settlement or
+ * admin-boundary centroid is the WRONG point to measure a delivery fence to (it can sit km from
+ * the address), so those rank LOWEST here. Used only when parsePhoton is asked to
+ * `prefer: "address"` — the delivery quote / order paths, never the browse-centre picker.
+ */
+function addressRank(f: PhotonFeature): number {
+  const p = f?.properties ?? {};
+  const key = clean(p.osm_key).toLowerCase();
+  const value = clean(p.osm_value).toLowerCase();
+  const type = clean(p.type).toLowerCase();
+
+  if (type === "house" || value === "house" || key === "building") return 100;
+  if (type === "street" || key === "highway") return 90;
+  if (type === "postcode" || value === "postcode") return 70;
+  if (type === "locality" || type === "district" || type === "suburb" || type === "neighbourhood") return 40;
+  if (type === "city" || type === "town" || type === "village" || key === "place") return 20; // a settlement centroid — worst for a delivery point
+  if (key === "boundary") return 10;
+  return 50; // unknown: above a settlement, below an explicit street
+}
+
 /** Address-ish keys, broad → broadest, that compose the region hint (after the name). */
 const REGION_KEYS = ["city", "district", "county", "state", "country"] as const;
 
@@ -149,6 +171,12 @@ export type GeoRegion = "ni";
 /** Options for parsePhoton. `region` drops any result outside that region. */
 export interface ParsePhotonOptions {
   region?: GeoRegion;
+  /**
+   * Ordering emphasis. "centre" (default) ranks a settlement node first — the right lead for the
+   * browse-centre place picker. "address" ranks the most specific feature (house → street) first,
+   * so a delivery destination geocodes to the real point rather than the town centroid.
+   */
+  prefer?: "centre" | "address";
 }
 
 /**
@@ -164,12 +192,15 @@ export function parsePhoton(raw: unknown, limit = 6, opts: ParsePhotonOptions = 
     Array.isArray(raw) ? raw : (raw as { features?: unknown } | null)?.features;
   if (!Array.isArray(features)) return [];
 
-  // Order candidates so the best browse centre leads: a settlement node above an admin-boundary
-  // centroid above a name-sharing POI. Stable within a rank (index tiebreak), so Photon's own
-  // relevance order is preserved for equally-ranked features and unranked queries are unchanged.
+  // Order candidates by the requested emphasis. Default ("centre"): a settlement node above an
+  // admin-boundary centroid above a name-sharing POI — the best browse centre. "address": the
+  // most specific feature (house → street) first, so a delivery point isn't snapped to the town
+  // centroid. Stable within a rank (index tiebreak), so Photon's own relevance order is preserved
+  // for equally-ranked features and unranked queries are unchanged.
+  const rank = opts.prefer === "address" ? addressRank : placeRank;
   const ordered = (features as PhotonFeature[])
     .map((f, i) => ({ f, i }))
-    .sort((a, b) => placeRank(b.f) - placeRank(a.f) || a.i - b.i)
+    .sort((a, b) => rank(b.f) - rank(a.f) || a.i - b.i)
     .map((x) => x.f);
 
   const out: GeocodeResult[] = [];
