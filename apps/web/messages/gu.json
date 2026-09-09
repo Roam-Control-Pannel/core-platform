@@ -2079,6 +2079,13 @@
     "dismiss": "હમણાં નહીં",
     "locating": "લોકેશન શોધી રહ્યાં છીએ…",
     "nearMe": "મારી નજીક",
-    "yourLocation": "તમારું લોકેશન"
+    "yourLocation": "તમારું લોકેશન",
+    "chooseTitle": "તમે ક્યાં અન્વેષણ કરવા માંગો છો?",
+    "chooseBody": "નજીકમાં શું છે તે જોવા માટે તમારું સ્થાન વાપરો અથવા કોઈ સ્થળ શોધો.",
+    "chooseOr": "અથવા",
+    "chooseSearchPlaceholder": "શહેર શોધો",
+    "chooseSearching": "શોધી રહ્યું છે…",
+    "chooseNoResults": "“{query}” માટે કોઈ પરિણામ નથી.",
+    "chooseSkip": "તેમ છતાં અન્વેષણ કરો"
   }
 }

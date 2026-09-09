@@ -2079,6 +2079,13 @@
     "dismiss": "Nu acum",
     "locating": "Se localizează…",
     "nearMe": "Lângă mine",
-    "yourLocation": "Locația ta"
+    "yourLocation": "Locația ta",
+    "chooseTitle": "Unde ai vrea să explorezi?",
+    "chooseBody": "Folosește-ți locația sau caută un loc pentru a vedea ce se află în apropiere.",
+    "chooseOr": "sau",
+    "chooseSearchPlaceholder": "Caută un oraș",
+    "chooseSearching": "Se caută…",
+    "chooseNoResults": "Niciun rezultat pentru „{query}”.",
+    "chooseSkip": "Explorează oricum"
   }
 }

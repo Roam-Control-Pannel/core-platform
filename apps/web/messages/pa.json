@@ -2079,6 +2079,13 @@
     "dismiss": "ਹੁਣੇ ਨਹੀਂ",
     "locating": "ਟਿਕਾਣਾ ਲੱਭ ਰਿਹਾ ਹੈ…",
     "nearMe": "ਮੇਰੇ ਨੇੜੇ",
-    "yourLocation": "ਤੁਹਾਡੀ ਲੋਕੇਸ਼ਨ"
+    "yourLocation": "ਤੁਹਾਡੀ ਲੋਕੇਸ਼ਨ",
+    "chooseTitle": "ਤੁਸੀਂ ਕਿੱਥੇ ਖੋਜ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
+    "chooseBody": "ਨੇੜੇ ਕੀ ਹੈ ਵੇਖਣ ਲਈ ਆਪਣਾ ਟਿਕਾਣਾ ਵਰਤੋ ਜਾਂ ਕੋਈ ਥਾਂ ਖੋਜੋ।",
+    "chooseOr": "ਜਾਂ",
+    "chooseSearchPlaceholder": "ਸ਼ਹਿਰ ਖੋਜੋ",
+    "chooseSearching": "ਖੋਜ ਰਿਹਾ ਹੈ…",
+    "chooseNoResults": "“{query}” ਲਈ ਕੋਈ ਨਤੀਜਾ ਨਹੀਂ।",
+    "chooseSkip": "ਫਿਰ ਵੀ ਖੋਜ ਕਰੋ"
   }
 }
