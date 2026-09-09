@@ -12,6 +12,7 @@ export * as credits from "./credits/index.js";
 export * as geo from "./geo/index.js";
 export * as geocode from "./geocode/index.js";
 export * as markets from "./markets/index.js";
+export * as money from "./money/index.js";
 export * as posts from "./posts/index.js";
 export * as push from "./push/index.js";
 export * as routes from "./routes/index.js";
