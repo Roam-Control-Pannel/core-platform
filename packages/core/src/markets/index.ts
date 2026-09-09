@@ -148,3 +148,38 @@ export function marketForCoords(lat: number, lng: number): Market | undefined {
   }
   return undefined;
 }
+
+/**
+ * Resolve a visitor's market from the signals available, in strict precedence:
+ *
+ *  1. An explicit ISO country code is AUTHORITATIVE. When one is present it alone decides — a code
+ *     we operate returns that market; a code we do NOT operate (e.g. "IE") returns undefined, i.e.
+ *     known:false / the seeding pioneer journey. We deliberately do NOT then consult the coordinate.
+ *
+ *     This is the fix for the Sep-2026 review's market-fence finding: the GB fallback box is generous
+ *     enough to contain the whole Republic of Ireland, so the old `getMarket(country) ?? coords`
+ *     composition silently reclassified a Dublin visitor who sent "IE" as GB (GBP, "United Kingdom")
+ *     — the exact "someone abroad is treated as UK" failure the registry's contract forbids. An
+ *     explicit country code is a definitive statement of where the visitor is; a box that overlaps a
+ *     neighbour must never override it.
+ *
+ *  2. Only when NO usable country code is present do we fall back to a bounding-box match on the
+ *     coordinate — a genuine last resort (raw geolocation without a reverse-geocode, exotic hosts).
+ *     In production the edge headers almost always carry the code alongside the coords, so this path
+ *     is rarely reached.
+ *
+ *  3. No usable signal at all → undefined (unknown market → seeding). Callers must NOT substitute
+ *     DEFAULT_MARKET here; that constant is only for a last-resort DISPLAY default, never to CLASSIFY.
+ */
+export function resolveMarket(
+  country: string | null | undefined,
+  lat?: number | null,
+  lng?: number | null,
+): Market | undefined {
+  // A present, well-formed country code is authoritative — including the "we don't operate there"
+  // answer (getMarket → undefined). No coordinate rescue.
+  if (normalizeCountryCode(country)) return getMarket(country);
+  // No usable code: fall back to the coordinate box, if we have one.
+  if (lat != null && lng != null) return marketForCoords(lat, lng);
+  return undefined;
+}

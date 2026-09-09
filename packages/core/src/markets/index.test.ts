@@ -9,6 +9,7 @@ import {
   isUnitedKingdom,
   marketForCoords,
   normalizeCountryCode,
+  resolveMarket,
 } from "./index.js";
 import { inBounds } from "../geocode/index.js";
 
@@ -75,6 +76,42 @@ describe("marketForCoords (fallback classifier)", () => {
   });
   it("returns undefined for non-finite input", () => {
     expect(marketForCoords(Number.NaN, 0)).toBeUndefined();
+  });
+});
+
+describe("resolveMarket (signal precedence)", () => {
+  // Belfast, Dublin, New York coordinates reused across cases.
+  const BELFAST = { lat: 54.5973, lng: -5.9301 };
+  const DUBLIN = { lat: 53.3498, lng: -6.2603 };
+  const NEW_YORK = { lat: 40.7128, lng: -74.006 };
+
+  it("an explicit operated country code wins and is used verbatim", () => {
+    expect(resolveMarket("GB", NEW_YORK.lat, NEW_YORK.lng)?.code).toBe("GB");
+    expect(resolveMarket("US", BELFAST.lat, BELFAST.lng)?.code).toBe("US");
+  });
+
+  it("an explicit UNoperated country code yields undefined — NOT a coord-box rescue (the #A2 fix)", () => {
+    // Dublin sits inside GB's generous fallback box, so the old `?? marketForCoords` would have
+    // reclassified an "IE" visitor as GB. The explicit code must win: unknown market → seeding.
+    expect(resolveMarket("IE", DUBLIN.lat, DUBLIN.lng)).toBeUndefined();
+    // Even a coordinate squarely inside an operated box must not override the explicit foreign code.
+    expect(resolveMarket("FR", BELFAST.lat, BELFAST.lng)).toBeUndefined();
+  });
+
+  it("falls back to the coordinate box only when NO country code is present", () => {
+    expect(resolveMarket(null, BELFAST.lat, BELFAST.lng)?.code).toBe("GB");
+    expect(resolveMarket(undefined, NEW_YORK.lat, NEW_YORK.lng)?.code).toBe("US");
+    expect(resolveMarket("", DUBLIN.lat, DUBLIN.lng)?.code).toBe("GB"); // no code → box (Dublin ∈ GB box)
+  });
+
+  it("a malformed country code is treated as no code (falls back to coords)", () => {
+    expect(resolveMarket("USA", NEW_YORK.lat, NEW_YORK.lng)?.code).toBe("US");
+  });
+
+  it("no usable signal at all → undefined (unknown, seeding — never DEFAULT_MARKET)", () => {
+    expect(resolveMarket(null)).toBeUndefined();
+    expect(resolveMarket(undefined, null, null)).toBeUndefined();
+    expect(resolveMarket("", undefined, undefined)).toBeUndefined();
   });
 });
 

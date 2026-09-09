@@ -19,7 +19,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../trpc.js";
 import { geocodeSearch } from "../geocode/client.js";
-import { getMarket, marketForCoords, normalizeCountryCode } from "@roam/core/markets";
+import { resolveMarket, normalizeCountryCode } from "@roam/core/markets";
 
 /** A cached search result — the SAME inline shape the resolver returns (kept in lockstep). */
 type CachedSearch = {
@@ -89,9 +89,11 @@ export const geoRouter = router({
       }),
     )
     .query(({ input }) => {
-      const m =
-        getMarket(input.country) ??
-        (input.lat != null && input.lng != null ? marketForCoords(input.lat, input.lng) : undefined);
+      // Precedence lives in @roam/core (single source of truth): an explicit ISO country code is
+      // authoritative — a code we don't operate resolves to `known:false`/seeding, NOT a coord-box
+      // rescue into a neighbouring market (the Sep-2026 market-fence fix). The coordinate is a
+      // fallback only when no code is present.
+      const m = resolveMarket(input.country, input.lat, input.lng);
       const countryCode = normalizeCountryCode(input.country) ?? m?.code ?? null;
 
       // One uniform, inline shape for both known and unknown markets (nullable metadata), so the
