@@ -5,9 +5,14 @@
 -- shows in the local news feed just as it does on the venue page. Pure additive column; same
 -- filters, ordering, SECURITY INVOKER and grants as 0038.
 --
--- Idempotent: create-or-replace.
+-- Replayable: this changes posts_feed_near's RETURN shape (adds `media`), and Postgres
+-- rejects a CREATE OR REPLACE that alters a function's return type (SQLSTATE 42P13:
+-- "cannot change return type of existing function"). Drop the 0038 definition first so a
+-- from-scratch `supabase db reset` — and the CI db gate — can replay this cleanly. This is a
+-- no-op for any environment that already applied 0041 (the migration won't re-run there).
+drop function if exists posts_feed_near(double precision, double precision, double precision, integer);
 
-create or replace function posts_feed_near(
+create function posts_feed_near(
   lat         double precision,
   lng         double precision,
   radius_m    double precision default 25000,
