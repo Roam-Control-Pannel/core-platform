@@ -14,7 +14,7 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
-import { f2g, markets } from "@roam/core";
+import { f2g, markets, money } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { createCheckoutSession, createCartCheckoutSession, refundPayment } from "../stripe/client.js";
 import { geocodeSearch } from "../geocode/client.js";
@@ -147,7 +147,7 @@ async function ownedOrder(
   ctx: { db: unknown; env: Parameters<typeof escalateToService>[0] },
   orderId: string,
 ): Promise<{
-  order: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null };
+  order: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null; currency: string | null };
   service: LooseDb;
 }> {
   const { data: auth } = await (ctx.db as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
@@ -156,9 +156,9 @@ async function ownedOrder(
   const service = escalateToService(ctx.env) as unknown as LooseDb;
   const { data: order } = (await service
     .from("orders")
-    .select("id, venue_id, product_kind, fulfilment_type, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence, delivery_fee_pence")
+    .select("id, venue_id, product_kind, fulfilment_type, status, stripe_payment_intent_id, buyer_id, product_title, amount_pence, delivery_fee_pence, currency")
     .eq("id", orderId)
-    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null } | null };
+    .maybeSingle()) as { data: { id: string; venue_id: string; product_kind: string; fulfilment_type: string; status: string; stripe_payment_intent_id: string | null; buyer_id: string | null; product_title: string; amount_pence: number; delivery_fee_pence: number | null; currency: string | null } | null };
   if (!order) throw new TRPCError({ code: "NOT_FOUND" });
   const { data: venue } = (await service
     .from("venues")
@@ -523,7 +523,7 @@ export const marketRouter = router({
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This venue isn't delivering right now." });
         }
         if (goodsSubtotal < settings.minOrderPence) {
-          const min = `£${(settings.minOrderPence / 100).toFixed(2)}`;
+          const min = money.formatPence(settings.minOrderPence, cartCurrency);
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: `The minimum order for delivery is ${min}.` });
         }
         const { data: venue } = (await service
@@ -870,7 +870,7 @@ export const marketRouter = router({
       if (order.buyer_id) {
         // The refund reverses the FULL payment intent (goods + delivery), so quote the full total.
         const refundedPence = order.amount_pence + (order.delivery_fee_pence ?? 0);
-        const pounds = `£${(refundedPence / 100).toFixed(refundedPence % 100 === 0 ? 0 : 2)}`;
+        const pounds = money.formatPence(refundedPence, order.currency);
         await service.from("notifications").insert({
           recipient_id: order.buyer_id,
           type: "order_refunded",

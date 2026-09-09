@@ -19,6 +19,7 @@
  * service at boot, not silently degrade auth at request time.
  */
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { money } from "@roam/core";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { makeOriginAllowed } from "./cors.js";
@@ -427,15 +428,17 @@ export async function handler(request: Request): Promise<Response> {
           .update({ status: "paid", stripe_payment_intent_id: session.payment_intent ?? null })
           .eq("id", orderId)
           .eq("status", "pending")
-          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, fulfilment_type, amount_pence, delivery_fee_pence")) as {
-          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; fulfilment_type: string | null; amount_pence: number; delivery_fee_pence: number | null }[] | null;
+          .select("id, product_id, quantity, venue_id, buyer_id, product_title, product_kind, fulfilment_type, amount_pence, delivery_fee_pence, currency")) as {
+          data: { id: string; product_id: string | null; quantity: number; venue_id: string; buyer_id: string | null; product_title: string; product_kind: string; fulfilment_type: string | null; amount_pence: number; delivery_fee_pence: number | null; currency: string | null }[] | null;
         };
         const order = updated?.[0];
         if (order) {
           // What the buyer actually paid = goods subtotal + any delivery fee. Cart orders store the
           // two separately (amount_pence is goods-only); a collection/single-item order has no fee.
           const totalPence = order.amount_pence + (order.delivery_fee_pence ?? 0);
-          const pounds = `£${(totalPence / 100).toFixed(totalPence % 100 === 0 ? 0 : 2)}`;
+          // Format in the ORDER's currency — a non-UK venue charges usd/eur, so a hard-coded £
+          // would lie in the confirmation bell + push (fixed: multi-currency review #8).
+          const pounds = money.formatPence(totalPence, order.currency);
 
           // Decrement tracked stock FIRST — the money-adjacent side effect. Cart orders carry
           // order_items (decrement each line); the legacy single-item checkout has none, so fall
