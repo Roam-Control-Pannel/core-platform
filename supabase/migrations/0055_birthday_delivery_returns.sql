@@ -25,14 +25,23 @@
 
 -- Stop the DB-side schedule so the Node job is the sole caller (guarded: no-op if absent, e.g.
 -- when pg_cron was never installed / the job was already removed).
+-- Guarded so it is a true no-op where pg_cron was never installed (e.g. the local/CI
+-- Supabase stack). The cron.job reference must live inside EXECUTE: Postgres plans a
+-- plpgsql boolean expression as one statement, so an inline `... and exists (select 1
+-- from cron.job ...)` resolves cron.job at PLAN time and errors 42P01 even when the
+-- left side is false. Dynamic SQL defers that parse to run time, reached only once the
+-- cron.job relation is confirmed to exist. No-op in production (job gets unscheduled).
 do $$
 begin
   if exists (
     select 1 from pg_catalog.pg_class c
     join pg_catalog.pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'cron' and c.relname = 'job'
-  ) and exists (select 1 from cron.job where jobname = 'birthday-offers-daily') then
-    perform cron.unschedule('birthday-offers-daily');
+  ) then
+    execute $q$
+      select cron.unschedule('birthday-offers-daily')
+      where exists (select 1 from cron.job where jobname = 'birthday-offers-daily')
+    $q$;
   end if;
 end $$;
 
