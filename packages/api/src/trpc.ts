@@ -93,9 +93,24 @@ const requireAdmin = middleware(async ({ ctx, next }) => {
     });
   }
 
+  // Resolve the caller's own id and scope the lookup to it EXPLICITLY. Correctness must not rest
+  // solely on the admin_users_self_read RLS policy (0113): if that policy were ever broadened or
+  // dropped — the review documents ACLs drifting on this schema — a bare `.maybeSingle()` could
+  // return an arbitrary staff row and promote every signed-in user to Roam HQ. `.eq("id", uid)`
+  // makes this gate hold independent of RLS. Defence in depth, not a live bypass today.
+  const { data: authData } = await ctx.db.auth.getUser();
+  const uid = authData?.user?.id;
+  if (!uid) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This action requires you to be signed in.",
+    });
+  }
+
   const { data, error } = await ctx.db
     .from("admin_users")
     .select("id, role")
+    .eq("id", uid)
     .maybeSingle();
 
   if (error) {
