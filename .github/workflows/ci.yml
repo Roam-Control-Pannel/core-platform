@@ -50,3 +50,33 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  # Database gate — executes the SQL that `check` never touches. Spins up the
+  # Supabase local Postgres, applies EVERY migration + the dev seed via
+  # `db reset` (so a broken migration fails here, not at deploy), then runs the
+  # pgTAP suite in supabase/tests/ (RLS policies, triggers, RPCs). Local-only
+  # CLI commands — no SUPABASE_ACCESS_TOKEN or project secrets required.
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Starts only the Postgres container (not the full stack), so no auth/
+      # storage/studio services and none of their env() secrets are needed.
+      - name: Start local Postgres
+        run: supabase db start
+
+      # Re-applies all migrations + seed.sql from scratch; fails the job on any
+      # migration error, ordering problem, or seed breakage.
+      - name: Apply migrations + seed (db reset)
+        run: supabase db reset
+
+      # pgTAP assertions over the freshly-migrated schema.
+      - name: Run pgTAP tests
+        run: supabase test db --local
