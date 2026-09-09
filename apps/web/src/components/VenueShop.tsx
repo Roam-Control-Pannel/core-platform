@@ -105,7 +105,10 @@ export function VenueShop({ venueId }: { venueId: string }) {
     setCart((c) => {
       const next = { ...c };
       const p = productById.get(id);
-      const max = p?.stock != null ? p.stock : 20;
+      // Cap at 20/line to match the server (checkoutCart validates each line at max 20 and
+      // order_items has a 1..20 check) — a tracked stock above 20 must not let the stepper
+      // climb past what checkout will accept, which otherwise hard-blocks the whole basket.
+      const max = Math.min(p?.stock ?? 20, 20);
       const v = Math.max(0, Math.min(max, (c[id] ?? 0) + delta));
       if (v === 0) delete next[id];
       else next[id] = v;
