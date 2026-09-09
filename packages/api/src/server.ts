@@ -405,7 +405,8 @@ export async function handler(request: Request): Promise<Response> {
           };
         };
       };
-      type Loose = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type Loose = { from: (t: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any };
       if (event.type === "account.updated" && event.data?.object?.id) {
         const acct = event.data.object;
         const service = escalateToService(env);
@@ -457,16 +458,21 @@ export async function handler(request: Request): Promise<Response> {
                   : [];
             for (const line of toDecrement) {
               if (!line.product_id) continue;
-              const { data: prod } = (await service
-                .from("venue_products")
-                .select("stock")
-                .eq("id", line.product_id)
-                .maybeSingle()) as { data: { stock: number | null } | null };
-              if (prod && prod.stock != null) {
-                await service
-                  .from("venue_products")
-                  .update({ stock: Math.max(0, prod.stock - line.quantity) })
-                  .eq("id", line.product_id);
+              // Atomic decrement: the RPC holds a row lock across its read+write, so two paid
+              // webhooks racing for the last unit can't both see stock=1 and both write 0
+              // (the oversell #12 fixed by migration 0132). It also never drives stock
+              // negative and classifies the outcome so a genuine oversell is observable.
+              const { data: dec } = (await service.rpc("decrement_stock", {
+                product_id_param: line.product_id,
+                qty: line.quantity,
+              })) as { data: { outcome: string; new_stock: number | null }[] | null };
+              const outcome = dec?.[0]?.outcome;
+              if (outcome === "oversold") {
+                // A buyer paid for stock that no longer existed. Payment stands (we never fail
+                // the webhook); surface it so ops can reconcile with the venue.
+                console.error(
+                  `[stock] oversold: order ${order.id} product ${line.product_id} qty ${line.quantity} — sold beyond available stock`,
+                );
               }
             }
           } catch {
