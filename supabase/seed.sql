@@ -18,8 +18,11 @@
 -- (name + locality + "from public sources") to exercise the true median unclaimed card.
 --
 -- geo is geography(Point, 4326): ST_SetSRID(ST_MakePoint(LNG, LAT), 4326). Note the
--- order — MakePoint takes (longitude, latitude). Coordinates are real Darlington, UK
--- area points so the eventual PostGIS near→far RPC has sensible geography to sort.
+-- order — MakePoint takes (longitude, latitude). Coordinates are real Belfast, NI area
+-- points, clustered around the city centre. Local dev has no CDN geo-IP headers, so the
+-- IP default can't resolve and Explore falls back to DEFAULT_PLACE (Belfast) — seeding
+-- here means a fresh `db reset` lands on a populated near→far list, and the PostGIS
+-- near→far RPC has sensible geography to sort.
 -- ============================================================================
 
 -- Idempotent: clear only the seeded rows (by source tag) so re-running db reset or
@@ -31,62 +34,62 @@ insert into venues
    description, address, status, source, source_attribution)
 values
   -- Richer unclaimed venues (populated-card presentation) --------------------
-  ('The Orangery', ST_SetSRID(ST_MakePoint(-1.5536, 54.5253), 4326), 'Darlington', 'County Durham', 'GB',
+  ('The Linen Quarter Kitchen', ST_SetSRID(ST_MakePoint(-5.9312, 54.5940), 4326), 'Belfast', 'County Antrim', 'GB',
    'Restaurant', array['Restaurant','British'], 4.6, 128,
    'A long-standing local restaurant known for seasonal British plates.',
-   'Houndgate, Darlington DL1', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Bedford Street, Belfast BT2', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Voodoo Café', ST_SetSRID(ST_MakePoint(-1.5521, 54.5241), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Sunflower Coffee House', ST_SetSRID(ST_MakePoint(-5.9268, 54.6006), 4326), 'Belfast', 'County Antrim', 'GB',
    'Café', array['Café','Coffee','Brunch'], 4.4, 86,
    'Independent coffee house with all-day brunch.',
-   'Skinnergate, Darlington DL3', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Hill Street, Belfast BT1', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('The Quaker House', ST_SetSRID(ST_MakePoint(-1.5559, 54.5268), 4326), 'Darlington', 'County Durham', 'GB',
+  ('The Dockside Tavern', ST_SetSRID(ST_MakePoint(-5.9279, 54.6010), 4326), 'Belfast', 'County Antrim', 'GB',
    'Pub', array['Pub','Real Ale'], 4.5, 203,
-   'Traditional pub near the town centre with a rotating cask selection.',
-   'Mechanics Yard, Darlington DL3', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Traditional pub near the Cathedral Quarter with a rotating cask selection.',
+   'Commercial Court, Belfast BT1', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Bin Forty Two', ST_SetSRID(ST_MakePoint(-1.5502, 54.5237), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Ropewalk Wine Bar', ST_SetSRID(ST_MakePoint(-5.9270, 54.6016), 4326), 'Belfast', 'County Antrim', 'GB',
    'Bar', array['Bar','Wine','Tapas'], 4.7, 54,
-   'Wine bar and small plates on the edge of the market quarter.',
-   'Coniscliffe Road, Darlington DL3', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Wine bar and small plates just off the square.',
+   'St Anne''s Square, Belfast BT1', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Darlington Bakehouse', ST_SetSRID(ST_MakePoint(-1.5548, 54.5249), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Botanic Bakehouse', ST_SetSRID(ST_MakePoint(-5.9333, 54.5893), 4326), 'Belfast', 'County Antrim', 'GB',
    'Bakery', array['Bakery','Café'], 4.3, 71,
    'Sourdough, pastries and lunch counter.',
-   'Bondgate, Darlington DL3', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Botanic Avenue, Belfast BT7', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Number Twenty 2', ST_SetSRID(ST_MakePoint(-1.5515, 54.5232), 4326), 'Darlington', 'County Durham', 'GB',
+  ('The Gasworks Bar', ST_SetSRID(ST_MakePoint(-5.9250, 54.5905), 4326), 'Belfast', 'County Antrim', 'GB',
    'Bar', array['Bar','Real Ale'], 4.6, 167,
    'Long bar and brewery tap known for cask and craft.',
-   'Coniscliffe Road, Darlington DL3', 'unclaimed', 'roam-dev-seed', 'From public sources'),
+   'Ormeau Road, Belfast BT7', 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
   -- Sparse unclaimed venues (true median card — name, locality, little else) --
-  ('Clervaux Café', ST_SetSRID(ST_MakePoint(-1.5571, 54.5260), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Cathedral Espresso', ST_SetSRID(ST_MakePoint(-5.9258, 54.6001), 4326), 'Belfast', 'County Antrim', 'GB',
    'Café', array['Café'], null, 0,
    null, null, 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('The Hippodrome Bar', ST_SetSRID(ST_MakePoint(-1.5528, 54.5276), 4326), 'Darlington', 'County Durham', 'GB',
+  ('The Entries Bar', ST_SetSRID(ST_MakePoint(-5.9280, 54.5995), 4326), 'Belfast', 'County Antrim', 'GB',
    'Bar', array['Bar'], null, 0,
    null, null, 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Pennine Pizza', ST_SetSRID(ST_MakePoint(-1.5490, 54.5224), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Victoria Street Slice', ST_SetSRID(ST_MakePoint(-5.9245, 54.5978), 4326), 'Belfast', 'County Antrim', 'GB',
    'Restaurant', array['Restaurant','Pizza','Takeaway'], null, 0,
    null, null, 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('Greenbank Tea Rooms', ST_SetSRID(ST_MakePoint(-1.5583, 54.5291), 4326), 'Darlington', 'County Durham', 'GB',
+  ('Malone Tea Rooms', ST_SetSRID(ST_MakePoint(-5.9360, 54.5835), 4326), 'Belfast', 'County Antrim', 'GB',
    'Café', array['Café','Tea Room'], null, 0,
    null, null, 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
-  ('The Forge Tap', ST_SetSRID(ST_MakePoint(-1.5461, 54.5212), 4326), 'Darlington', 'County Durham', 'GB',
+  ('The Shankill Tap', ST_SetSRID(ST_MakePoint(-5.9560, 54.6015), 4326), 'Belfast', 'County Antrim', 'GB',
    'Pub', array['Pub'], null, 0,
    null, null, 'unclaimed', 'roam-dev-seed', 'From public sources'),
 
   -- A neighbouring-town venue so the data isn't all one locality ------------
-  ('Stockton Riverside Kitchen', ST_SetSRID(ST_MakePoint(-1.3110, 54.5705), 4326), 'Stockton-on-Tees', 'County Durham', 'GB',
+  ('Bangor Marina Kitchen', ST_SetSRID(ST_MakePoint(-5.6685, 54.6620), 4326), 'Bangor', 'County Down', 'GB',
    'Restaurant', array['Restaurant','British'], 4.2, 39,
-   'Riverside dining a short drive from Darlington.',
-   'High Street, Stockton-on-Tees TS18', 'unclaimed', 'roam-dev-seed', 'From public sources');
+   'Seafront dining a short drive from Belfast.',
+   'Quay Street, Bangor BT20', 'unclaimed', 'roam-dev-seed', 'From public sources');
 
 -- Sanity check after seeding (visible when run via psql / SQL editor):
 -- select count(*) as seeded, count(rating) as with_rating from venues where source = 'roam-dev-seed';
