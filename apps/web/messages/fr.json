@@ -2079,6 +2079,13 @@
     "dismiss": "Plus tard",
     "locating": "Localisation…",
     "nearMe": "Autour de moi",
-    "yourLocation": "Ta position"
+    "yourLocation": "Ta position",
+    "chooseTitle": "Où souhaitez-vous explorer ?",
+    "chooseBody": "Utilisez votre position ou recherchez un lieu pour voir ce qui se trouve à proximité.",
+    "chooseOr": "ou",
+    "chooseSearchPlaceholder": "Rechercher une ville",
+    "chooseSearching": "Recherche…",
+    "chooseNoResults": "Aucun résultat pour « {query} ».",
+    "chooseSkip": "Explorer quand même"
   }
 }

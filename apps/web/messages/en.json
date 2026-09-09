@@ -2663,7 +2663,14 @@
     "dismiss": "Not now",
     "locating": "Locating…",
     "nearMe": "Near me",
-    "yourLocation": "Your location"
+    "yourLocation": "Your location",
+    "chooseTitle": "Where would you like to explore?",
+    "chooseBody": "Use your location or search for a place to see what's nearby.",
+    "chooseOr": "or",
+    "chooseSearchPlaceholder": "Search for a town or city",
+    "chooseSearching": "Searching…",
+    "chooseNoResults": "No matches for “{query}”.",
+    "chooseSkip": "Explore anyway"
   },
   "presence": {
     "yourStatus": "Your status",

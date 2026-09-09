@@ -2079,6 +2079,13 @@
     "dismiss": "Nid nawr",
     "locating": "Wrthi'n lleoli…",
     "nearMe": "Yn agos ataf",
-    "yourLocation": "Dy leoliad"
+    "yourLocation": "Dy leoliad",
+    "chooseTitle": "Ble hoffech chi archwilio?",
+    "chooseBody": "Defnyddiwch eich lleoliad neu chwiliwch am le i weld beth sydd gerllaw.",
+    "chooseOr": "neu",
+    "chooseSearchPlaceholder": "Chwiliwch am dref neu ddinas",
+    "chooseSearching": "Yn chwilio…",
+    "chooseNoResults": "Dim canlyniadau ar gyfer “{query}”.",
+    "chooseSkip": "Archwilio beth bynnag"
   }
 }
