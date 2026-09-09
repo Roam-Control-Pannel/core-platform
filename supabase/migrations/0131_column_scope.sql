@@ -28,9 +28,13 @@ create or replace function public.venues_guard_owner_columns()
 as $$
 begin
   if current_user in ('authenticated', 'anon') then
-    if (to_jsonb(new) - '{description,links,opening_times,updated_at}'::text[])
+    -- Exclude the owner-editable keys AND the generated columns lat/lng: a BEFORE trigger
+    -- sees generated columns as NULL in NEW (they are recomputed only after BEFORE
+    -- triggers), so leaving them in would falsely flag every edit. They cannot be written
+    -- directly anyway, so excluding them opens no hole. updated_at is set by trg_venues_updated.
+    if (to_jsonb(new) - '{description,links,opening_times,updated_at,lat,lng}'::text[])
        is distinct from
-       (to_jsonb(old) - '{description,links,opening_times,updated_at}'::text[]) then
+       (to_jsonb(old) - '{description,links,opening_times,updated_at,lat,lng}'::text[]) then
       raise exception
         'venues: an owner may only edit description, links and opening_times'
         using errcode = '42501';
