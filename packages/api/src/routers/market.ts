@@ -538,7 +538,7 @@ export const marketRouter = router({
         const query = [input.address.line1, input.address.postcode].filter(Boolean).join(", ");
         let hit: { lat: number; lng: number } | undefined;
         try {
-          const geo = await geocodeSearch(query, undefined, { region: "ni" });
+          const geo = await geocodeSearch(query, undefined, { region: "ni", prefer: "address" });
           hit = geo[0];
         } catch {
           /* geocode failure → treated as no destination below */

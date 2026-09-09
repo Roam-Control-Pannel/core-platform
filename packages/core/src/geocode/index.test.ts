@@ -111,6 +111,36 @@ describe("parsePhoton", () => {
     expect(out[0]!.lng).toBeCloseTo(-2.9916);
   });
 
+  // #5: a DELIVERY destination must geocode to the precise address point, not the town centroid.
+  // Photon returns both a house feature and the settlement; placeRank (browse-centre) puts the
+  // settlement first, so geo[0] was the centroid — the delivery fence measured venue→town centre
+  // and the stored courier coordinate was the town centre. prefer:"address" flips this.
+  it("prefer:'address' leads with the house point, not the settlement centroid", () => {
+    const town = feat([-5.93, 54.60], {
+      osm_type: "N", osm_id: 1, name: "Belfast", osm_key: "place", osm_value: "town", type: "town", county: "County Antrim",
+    });
+    const house = feat([-5.9502, 54.621], {
+      osm_type: "N", osm_id: 2, name: "12", type: "house", street: "Ballygomartin Road", postcode: "BT13 3NL", city: "Belfast",
+    });
+    // Default (browse centre): the settlement leads — the pre-fix behaviour.
+    expect(parsePhoton({ features: [house, town] })[0]!.name).toBe("Belfast");
+    // Address mode: the house coordinate leads, so the fence + stored coord use the real point.
+    const [addr] = parsePhoton({ features: [town, house] }, 6, { prefer: "address" });
+    expect(addr!.lat).toBeCloseTo(54.621, 4);
+    expect(addr!.lng).toBeCloseTo(-5.9502, 4);
+  });
+
+  it("prefer:'address' still beats a settlement when only a street matches (no house)", () => {
+    const city = feat([-5.93, 54.60], {
+      osm_type: "N", osm_id: 3, name: "Belfast", osm_key: "place", osm_value: "city", type: "city",
+    });
+    const street = feat([-5.95, 54.62], {
+      osm_type: "W", osm_id: 4, name: "Ballygomartin Road", type: "street", city: "Belfast",
+    });
+    const [addr] = parsePhoton({ features: [city, street] }, 6, { prefer: "address" });
+    expect(addr!.name).toBe("Ballygomartin Road");
+  });
+
   // Regression for the "Liverpool → Wavertree" report (#71), pinned to REAL Photon responses
   // (captured 2026-07, photon.komoot.io). The important real-world detail the synthetic test above
   // misses: Photon's admin-boundary feature carries `type: "city"` (so placeRank scores it 95, not
