@@ -475,6 +475,18 @@ export const marketRouter = router({
       const byId = new Map((prods ?? []).map((p) => [p.id, p]));
       const qtyById = new Map<string, number>();
       for (const it of input.items) qtyById.set(it.productId, (qtyById.get(it.productId) ?? 0) + it.quantity);
+      // The per-line Zod cap (max 20) runs BEFORE this merge, so two lines of the same product
+      // (each ≤20) can sum past 20 here and later violate the order_items 1..20 check, rolling the
+      // whole order back with a raw 500. Enforce the cap on the merged quantity for a clean,
+      // actionable error instead.
+      for (const [, q] of qtyById) {
+        if (q > 20) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "You can order at most 20 of any single item.",
+          });
+        }
+      }
 
       const lines: { productId: string; title: string; unitPricePence: number; quantity: number }[] = [];
       // One basket = one venue = one Stripe payout = one currency. Prices are integer minor units
