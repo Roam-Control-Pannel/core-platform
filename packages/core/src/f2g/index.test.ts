@@ -189,6 +189,13 @@ describe("postcode helpers", () => {
     expect(postcodeOutward("BT14AB")).toBe("BT1");
     expect(postcodeOutward("BT475CD")).toBe("BT47");
     expect(postcodeOutward("BT1")).toBe("BT1"); // a partial the user typed
+    // A bare DISTRICT token (not a full postcode) must be preserved, not have three
+    // chars blindly stripped. The inward code is always digit+letter+letter, so only
+    // strip when the last three actually look like one.
+    expect(postcodeOutward("BT14")).toBe("BT14"); // was collapsing to "B"
+    expect(postcodeOutward("BT48")).toBe("BT48");
+    expect(postcodeOutward("EC1A")).toBe("EC1A"); // outer-London district token
+    expect(postcodeOutward("B1")).toBe("B1");
   });
 
   it("matches districts exactly and areas by prefix", () => {
@@ -201,6 +208,12 @@ describe("postcode helpers", () => {
     expect(postcodeMatches("BT", "BT47")).toBe(true);
     // A full postcode token is reduced to its outward code before comparison.
     expect(postcodeMatches("BT1 4AB", "BT1")).toBe(true);
+    // A 4-char DISTRICT token must stay a district (exact match), not degrade to an
+    // area prefix. These were the live fence bug: an allow-list of ["BT14"] matched
+    // every BT postcode, and ["BT48"] matched neighbouring BT47.
+    expect(postcodeMatches("BT14", "BT9")).toBe(false);
+    expect(postcodeMatches("BT14", "BT1")).toBe(false);
+    expect(postcodeMatches("BT48", "BT47")).toBe(false);
   });
 });
 

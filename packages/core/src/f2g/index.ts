@@ -303,12 +303,18 @@ export function normalizePostcode(raw: string | null | undefined): string {
 }
 
 /**
- * The OUTWARD code of a normalised UK postcode (the district). A UK inward code is always the last
- * three chars (digit + two letters), so the outward is everything before them: "BT14AB" → "BT1",
- * "BT145CD" → "BT14". Shorter fragments (a partial the user typed) are returned as-is.
+ * The OUTWARD code of a normalised UK postcode (the district). A UK inward code is always exactly
+ * three chars — a digit followed by two letters — so we strip the last three ONLY when they match
+ * that shape: "BT14AB" → "BT1", "BT475CD" → "BT47", "EC1A1BB" → "EC1A". A bare district/area token
+ * the user (or an allow/block list) supplies has no inward code and is returned unchanged: "BT14"
+ * → "BT14", "BT48" → "BT48", "EC1A" → "EC1A", "BT" → "BT". The old length-only rule blindly cut
+ * three chars off any 4+-char token, collapsing a district like "BT14" to "B" and making it match
+ * every BT postcode — breaking the delivery fence for every 4-char NI district.
  */
 export function postcodeOutward(normalised: string): string {
-  return normalised.length > 3 ? normalised.slice(0, -3) : normalised;
+  return normalised.length > 3 && /\d[A-Z]{2}$/.test(normalised)
+    ? normalised.slice(0, -3)
+    : normalised;
 }
 
 /**
