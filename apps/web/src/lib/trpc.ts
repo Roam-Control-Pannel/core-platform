@@ -24,15 +24,24 @@ function apiUrl(): string {
 /**
  * Build a tRPC client. Pass a function that returns the current access token (from the
  * Supabase session) so each request carries the live JWT; returns null when signed out.
+ *
+ * `getChannel` supplies the active channel key. It defaults to the browser cookie reader
+ * (`readChannelCookie`), which is correct in the client bundle but returns null on the server
+ * (there is no document). Server-side callers (SEO reads in serverApi.ts) pass a getter backed
+ * by `next/headers` instead, so server renders resolve the right channel rather than always
+ * falling back to the default Roam channel — the D2 fix.
  */
-export function makeTrpcClient(getAccessToken: () => string | null) {
+export function makeTrpcClient(
+  getAccessToken: () => string | null,
+  getChannel: () => string | null = readChannelCookie,
+) {
   return createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
         url: `${apiUrl()}/trpc`,
         headers() {
           const token = getAccessToken();
-          const channel = readChannelCookie();
+          const channel = getChannel();
           const h: Record<string, string> = {};
           if (token) h.authorization = `Bearer ${token}`;
           // The active channel (Food to Go vs Roam). Set by middleware; forwarded so the API
