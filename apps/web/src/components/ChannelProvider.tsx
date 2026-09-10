@@ -5,8 +5,9 @@
  * header) and ChannelTheme applied the palette. Phase 2 needs whole PAGES and chrome to branch on
  * the channel (the f2g storefront home vs the Roam home), so we lift that into one context:
  *
- *   - Instant: `readChannelCookie()` gives the channel KEY with no round-trip, so components can
- *     branch on `isF2G` from the first post-hydration tick.
+ *   - Instant: `readChannelCookie()` gives the channel KEY with no round-trip, so chrome can pick
+ *     its `surface` from the first post-hydration tick (via a small key→surface bootstrap map,
+ *     below), before the authoritative read confirms it from the DB.
  *   - Authoritative: `channels.current` returns the full Channel (name, theme) and applies the
  *     palette — same call ChannelTheme used to make, now folded in here.
  *
@@ -51,12 +52,10 @@ export interface ChannelState {
   /** The active channel key ("roam" | "f2g" | …). */
   key: string;
   /**
-   * Convenience: on the Food to Go storefront channel.
-   * @deprecated Prefer `surface === "storefront"` for chrome and `isEnabled(section)` for surfaces —
-   * this getter is retained during the A2 migration off boolean channel dispatch and will be removed.
+   * Which shell chrome to render — the channel-config replacement for the old per-channel boolean
+   * dispatch (review debt D3). Set instantly from the cookie bootstrap map, then confirmed from the
+   * DB. Chrome branches on `surface === "storefront"`.
    */
-  isF2G: boolean;
-  /** Which shell chrome to render. Before the authoritative read resolves this is 'roam'. */
   surface: ChannelSurface;
   /** Whether the active channel exposes a named top-level surface (explicit allow-map). */
   isEnabled: (section: string) => boolean;
@@ -68,12 +67,22 @@ export interface ChannelState {
 
 const DEFAULT_STATE: ChannelState = {
   key: DEFAULT_CHANNEL_KEY,
-  isF2G: false,
   surface: "roam",
   isEnabled: () => false,
   channel: null,
   resolved: false,
 };
+
+/**
+ * Instant key→surface for the pre-network paint, so a storefront channel renders its chrome from
+ * the first tick instead of flashing the Roam rail while the authoritative read is in flight. This
+ * is the ONE remaining place the web hardcodes a channel's surface; it's a bootstrap hint only (the
+ * DB value below is authoritative) and goes away once middleware carries `surface` in the cookie
+ * (deferred slice A2-middleware).
+ */
+function bootstrapSurface(key: string): ChannelSurface {
+  return key === "f2g" ? "storefront" : "roam";
+}
 
 const ChannelContext = createContext<ChannelState>(DEFAULT_STATE);
 
@@ -90,7 +99,7 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
       // Stamp data-channel immediately so channel-scoped CSS (e.g. full-width storefront) applies
       // before the authoritative theme read returns.
       if (typeof document !== "undefined") document.documentElement.dataset.channel = cookieKey;
-      setState((s) => ({ ...s, key: cookieKey, isF2G: cookieKey === "f2g" }));
+      setState((s) => ({ ...s, key: cookieKey, surface: bootstrapSurface(cookieKey) }));
     }
 
     // Authoritative channel (name + theme). Applies the palette; ChannelTheme is folded in here.
@@ -106,7 +115,6 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
         const channel = ch as ChannelInfo;
         setState({
           key: channel.key,
-          isF2G: channel.key === "f2g",
           surface: channel.surface,
           isEnabled: (section: string) => isSectionEnabled(channel.sections, section),
           channel,
@@ -125,7 +133,7 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
   return <ChannelContext.Provider value={state}>{children}</ChannelContext.Provider>;
 }
 
-/** The active brand channel. Branch pages/chrome on `isF2G`; gate flashes on `resolved`. */
+/** The active brand channel. Branch chrome on `surface`, surfaces on `isEnabled`; gate flashes on `resolved`. */
 export function useChannel(): ChannelState {
   return useContext(ChannelContext);
 }

@@ -403,13 +403,13 @@ export function VenueDetail({ venueId, initialVenue }: { venueId: string; initia
 
 function BackLink() {
   const t = useTranslations("venueDetail");
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
   return (
     <Link
       // On a brand storefront (f2g) "back" returns to that storefront home (/ → HomeSwitch renders
       // StorefrontHome); on Roam it returns to the Explore browse page. Never dump a storefront
       // visitor onto Roam's generic /explore (wrong channel, defaults to City of London).
-      href={isF2G ? "/" : "/explore"}
+      href={surface === "storefront" ? "/" : "/explore"}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -516,10 +516,10 @@ function ClaimedDetail({
   // On the Food to Go storefront the menu IS the page — default to Shop when the visitor didn't
   // deep-link a specific tab. Post-mount (the channel resolves after hydration), and never
   // overrides an explicit ?tab or a tab the visitor has since chosen.
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
   useEffect(() => {
-    if (isF2G && !hadExplicitTab.current) setTab("shop");
-  }, [isF2G]);
+    if (surface === "storefront" && !hadExplicitTab.current) setTab("shop");
+  }, [surface]);
 
   // Roam-side Food to Go bridge: is this venue offering order-ahead, and its prep time.
   const orderAhead = useVenueOrderAhead(venueId);
@@ -836,7 +836,7 @@ function VenueProfileShell({
 function VenueHero({ venue, venueId, claimed = false, orderAhead = false }: { venue: VenueDetailData; venueId: string; claimed?: boolean; orderAhead?: boolean }) {
   const t = useTranslations("venueDetail");
   const trpc = useTrpc();
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
   const [rows, setRows] = useState<PhotoRow[] | undefined>(undefined);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
 
@@ -873,7 +873,7 @@ function VenueHero({ venue, venueId, claimed = false, orderAhead = false }: { ve
           <img className={styles.heroImg} src={heroUrl} alt="" />
         ) : null}
         <div className={styles.heroScrim} aria-hidden />
-        <Link href={isF2G ? "/" : "/explore"} aria-label={t("back")} className={`${styles.heroBtn} ${styles.heroBack}`}>
+        <Link href={surface === "storefront" ? "/" : "/explore"} aria-label={t("back")} className={`${styles.heroBtn} ${styles.heroBack}`}>
           <span aria-hidden>←</span>
         </Link>
         {gallery.length > 0 ? (
@@ -1461,7 +1461,7 @@ function DetailSkeleton() {
 
 function NotFoundState() {
   const t = useTranslations("venueDetail");
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
   return (
     <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-4)" }}>
       <div className="t-h2" style={{ fontFamily: "var(--display)", marginBottom: "var(--space-2)" }}>
@@ -1470,7 +1470,7 @@ function NotFoundState() {
       <p style={{ color: "var(--muted)", marginBottom: "var(--space-4)" }}>
         {t("notFound.body")}
       </p>
-      <Link href={isF2G ? "/" : "/explore"} style={{ textDecoration: "none" }}>
+      <Link href={surface === "storefront" ? "/" : "/explore"} style={{ textDecoration: "none" }}>
         <Pill variant="ghost-crim">← {t("notFound.backToExplore")}</Pill>
       </Link>
     </div>

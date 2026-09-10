@@ -3,8 +3,8 @@
  * (feature_flags.marketplace.f2g.enabled, read via trpc.f2g.config).
  *
  * Shared across the app: the vendor dashboard tab (VenueOwnerEditor) and the Roam-side order-ahead
- * affordances (discovery cards, venue page) all gate on this. Distinct from useChannel().isF2G —
- * that's "am I on the f2g-branded host"; this is the global feature switch. A Roam-side badge wants
+ * affordances (discovery cards, venue page) all gate on this. Distinct from useChannel().surface —
+ * that's "am I on a storefront-surface host"; this is the global feature switch. A Roam-side badge wants
  * this flag true AND per-venue channel membership, rendered on the ordinary Roam channel.
  *
  * Dormant by default: a failed/absent read keeps it false, so nothing F2G shows until launch.
