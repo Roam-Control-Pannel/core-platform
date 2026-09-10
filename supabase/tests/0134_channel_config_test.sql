@@ -14,7 +14,7 @@ select has_column('public', 'channels', 'sections', 'channels.sections exists');
 select has_column('public', 'channels', 'surface', 'channels.surface exists');
 select col_type_is('public', 'channels', 'nav', 'jsonb', 'nav is jsonb');
 select col_type_is('public', 'channels', 'sections', 'jsonb', 'sections is jsonb');
-select col_default_is('public', 'channels', 'surface', '''roam''::text', 'surface defaults to roam');
+select col_default_is('public', 'channels', 'surface', 'roam', 'surface defaults to roam');
 
 -- ── surface CHECK constraint rejects anything but roam/storefront ─────────────
 select throws_ok(
