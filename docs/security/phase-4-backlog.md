@@ -47,6 +47,10 @@ defect *yet*. Fix: honour an explicit ISO country code before falling back to th
 alongside the platform's global-market work, and it ties directly into the open **Belfast IP-fallback
 design question** (see §D).
 
+> ✅ **Resolved — shipped in #366.** `resolveMarket()` in `@roam/core/markets` now makes an explicit
+> country code authoritative; the coordinate box is a fallback only when no code is present. A Dublin
+> `IE` visitor resolves to `known:false`/seeding, never GB.
+
 ### A3 — GB backfill stamped Irish venues as GB
 
 `0128_venue_country_code.sql:113-117` stamps `GB` on every venue inside the UK bounding box — which
@@ -56,6 +60,11 @@ Places refresh (bounded by the 30-day freshness cycle), so this is latent, not p
 Fix: a one-shot corrective `UPDATE` that re-nulls `country_code` for venues whose coordinates fall in
 ROI (or, better, restrict the original box to actual GB and let the next refresh fill the truth). Do
 this **with** A2 — same root cause (GB box over-reaches into Ireland).
+
+> ✅ **Resolved — shipped in #368** (migration `0133`). A lat/lng rectangle can't separate NI from ROI,
+> so the correction keys on the authoritative Places address suffix (…"Ireland" → `IE`, …"UK"/"Northern
+> Ireland" left as GB), scoped to unclaimed Places-sourced rows, with a pgTAP test over the full
+> classification.
 
 ### A4 — "Delivers" filter empties the storefront in members mode
 
@@ -160,7 +169,49 @@ platform's default/fallback location behaviour needs to be *"use the user's loca
 default"* — a user in Atlanta must not default to Belfast NI. This is a product/design decision, not a
 bug fix, and is entangled with **A2** (bounding-box fallback overriding explicit country) and **A3** (GB
 box over-reaching into ROI). Recommend tackling A2 + A3 + this fallback policy together as one
-"global-market correctness" workstream. **No action taken — awaiting your direction.**
+"global-market correctness" workstream.
+
+> ✅ **Resolved — option (ii), shipped in #367.** On zero location signal the web no longer asserts a
+> town: `LocationGate` shows a neutral "Where would you like to explore?" first-run chooser (share
+> location, or search any town/city worldwide) instead of defaulting to Belfast. Detection-succeeds
+> paths are unchanged (a visitor's real location wins). Belfast is now only ever a real NI visitor's
+> home. A2 + A3 shipped alongside (#366, #368), closing the whole global-market correctness workstream.
+
+---
+
+## E. Review-pass findings (the de-Darlington `VenuePicker` work, PRs #350–#353)
+
+Surfaced by a high-effort review pass over this session's own changes (not from the Sep 2026 review).
+Both live in the two `VenuePicker` components and are **low-severity quality/efficiency**, not
+correctness bugs. They share a root cause, so they're best fixed together.
+
+### E1 — `VenuePicker` fires `venues.near` twice on open
+
+`apps/web/src/components/ChatShareMenu.tsx:194-215` and `apps/web/src/components/MeetupPanel.tsx`
+(~`:335-350`). Each picker does `useState<Place>(currentPlace)`, but `useCurrentPlace()` returns
+`DEFAULT_PLACE` (Belfast) on the first render and only hydrates the stored place on a later tick. So a
+signed-out visitor whose stored place is, say, Derry opens the picker → the fetch effect queries
+`venues.near` for Belfast → the stored place then lands, `setPlace` runs, `place` changes identity → a
+second `venues.near` fires for Derry. The first request is wasted and can briefly render the wrong
+locality's venues.
+
+**Why it wasn't hot-fixed in the review pass:** the naive fixes make it *worse*. `useCurrentPlace`
+returns `DEFAULT_PLACE` before hydrating, so lazy-initialising from `readCurrentPlace()` and/or gating
+the follow-effect can overwrite a correctly-initialised place with the not-yet-hydrated Belfast, and a
+structurally-equal-but-new-reference `setPlace` still re-triggers the `[place]` fetch effect. A correct
+fix needs a considered shared hook plus a reliable "hydrated" signal — see E2.
+
+### E2 — the "follow current place until the user picks a chip" block is copy-pasted into both pickers
+
+The identical `useState(currentPlace)` + `pickedPlace` ref + sync-effect block appears in both
+`VenuePicker`s; a change to the follow semantics must be made in both and can drift.
+
+**Fix for E1 + E2 together:** extract a `useFollowingPlace()` hook (e.g. in `apps/web/src/lib/`) that
+(a) reads the stored place synchronously so the picker's first `venues.near` already targets the right
+locality, (b) follows `currentPlace` until the user picks a chip, and (c) only updates when the place
+materially changes (by id + coords) so a new object reference alone can't re-fire the fetch. This
+likely wants a small `hydrated` flag added to `useCurrentPlace` so the hook can distinguish "genuinely
+Belfast" from "not yet hydrated." Its own PR, with a test for the single-fetch behaviour.
 
 ---
 
@@ -172,8 +223,12 @@ box over-reaching into ROI). Recommend tackling A2 + A3 + this fallback policy t
 3. **B1** (transitive `pnpm.overrides`) — one PR, clears 25 high advisory-instances.
 4. **C1 / C2** (built-deps allowlist) — one-line Mac-dev fix + dead-entry cleanup.
 5. **A4, A5** (storefront filter, review pagination) — client/query polish.
-6. **A2 + A3 + §D** (global-market correctness) — one workstream, needs the design decision first.
+6. **E1 + E2** (`useFollowingPlace` hook) — one small web PR with a test; fixes the picker double-fetch
+   and the duplication together.
 7. **B2** (major upgrades) — each its own scheduled effort; `zod 4` and Expo 57 are the big ones.
+
+> ✅ **A2 + A3 + §D (global-market correctness) — done this session** (#366, #367, #368). Removed from
+> the queue above.
 
 ---
 
