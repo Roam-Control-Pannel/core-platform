@@ -71,11 +71,11 @@ export function TabBar() {
   const t = useTranslations("chrome");
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
 
-  // On the Food to Go storefront the Roam social IA (Town Hall, Chat) is out of place — the mobile
-  // bar becomes a shopfront: browse vendors (Home), your Orders, You.
-  if (isF2G) {
+  // On a storefront-surface channel the Roam social IA (Town Hall, Chat) is out of place — the
+  // mobile bar becomes a shopfront: browse vendors (Home), your Orders, You.
+  if (surface === "storefront") {
     const ordersActive = pathname.startsWith("/orders");
     return (
       <>

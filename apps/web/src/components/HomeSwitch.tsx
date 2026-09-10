@@ -14,6 +14,6 @@ import { Home } from "./Home";
 import { StorefrontHome } from "./StorefrontHome";
 
 export function HomeSwitch() {
-  const { isF2G } = useChannel();
-  return isF2G ? <StorefrontHome /> : <Home />;
+  const { surface } = useChannel();
+  return surface === "storefront" ? <StorefrontHome /> : <Home />;
 }

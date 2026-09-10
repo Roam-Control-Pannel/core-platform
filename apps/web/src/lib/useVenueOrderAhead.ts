@@ -39,9 +39,11 @@ export function useVenueOrderAhead(venueId: string): VenueOrderAhead {
     ])
       .then(([keys, c]) => {
         if (cancelled) return;
-        const isF2G = Array.isArray(keys) && keys.includes("f2g");
+        // Whether THIS venue is tagged into the f2g channel (a venue-membership check on its channel
+        // keys — not the current-channel dispatch that lives in useChannel).
+        const taggedF2G = Array.isArray(keys) && keys.includes("f2g");
         setInfo({
-          available: isF2G && c.orderAhead && !c.paused,
+          available: taggedF2G && c.orderAhead && !c.paused,
           prepMins: c.prepTimeMins,
           paused: !!c.paused,
         });

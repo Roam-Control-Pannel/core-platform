@@ -64,11 +64,11 @@ export function TopBar() {
   const pathname = usePathname() ?? "/";
   const active = activeKey(pathname);
   const [authOpen, setAuthOpen] = useState(false);
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
 
-  // On the Food to Go storefront, the Roam top bar is replaced wholesale by the Association's
-  // co-branded StorefrontHeader (navy · logo · Powered by Roam · storefront nav · basket).
-  if (isF2G) return <StorefrontHeader />;
+  // On a storefront-surface channel (e.g. Food to Go), the Roam top bar is replaced wholesale by
+  // the Association's co-branded StorefrontHeader (navy · logo · Powered by Roam · nav · basket).
+  if (surface === "storefront") return <StorefrontHeader />;
 
   return (
     <header className={styles.bar}>

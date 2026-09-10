@@ -50,7 +50,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
   const t = useTranslations("venueShop");
   const trpc = useTrpc();
   const session = useSession();
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
   const [items, setItems] = useState<ShopItem[] | undefined>(undefined);
   const [sellable, setSellable] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -78,9 +78,9 @@ export function VenueShop({ venueId }: { venueId: string }) {
     return () => { cancelled = true; };
   }, [trpc, venueId]);
 
-  // On the Food to Go storefront, surface the venue's collection + delivery settings.
+  // On a storefront-surface channel, surface the venue's collection + delivery settings.
   useEffect(() => {
-    if (!isF2G) return;
+    if (surface !== "storefront") return;
     let cancelled = false;
     trpc.f2g.collectionSettings
       .query({ venueId })
@@ -91,7 +91,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
       .then((d) => { if (!cancelled) setDelivery(d as DeliveryInfo); })
       .catch(() => { /* delivery option just won't offer */ });
     return () => { cancelled = true; };
-  }, [trpc, venueId, isF2G]);
+  }, [trpc, venueId, surface]);
 
   const buyable = sellable && !paused;
   const deliveryAvailable = !!delivery && delivery.deliveryEnabled && !delivery.paused;
@@ -140,13 +140,13 @@ export function VenueShop({ venueId }: { venueId: string }) {
 
   return (
     <div>
-      {isF2G && collection ? <CollectionBanner settings={collection} /> : null}
+      {surface === "storefront" && collection ? <CollectionBanner settings={collection} /> : null}
       {error ? <p role="alert" style={{ margin: "0 0 var(--space-3)", color: "var(--crimson-700)", fontSize: 13 }}>{error}</p> : null}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "var(--space-3)" }}>
         {items.map((p) => {
           const soldOut = p.stock === 0;
-          // On the f2g storefront, physical products go through the basket; vouchers stay single-buy.
-          const carted = isF2G && p.kind === "product";
+          // On a storefront channel, physical products go through the basket; vouchers stay single-buy.
+          const carted = surface === "storefront" && p.kind === "product";
           const inCart = cart[p.id] ?? 0;
           return (
             <Card key={p.id} style={{ overflow: "hidden" }}>
@@ -212,7 +212,7 @@ export function VenueShop({ venueId }: { venueId: string }) {
         })}
       </div>
 
-      {isF2G && cartLines.length > 0 ? (
+      {surface === "storefront" && cartLines.length > 0 ? (
         <Basket
           venueId={venueId}
           lines={cartLines as { product: ShopItem; quantity: number }[]}

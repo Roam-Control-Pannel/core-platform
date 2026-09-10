@@ -90,7 +90,7 @@ export function SideNav() {
   const { open, setOpen } = useSideNav();
   const pathname = usePathname() ?? "/";
   const t = useTranslations("chrome.sideNav");
-  const { isF2G } = useChannel();
+  const { surface } = useChannel();
 
   // Close the drawer whenever the route changes (a shortcut was tapped).
   useEffect(() => {
@@ -107,8 +107,8 @@ export function SideNav() {
     };
   }, [open]);
 
-  // The Food to Go storefront has its own chrome (StorefrontHeader) and no Roam rail/drawer.
-  if (isF2G) return null;
+  // A storefront-surface channel has its own chrome (StorefrontHeader) and no Roam rail/drawer.
+  if (surface === "storefront") return null;
 
   const body = <SideNavBody pathname={pathname} />;
 
