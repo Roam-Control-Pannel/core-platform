@@ -82,13 +82,22 @@ export async function runOwnerDigest(
   // (created_at, id) order. The previous single `.limit(5000)` ascending scan returned only the
   // OLDEST 5000 rows platform-wide, so once weekly volume passed that cap every returned row
   // predated each owner's watermark → byRecipient empty → 0 sent, logged as a clean "ok" while
-  // nobody got a digest. PAGE_SIZE stays within PostgREST's max-rows cap; MAX_PAGES is a safety
-  // bound so a pathological week can't loop unboundedly.
-  const PAGE_SIZE = 1000;
-  const MAX_PAGES = 200;
+  // nobody got a digest.
+  //
+  // Two rules keep the paging cap-proof, so that truncation can never quietly return:
+  //   • PAGE_SIZE is set BELOW PostgREST's max_rows (supabase/config.toml: 1000); and
+  //   • we advance `from` by the number of rows ACTUALLY returned and stop only on an EMPTY page —
+  //     never by PAGE_SIZE with an early `< PAGE_SIZE` break. If a deployment's max_rows were ever
+  //     below our page size, PostgREST would cap a full page to a short read; advancing by
+  //     PAGE_SIZE would then skip the capped-off rows and a `< PAGE_SIZE` break would stop after
+  //     one page — reintroducing the exact bug this fix exists to kill. Advancing by the real
+  //     count and stopping only when a page comes back empty is correct for any max_rows.
+  // MAX_PAGES is a safety bound so a pathological week can't loop unboundedly.
+  const PAGE_SIZE = 500;
+  const MAX_PAGES = 400; // PAGE_SIZE * MAX_PAGES = 200k rows per 7-day window
   const notifs: NotifRow[] = [];
+  let from = 0;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const from = page * PAGE_SIZE;
     const { data, error: notifErr } = await db
       .from("notifications")
       .select("id, recipient_id, type, payload, created_at")
@@ -100,7 +109,8 @@ export async function runOwnerDigest(
     if (notifErr) throw new Error(`owner digest: notifications read failed: ${notifErr.message}`);
     const rows = (data ?? []) as NotifRow[];
     notifs.push(...rows);
-    if (rows.length < PAGE_SIZE) break;
+    if (rows.length === 0) break;
+    from += rows.length;
     if (page === MAX_PAGES - 1) {
       log(`owner digest: hit the ${MAX_PAGES}-page scan cap (${MAX_PAGES * PAGE_SIZE} rows) — window may be truncated.`);
     }
