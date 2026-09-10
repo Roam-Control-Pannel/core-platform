@@ -11,17 +11,58 @@
  * generateMetadata and its JSON-LD share a single API round-trip.
  */
 import { cache } from "react";
+import { headers } from "next/headers";
 import { makeTrpcClient } from "./trpc";
+import { DEFAULT_CHANNEL_KEY } from "./channel";
 import type { VenueSeo, ProfileSeo, PostSeo, TopicSeo, WallPostSeo, DealSeo, PlanSeo } from "./seo";
 
-/** An anonymous tRPC client (no auth header) for public reads. */
-function anon() {
-  return makeTrpcClient(() => null);
+/**
+ * The channel key for THIS server render, from the `x-roam-channel` header the middleware sets on
+ * the request. The browser cookie reader is blind on the server (no document), so without this
+ * every server read (SEO metadata, JSON-LD, sitemap) resolved to the default Roam channel — review
+ * debt D2. Cached per request; never throws (headers() unavailable → the default channel).
+ */
+const serverChannelKey = cache(async (): Promise<string> => {
+  try {
+    const h = await headers();
+    return h.get("x-roam-channel")?.trim().toLowerCase() || DEFAULT_CHANNEL_KEY;
+  } catch {
+    return DEFAULT_CHANNEL_KEY;
+  }
+});
+
+/**
+ * An anonymous (no auth), CHANNEL-AWARE tRPC client for public server reads: it forwards the
+ * server-resolved `x-roam-channel` so the API themes/filters by the right channel. Async because
+ * resolving the channel reads `next/headers`.
+ */
+async function anon() {
+  const channel = await serverChannelKey();
+  return makeTrpcClient(() => null, () => channel);
 }
+
+/** The active channel for this render (name/tagline/logo), for channel-aware SSR metadata (D2). */
+export interface ChannelSeo {
+  key: string;
+  name: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  isDefault: boolean;
+}
+export const getChannelInfo = cache(async (): Promise<ChannelSeo | null> => {
+  try {
+    const c = (await anon()) as unknown as {
+      channels: { current: { query: () => Promise<ChannelSeo | null> } };
+    };
+    return (await c.channels.current.query()) ?? null;
+  } catch {
+    return null;
+  }
+});
 
 export const getVenue = cache(async (venueId: string): Promise<VenueSeo | null> => {
   try {
-    const c = anon() as unknown as { venues: { byId: { query: (i: { venueId: string }) => Promise<VenueSeo | null> } } };
+    const c = (await anon()) as unknown as { venues: { byId: { query: (i: { venueId: string }) => Promise<VenueSeo | null> } } };
     return (await c.venues.byId.query({ venueId })) ?? null;
   } catch {
     return null;
@@ -30,7 +71,7 @@ export const getVenue = cache(async (venueId: string): Promise<VenueSeo | null> 
 
 export const getVenueBySlug = cache(async (slug: string): Promise<VenueSeo | null> => {
   try {
-    const c = anon() as unknown as { venues: { bySlug: { query: (i: { slug: string }) => Promise<VenueSeo | null> } } };
+    const c = (await anon()) as unknown as { venues: { bySlug: { query: (i: { slug: string }) => Promise<VenueSeo | null> } } };
     return (await c.venues.bySlug.query({ slug })) ?? null;
   } catch {
     return null;
@@ -39,7 +80,7 @@ export const getVenueBySlug = cache(async (slug: string): Promise<VenueSeo | nul
 
 export const getProfile = cache(async (userId: string): Promise<ProfileSeo | null> => {
   try {
-    const c = anon() as unknown as { profiles: { byId: { query: (i: { userId: string }) => Promise<ProfileSeo | null> } } };
+    const c = (await anon()) as unknown as { profiles: { byId: { query: (i: { userId: string }) => Promise<ProfileSeo | null> } } };
     return (await c.profiles.byId.query({ userId })) ?? null;
   } catch {
     return null;
@@ -48,7 +89,7 @@ export const getProfile = cache(async (userId: string): Promise<ProfileSeo | nul
 
 export const getProfileByHandle = cache(async (handle: string): Promise<ProfileSeo | null> => {
   try {
-    const c = anon() as unknown as { profiles: { byHandle: { query: (i: { handle: string }) => Promise<ProfileSeo | null> } } };
+    const c = (await anon()) as unknown as { profiles: { byHandle: { query: (i: { handle: string }) => Promise<ProfileSeo | null> } } };
     return (await c.profiles.byHandle.query({ handle })) ?? null;
   } catch {
     return null;
@@ -57,7 +98,7 @@ export const getProfileByHandle = cache(async (handle: string): Promise<ProfileS
 
 export const getPost = cache(async (postId: string): Promise<PostSeo | null> => {
   try {
-    const c = anon() as unknown as { posts: { byId: { query: (i: { postId: string }) => Promise<PostSeo | null> } } };
+    const c = (await anon()) as unknown as { posts: { byId: { query: (i: { postId: string }) => Promise<PostSeo | null> } } };
     return (await c.posts.byId.query({ postId })) ?? null;
   } catch {
     return null;
@@ -66,7 +107,7 @@ export const getPost = cache(async (postId: string): Promise<PostSeo | null> => 
 
 export const getWallPost = cache(async (postId: string): Promise<WallPostSeo | null> => {
   try {
-    const c = anon() as unknown as { profileWall: { byId: { query: (i: { postId: string }) => Promise<WallPostSeo | null> } } };
+    const c = (await anon()) as unknown as { profileWall: { byId: { query: (i: { postId: string }) => Promise<WallPostSeo | null> } } };
     return (await c.profileWall.byId.query({ postId })) ?? null;
   } catch {
     return null;
@@ -75,7 +116,7 @@ export const getWallPost = cache(async (postId: string): Promise<WallPostSeo | n
 
 export const getDeal = cache(async (dealId: string): Promise<DealSeo | null> => {
   try {
-    const c = anon() as unknown as { deals: { byId: { query: (i: { dealId: string }) => Promise<DealSeo | null> } } };
+    const c = (await anon()) as unknown as { deals: { byId: { query: (i: { dealId: string }) => Promise<DealSeo | null> } } };
     return (await c.deals.byId.query({ dealId })) ?? null;
   } catch {
     return null;
@@ -84,7 +125,7 @@ export const getDeal = cache(async (dealId: string): Promise<DealSeo | null> => 
 
 export const getPlanPreview = cache(async (planId: string): Promise<PlanSeo | null> => {
   try {
-    const c = anon() as unknown as { plans: { preview: { query: (i: { planId: string }) => Promise<PlanSeo | null> } } };
+    const c = (await anon()) as unknown as { plans: { preview: { query: (i: { planId: string }) => Promise<PlanSeo | null> } } };
     return (await c.plans.preview.query({ planId })) ?? null;
   } catch {
     return null;
@@ -93,7 +134,7 @@ export const getPlanPreview = cache(async (planId: string): Promise<PlanSeo | nu
 
 export const getTopic = cache(async (topicId: string): Promise<TopicSeo | null> => {
   try {
-    const c = anon() as unknown as { townHall: { getTopic: { query: (i: { topicId: string }) => Promise<TopicSeo | null> } } };
+    const c = (await anon()) as unknown as { townHall: { getTopic: { query: (i: { topicId: string }) => Promise<TopicSeo | null> } } };
     return (await c.townHall.getTopic.query({ topicId })) ?? null;
   } catch {
     return null;
@@ -102,7 +143,7 @@ export const getTopic = cache(async (topicId: string): Promise<TopicSeo | null> 
 
 export const getTopicBySlug = cache(async (locality: string, slug: string): Promise<TopicSeo | null> => {
   try {
-    const c = anon() as unknown as {
+    const c = (await anon()) as unknown as {
       townHall: { getTopicBySlug: { query: (i: { locality: string; slug: string }) => Promise<TopicSeo | null> } };
     };
     return (await c.townHall.getTopicBySlug.query({ locality, slug })) ?? null;
@@ -183,7 +224,7 @@ export interface HubTown {
 /** The town's board (topics) by locality slug. Returns null only on a hard failure. */
 export const getHub = cache(async (locality: string): Promise<HubData | null> => {
   try {
-    const c = anon() as unknown as { townHall: { hub: { query: (i: { locality: string }) => Promise<HubData> } } };
+    const c = (await anon()) as unknown as { townHall: { hub: { query: (i: { locality: string }) => Promise<HubData> } } };
     return await c.townHall.hub.query({ locality });
   } catch {
     return null;
@@ -193,7 +234,7 @@ export const getHub = cache(async (locality: string): Promise<HubData | null> =>
 /** Top venues in the town (matched on the display label, not the slug). */
 export const getHubVenues = cache(async (localityLabel: string): Promise<HubVenue[]> => {
   try {
-    const c = anon() as unknown as { venues: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubVenue[]> } } };
+    const c = (await anon()) as unknown as { venues: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubVenue[]> } } };
     return await c.venues.byLocality.query({ locality: localityLabel, limit: 12 });
   } catch {
     return [];
@@ -216,7 +257,7 @@ export interface DiscoverVenue {
 export const getDiscoverVenues = cache(
   async (localityLabel: string, category: string): Promise<DiscoverVenue[]> => {
     try {
-      const c = anon() as unknown as {
+      const c = (await anon()) as unknown as {
         venues: { byLocalityCategory: { query: (i: { locality: string; category: string; limit: number }) => Promise<DiscoverVenue[]> } };
       };
       return await c.venues.byLocalityCategory.query({ locality: localityLabel, category, limit: 48 });
@@ -237,7 +278,7 @@ export interface DiscoverCombo {
 /** Town × category combos with enough venues to carry a discovery page — for the sitemap. */
 export const getDiscoverCombos = cache(async (categories: string[], minVenues: number): Promise<DiscoverCombo[]> => {
   try {
-    const c = anon() as unknown as {
+    const c = (await anon()) as unknown as {
       seo: { discoverCombos: { query: (i: { categories: string[]; minVenues: number }) => Promise<DiscoverCombo[]> } };
     };
     return (await c.seo.discoverCombos.query({ categories, minVenues })) ?? [];
@@ -280,7 +321,7 @@ export interface HubEvent {
 /** Upcoming events in a town (for the town hub's "What's on" section). */
 export const getHubEvents = cache(async (localityLabel: string): Promise<HubEvent[]> => {
   try {
-    const c = anon() as unknown as { events: { listByLocality: { query: (i: { localityName: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
+    const c = (await anon()) as unknown as { events: { listByLocality: { query: (i: { localityName: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
     return (await c.events.listByLocality.query({ localityName: localityLabel, limit: 6 })).events;
   } catch {
     return [];
@@ -290,7 +331,7 @@ export const getHubEvents = cache(async (localityLabel: string): Promise<HubEven
 /** Upcoming events at a venue (for the venue page's "what's on here"). */
 export const getVenueEvents = cache(async (venueId: string): Promise<HubEvent[]> => {
   try {
-    const c = anon() as unknown as { events: { byVenue: { query: (i: { venueId: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
+    const c = (await anon()) as unknown as { events: { byVenue: { query: (i: { venueId: string; limit: number }) => Promise<{ events: HubEvent[] }> } } };
     return (await c.events.byVenue.query({ venueId, limit: 6 })).events;
   } catch {
     return [];
@@ -300,7 +341,7 @@ export const getVenueEvents = cache(async (venueId: string): Promise<HubEvent[]>
 /** One event for the server-rendered detail page (metadata + JSON-LD). Null when missing. */
 export const getEvent = cache(async (eventId: string): Promise<EventSeo | null> => {
   try {
-    const c = anon() as unknown as { events: { byId: { query: (i: { eventId: string }) => Promise<EventSeo | null> } } };
+    const c = (await anon()) as unknown as { events: { byId: { query: (i: { eventId: string }) => Promise<EventSeo | null> } } };
     return (await c.events.byId.query({ eventId })) ?? null;
   } catch {
     return null;
@@ -310,7 +351,7 @@ export const getEvent = cache(async (eventId: string): Promise<EventSeo | null> 
 /** One marketplace listing (any status — the page noindexes non-live). Null when missing. */
 export const getListing = cache(async (listingId: string): Promise<ListingSeo | null> => {
   try {
-    const c = anon() as unknown as { listings: { byId: { query: (i: { listingId: string }) => Promise<ListingSeo | null> } } };
+    const c = (await anon()) as unknown as { listings: { byId: { query: (i: { listingId: string }) => Promise<ListingSeo | null> } } };
     return (await c.listings.byId.query({ listingId })) ?? null;
   } catch {
     return null;
@@ -320,7 +361,7 @@ export const getListing = cache(async (listingId: string): Promise<ListingSeo | 
 /** Town coverage stats (venue total + top categories) for the hub's summary line. */
 export const getHubStats = cache(async (localityLabel: string): Promise<HubStats | null> => {
   try {
-    const c = anon() as unknown as { venues: { localityStats: { query: (i: { locality: string }) => Promise<HubStats> } } };
+    const c = (await anon()) as unknown as { venues: { localityStats: { query: (i: { locality: string }) => Promise<HubStats> } } };
     return await c.venues.localityStats.query({ locality: localityLabel });
   } catch {
     return null;
@@ -330,7 +371,7 @@ export const getHubStats = cache(async (localityLabel: string): Promise<HubStats
 /** Recent local news (feed posts) in the town. */
 export const getHubNews = cache(async (localityLabel: string): Promise<HubNews[]> => {
   try {
-    const c = anon() as unknown as { posts: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubNews[]> } } };
+    const c = (await anon()) as unknown as { posts: { byLocality: { query: (i: { locality: string; limit: number }) => Promise<HubNews[]> } } };
     return await c.posts.byLocality.query({ locality: localityLabel, limit: 6 });
   } catch {
     return [];
@@ -340,7 +381,7 @@ export const getHubNews = cache(async (localityLabel: string): Promise<HubNews[]
 /** Every town that can carry a hub page (topics ∪ venues, with counts), for the sitemap. */
 export const getHubTowns = cache(async (): Promise<HubTown[]> => {
   try {
-    const c = anon() as unknown as { seo: { localities: { query: () => Promise<HubTown[]> } } };
+    const c = (await anon()) as unknown as { seo: { localities: { query: () => Promise<HubTown[]> } } };
     return (await c.seo.localities.query()) ?? [];
   } catch {
     return [];
@@ -377,7 +418,7 @@ const EMPTY: SeoLists = { venues: [], profiles: [], posts: [], topics: [], listi
 /** All public URLs for the sitemap. Each list is independently fault-tolerant (→ [] on error). */
 export const getSeoLists = cache(async (): Promise<SeoLists> => {
   try {
-    const c = anon() as unknown as {
+    const c = (await anon()) as unknown as {
       seo: {
         venues: { query: (i: { limit: number }) => Promise<SeoVenueRow[]> };
         profiles: { query: (i: { limit: number }) => Promise<SeoProfileRow[]> };
