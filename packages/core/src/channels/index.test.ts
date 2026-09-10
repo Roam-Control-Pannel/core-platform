@@ -5,7 +5,12 @@ import {
   parseChannelTheme,
   pickChannelKeyForHost,
   rowToChannel,
+  parseChannelNav,
+  parseChannelSections,
+  parseChannelSurface,
+  isSectionEnabled,
   DEFAULT_CHANNEL_KEY,
+  type Channel,
   type DomainMapping,
 } from "./index.js";
 
@@ -101,6 +106,9 @@ describe("rowToChannel", () => {
       theme: { brand: "#E8562A" },
       logoUrl: null,
       membershipMode: "members",
+      nav: [],
+      sections: {},
+      surface: "roam",
     });
   });
   it("defaults missing nullable fields", () => {
@@ -119,5 +127,85 @@ describe("rowToChannel", () => {
     expect(rowToChannel({ id: "c3", key: "roam", name: "Roam", is_default: true, theme: {} }).membershipMode).toBe("open");
     expect(rowToChannel({ id: "c4", key: "x", name: "X", theme: {}, membership_mode: "bogus" }).membershipMode).toBe("open");
     expect(rowToChannel({ id: "c5", key: "x", name: "X", theme: {}, membership_mode: "members" }).membershipMode).toBe("members");
+  });
+  it("parses the config columns (nav / sections / surface) and defaults them when absent", () => {
+    const bare = rowToChannel({ id: "c6", key: "roam", name: "Roam", is_default: true, theme: {} });
+    expect(bare.nav).toEqual([]);
+    expect(bare.sections).toEqual({});
+    expect(bare.surface).toBe("roam");
+    const f2g = rowToChannel({
+      id: "c7",
+      key: "f2g",
+      name: "Food to Go",
+      theme: {},
+      surface: "storefront",
+      sections: { storefront: true, explore: false },
+      nav: [{ key: "nearMe", href: "/", labelKey: "nav_nearMe" }],
+    });
+    expect(f2g.surface).toBe("storefront");
+    expect(f2g.sections).toEqual({ storefront: true, explore: false });
+    expect(f2g.nav).toEqual([{ key: "nearMe", href: "/", labelKey: "nav_nearMe" }]);
+  });
+});
+
+describe("parseChannelNav", () => {
+  it("keeps only well-formed { key, href, labelKey } items, in order", () => {
+    expect(
+      parseChannelNav([
+        { key: "a", href: "/a", labelKey: "nav_a" },
+        { key: "b", href: "/b", labelKey: "nav_b", extra: "ignored" },
+      ]),
+    ).toEqual([
+      { key: "a", href: "/a", labelKey: "nav_a" },
+      { key: "b", href: "/b", labelKey: "nav_b" },
+    ]);
+  });
+  it("drops malformed items rather than throwing", () => {
+    expect(parseChannelNav([{ key: "a" }, null, "x", 3, { key: 1, href: "/", labelKey: "n" }])).toEqual([]);
+  });
+  it("returns [] for non-arrays", () => {
+    expect(parseChannelNav(undefined)).toEqual([]);
+    expect(parseChannelNav({})).toEqual([]);
+    expect(parseChannelNav(null)).toEqual([]);
+  });
+});
+
+describe("parseChannelSections", () => {
+  it("keeps only boolean values (never coerces)", () => {
+    expect(parseChannelSections({ storefront: true, explore: false, jobs: "yes", n: 1 })).toEqual({
+      storefront: true,
+      explore: false,
+    });
+  });
+  it("preserves unknown keys (forward-compatible) and returns {} for non-objects", () => {
+    expect(parseChannelSections({ somethingNew: true })).toEqual({ somethingNew: true });
+    expect(parseChannelSections(undefined)).toEqual({});
+    expect(parseChannelSections([true])).toEqual({});
+  });
+});
+
+describe("parseChannelSurface", () => {
+  it("only 'storefront' is storefront; everything else is roam", () => {
+    expect(parseChannelSurface("storefront")).toBe("storefront");
+    expect(parseChannelSurface("roam")).toBe("roam");
+    expect(parseChannelSurface("bogus")).toBe("roam");
+    expect(parseChannelSurface(undefined)).toBe("roam");
+    expect(parseChannelSurface(null)).toBe("roam");
+  });
+});
+
+describe("isSectionEnabled (explicit allow-map, no default-on)", () => {
+  const ch = (sections: Record<string, boolean>): Channel =>
+    rowToChannel({ id: "c", key: "k", name: "N", theme: {}, sections });
+  it("true only when the section is present AND exactly true", () => {
+    const c = ch({ storefront: true, explore: false });
+    expect(isSectionEnabled(c, "storefront")).toBe(true);
+    expect(isSectionEnabled(c, "explore")).toBe(false);
+    expect(isSectionEnabled(c, "jobs")).toBe(false); // absent → not exposed (no default-on)
+  });
+  it("an unconfigured channel exposes nothing", () => {
+    const c = ch({});
+    expect(isSectionEnabled(c, "storefront")).toBe(false);
+    expect(isSectionEnabled(c, "explore")).toBe(false);
   });
 });
