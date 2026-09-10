@@ -32,6 +32,27 @@ export interface ChannelTheme {
 /** How a channel's storefront selects venues (channels.membership_mode). */
 export type MembershipMode = "open" | "members";
 
+/**
+ * Which shell chrome a channel renders (channels.surface):
+ *   'roam'       — the standard Roam chrome (TopBar + SideNav rail).
+ *   'storefront' — a branded storefront header, no rail (today's f2g).
+ */
+export type ChannelSurface = "roam" | "storefront";
+
+/** One item in a channel's own header navigation (channels.nav). `labelKey` is an i18n key. */
+export interface ChannelNavItem {
+  key: string;
+  href: string;
+  labelKey: string;
+}
+
+/**
+ * A channel's exposed top-level surfaces (channels.sections) as an explicit ALLOW-MAP: a section is
+ * exposed only when present and `true`. Keys today: storefront, suppliers, jobs, explore, townHall,
+ * market, deals, events. Open (Record) by design so a new section is a config key, not a code change.
+ */
+export type ChannelSections = Record<string, boolean>;
+
 /** A branded, filtered view over the core. */
 export interface Channel {
   id: string;
@@ -47,6 +68,12 @@ export interface Channel {
    * The default channel (roam) is always 'open'-equivalent (it shows everything).
    */
   membershipMode: MembershipMode;
+  /** The channel's own header nav; [] = use the surface's default chrome nav (see channels.nav). */
+  nav: ChannelNavItem[];
+  /** Explicit allow-map of exposed surfaces (see channels.sections). Read via isSectionEnabled. */
+  sections: ChannelSections;
+  /** Which shell chrome to render (see channels.surface). */
+  surface: ChannelSurface;
 }
 
 /** One hostname → channel-key mapping row, as the pure resolver consumes it. */
@@ -100,6 +127,54 @@ export function parseChannelTheme(raw: unknown): ChannelTheme {
 }
 
 /**
+ * Validate the stored `nav` jsonb into an ordered list of nav items. Each element must be an object
+ * with string `key`, `href` and `labelKey`; anything malformed is dropped (never throws), so a bad
+ * row degrades to a shorter/empty nav rather than breaking the shell. Forward-compatible by
+ * construction — unknown extra fields on an item are ignored.
+ */
+export function parseChannelNav(raw: unknown): ChannelNavItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ChannelNavItem[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const o = item as Record<string, unknown>;
+    if (typeof o.key === "string" && typeof o.href === "string" && typeof o.labelKey === "string") {
+      out.push({ key: o.key, href: o.href, labelKey: o.labelKey });
+    }
+  }
+  return out;
+}
+
+/**
+ * Validate the stored `sections` jsonb into a boolean allow-map. Only boolean values are kept
+ * (a non-boolean value is dropped, not coerced), so a malformed row can't accidentally expose a
+ * surface. Unknown keys are preserved — forward-compatible for sections this core version predates.
+ */
+export function parseChannelSections(raw: unknown): ChannelSections {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const src = raw as Record<string, unknown>;
+  const out: ChannelSections = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (typeof v === "boolean") out[k] = v;
+  }
+  return out;
+}
+
+/** Validate the stored `surface` value; anything other than 'storefront' resolves to 'roam'. */
+export function parseChannelSurface(raw: unknown): ChannelSurface {
+  return raw === "storefront" ? "storefront" : "roam";
+}
+
+/**
+ * Whether a channel exposes a named top-level surface. `sections` is an explicit ALLOW-MAP: a key
+ * that is absent or not exactly `true` is NOT exposed — there is no default-on, so a new/unconfigured
+ * channel exposes nothing until its sections are set. The channel must list every surface it offers.
+ */
+export function isSectionEnabled(channel: Channel, key: string): boolean {
+  return channel.sections[key] === true;
+}
+
+/**
  * PURE host → channel-key decision. Given the full domain map and the default channel key, pick
  * the channel for a host: exact match first; otherwise the default. Case/port/scheme are handled
  * by normalizeHost, applied to both sides so the map may be stored in any of those forms.
@@ -130,6 +205,9 @@ export function rowToChannel(row: any): Channel {
     theme: parseChannelTheme(row.theme),
     logoUrl: row.logo_url ?? null,
     membershipMode: row.membership_mode === "members" ? "members" : "open",
+    nav: parseChannelNav(row.nav),
+    sections: parseChannelSections(row.sections),
+    surface: parseChannelSurface(row.surface),
   };
 }
 
@@ -137,7 +215,8 @@ export function rowToChannel(row: any): Channel {
 // Thin DB reads/writes — resolution against the live domain map.
 // ---------------------------------------------------------------------------
 
-const CHANNEL_COLS = "id, key, name, tagline, is_default, theme, logo_url, membership_mode";
+const CHANNEL_COLS =
+  "id, key, name, tagline, is_default, theme, logo_url, membership_mode, nav, sections, surface";
 
 /** All active channels, default first. */
 export async function listChannels(client: RoamClient): Promise<Channel[]> {

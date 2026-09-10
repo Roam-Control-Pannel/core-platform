@@ -21,6 +21,27 @@ export interface ChannelTheme {
   ink?: string;
 }
 
+/**
+ * Channel-config types — mirror of @roam/core/channels. The web does NOT re-parse the raw `channels`
+ * jsonb: `channels.current` returns these already parsed and typed over tRPC, so the web only needs
+ * the shapes and a read predicate, not the parsers (which stay in core, run once at the boundary).
+ */
+export type ChannelSurface = "roam" | "storefront";
+export interface ChannelNavItem {
+  key: string;
+  href: string;
+  labelKey: string;
+}
+export type ChannelSections = Record<string, boolean>;
+
+/**
+ * Whether a channel exposes a named top-level surface. Explicit allow-map: absent or non-`true` means
+ * not exposed (no default-on) — identical semantics to @roam/core/channels.isSectionEnabled.
+ */
+export function isSectionEnabled(sections: ChannelSections | null | undefined, key: string): boolean {
+  return sections?.[key] === true;
+}
+
 /** The default channel's key: the unbranded, everything-included view. */
 export const DEFAULT_CHANNEL_KEY = "roam";
 

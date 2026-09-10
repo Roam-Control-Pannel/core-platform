@@ -18,7 +18,15 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTrpc } from "./TrpcProvider";
-import { applyChannelTheme, readChannelCookie, DEFAULT_CHANNEL_KEY } from "../lib/channel";
+import {
+  applyChannelTheme,
+  readChannelCookie,
+  isSectionEnabled,
+  DEFAULT_CHANNEL_KEY,
+  type ChannelNavItem,
+  type ChannelSections,
+  type ChannelSurface,
+} from "../lib/channel";
 
 /** Mirror of the api Channel shape (web doesn't import @roam/core — see lib/channel.ts). */
 export interface ChannelInfo {
@@ -31,14 +39,28 @@ export interface ChannelInfo {
   logoUrl: string | null;
   /** 'open' shows all eligible venues near the point; 'members' shows only opted-in venues. */
   membershipMode: "open" | "members";
+  /** The channel's own header nav; [] = use the surface's default chrome nav. */
+  nav: ChannelNavItem[];
+  /** Explicit allow-map of exposed surfaces; read via `isSectionEnabled`. */
+  sections: ChannelSections;
+  /** Which shell chrome to render ('roam' rail vs 'storefront' header). */
+  surface: ChannelSurface;
 }
 
 export interface ChannelState {
   /** The active channel key ("roam" | "f2g" | …). */
   key: string;
-  /** Convenience: on the Food to Go storefront channel. */
+  /**
+   * Convenience: on the Food to Go storefront channel.
+   * @deprecated Prefer `surface === "storefront"` for chrome and `isEnabled(section)` for surfaces —
+   * this getter is retained during the A2 migration off boolean channel dispatch and will be removed.
+   */
   isF2G: boolean;
-  /** The full channel (name, theme, logo) once the authoritative read lands; null before that. */
+  /** Which shell chrome to render. Before the authoritative read resolves this is 'roam'. */
+  surface: ChannelSurface;
+  /** Whether the active channel exposes a named top-level surface (explicit allow-map). */
+  isEnabled: (section: string) => boolean;
+  /** The full channel (name, theme, logo, nav, sections) once resolved; null before that. */
   channel: ChannelInfo | null;
   /** True once the channel has been resolved (cookie + authoritative read settled). */
   resolved: boolean;
@@ -47,6 +69,8 @@ export interface ChannelState {
 const DEFAULT_STATE: ChannelState = {
   key: DEFAULT_CHANNEL_KEY,
   isF2G: false,
+  surface: "roam",
+  isEnabled: () => false,
   channel: null,
   resolved: false,
 };
@@ -79,10 +103,13 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
           return;
         }
         applyChannelTheme(document.documentElement, ch.key, ch.theme);
+        const channel = ch as ChannelInfo;
         setState({
-          key: ch.key,
-          isF2G: ch.key === "f2g",
-          channel: ch as ChannelInfo,
+          key: channel.key,
+          isF2G: channel.key === "f2g",
+          surface: channel.surface,
+          isEnabled: (section: string) => isSectionEnabled(channel.sections, section),
+          channel,
           resolved: true,
         });
       })
