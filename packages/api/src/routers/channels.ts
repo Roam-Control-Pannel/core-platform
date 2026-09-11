@@ -94,6 +94,15 @@ export const channelsRouter = router({
     return channel ?? (await channels.getDefaultChannel(ctx.db));
   }),
 
+  /**
+   * The full host → channel-key map (from channel_domains). Public and low-cardinality; the web
+   * middleware reads it (via the CDN-cached /api/channel-map endpoint) to resolve a host to its
+   * channel from config, so onboarding a whitelabel domain is a row here rather than a redeploy.
+   */
+  domains: publicProcedure.query(async ({ ctx }) => {
+    return channels.listChannelDomains(ctx.db);
+  }),
+
   /** A channel by its stable key, or null. */
   get: publicProcedure
     .input(z.object({ key: z.string().min(1).max(32) }))

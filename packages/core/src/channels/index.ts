@@ -279,6 +279,21 @@ export async function resolveChannelByHost(
   return getDefaultChannel(client);
 }
 
+/**
+ * The full host → channel-key map (channel_domains joined to channels). Low-cardinality and public;
+ * the web middleware reads it (through a CDN-cached endpoint) to resolve a host to its channel from
+ * config rather than a hardcoded env list, so a new whitelabel domain is a row, not a redeploy.
+ */
+export async function listChannelDomains(client: RoamClient): Promise<DomainMapping[]> {
+  const { data, error } = await (client as any)
+    .from("channel_domains")
+    .select("host, channel:channels(key)");
+  if (error) throw new Error(`channels: domain map failed: ${error.message}`);
+  return ((data ?? []) as any[])
+    .map((r) => ({ host: String(r.host ?? ""), channelKey: String(r.channel?.key ?? "") }))
+    .filter((d) => d.host && d.channelKey);
+}
+
 /** The venue ids tagged into a channel (drives the storefront filter). */
 export async function taggedVenueIds(
   client: RoamClient,

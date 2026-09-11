@@ -8,11 +8,16 @@
  *   - forward `x-roam-channel` on the onward request headers so server components / the web's own
  *     /api proxy routes can read the active channel too.
  *
- * This is a fast classifier only (see lib/channel.ts). The DB-backed `channel_domains` map remains
- * the authority via the API; a mis-hint just resolves back to the default channel there.
+ * Host resolution is CONFIG-DRIVEN (see lib/channelMap.ts): the env classifier handles the known
+ * dev/env hosts instantly, and any other host is looked up against the DB `channel_domains` map via
+ * the CDN-cached /api/channel-map endpoint, so onboarding a whitelabel domain is a row, not a
+ * redeploy. Resolution is fail-open — an unmapped host or a lookup blip resolves to the default
+ * (Roam) channel. The API's `channels.current` (also `channel_domains`-backed) stays authoritative
+ * for theming; a mis-hint here only picks the wrong chrome for one render.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { channelKeyForHost, CHANNEL_COOKIE, DEFAULT_CHANNEL_KEY } from "./lib/channel";
+import { CHANNEL_COOKIE, DEFAULT_CHANNEL_KEY } from "./lib/channel";
+import { resolveChannelKey } from "./lib/channelMap";
 
 /**
  * Paths that belong to the Roam experience only and must not render under a brand channel's chrome.
@@ -24,10 +29,10 @@ function isRoamOnlyPath(pathname: string): boolean {
   return pathname === "/explore" || pathname.startsWith("/explore/");
 }
 
-export function middleware(req: NextRequest): NextResponse {
+export async function middleware(req: NextRequest): Promise<NextResponse> {
   const host =
     req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
-  const channelKey = channelKeyForHost(host);
+  const channelKey = await resolveChannelKey(req.nextUrl.origin, host);
 
   // Food to Go is a self-contained storefront: its discovery surface is the storefront home (/),
   // not Roam's place-anchored /explore (which defaults to City of London and shows every category).
@@ -57,8 +62,9 @@ export function middleware(req: NextRequest): NextResponse {
 
 /**
  * Run on page/document requests only — skip Next internals, static assets, and any path with a
- * file extension. The channel just needs resolving once per navigation, not per asset.
+ * file extension. `/api/channel-map` is excluded too: the resolver fetches it, so letting middleware
+ * run on it would recurse. The channel just needs resolving once per navigation, not per asset.
  */
 export const config = {
-  matcher: ["/((?!_next/|favicon\\.ico|.*\\.[\\w]+$).*)"],
+  matcher: ["/((?!_next/|api/channel-map|favicon\\.ico|.*\\.[\\w]+$).*)"],
 };
