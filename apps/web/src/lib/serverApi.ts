@@ -60,6 +60,28 @@ export const getChannelInfo = cache(async (): Promise<ChannelSeo | null> => {
   }
 });
 
+/** One host→channel mapping row, as the middleware's classifier consumes it. */
+export interface ChannelDomain {
+  host: string;
+  channelKey: string;
+}
+/**
+ * The full host→channel map for the CDN-cached /api/channel-map endpoint. Uses a PLAIN client (no
+ * channel header, so it reads no request headers) → the endpoint stays statically cacheable, and
+ * the map is channel-independent anyway. Fault-tolerant: any failure yields [] (middleware then
+ * falls back to its env classifier).
+ */
+export const getChannelMap = cache(async (): Promise<ChannelDomain[]> => {
+  try {
+    const c = makeTrpcClient(() => null, () => null) as unknown as {
+      channels: { domains: { query: () => Promise<ChannelDomain[]> } };
+    };
+    return (await c.channels.domains.query()) ?? [];
+  } catch {
+    return [];
+  }
+});
+
 export const getVenue = cache(async (venueId: string): Promise<VenueSeo | null> => {
   try {
     const c = (await anon()) as unknown as { venues: { byId: { query: (i: { venueId: string }) => Promise<VenueSeo | null> } } };
