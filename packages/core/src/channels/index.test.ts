@@ -9,10 +9,15 @@ import {
   parseChannelSections,
   parseChannelSurface,
   isSectionEnabled,
+  getChannelByKey,
+  getDefaultChannel,
+  listChannels,
+  resolveChannelByHost,
   DEFAULT_CHANNEL_KEY,
   type Channel,
   type DomainMapping,
 } from "./index.js";
+import type { RoamClient } from "@roam/db";
 
 describe("normalizeHost", () => {
   it("lowercases and trims", () => {
@@ -207,5 +212,92 @@ describe("isSectionEnabled (explicit allow-map, no default-on)", () => {
     const c = ch({});
     expect(isSectionEnabled(c, "storefront")).toBe(false);
     expect(isSectionEnabled(c, "explore")).toBe(false);
+  });
+});
+
+// ── Defensive channel-read fallback (schema-skew resilience, F2G #3) ──────────────────────────
+// A fake Supabase query builder that lets a test decide the {data,error} response from the SELECTed
+// column string. It is both awaitable (listChannels awaits the builder) and exposes maybeSingle()
+// (the single-row reads), matching how @roam/core/channels calls the client.
+function fakeClient(respond: (table: string, cols: string) => { data: any; error: any }): RoamClient {
+  return {
+    from(table: string) {
+      let cols = "";
+      const run = () => Promise.resolve(respond(table, cols));
+      const builder: any = {
+        select(c: string) { cols = c; return builder; },
+        eq() { return builder; },
+        order() { return builder; },
+        maybeSingle() { return run(); },
+        then(onF: any, onR: any) { return run().then(onF, onR); },
+      };
+      return builder;
+    },
+  } as unknown as RoamClient;
+}
+
+const BASE_ROW = { id: "c-f2g", key: "f2g", name: "Food to Go", tagline: null, is_default: false, theme: {}, logo_url: null };
+const FULL_ROW = { ...BASE_ROW, membership_mode: "open", surface: "storefront", sections: { storefront: true }, nav: [] };
+
+/** Simulate a live DB that lacks the 0134 columns: the full select (which names `surface`) errors
+ *  with `err`; the base select succeeds with BASE_ROW. */
+function skewedClient(err: { code?: string; message?: string }): RoamClient {
+  return fakeClient((_table, cols) =>
+    cols.includes("surface") ? { data: null, error: err } : { data: BASE_ROW, error: null },
+  );
+}
+
+describe("channel reads degrade gracefully when the config columns are unreadable (F2G #3)", () => {
+  const undefinedColumn = { code: "42703", message: 'column channels.surface does not exist' };
+  const staleCache = { code: "PGRST204", message: "Could not find the 'surface' column of 'channels' in the schema cache" };
+
+  it("getChannelByKey falls back to base columns on an undefined-column error (no throw)", async () => {
+    const ch = await getChannelByKey(skewedClient(undefinedColumn), "f2g");
+    expect(ch).not.toBeNull();
+    expect(ch!.key).toBe("f2g");
+    // The storefront-critical default: membership_mode absent → "open", so the open-mode venue query runs.
+    expect(ch!.membershipMode).toBe("open");
+    expect(ch!.surface).toBe("roam"); // absent → safe default (unbranded, but resolves)
+    expect(ch!.sections).toEqual({});
+    expect(ch!.nav).toEqual([]);
+  });
+
+  it("getChannelByKey also falls back on a stale PostgREST schema cache (PGRST204)", async () => {
+    const ch = await getChannelByKey(skewedClient(staleCache), "f2g");
+    expect(ch?.membershipMode).toBe("open");
+  });
+
+  it("does NOT swallow an unrelated error (still throws)", async () => {
+    const boom = fakeClient(() => ({ data: null, error: { code: "08006", message: "connection failure" } }));
+    await expect(getChannelByKey(boom, "f2g")).rejects.toThrow(/key lookup failed/);
+  });
+
+  it("happy path is unchanged — full columns yield the branded channel", async () => {
+    const ok = fakeClient(() => ({ data: FULL_ROW, error: null }));
+    const ch = await getChannelByKey(ok, "f2g");
+    expect(ch?.surface).toBe("storefront");
+    expect(isSectionEnabled(ch!, "storefront")).toBe(true);
+  });
+
+  it("getDefaultChannel and listChannels fall back too", async () => {
+    const def = await getDefaultChannel(skewedClient(undefinedColumn));
+    expect(def?.key).toBe("f2g");
+    const list = await listChannels(
+      fakeClient((_t, cols) => (cols.includes("surface") ? { data: null, error: undefinedColumn } : { data: [BASE_ROW], error: null })),
+    );
+    expect(list).toHaveLength(1);
+    expect(list[0]!.membershipMode).toBe("open");
+  });
+
+  it("resolveChannelByHost falls back on the embedded-join column error", async () => {
+    const ch = await resolveChannelByHost(
+      fakeClient((table, cols) =>
+        table === "channel_domains" && !cols.includes("surface")
+          ? { data: { channel: BASE_ROW }, error: null }
+          : { data: null, error: undefinedColumn },
+      ),
+      "f2g.local",
+    );
+    expect(ch?.key).toBe("f2g");
   });
 });
