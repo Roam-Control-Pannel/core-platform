@@ -218,26 +218,70 @@ export function rowToChannel(row: any): Channel {
 const CHANNEL_COLS =
   "id, key, name, tagline, is_default, theme, logo_url, membership_mode, nav, sections, surface";
 
+/**
+ * The original (migration 0116) column set — everything the newer slices ADDED (membership_mode 0122,
+ * nav/sections/surface 0134) omitted. rowToChannel defaults every one of those absent fields safely
+ * (membership_mode→'open', nav→[], sections→{}, surface→'roam'), so a row read with only these still
+ * produces a valid Channel. This is the fallback set used when the live DB can't serve the newer
+ * columns yet — see channelSelect below.
+ */
+const BASE_CHANNEL_COLS = "id, key, name, tagline, is_default, theme, logo_url";
+
+/**
+ * True for the two errors that mean "the newer channel-config columns aren't readable yet": the
+ * column genuinely isn't in the table (Postgres 42703 undefined_column — an unapplied migration) or
+ * PostgREST's schema cache is stale after the column was just added (PGRST204). Either way the app
+ * used to THROW here, which black-holed the whole channel — the Sep 2026 F2G storefront incident,
+ * where the live DB lagged migration 0134 and every venue query threw. We instead degrade to the
+ * base columns so the channel still resolves (unbranded/default chrome) and venues keep loading.
+ */
+function isMissingChannelColumn(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  if (code === "42703" || code === "PGRST204") return true;
+  const msg = String(error.message ?? "").toLowerCase();
+  return msg.includes("schema cache") || (msg.includes("column") && msg.includes("does not exist"));
+}
+
+/**
+ * Run a channels select with the full column set, and — only on a missing-column / stale-cache error
+ * (isMissingChannelColumn) — retry once with BASE_CHANNEL_COLS. `build(cols)` must apply the same
+ * filters for either column string. Any other error is returned as-is for the caller to throw.
+ */
+async function channelSelect(
+  build: (cols: string) => PromiseLike<{ data: any; error: any }>,
+): Promise<{ data: any; error: any }> {
+  const first = await build(CHANNEL_COLS);
+  if (first.error && isMissingChannelColumn(first.error)) {
+    return build(BASE_CHANNEL_COLS);
+  }
+  return first;
+}
+
 /** All active channels, default first. */
 export async function listChannels(client: RoamClient): Promise<Channel[]> {
-  const { data, error } = await (client as any)
-    .from("channels")
-    .select(CHANNEL_COLS)
-    .eq("active", true)
-    .order("is_default", { ascending: false })
-    .order("key", { ascending: true });
+  const { data, error } = await channelSelect((cols) =>
+    (client as any)
+      .from("channels")
+      .select(cols)
+      .eq("active", true)
+      .order("is_default", { ascending: false })
+      .order("key", { ascending: true }),
+  );
   if (error) throw new Error(`channels: list failed: ${error.message}`);
   return ((data ?? []) as any[]).map(rowToChannel);
 }
 
 /** The single default channel (the host-resolution fallback). */
 export async function getDefaultChannel(client: RoamClient): Promise<Channel | null> {
-  const { data, error } = await (client as any)
-    .from("channels")
-    .select(CHANNEL_COLS)
-    .eq("is_default", true)
-    .eq("active", true)
-    .maybeSingle();
+  const { data, error } = await channelSelect((cols) =>
+    (client as any)
+      .from("channels")
+      .select(cols)
+      .eq("is_default", true)
+      .eq("active", true)
+      .maybeSingle(),
+  );
   if (error) throw new Error(`channels: default lookup failed: ${error.message}`);
   return data ? rowToChannel(data) : null;
 }
@@ -247,12 +291,14 @@ export async function getChannelByKey(
   client: RoamClient,
   key: string,
 ): Promise<Channel | null> {
-  const { data, error } = await (client as any)
-    .from("channels")
-    .select(CHANNEL_COLS)
-    .eq("key", key)
-    .eq("active", true)
-    .maybeSingle();
+  const { data, error } = await channelSelect((cols) =>
+    (client as any)
+      .from("channels")
+      .select(cols)
+      .eq("key", key)
+      .eq("active", true)
+      .maybeSingle(),
+  );
   if (error) throw new Error(`channels: key lookup failed: ${error.message}`);
   return data ? rowToChannel(data) : null;
 }
@@ -267,11 +313,13 @@ export async function resolveChannelByHost(
 ): Promise<Channel | null> {
   const h = normalizeHost(host);
   if (h) {
-    const { data, error } = await (client as any)
-      .from("channel_domains")
-      .select(`channel:channels(${CHANNEL_COLS})`)
-      .eq("host", h)
-      .maybeSingle();
+    const { data, error } = await channelSelect((cols) =>
+      (client as any)
+        .from("channel_domains")
+        .select(`channel:channels(${cols})`)
+        .eq("host", h)
+        .maybeSingle(),
+    );
     if (error) throw new Error(`channels: host resolve failed: ${error.message}`);
     const ch = data?.channel;
     if (ch && ch.active !== false) return rowToChannel(ch);
