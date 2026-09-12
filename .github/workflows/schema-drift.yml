@@ -1,0 +1,42 @@
+name: Schema drift guard
+
+# Fails loudly when the LIVE database is missing schema the deployed app needs — turning a silent
+# storefront blackout (the Sep 2026 F2G incident) into a visible CI failure. It reproduces the app's
+# own read path against the live PostgREST endpoint (see scripts/check-schema-drift.mjs) and catches
+# both an unapplied migration (42703) and a stale PostgREST cache (PGRST204).
+#
+# Runs after a merge to main (paired with db-migrate: migrate applies, this verifies) and on a
+# schedule (so a drift introduced out-of-band is caught within hours), plus on demand. NOT on pull
+# requests: a feature PR legitimately adds migrations the live DB doesn't have yet, which is not drift.
+#
+# OPT-IN + SAFE: with SUPABASE_URL / SUPABASE_ANON_KEY unset the script exits 0 (skips). Add those
+# repo secrets (low-sensitivity: the public project URL + anon key) to enable the guard.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch:
+
+concurrency:
+  group: schema-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check live schema serves the app's required reads
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scripts/check-schema-drift.mjs
