@@ -14,6 +14,7 @@ export { type StoredPlace } from "./routers/profiles.js";
 export { type PayoutStatus } from "./routers/payments.js";
 export { type MarketProduct } from "./routers/market.js";
 export { type MarketListing } from "./routers/listings.js";
+export { type ImportRosterReport } from "./jobs/importRoster.js"; // adminActions.importRoster surfaces it
 export {
   makeContextFactory,
   type Context,
