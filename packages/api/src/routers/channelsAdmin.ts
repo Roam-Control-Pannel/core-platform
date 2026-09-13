@@ -70,4 +70,25 @@ export const channelsAdminRouter = router({
         boom(e, "Failed to load onboarding stats.");
       }
     }),
+
+  /**
+   * The match-review queue (B4b): unbound members with their ranked candidate venues, the matcher
+   * re-run on demand. Staff confirm/dismiss via adminActions. `includeDismissed` revisits dismissed rows.
+   */
+  reviewQueue: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        limit: z.number().int().min(1).max(100).default(25),
+        offset: z.number().int().min(0).default(0),
+        includeDismissed: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.channelReviewQueue(ctx.service, input);
+      } catch (e) {
+        boom(e, "Failed to load the match-review queue.");
+      }
+    }),
 });

@@ -3,6 +3,7 @@
  *   Config     — edit a channel's theme / logo / surface / sections / nav + its domain map, and the
  *                open↔members membership flip (behind a confirm; it hides non-member venues).
  *   Roster     — browse the channel's channel_members (status / council / name search, paged).
+ *   Review     — the B4b match-review queue: unbound members + ranked candidates → confirm / dismiss.
  *   Onboarding — the funnel (counts by status) and a by-council breakdown.
  *
  * Reads via channelsAdmin.*, writes via adminActions.* (each audited server-side). Acting roles get
@@ -15,7 +16,7 @@ import { useTrpc } from "../TrpcProvider";
 import { C, F } from "../../theme";
 import { ErrorLine, Kicker, Label, Panel } from "../ui";
 
-type Tab = "config" | "roster" | "onboarding" | "import";
+type Tab = "config" | "roster" | "review" | "onboarding" | "import";
 
 interface NavItem { key: string; href: string; labelKey: string }
 interface ChannelInfo {
@@ -73,7 +74,7 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
             ))}
           </select>
           <span style={{ flex: 1 }} />
-          {(["config", "roster", "onboarding", "import"] as Tab[]).map((t) => (
+          {(["config", "roster", "review", "onboarding", "import"] as Tab[]).map((t) => (
             <Toggle key={t} active={tab === t} onClick={() => setTab(t)}>{t[0]!.toUpperCase() + t.slice(1)}</Toggle>
           ))}
         </div>
@@ -86,6 +87,8 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
           <ConfigTab channel={selected} canAct={canAct} onSaved={(k) => reload(trpc, setChannels, k, setSelectedKey)} />
         ) : tab === "roster" ? (
           <RosterTab channelKey={selected.key} canAct={canAct} />
+        ) : tab === "review" ? (
+          <ReviewTab channelKey={selected.key} canAct={canAct} />
         ) : tab === "onboarding" ? (
           <OnboardingTab channelKey={selected.key} />
         ) : (
@@ -469,6 +472,122 @@ function OnboardingTab({ channelKey }: { channelKey: string }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------- review */
+
+interface ReviewCandidate { venueId: string; name: string; address: string | null; slug: string | null; score: number; nameScore: number; postcode: "full" | "outward" | "none"; thin: boolean }
+interface ReviewItem { memberId: string; sourceName: string; sourcePostcode: string | null; sourceAddress: string | null; sourceCouncil: string | null; status: string; bestScore: number; candidates: ReviewCandidate[] }
+
+function ReviewTab({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
+  const trpc = useTrpc();
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [includeDismissed, setIncludeDismissed] = useState(false);
+  const [note, setNote] = useState<Record<string, string>>({});
+  const LIMIT = 25;
+
+  const load = useCallback((fresh: boolean) => {
+    setLoading(true); setErr(null);
+    const nextOffset = fresh ? 0 : offset;
+    const q = trpc.channelsAdmin.reviewQueue as unknown as {
+      query: (i: { channelKey: string; limit: number; offset: number; includeDismissed?: boolean }) => Promise<{ items: ReviewItem[]; hasMore: boolean; nextOffset: number }>;
+    };
+    q.query({ channelKey, limit: LIMIT, offset: nextOffset, includeDismissed })
+      .then((r) => {
+        setItems((prev) => (fresh ? r.items : [...prev, ...r.items]));
+        setHasMore(r.hasMore);
+        setOffset(r.nextOffset);
+      })
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load the review queue."))
+      .finally(() => setLoading(false));
+  }, [trpc, channelKey, offset, includeDismissed]);
+
+  // Reload from the top when the channel or the dismissed filter changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setOffset(0); load(true); }, [channelKey, includeDismissed]);
+
+  const drop = (memberId: string) => setItems((prev) => prev.filter((it) => it.memberId !== memberId));
+
+  const confirm = async (memberId: string, venueId: string) => {
+    setNote((m) => ({ ...m, [memberId]: "Confirming…" }));
+    const mut = trpc.adminActions.confirmMatch as unknown as { mutate: (i: { channelKey: string; memberId: string; venueId: string }) => Promise<{ ok: true }> };
+    try { await mut.mutate({ channelKey, memberId, venueId }); drop(memberId); }
+    catch (e) { setNote((m) => ({ ...m, [memberId]: e instanceof Error ? e.message : "Confirm failed" })); }
+  };
+
+  const dismiss = async (memberId: string) => {
+    setNote((m) => ({ ...m, [memberId]: "Dismissing…" }));
+    const mut = trpc.adminActions.setMatchDismissed as unknown as { mutate: (i: { channelKey: string; memberId: string; dismissed: boolean }) => Promise<{ ok: true }> };
+    try { await mut.mutate({ channelKey, memberId, dismissed: true }); drop(memberId); }
+    catch (e) { setNote((m) => ({ ...m, [memberId]: e instanceof Error ? e.message : "Dismiss failed" })); }
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, flex: 1, minWidth: 260 }}>
+          Members the importer left unmatched, with candidate venues the matcher scored. Confirm the right
+          one (a permanent manual match) or dismiss when none fits.
+        </div>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.inkSoft }}>
+          <input type="checkbox" checked={includeDismissed} onChange={(e) => setIncludeDismissed(e.target.checked)} />
+          Show dismissed
+        </label>
+      </div>
+
+      {err ? <ErrorLine message={err} /> : null}
+
+      {items.length === 0 && !loading ? (
+        <div style={{ color: C.muted, fontSize: 13 }}>Nothing to review — every matched member is bound.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 12 }}>
+          {items.map((it) => (
+            <div key={it.memberId} style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 14 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span style={{ fontFamily: F.display, fontWeight: 700, fontSize: 16, color: C.ink }}>{it.sourceName}</span>
+                {it.sourcePostcode ? <span style={{ fontFamily: F.mono, fontSize: 11, color: C.muted }}>{it.sourcePostcode}</span> : null}
+                {it.sourceCouncil ? <span style={{ fontSize: 12, color: C.muted }}>· {it.sourceCouncil}</span> : null}
+                <span style={{ flex: 1 }} />
+                {canAct ? (
+                  note[it.memberId] ? (
+                    <span style={{ fontSize: 12, color: C.muted }}>{note[it.memberId]}</span>
+                  ) : (
+                    <button type="button" onClick={() => void dismiss(it.memberId)} style={smallGhost} title="No candidate is correct">No match</button>
+                  )
+                ) : null}
+              </div>
+              {it.sourceAddress ? <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>{it.sourceAddress}</div> : null}
+
+              {it.candidates.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: C.faint, marginTop: 10 }}>No plausible candidates — dismiss, or match manually once the venue exists.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                  {it.candidates.map((c) => (
+                    <div key={c.venueId} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 10px", background: "#fafafa", borderRadius: 4 }}>
+                      <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: c.score >= 0.85 ? "#1F6B41" : C.ink, minWidth: 42 }}>{Math.round(c.score * 100)}%</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{c.name}</span>
+                        {c.address ? <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>{c.address}</span> : null}
+                        <span style={{ fontFamily: F.mono, fontSize: 10, color: C.muted, marginLeft: 8 }}>pc:{c.postcode}{c.thin ? " · thin" : ""}</span>
+                      </span>
+                      {canAct ? (
+                        <button type="button" onClick={() => void confirm(it.memberId, c.venueId)} disabled={!!note[it.memberId]} style={smallGhost} title="Confirm this venue as the match">Confirm</button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {hasMore ? <button type="button" onClick={() => load(false)} disabled={loading} style={ghostBtn}>{loading ? "…" : "Load more"}</button> : null}
     </div>
   );
 }

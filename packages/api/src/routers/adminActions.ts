@@ -252,6 +252,45 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /**
+   * Confirm a reviewer's chosen venue for a roster member (B4b match-review): writes the manual
+   * external_ref of record and binds the venue. Staff-gated + audited by the core action.
+   */
+  confirmMatch: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        memberId: z.string().uuid(),
+        venueId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.confirmMatch(ctx.service, await actor(ctx as ActingCtx), input);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to confirm the match.");
+      }
+    }),
+
+  /** Dismiss (or undo dismissing) a member from the match-review queue (B4b). Audited. */
+  setMatchDismissed: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        memberId: z.string().uuid(),
+        dismissed: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.setMatchDismissed(ctx.service, await actor(ctx as ActingCtx), input);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to update the match dismissal.");
+      }
+    }),
+
   /** Resolve a moderation queue item (approve = keep / reject = actioned). */
   resolveReport: adminProcedure
     .input(z.object({ reportId: z.string().uuid(), decision: z.enum(["approved", "rejected"]) }))
