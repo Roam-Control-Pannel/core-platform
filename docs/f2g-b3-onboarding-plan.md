@@ -197,3 +197,38 @@ verifying the token and the signed-in claimant. Every one of these is asserted i
 (the #2 drift guard / release runbook cover this). The **live run** still waits on the roster CSV +
 `0135`–`0138` (and now `0139`) being applied. **Mandatory human security review of the conferral +
 token + grant remains the gate before the feature is switched on.**
+
+---
+
+## 10. B4b — as built (match-review queue + invite resend)
+
+B4b consumes B3-b's unbound ("review") members and B3-d's invite path.
+
+**Files**
+- `supabase/migrations/0140_channel_member_match_dismissal.sql` — adds `match_dismissed_at` /
+  `match_dismissed_by` to `channel_members` + a partial review-queue index; `supabase/tests/0140_…_test.sql`
+  asserts the columns/index and that the service-managed guard still blocks a client write to them.
+- `packages/core/src/admin/reviewQueue.ts` — `channelReviewQueue` (unbound members + ranked candidates,
+  matcher re-run on demand), `confirmMatch` (manual external_ref + venue bind, clears dismissal, refuses a
+  venue already matched to another member), `setMatchDismissed` (sticky "no match" + undo); all audited.
+  `reviewQueue.test.ts` — 6 tests.
+- `packages/api/src/routers/channelsAdmin.ts` — `reviewQueue` read; `adminActions.ts` — `confirmMatch` /
+  `setMatchDismissed` writes (audited).
+- `apps/admin/.../views/Channels.tsx` — a **Review** tab: each unbound member with its scored candidates,
+  Confirm / No-match, and a "show dismissed" toggle.
+
+**Design decisions**
+- **On-demand matching, no stored candidates** — the queue recomputes candidates from live data each
+  visit (the matcher is deterministic + cheap, postcode-blocked, paged 25), so there is no candidate
+  cache to drift as venues change.
+- **Sticky negative decision** — the only new persistent state is the `match_dismissed_at` marker (a
+  positive confirm needs none — the `venue_id` bind + manual external_ref already drop the member from
+  the queue). Dismissal never touches `venue_id`, so a later confirm still works and clears it.
+- **Confirm = correction of record** — writes `method='manual'` (`matched_by` = the staff actor), which
+  `importRoster` never overwrites; refuses if the venue is already another member's confirmed match.
+- **Invite resend** — already delivered by B3-d's roster Invite/**Resend** button (idempotent
+  `adminActions.sendInvite`); once a review is confirmed the member becomes invite-eligible, so the flow
+  is Review → Confirm → Invite → claim.
+
+No new secret or switch-on gate beyond B3's: dormant until the roster CSV lands and `0135`–`0140` are
+applied to the live DB (+ `notify pgrst, 'reload schema'`).
