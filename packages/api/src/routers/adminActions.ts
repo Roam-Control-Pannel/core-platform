@@ -12,6 +12,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { admin } from "@roam/core";
 import { importRoster, recordImportBackfill } from "../jobs/importRoster.js";
+import { sendMemberInvite } from "../f2g/invite.js";
 import { router, adminProcedure } from "../trpc.js";
 import type { Context } from "../context.js";
 import type { AdminRole } from "../trpc.js";
@@ -198,6 +199,44 @@ export const adminActionsRouter = router({
         return report;
       } catch (e) {
         fail(e, "Roster import failed.");
+      }
+    }),
+
+  /**
+   * Send (or resend) a claim invite to a matched roster member (B3-d). Idempotent: calling it again
+   * mints a fresh-expiry link and re-stamps the member, which is exactly the "resend" case (B4b). The
+   * email goes only to the member's source_email; the signed capability link confers ownership when
+   * accepted by a signed-in user. Staff-gated + audited; the per-member outcome is returned so the
+   * console can report it. Never throws for the ordinary "can't invite yet" outcomes.
+   */
+  sendInvite: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32), memberId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const result = await sendMemberInvite(
+          ctx.service,
+          {
+            inviteSecret: ctx.env.f2g.inviteSecret,
+            inviteTtlMs: ctx.env.f2g.inviteTtlDays * 24 * 60 * 60 * 1000,
+            brevoApiKey: ctx.env.brevo.apiKey,
+            sender: { email: ctx.env.brevo.senderEmail, name: ctx.env.brevo.senderName },
+            webOrigin: ctx.env.stripe.webOrigin,
+          },
+          { channelKey: input.channelKey, memberId: input.memberId },
+        );
+        // Audit only an actual send (the ownership-granting capability left the building).
+        if (result.invited) {
+          await admin.recordAudit(ctx.service, who, {
+            action: "send_invite",
+            entityType: "channel_member",
+            entityId: input.memberId,
+            detail: { channelKey: input.channelKey },
+          });
+        }
+        return result;
+      } catch (e) {
+        fail(e, "Failed to send invite.");
       }
     }),
 
