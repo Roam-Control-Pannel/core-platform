@@ -22,7 +22,7 @@ import type { VenueSeo, ProfileSeo, PostSeo, TopicSeo, WallPostSeo, DealSeo, Pla
  * every server read (SEO metadata, JSON-LD, sitemap) resolved to the default Roam channel — review
  * debt D2. Cached per request; never throws (headers() unavailable → the default channel).
  */
-const serverChannelKey = cache(async (): Promise<string> => {
+export const serverChannelKey = cache(async (): Promise<string> => {
   try {
     const h = await headers();
     return h.get("x-roam-channel")?.trim().toLowerCase() || DEFAULT_CHANNEL_KEY;

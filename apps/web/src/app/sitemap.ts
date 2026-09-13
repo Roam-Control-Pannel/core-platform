@@ -8,12 +8,18 @@
  * empty and we still emit a valid sitemap of the static routes.
  */
 import type { MetadataRoute } from "next";
-import { siteUrl, HUB_MIN_VENUES, DISCOVER_MIN_VENUES } from "../lib/seo";
-import { getSeoLists, getHubTowns, getDiscoverCombos } from "../lib/serverApi";
+import { siteUrl, channelBaseUrl, HUB_MIN_VENUES, DISCOVER_MIN_VENUES } from "../lib/seo";
+import { getSeoLists, getHubTowns, getDiscoverCombos, serverChannelKey } from "../lib/serverApi";
+import { DEFAULT_CHANNEL_KEY } from "../lib/channel";
 import { townGuideSlugs } from "../lib/townGuides";
 import { discoverCategories, discoverSlugForCategory } from "../lib/discover";
 
-export const revalidate = 3600;
+// Channel-aware: it reads the request's x-roam-channel (via serverChannelKey) to decide whether to
+// emit the Roam corpus or a branded host's storefront sitemap. That header read opts the route into
+// DYNAMIC rendering (the same deliberate per-tenant-SEO tradeoff the root layout's generateMetadata
+// made — D2), so a build-time `revalidate` no longer applies; the dynamic reads below stay
+// fault-tolerant (any failed list comes back empty and the static routes still emit a valid sitemap).
+export const dynamic = "force-dynamic";
 
 /** Coerce a possibly-null timestamp into a Date for <lastmod>, omitting it when absent. */
 function mod(lastmod: string | null): { lastModified?: Date } {
@@ -23,6 +29,17 @@ function mod(lastmod: string | null): { lastModified?: Date } {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // A3-b · Consolidated model: Roam is the engine of truth, so shared entity pages (venues, profiles,
+  // posts, hubs, …) canonical to the Roam origin and are listed ONLY in the Roam sitemap. A branded
+  // whitelabel host therefore advertises just its OWN canonical page — the storefront landing on its
+  // own origin — not a duplicate of the shared corpus (which would split ranking signal). As the
+  // storefront grows genuinely channel-specific routes (e.g. a suppliers directory), add them here.
+  const channelKey = await serverChannelKey();
+  if (channelKey !== DEFAULT_CHANNEL_KEY) {
+    const channelBase = channelBaseUrl(channelKey);
+    return [{ url: `${channelBase}/`, changeFrequency: "daily", priority: 1 }];
+  }
+
   const base = siteUrl();
   const [lists, towns, combos] = await Promise.all([
     getSeoLists(),
