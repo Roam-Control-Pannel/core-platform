@@ -18,6 +18,7 @@ const env: ApiEnv = {
   places: { apiKey: "test-places-key" },
   brevo: { apiKey: null, newUserListId: 93, businessListId: 3, senderEmail: "no-reply@roam-local.com", senderName: "Roam" },
   ownerDigest: { unsubscribeSecret: null },
+  f2g: { inviteSecret: null, inviteTtlDays: 14 },
   transit: { config: null },
   awin: { apiKey: null, publisherId: null, baseUrl: "https://api.awin.com", region: "GB", membership: "joined", debug: false, offersPath: null, offersMethod: null },
   cj: { token: null, websiteId: null, baseUrl: "https://link-search.api.cj.com", advertiserLookupBaseUrl: "https://advertiser-lookup.api.cj.com", advertiserLookupCid: null, advertiserIds: "joined", linkType: null, promotionType: null, promotionalOnly: true, maxPerCategory: 0, region: "GB", debug: false },

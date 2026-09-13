@@ -16,6 +16,8 @@ import { f2g } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { normaliseStoredImage, venuePrefixOf } from "../images/normalise.js";
 import { geocodeSearch } from "../geocode/client.js";
+import { verifyInviteToken } from "../f2g/inviteToken.js";
+import { claimMemberVenue } from "../f2g/invite.js";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -190,6 +192,48 @@ export const f2gRouter = router({
     .input(z.object({ venueId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       return f2g.getListingStatus(ctx.db, input.venueId);
+    }),
+
+  /**
+   * INVITE→CLAIM (B3-d) — accept a signed roster invite and take ownership of the matched venue.
+   *
+   * The claimant MUST be signed in (protectedProcedure): a capability link names the (member, venue)
+   * pair, but the OWNER is always the authenticated user, resolved from the JWT here — never from the
+   * token. We verify the HMAC token (signature + signed expiry) in Node, then call the SECURITY
+   * DEFINER conferral with the service client. The definer owns every guard (single-use via state,
+   * no-steal, venue binding) and is the only place venues.owner_id is written. Returns a discriminated
+   * outcome the landing page renders (claimed / already-claimed / claimed-by-other / …); a bad or
+   * expired token is the one hard error.
+   */
+  claimWithInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(1).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = verifyInviteToken(input.token, ctx.env.f2g.inviteSecret);
+      if (!payload) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This invite link is invalid or has expired. Ask for a fresh one.",
+        });
+      }
+      const { data: auth } = await ctx.db.auth.getUser();
+      const claimantId = auth.user?.id;
+      if (!claimantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to claim your listing." });
+      }
+      // Escalate ONLY after the token is verified and the claimant is known. The definer confers.
+      const result = await claimMemberVenue(escalateToService(ctx.env), {
+        memberId: payload.memberId,
+        venueId: payload.venueId,
+        claimantId,
+      });
+      // A venue owned by someone else is a hard refusal; everything else is a rendered outcome.
+      if (result.outcome === "claimed_by_other") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This listing has already been claimed by someone else.",
+        });
+      }
+      return { outcome: result.outcome, venueId: result.venueId };
     }),
 
   /**

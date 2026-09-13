@@ -76,6 +76,16 @@ function loadEnv(): ApiEnv {
       // Optional: unset leaves the unsubscribe route disabled and the owner digest dormant.
       unsubscribeSecret: process.env.OWNER_DIGEST_UNSUBSCRIBE_SECRET ?? null,
     },
+    f2g: {
+      // Optional: unset F2G_INVITE_SECRET leaves the invite→claim path dormant (the claim endpoint
+      // rejects every token, the send path refuses to issue links), so the API boots before it is
+      // provisioned. A dedicated secret — rotating it invalidates outstanding invites (resend).
+      inviteSecret: process.env.F2G_INVITE_SECRET ?? null,
+      inviteTtlDays: (() => {
+        const n = Number(process.env.F2G_INVITE_TTL_DAYS ?? "14");
+        return Number.isFinite(n) && n > 0 ? n : 14;
+      })(),
+    },
     transit: {
       // Optional: unset TRANSLINK_API_KEY leaves config null and the NI transit feature dormant
       // (nearbyDepartures returns "unconfigured"), so the API boots fine before provisioning.

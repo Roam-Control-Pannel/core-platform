@@ -348,6 +348,26 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
     catch (e) { setErr(e instanceof Error ? e.message : "Tag update failed."); }
   };
 
+  // Send (or resend) a claim invite to a matched member with an email (B3-d). Idempotent — a second
+  // call just mints a fresh-expiry link. Per-row outcome feedback; the funnel status updates on reload.
+  const [invite, setInvite] = useState<Record<string, string>>({});
+  const INVITE_MSG: Record<string, string> = {
+    sent: "Invite sent", unconfigured: "Invites not configured", not_matched: "No matched venue",
+    no_email: "No email", not_invitable: "Already claimed", not_found: "Not found", send_failed: "Send failed",
+  };
+  const sendInvite = async (memberId: string) => {
+    setErr(null);
+    setInvite((m) => ({ ...m, [memberId]: "Sending…" }));
+    const mut = trpc.adminActions.sendInvite as unknown as { mutate: (i: { channelKey: string; memberId: string }) => Promise<{ outcome: string; invited: boolean }> };
+    try {
+      const r = await mut.mutate({ channelKey, memberId });
+      setInvite((m) => ({ ...m, [memberId]: INVITE_MSG[r.outcome] ?? r.outcome }));
+    } catch (e) {
+      setInvite((m) => ({ ...m, [memberId]: "Failed" }));
+      setErr(e instanceof Error ? e.message : "Invite failed.");
+    }
+  };
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <form onSubmit={(e) => { e.preventDefault(); setOffset(0); load(true); }} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -383,7 +403,18 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
                   </span>
                 ) : null}
               </span>
-              <span style={{ flex: 2, color: C.inkSoft, fontFamily: F.mono, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sourceEmail ?? "—"}</span>
+              <span style={{ flex: 2, color: C.inkSoft, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span style={{ fontFamily: F.mono, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sourceEmail ?? "—"}</span>
+                {canAct && r.venueId && r.sourceEmail && (r.status === "imported" || r.status === "invited") ? (
+                  invite[r.id] ? (
+                    <span style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>{invite[r.id]}</span>
+                  ) : (
+                    <button type="button" onClick={() => void sendInvite(r.id)} style={smallGhost} title="Email this member a claim invite">
+                      {r.status === "invited" ? "Resend" : "Invite"}
+                    </button>
+                  )
+                ) : null}
+              </span>
             </div>
           ))}
         </div>

@@ -153,3 +153,47 @@ lands somewhere credible — a first-class design task in this sub-slice.
 The single hard external dependency remains the **Association roster CSV** — it calibrates B2's thresholds
 (B3-b) and is the input to the live import (B3-a). Everything in this plan is built and green on fixtures
 before it arrives; the CSV turns it on.
+
+---
+
+## 9. B3-d — as built (the ownership-grant capstone)
+
+B3-d shipped as its own reviewed PR. What landed and the security posture it carries:
+
+**Files**
+- `supabase/migrations/0139_claim_channel_member_venue.sql` — the `SECURITY DEFINER` conferral +
+  its typed result type; `supabase/tests/0139_claim_channel_member_venue_test.sql` — 17 adversarial
+  pgTAP assertions.
+- `packages/api/src/f2g/inviteToken.ts` — the HMAC capability token (+ `inviteToken.test.ts`, 8 tests).
+- `packages/api/src/f2g/invite.ts` — `claimMemberVenue` (definer outcome mapping) + `sendMemberInvite`
+  (issue link → Brevo → stamp invited) + `renderInviteEmail` (+ `invite.test.ts`, 19 tests).
+- `packages/api/src/routers/f2g.ts` — `claimWithInvite` (`protectedProcedure`).
+- `packages/api/src/routers/adminActions.ts` — `sendInvite` (`adminProcedure`, audited; idempotent = resend).
+- `apps/web/src/app/f2g/claim/page.tsx` — the claim landing page (sign-in → claim → rendered outcome).
+- `apps/admin/.../views/Channels.tsx` — an Invite/Resend action per matched member in the roster tab.
+- `ApiEnv.f2g` (`context.ts` / `server.ts`) — `F2G_INVITE_SECRET` (+ `F2G_INVITE_TTL_DAYS`, default 14).
+
+**Security decisions taken (§5.1)**
+1. **Invite model = capability-link** (per the build instruction): whoever holds a valid, unexpired
+   link AND signs in becomes owner; the link is emailed only to `source_email`, and the claiming user
+   is recorded (`channel_members.claimed_by`). The stricter verified-email-equals-source-email variant
+   was **not** taken (it would lock out owners who sign up with a different address); revisit at review
+   if the Association wants it.
+2. **Expiry = 14 days**, signed into the token; **resend** issues a fresh expiry (same member/venue).
+3. **Accept side-effect** = the conferral also tags the venue into `venue_channels` (members-mode
+   readiness; harmless in open mode), inside the same transaction.
+4. **Secret** = a dedicated `F2G_INVITE_SECRET` (not the digest secret); rotation invalidates
+   outstanding links (staff resend).
+
+**Conferral safety (mirrors `approve_venue_claim`)** — `SECURITY DEFINER`, `search_path` locked,
+non-recursive; fixed lock order **member → venue**; `venues.owner_id` written **here and only here**;
+guards raise typed SQLSTATEs (`VENUE_MISMATCH` / `NOT_CLAIMABLE` / `CLAIMED_BY_OTHER` / `MEMBER_NOT_FOUND`);
+single-use enforced by **state** (claimable only while `imported`/`invited`); a same-claimant re-click
+is an idempotent no-op; an already-owned venue is never re-conferred. `execute` **revoked** from
+public/anon/authenticated, **granted to `service_role` only** — the API escalates to it only *after*
+verifying the token and the signed-in claimant. Every one of these is asserted in pgTAP.
+
+**Runbook note** — applying `0139` to the live DB needs `notify pgrst, 'reload schema'` after the DDL
+(the #2 drift guard / release runbook cover this). The **live run** still waits on the roster CSV +
+`0135`–`0138` (and now `0139`) being applied. **Mandatory human security review of the conferral +
+token + grant remains the gate before the feature is switched on.**
