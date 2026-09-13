@@ -27,7 +27,7 @@ import { InviteApply } from "../components/InviteApply";
 import { LocationGate } from "../components/LocationGate";
 import { PlacePrefsSync } from "../components/PlacePrefsSync";
 import { Analytics } from "../components/Analytics";
-import { siteUrl, ogCardUrl } from "../lib/seo";
+import { ogCardUrl, channelBaseUrl } from "../lib/seo";
 import { getChannelInfo } from "../lib/serverApi";
 
 const DESCRIPTION = "Discover the best local venues, read reviews, follow your town's news and plan days out with friends — all on Roam.";
@@ -73,8 +73,12 @@ const ROAM_TITLE = "Roam — hyper-local discovery & social planning";
  * build time — and was chosen over shipping 5,000 mis-branded member pages. The default channel
  * (roam) and any unresolved read fall back to exactly the previous Roam metadata, unchanged.
  *
- * NOT YET per-channel (deferred to A3-b): `metadataBase`/canonical HOST (needs the custom-domain
- * decision) and the OG card ART (the /og route stays Roam-styled; only its TEXT is channel-aware).
+ * PER-CHANNEL as of A3-b: `metadataBase` now resolves to the channel's own canonical origin
+ * (`channelBaseUrl`), so a branded host's relative OG/canonical URLs are absolute against ITS domain,
+ * and the OG card is rendered in the channel's palette + wordmark (ogCardUrl(..., channel)). Roam
+ * stays the engine of truth: SHARED entity pages (venue/profile/post/…) still canonical to the Roam
+ * origin via seo.ts's absUrl (Consolidated model) — only a channel's OWN pages (this default/landing,
+ * its robots + sitemap) live on its domain.
  */
 const googleVerificationMeta = googleVerification
   ? { verification: { google: googleVerification } }
@@ -88,11 +92,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = c ? c.name : "Roam";
   const defaultTitle = c ? (c.tagline ? `${c.name} — ${c.tagline}` : c.name) : ROAM_TITLE;
   const description = c && c.tagline ? c.tagline : DESCRIPTION;
-  // Keep the generated 1200×630 card (its art is channelised in A3-b); use the channel's copy.
-  const card = c ? ogCardUrl({ title: c.name, subtitle: c.tagline ?? description }) : DEFAULT_CARD;
+  // The generated 1200×630 card, now channelised (art + host) for a branded channel; Roam keeps DEFAULT_CARD.
+  const card = c ? ogCardUrl({ title: c.name, subtitle: c.tagline ?? description }, c.key) : DEFAULT_CARD;
   return {
-    // metadataBase stays the Roam origin for now — per-channel canonical host is A3-b.
-    metadataBase: new URL(siteUrl()),
+    // Per-channel canonical origin (A3-b): a branded host resolves relative OG/canonical URLs against
+    // its own domain; the default channel (and every shared entity page) stays on the Roam origin.
+    metadataBase: new URL(channelBaseUrl(c?.key)),
     title: { default: defaultTitle, template: `%s · ${brand}` },
     description,
     applicationName: brand,

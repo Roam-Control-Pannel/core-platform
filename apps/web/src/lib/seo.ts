@@ -18,9 +18,31 @@ export function siteUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
+/**
+ * The canonical origin for a given channel (A3-b). Roam is the engine of truth: the default channel —
+ * and every SHARED entity (a venue, profile, post…) regardless of the host it's served on — canonicals
+ * to `siteUrl()`. A branded whitelabel channel gets its OWN origin for the pages that are genuinely its
+ * own (its storefront landing, its robots/sitemap/OG), read from an env var so a new storefront domain
+ * needs no code. Unknown/unset → falls back to the Roam origin, so the app is correct before the F2G
+ * domain is provisioned. Only `f2g` is mapped today; add channels here (or generalise to a map) as they
+ * launch.
+ */
+export function channelBaseUrl(channelKey?: string | null): string {
+  if (channelKey === "f2g") {
+    const raw = process.env.NEXT_PUBLIC_F2G_SITE_URL;
+    if (raw && raw.trim()) return raw.trim().replace(/\/+$/, "");
+  }
+  return siteUrl();
+}
+
 /** Absolute URL for a site-relative path (path should start with "/"). */
 export function absUrl(path: string): string {
   return `${siteUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** Absolute URL for a path on a specific channel's canonical origin (A3-b). */
+export function channelAbsUrl(channelKey: string | null | undefined, path: string): string {
+  return `${channelBaseUrl(channelKey)}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 /** Trim text to a sentence-friendly length for meta descriptions (~160 chars). */
@@ -34,13 +56,22 @@ export function clamp(text: string, max = 160): string {
  * The generated 1200×630 branded card (app/og/route.tsx) — the og:image for any page whose
  * entity has no content image of its own. Params are length-capped here AND clamped again by
  * the endpoint, so upstream text can be passed as-is.
+ *
+ * `channel` (A3-b) channelises BOTH the art and the host: a branded channel's card is rendered in
+ * that channel's palette + wordmark (via the `channel` query param the /og route reads) AND served
+ * from that channel's own origin (`channelBaseUrl`). The default channel keeps the Roam card on the
+ * Roam origin, unchanged.
  */
-export function ogCardUrl(opts: { title: string; subtitle?: string; badge?: string }): string {
+export function ogCardUrl(
+  opts: { title: string; subtitle?: string; badge?: string },
+  channelKey?: string | null,
+): string {
   const p = new URLSearchParams();
   p.set("title", clamp(opts.title, 90));
   if (opts.subtitle) p.set("sub", clamp(opts.subtitle, 120));
   if (opts.badge) p.set("badge", clamp(opts.badge, 40));
-  return absUrl(`/og?${p.toString()}`);
+  if (channelKey && channelKey !== "roam") p.set("channel", channelKey);
+  return channelAbsUrl(channelKey, `/og?${p.toString()}`);
 }
 
 /** Drop keys whose value is undefined (keeps null — meaningful in Metadata/JSON-LD). */

@@ -65,7 +65,7 @@ scale foundations before 5,000 of anything lands.** That reading is correct and 
 | A2-consumers | replace 32 `isF2G` sites with `surface`/`isSectionEnabled` (D3) | ✅ #374 |
 | A2-middleware | config-driven host resolution via CDN-cached `/api/channel-map` | ✅ #375 |
 | **A1b** | regenerate DB types + delete 180 `LooseDb` casts | ⏸ **deferred** — needs Supabase CLI/token/Docker (absent in the automation env) |
-| **A3-b** | per-channel canonical host / 301 / channel-scoped sitemap host | ⏸ **deferred** — custom domain deferred (decision #8) |
+| **A3-b** | per-channel canonical host + channel-scoped sitemap/robots + OG art | ✅ built — **Consolidated** model (see below) |
 
 ### Phase B — Membership spine *(the 5,000)*
 
@@ -141,3 +141,38 @@ scale foundations before 5,000 of anything lands.** That reading is correct and 
    client insert). Treat like the security remediation — adversarial pgTAP, no green no merge.
 
 *The single hard dependency left across all of Phase B is the roster sample CSV.*
+
+---
+
+## A3-b — as built (per-channel SEO shell, **Consolidated** model)
+
+**Decision (confirmed with Andrew): Consolidated.** Roam is the engine of truth; F2G is a whitelabel
+layer. So SHARED entity pages (venue, profile, post, topic, event, listing, hub, discover) keep a single
+canonical on the **Roam origin** — no duplicate-content dilution across the two hosts. A branded channel
+gets its own SEO *shell* for the pages that are genuinely its own.
+
+**What that means per surface**
+- **Canonical host** — the root layout's `metadataBase` now resolves to `channelBaseUrl(channelKey)`: a
+  branded host renders relative OG/canonical URLs against its own origin; the default channel and every
+  shared entity page stay on the Roam origin (their `seo.ts` builders use `absUrl`/`siteUrl`, unchanged).
+- **`channelBaseUrl(channelKey)`** (`lib/seo.ts`) — env-driven canonical origin: `f2g` →
+  `NEXT_PUBLIC_F2G_SITE_URL`, falling back to the Roam origin when unset (so the app is correct before the
+  F2G domain is provisioned — the custom-domain string is now pure config, no code). `channelAbsUrl` is the
+  path helper.
+- **robots.ts** — channel-aware: a branded host advertises ITS own `sitemap.xml` + host.
+- **sitemap.ts** — channel-aware: a branded host emits only its OWN canonical page (the storefront landing
+  on its origin), never a duplicate of the shared corpus; the Roam sitemap stays the authority for shared
+  entities. (Extend the branded branch as the storefront grows channel-specific routes, e.g. a suppliers
+  directory.)
+- **OG art** (`/og`) — now channelised in BOTH art and host: `?channel=f2g` renders the card in the F2G
+  palette + "Food to Go" wordmark (palette mirrors the 0116 seed), served from the F2G origin. Roam
+  unchanged.
+
+**Switch-on:** set `NEXT_PUBLIC_F2G_SITE_URL` to the F2G canonical origin once the domain is live; until
+then everything resolves to the Roam origin (safe, no-op). Reading the channel per request makes
+robots/sitemap dynamic — the same deliberate per-tenant-SEO tradeoff A3-core (D2) already made.
+
+**If the Association deal later requires an independent search presence for its members** (venue pages
+ranking under the F2G domain), that's the *Microsite* model — flip the shared-entity builders in `seo.ts`
+to use `channelAbsUrl(channelKey, …)` and list F2G venues in the branded sitemap. Deferred by decision;
+the infrastructure built here makes it a contained change.

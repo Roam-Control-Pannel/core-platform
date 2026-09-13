@@ -68,14 +68,30 @@ function archivoCovers(text: string): boolean {
   return /^[\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]*$/u.test(text);
 }
 
-// Brand palette — packages/design/src/tokens/color.ts values, inlined.
-const CRIMSON = "#C2123F";
-const CRIMSON_700 = "#9D0F33";
-const PAPER = "#F6F3EF";
-const INK = "#211D1A";
-const INK_2 = "#4D463F";
-const MUTED = "#857C72";
-const LINE = "#E4DED6";
+/**
+ * Per-channel card palette + wordmark (A3-b). Roam is the default (packages/design token values,
+ * inlined because /og runs outside the CSS-var pipeline); a branded channel gets its own palette +
+ * wordmark so a shared F2G storefront link unfurls in the NI Food to Go brand, not Roam's. The f2g
+ * values mirror the channels seed (migration 0116); this route can't cheaply read the DB theme per
+ * request, so the launch channels' palettes are inlined here — add a channel as it launches.
+ */
+interface CardPalette {
+  paper: string; ink: string; ink2: string; muted: string; line: string;
+  brand: string; brand700: string; wordmark: string; tagline: string; envHost: string | undefined;
+}
+const ROAM_PALETTE: CardPalette = {
+  paper: "#F6F3EF", ink: "#211D1A", ink2: "#4D463F", muted: "#857C72", line: "#E4DED6",
+  brand: "#C2123F", brand700: "#9D0F33", wordmark: "Roam", tagline: "Discover what's local",
+  envHost: process.env.NEXT_PUBLIC_SITE_URL,
+};
+const F2G_PALETTE: CardPalette = {
+  paper: "#FFFDF8", ink: "#20140E", ink2: "#4D3F35", muted: "#8A7C6E", line: "#EBE3D6",
+  brand: "#E8562A", brand700: "#C4431A", wordmark: "Food to Go", tagline: "Order ahead. Skip the queue.",
+  envHost: process.env.NEXT_PUBLIC_F2G_SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL,
+};
+function paletteFor(channel: string): CardPalette {
+  return channel === "f2g" ? F2G_PALETTE : ROAM_PALETTE;
+}
 
 function param(searchParams: URLSearchParams, key: string, max: number): string {
   return (searchParams.get(key) ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -83,11 +99,21 @@ function param(searchParams: URLSearchParams, key: string, max: number): string 
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title = param(searchParams, "title", 120) || "Roam";
+  const channel = (searchParams.get("channel") ?? "").trim().toLowerCase();
+  const P = paletteFor(channel);
+  const title = param(searchParams, "title", 120) || P.wordmark;
   const sub = param(searchParams, "sub", 140);
   const badge = param(searchParams, "badge", 48);
 
-  const siteHost = (process.env.NEXT_PUBLIC_SITE_URL ?? "")
+  const CRIMSON = P.brand;
+  const CRIMSON_700 = P.brand700;
+  const PAPER = P.paper;
+  const INK = P.ink;
+  const INK_2 = P.ink2;
+  const MUTED = P.muted;
+  const LINE = P.line;
+
+  const siteHost = (P.envHost ?? "")
     .replace(/^https?:\/\//, "")
     .replace(/\/+$/, "");
 
@@ -118,7 +144,7 @@ export async function GET(req: Request) {
         {/* Wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 26, height: 26, borderRadius: 26, background: CRIMSON, display: "flex" }} />
-          <div style={{ fontSize: 38, fontWeight: 700, color: INK, letterSpacing: -1, display: "flex" }}>Roam</div>
+          <div style={{ fontSize: 38, fontWeight: 700, color: INK, letterSpacing: -1, display: "flex" }}>{P.wordmark}</div>
         </div>
 
         {/* Badge · title · subtitle */}
@@ -151,8 +177,8 @@ export async function GET(req: Request) {
             paddingTop: 22,
           }}
         >
-          <div style={{ fontSize: 23, color: MUTED, display: "flex" }}>{siteHost || "Roam — your town, together"}</div>
-          <div style={{ fontSize: 23, color: CRIMSON_700, display: "flex" }}>Discover what&apos;s local</div>
+          <div style={{ fontSize: 23, color: MUTED, display: "flex" }}>{siteHost || `${P.wordmark} — your town, together`}</div>
+          <div style={{ fontSize: 23, color: CRIMSON_700, display: "flex" }}>{P.tagline}</div>
         </div>
       </div>
     ),
