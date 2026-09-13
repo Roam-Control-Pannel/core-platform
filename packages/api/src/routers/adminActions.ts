@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { admin } from "@roam/core";
+import { importRoster, recordImportBackfill } from "../jobs/importRoster.js";
 import { router, adminProcedure } from "../trpc.js";
 import type { Context } from "../context.js";
 import type { AdminRole } from "../trpc.js";
@@ -169,6 +170,46 @@ export const adminActionsRouter = router({
         return { ok: true as const };
       } catch (e) {
         fail(e, "Failed to remove channel domain.");
+      }
+    }),
+
+  /**
+   * Bulk-import an Association roster CSV into a channel and run the matcher (B3-a/b). Staff-gated +
+   * audited; the detailed per-run outcome is recorded in channel_import_runs. Returns the run report
+   * plus the thin matched venue ids, which the caller enriches (B3-c) via places.enrichVenue and then
+   * reports back through recordImportBackfill.
+   */
+  importRoster: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32), csv: z.string().min(1).max(5_000_000) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const report = await importRoster(ctx.service, { channelKey: input.channelKey, csv: input.csv, actorId: who.id });
+        await admin.recordAudit(ctx.service, who, {
+          action: "import_roster",
+          entityType: "channel",
+          entityId: input.channelKey,
+          detail: {
+            imported: report.imported, updated: report.updated,
+            matchedAccept: report.matchedAccept, matchedReview: report.matchedReview,
+            matchedReject: report.matchedReject, errors: report.errors,
+          },
+        });
+        return report;
+      } catch (e) {
+        fail(e, "Roster import failed.");
+      }
+    }),
+
+  /** Record how many matched venues were enriched (B3-c) against an import run. */
+  recordImportBackfill: adminProcedure
+    .input(z.object({ runId: z.string().uuid(), backfilled: z.number().int().min(0) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await recordImportBackfill(ctx.service, input.runId, input.backfilled);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to record backfill count.");
       }
     }),
 

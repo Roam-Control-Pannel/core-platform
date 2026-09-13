@@ -15,7 +15,7 @@ import { useTrpc } from "../TrpcProvider";
 import { C, F } from "../../theme";
 import { ErrorLine, Kicker, Label, Panel } from "../ui";
 
-type Tab = "config" | "roster" | "onboarding";
+type Tab = "config" | "roster" | "onboarding" | "import";
 
 interface NavItem { key: string; href: string; labelKey: string }
 interface ChannelInfo {
@@ -73,7 +73,7 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
             ))}
           </select>
           <span style={{ flex: 1 }} />
-          {(["config", "roster", "onboarding"] as Tab[]).map((t) => (
+          {(["config", "roster", "onboarding", "import"] as Tab[]).map((t) => (
             <Toggle key={t} active={tab === t} onClick={() => setTab(t)}>{t[0]!.toUpperCase() + t.slice(1)}</Toggle>
           ))}
         </div>
@@ -86,8 +86,10 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
           <ConfigTab channel={selected} canAct={canAct} onSaved={(k) => reload(trpc, setChannels, k, setSelectedKey)} />
         ) : tab === "roster" ? (
           <RosterTab channelKey={selected.key} canAct={canAct} />
-        ) : (
+        ) : tab === "onboarding" ? (
           <OnboardingTab channelKey={selected.key} />
+        ) : (
+          <ImportTab channelKey={selected.key} canAct={canAct} />
         )}
       </Panel>
     </div>
@@ -436,6 +438,66 @@ function OnboardingTab({ channelKey }: { channelKey: string }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------- import */
+
+interface ImportReport { runId: string | null; imported: number; updated: number; matchedAccept: number; matchedReview: number; matchedReject: number; errors: number; warnings: number; backfillCandidates: string[] }
+
+function ImportTab({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
+  const trpc = useTrpc();
+  const [csv, setCsv] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [report, setReport] = useState<ImportReport | null>(null);
+
+  const run = async () => {
+    if (!csv.trim()) return;
+    setBusy(true); setErr(null); setReport(null);
+    const mut = trpc.adminActions.importRoster as unknown as { mutate: (i: { channelKey: string; csv: string }) => Promise<ImportReport> };
+    try { setReport(await mut.mutate({ channelKey, csv })); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Import failed."); }
+    finally { setBusy(false); }
+  };
+
+  if (!canAct) return <div style={{ fontSize: 12.5, color: C.muted }}>View-only — ask an owner for acting access to import a roster.</div>;
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+        Paste the Association roster CSV (header row + one member per row). It imports idempotently by
+        member reference, runs the matcher, and reports the outcome. Matched venues with thin data
+        enrich automatically as their pages are viewed.
+      </div>
+      <textarea
+        value={csv}
+        onChange={(e) => setCsv(e.target.value)}
+        placeholder={"name,postcode,email,ref\nMario's Pizzeria,BT1 1AA,owner@mario.example,ASSOC-1"}
+        rows={10}
+        style={{ ...inputStyle, width: "100%", fontFamily: F.mono, fontSize: 12.5, resize: "vertical" }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" onClick={() => void run()} disabled={busy || !csv.trim()} style={primaryBtn}>{busy ? "Importing…" : "Import roster"}</button>
+        {report ? <span style={{ fontSize: 12.5, color: "#1F6B41" }}>Done.</span> : null}
+      </div>
+      {err ? <ErrorLine message={err} /> : null}
+      {report ? (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+          {[
+            ["Imported", report.imported], ["Updated", report.updated],
+            ["Matched", report.matchedAccept], ["Review", report.matchedReview],
+            ["Rejected", report.matchedReject], ["To enrich", report.backfillCandidates.length],
+            ["Errors", report.errors], ["Warnings", report.warnings],
+          ].map(([label, n]) => (
+            <div key={String(label)} style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: "10px 14px", minWidth: 80 }}>
+              <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 22 }}>{Number(n).toLocaleString()}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 10, textTransform: "uppercase", color: C.muted, marginTop: 3 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

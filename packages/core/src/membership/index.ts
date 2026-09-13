@@ -102,3 +102,8 @@ export function outwardCode(raw: string | null | undefined): string {
   const space = norm.indexOf(" ");
   return space === -1 ? norm : norm.slice(0, space);
 }
+
+// Roster CSV parsing (B3-a) lives in ./import to keep this file focused; re-exported here so it is
+// reachable as @roam/core/membership.parseRosterCsv. (import.ts imports the normalisers above; the
+// cycle is safe — they are hoisted function declarations.)
+export * from "./import.js";
