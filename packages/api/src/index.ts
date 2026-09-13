@@ -15,6 +15,8 @@ export { type PayoutStatus } from "./routers/payments.js";
 export { type MarketProduct } from "./routers/market.js";
 export { type MarketListing } from "./routers/listings.js";
 export { type ImportRosterReport } from "./jobs/importRoster.js"; // adminActions.importRoster surfaces it
+// f2g.claimWithInvite surfaces ClaimOutcome; adminActions.sendInvite surfaces SendInviteResult/Outcome.
+export { type ClaimOutcome, type ClaimResult, type SendInviteResult, type SendInviteOutcome } from "./f2g/invite.js";
 export {
   makeContextFactory,
   type Context,

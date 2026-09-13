@@ -74,6 +74,18 @@ export interface ApiEnv {
     unsubscribeSecret: string | null;
   };
   /**
+   * Food to Go invite→claim (B3-d). `inviteSecret` null disables the whole invite path — the claim
+   * endpoint rejects every token and the send path refuses to issue links — so the API runs before
+   * the secret is provisioned. A dedicated secret (not the digest's): rotating it invalidates every
+   * outstanding invite, which is acceptable (staff resend). The claim/unsubscribe links reuse
+   * `stripe.webOrigin` (the web app origin), as the owner digest does.
+   */
+  f2g: {
+    inviteSecret: string | null;
+    /** Invite link lifetime in days (decision #2: 14). A resend issues a fresh expiry. */
+    inviteTtlDays: number;
+  };
+  /**
    * Translink Opendata (NI transit) config. `config` null disables the feature (nearbyDepartures
    * returns status "unconfigured"), so the API runs before the key is provisioned. When set it
    * carries the EFA base URL and the resolved auth injection (query-param or header).
