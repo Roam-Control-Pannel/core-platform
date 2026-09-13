@@ -120,6 +120,58 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /**
+   * Edit a channel's configuration (theme / logo / surface / sections / nav / membership_mode).
+   * Each field is re-validated by the core parsers; the membership_mode flip (open↔members) is one
+   * of these keys — audited here, and the console additionally gates it behind a confirmation.
+   */
+  setChannelConfig: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        patch: z.object({
+          theme: z.record(z.string(), z.string()).optional(),
+          logoUrl: z.string().max(2000).nullable().optional(),
+          surface: z.enum(["roam", "storefront"]).optional(),
+          sections: z.record(z.string(), z.boolean()).optional(),
+          nav: z.array(z.object({ key: z.string(), href: z.string(), labelKey: z.string() })).optional(),
+          membershipMode: z.enum(["open", "members"]).optional(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.setChannelConfig(ctx.service, await actor(ctx as ActingCtx), input.channelKey, input.patch);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to update channel config.");
+      }
+    }),
+
+  /** Onboard a hostname to a channel (a channel_domains row). */
+  addChannelDomain: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32), host: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.addChannelDomain(ctx.service, await actor(ctx as ActingCtx), input.channelKey, input.host);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to add channel domain.");
+      }
+    }),
+
+  /** Remove a hostname from a channel. */
+  removeChannelDomain: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32), host: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.removeChannelDomain(ctx.service, await actor(ctx as ActingCtx), input.channelKey, input.host);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to remove channel domain.");
+      }
+    }),
+
   /** Resolve a moderation queue item (approve = keep / reject = actioned). */
   resolveReport: adminProcedure
     .input(z.object({ reportId: z.string().uuid(), decision: z.enum(["approved", "rejected"]) }))
