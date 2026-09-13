@@ -12,3 +12,4 @@ export * from "./activity.js";
 export * from "./directory.js";
 export * from "./safety.js";
 export * from "./actions.js";
+export * from "./channels.js";
