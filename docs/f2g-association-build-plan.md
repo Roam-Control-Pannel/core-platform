@@ -93,6 +93,9 @@ scale foundations before 5,000 of anything lands.** That reading is correct and 
 
 ### Phase C — The four requested features
 
+> **Scoped to implementation depth →** [`f2g-phase-c-plan.md`](./f2g-phase-c-plan.md) (C1–C4: tables,
+> core modules, RPCs, entitlement seam, tests, sequencing, and the one open C2 microsite question).
+
 - **C1 · FSA hygiene on venue pages** *(needs B2)*. **Self-hosted SVG + nightly** (decision #6):
   `fsa_establishments` (service-role-only), core `packages/core/src/fsa/` (`isDisplayableRating` —
   "Awaiting inspection" never renders as 0), nightly `syncFsaNi` pulling the **11 NI JSON files**,
