@@ -39,6 +39,7 @@ import { AddToPlanIconButton } from "./AddToPlan";
 import { useTrpc } from "./TrpcProvider";
 import { venuePath } from "../lib/routes";
 import { useVisitorMarket } from "../lib/useVisitorMarket";
+import { FsaChip, type CardFsaRating } from "./FsaChip";
 
 /**
  * Local mirror of @roam/core's geo.formatDistance. Core is a Node-ESM package (its
@@ -133,6 +134,8 @@ interface VenueCardProps {
   coverUrl?: string | undefined;
   /** This venue offers Food to Go order-ahead — surfaces an "Order ahead" chip on the cover. */
   orderAhead?: boolean | undefined;
+  /** Official FSA hygiene rating, batch-resolved by the host grid (Explore) via venues.fsaRatings. */
+  fsaRating?: CardFsaRating | undefined;
 }
 
 /* ── Hoisted static styles (allocated once, not per card render) ────────────────── */
@@ -336,12 +339,12 @@ function typeLabel(venue: VenueCardData): string | null {
  * (a Places rating is real supply whether or not the venue is claimed, so we surface it
  * on both). Renders nothing when the venue has none of these.
  */
-function CardMeta({ venue }: { venue: VenueCardData }) {
+function CardMeta({ venue, fsaRating }: { venue: VenueCardData; fsaRating?: CardFsaRating | undefined }) {
   const t = useTranslations("venueCard");
   const price = priceLevelLabel(t, venue.priceLevel);
   const label = typeLabel(venue);
   const hasRating = venue.rating != null;
-  if (!hasRating && !label && price == null) return null;
+  if (!hasRating && !label && price == null && !fsaRating) return null;
   return (
     <div style={metaRow}>
       {hasRating ? (
@@ -362,6 +365,12 @@ function CardMeta({ venue }: { venue: VenueCardData }) {
         <>
           {hasRating || label ? <span style={metaDot} aria-hidden>·</span> : null}
           <span style={priceStyle}>{price}</span>
+        </>
+      ) : null}
+      {fsaRating ? (
+        <>
+          {hasRating || label || price ? <span style={metaDot} aria-hidden>·</span> : null}
+          <FsaChip rating={fsaRating} />
         </>
       ) : null}
     </div>
@@ -455,13 +464,14 @@ export const VenueCard = memo(function VenueCard({
   initialFollowing = false,
   coverUrl,
   orderAhead = false,
+  fsaRating,
 }: VenueCardProps) {
   return (
     <Link href={venuePath(venue.id)} style={linkStyle} className={styles.card}>
       {venue.claimed ? (
-        <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} orderAhead={orderAhead} />
+        <ClaimedCard venue={venue} initialFollowing={initialFollowing} coverUrl={coverUrl} orderAhead={orderAhead} fsaRating={fsaRating} />
       ) : (
-        <UnclaimedCard venue={venue} coverUrl={coverUrl} orderAhead={orderAhead} />
+        <UnclaimedCard venue={venue} coverUrl={coverUrl} orderAhead={orderAhead} fsaRating={fsaRating} />
       )}
     </Link>
   );
@@ -472,11 +482,13 @@ function ClaimedCard({
   initialFollowing,
   coverUrl,
   orderAhead,
+  fsaRating,
 }: {
   venue: VenueCardData;
   initialFollowing: boolean;
   coverUrl: string | undefined;
   orderAhead: boolean;
+  fsaRating: CardFsaRating | undefined;
 }) {
   const t = useTranslations("venueCard");
   return (
@@ -486,7 +498,7 @@ function ClaimedCard({
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
-        <CardMeta venue={venue} />
+        <CardMeta venue={venue} fsaRating={fsaRating} />
       </div>
       {/* Footer strip: the trust chip + the follow action, split by a hairline. */}
       <div style={footerRow}>
@@ -510,7 +522,7 @@ function ClaimedCard({
   );
 }
 
-function UnclaimedCard({ venue, coverUrl, orderAhead }: { venue: VenueCardData; coverUrl: string | undefined; orderAhead: boolean }) {
+function UnclaimedCard({ venue, coverUrl, orderAhead, fsaRating }: { venue: VenueCardData; coverUrl: string | undefined; orderAhead: boolean; fsaRating: CardFsaRating | undefined }) {
   const t = useTranslations("venueCard");
   return (
     <Card>
@@ -520,7 +532,7 @@ function UnclaimedCard({ venue, coverUrl, orderAhead }: { venue: VenueCardData; 
         <div className="t-h3" style={nameStyle}>
           {venue.name}
         </div>
-        <CardMeta venue={venue} />
+        <CardMeta venue={venue} fsaRating={fsaRating} />
       </div>
       {/* Footer strip: provenance on the left; add-to-plan + the "claim it free" signal right. */}
       <div style={footerRow}>

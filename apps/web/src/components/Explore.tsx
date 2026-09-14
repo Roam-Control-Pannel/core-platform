@@ -33,6 +33,7 @@ import { useTranslations } from "next-intl";
 import { Seg, Pill, Icon, type IconName } from "@roam/design";
 import { useTrpc, useSession } from "./TrpcProvider";
 import { VenueCard, type VenueCardData } from "./VenueCard";
+import { type CardFsaRating, FsaAttributionLine } from "./FsaChip";
 import { PlaceSwitcher, type Place, type PlaceSource } from "./PlaceSwitcher";
 import { AuthPanel } from "./AuthPanel";
 import { useCurrentPlace } from "../lib/currentPlace";
@@ -403,6 +404,10 @@ export function Explore() {
   // card on its default cover. The server reuses its cached google urls across these.
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
   const requestedCoverIds = useRef<Set<string>>(new Set());
+  // FSA hygiene ratings for the visible cards — one batch (venues.fsaRatings) per new page, same
+  // no-refetch ref pattern as covers. Keyed by venue id; absent = no rating (or corpus not live).
+  const [fsaByVenue, setFsaByVenue] = useState<Record<string, CardFsaRating>>({});
+  const requestedFsaIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     const wanted = visible.filter(
       (v) => v.coverPhotoId && !requestedCoverIds.current.has(v.coverPhotoId),
@@ -430,6 +435,38 @@ export function Explore() {
       .catch(() => {
         /* leave these cards on the default cover */
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, trpc]);
+
+  // FSA hygiene ratings for the visible cards — one batch per new page (chunked to the 60 cap),
+  // resolved server-side so a status is never shown as a number. A failure just leaves cards unbadged.
+  useEffect(() => {
+    const wanted = visible.filter((v) => !requestedFsaIds.current.has(v.id));
+    if (wanted.length === 0) return;
+    const ids = wanted.map((v) => v.id);
+    ids.forEach((id) => requestedFsaIds.current.add(id));
+    let cancelled = false;
+    const resolve = trpc.venues.fsaRatings as unknown as {
+      query: (input: { venueIds: string[] }) => Promise<Record<string, { rating: CardFsaRating }>>;
+    };
+    void (async () => {
+      const acc: Record<string, CardFsaRating> = {};
+      for (let i = 0; i < ids.length; i += 60) {
+        try {
+          const r = await resolve.query({ venueIds: ids.slice(i, i + 60) });
+          for (const [venueId, val] of Object.entries(r ?? {})) {
+            if (val?.rating) acc[venueId] = val.rating;
+          }
+        } catch {
+          /* leave these cards unbadged */
+        }
+      }
+      if (!cancelled && Object.keys(acc).length > 0) {
+        setFsaByVenue((prev) => ({ ...prev, ...acc }));
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -669,9 +706,13 @@ export function Explore() {
                       initialFollowing={followingSet.has(v.id)}
                       coverUrl={coverUrls[v.id]}
                       orderAhead={f2gSet.has(v.id)}
+                      fsaRating={fsaByVenue[v.id]}
                     />
                   ))}
                 </div>
+                {Object.keys(fsaByVenue).length > 0 ? (
+                  <FsaAttributionLine style={{ marginTop: "var(--space-4)" }} />
+                ) : null}
 
                 {/* Load more — reveals the next PAGE_SIZE of the loaded set. */}
                 {visibleCount < shown.length ? (
