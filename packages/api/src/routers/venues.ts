@@ -234,7 +234,9 @@ interface VenuesInCategoryNearRow {
  * an identical card shape. Inline object (no named type) keeps the inferred AppRouter output
  * structural/portable, same idiom as the other discovery surfaces.
  */
-function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number | null; delivers?: boolean | null }) {
+function toStorefrontCard(
+  v: VenuesInCategoryNearRow & { prep_time_mins: number | null; delivers?: boolean | null; is_member?: boolean | null },
+) {
   return {
     id: v.id,
     name: v.name,
@@ -255,6 +257,9 @@ function toStorefrontCard(v: VenuesInCategoryNearRow & { prep_time_mins: number 
     prepMins: v.prep_time_mins ?? 15,
     // Whether the venue currently offers delivery (open-mode RPC only; false in members mode).
     delivers: !!v.delivers,
+    // Whether this venue is a confirmed F2G member (open-mode RPC + a channel id only; drives the
+    // member-first ranking and lets the card badge members). False/absent in members mode.
+    isMember: !!v.is_member,
   };
 }
 
@@ -669,6 +674,9 @@ export const venuesRouter = router({
               origin_lng: input.lng,
               page_size: input.pageSize,
               page_offset: input.pageOffset,
+              // Pass the channel so the RPC can float confirmed F2G members first (D3). Omitting it
+              // (or an older RPC) collapses to claimed-first/nearest — the pre-D3 ordering.
+              filter_channel_id: channel.id,
             })
           : await rpc("venues_in_channel_near", {
               filter_channel_id: channel.id,
@@ -679,7 +687,11 @@ export const venuesRouter = router({
             });
       if (error) throw new Error(`Failed to load storefront venues: ${error.message}`);
 
-      const rows = (data ?? []) as (VenuesInCategoryNearRow & { prep_time_mins: number | null })[];
+      const rows = (data ?? []) as (VenuesInCategoryNearRow & {
+        prep_time_mins: number | null;
+        delivers?: boolean | null;
+        is_member?: boolean | null;
+      })[];
       const hasMore = rows.length > input.pageSize;
       const page = hasMore ? rows.slice(0, input.pageSize) : rows;
       return {
