@@ -682,6 +682,89 @@ export function eventJsonLd(event: EventSeo): Record<string, unknown> {
   });
 }
 
+/* ── F2G members directory (/directory) ──────────────────────────────────────────────────── */
+
+import type { DirectoryEntrySeo } from "./serverApi";
+
+/**
+ * A directory page carries real content once the channel has this many live members. Below it the
+ * page still renders for humans but stays noindex — no thin listing while the roster is being
+ * onboarded. (The default Roam channel has no members and is never a directory, so it's always
+ * noindex there regardless of count.)
+ */
+export const DIRECTORY_MIN_MEMBERS = 3;
+
+/** Whether the members directory clears the thin-content bar on a branded channel. */
+export function directoryIndexable(isDefault: boolean, memberCount: number): boolean {
+  return !isDefault && memberCount >= DIRECTORY_MIN_MEMBERS;
+}
+
+/**
+ * Metadata for the members directory. It is a branded channel's OWN page (not a shared Roam entity),
+ * so under the Consolidated model (A3-b) it canonicals to THAT channel's origin — channelAbsUrl —
+ * and its OG card renders in the channel's palette. The default channel (no members) is noindex.
+ */
+export function directoryMetadata(
+  channelKey: string,
+  channelName: string,
+  isDefault: boolean,
+  memberCount: number,
+  council: string | null = null,
+): Metadata {
+  const brand = channelName || "Food to Go";
+  const where = council ? ` in ${council}` : "";
+  const title = council ? `${brand} members${where}` : `${brand} members directory`;
+  const description = clamp(
+    memberCount > 0
+      ? `${memberCount} local ${brand} member${memberCount === 1 ? "" : "s"}${where} — find member cafés, takeaways and food businesses near you.`
+      : `Find local ${brand} member food businesses${where} near you.`,
+  );
+  const path = council ? `/directory/${encodeURIComponent(council.toLowerCase())}` : "/directory";
+  const url = channelAbsUrl(channelKey, path);
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    ...(directoryIndexable(isDefault, memberCount) ? {} : { robots: { index: false, follow: true } }),
+    ...social({ title, description, url, image: ogCardUrl({ title, subtitle: description, badge: "Members" }, channelKey) }),
+  };
+}
+
+/** CollectionPage + ItemList for the directory — members as a linkable list (venues canonical to Roam). */
+export function directoryJsonLd(
+  channelKey: string,
+  channelName: string,
+  entries: DirectoryEntrySeo[],
+  council: string | null = null,
+): Record<string, unknown> {
+  const brand = channelName || "Food to Go";
+  const path = council ? `/directory/${encodeURIComponent(council.toLowerCase())}` : "/directory";
+  return compact({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: council ? `${brand} members in ${council}` : `${brand} members directory`,
+    description: `Local ${brand} member food businesses${council ? ` in ${council}` : ""}.`,
+    url: channelAbsUrl(channelKey, path),
+    ...(entries.length > 0
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            name: council ? `${brand} members in ${council}` : `${brand} members`,
+            itemListElement: entries.map((e, i) =>
+              compact({
+                "@type": "ListItem",
+                position: i + 1,
+                name: e.name,
+                // Members link to their matched venue's canonical Roam page (a shared entity).
+                url: e.venue ? absUrl(`/venue/${e.venue.slug ?? e.venue.id}`) : undefined,
+              }),
+            ),
+          },
+        }
+      : {}),
+  });
+}
+
 /* ── JSON-LD builders (schema.org) ───────────────────────────────────────────────────────── */
 
 /** Map a free-text venue category to the most specific schema.org LocalBusiness subtype. */
