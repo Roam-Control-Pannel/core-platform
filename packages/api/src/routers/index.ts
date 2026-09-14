@@ -43,6 +43,7 @@ import { reviewsRouter } from "./reviews.js";
 import { channelsRouter } from "./channels.js";
 import { f2gRouter } from "./f2g.js";
 import { jobsRouter } from "./jobs.js";
+import { suppliersRouter } from "./suppliers.js";
 import { adminMetricsRouter } from "./adminMetrics.js";
 import { adminActivityRouter } from "./adminActivity.js";
 import { adminSearchRouter } from "./adminSearch.js";
@@ -89,6 +90,7 @@ export const appRouter = router({
   channels: channelsRouter,
   f2g: f2gRouter,
   jobs: jobsRouter,
+  suppliers: suppliersRouter,
   adminMetrics: adminMetricsRouter,
   adminActivity: adminActivityRouter,
   adminSearch: adminSearchRouter,
