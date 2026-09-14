@@ -382,6 +382,60 @@ export interface VenueFsaRating {
   attribution: { text: string; licenceUrl: string; source: string; sourceUrl: string };
 }
 
+/** The fsa_establishments columns the display builder needs (subset; table newer than gen types). */
+type FsaEstablishmentRow = {
+  rating_value: string | null;
+  rating_date: string | null;
+  synced_at: string | null;
+  local_authority: string | null;
+};
+
+/**
+ * Build the display-ready VenueFsaRating from an establishment row, or null when nothing renders.
+ * The ONE place the legally-sensitive display decision is made (isDisplayableRating never coerces a
+ * status to a number) — shared by the single `fsaRating` and the batch `fsaRatings` so both resolve
+ * identically and the rule lives in exactly one spot.
+ */
+function buildVenueFsaRating(fhrsid: string, est: FsaEstablishmentRow): VenueFsaRating | null {
+  const rating = coreFsa.isDisplayableRating(est.rating_value ?? null);
+  if (rating.kind === "none") return null; // nothing renderable — show no badge at all
+  return {
+    rating,
+    badge: rating.kind === "score" ? coreFsa.ratingBadge(rating.score) : null,
+    ratingValue: String(est.rating_value ?? ""),
+    ratingDate: est.rating_date ?? null,
+    syncedAt: est.synced_at ?? null,
+    localAuthority: est.local_authority ?? null,
+    fhrsid,
+    detailUrl: `https://ratings.food.gov.uk/business/en-GB/${encodeURIComponent(fhrsid)}`,
+    attribution: coreFsa.FSA_ATTRIBUTION,
+  };
+}
+
+/**
+ * PURE: assemble the { venueId → rating } map from the batch's two reads (the venue→FSA links and the
+ * establishments), dropping any venue whose value isn't renderable. Extracted so the batch mapping is
+ * unit-testable without a database (the display gate is the load-bearing behaviour). The unique
+ * (entity, dataset) index means at most one ref per venue; a duplicate would be last-write-wins here.
+ */
+export function mapFsaRatings(
+  refRows: { entity_id: string; external_id: string | null }[],
+  estRows: (FsaEstablishmentRow & { fhrsid: string })[],
+): Record<string, VenueFsaRating> {
+  const estByFhrsid = new Map<string, FsaEstablishmentRow>();
+  for (const e of estRows) estByFhrsid.set(String(e.fhrsid), e);
+  const out: Record<string, VenueFsaRating> = {};
+  for (const r of refRows) {
+    if (!r.external_id) continue;
+    const fhrsid = String(r.external_id);
+    const est = estByFhrsid.get(fhrsid);
+    if (!est) continue;
+    const rating = buildVenueFsaRating(fhrsid, est);
+    if (rating) out[String(r.entity_id)] = rating;
+  }
+  return out;
+}
+
 export const venuesRouter = router({
   /**
    * Public: list venues with NO proximity ordering. The no-origin fallback — used
@@ -436,20 +490,41 @@ export const venuesRouter = router({
         .eq("fhrsid", fhrsid)
         .maybeSingle();
       if (!est) return null;
+      return buildVenueFsaRating(fhrsid, est as FsaEstablishmentRow);
+    }),
 
-      const rating = coreFsa.isDisplayableRating(est.rating_value ?? null);
-      if (rating.kind === "none") return null; // nothing renderable — show no badge at all
-      return {
-        rating,
-        badge: rating.kind === "score" ? coreFsa.ratingBadge(rating.score) : null,
-        ratingValue: String(est.rating_value ?? ""),
-        ratingDate: est.rating_date ?? null,
-        syncedAt: est.synced_at ?? null,
-        localAuthority: est.local_authority ?? null,
-        fhrsid,
-        detailUrl: `https://ratings.food.gov.uk/business/en-GB/${encodeURIComponent(fhrsid)}`,
-        attribution: coreFsa.FSA_ATTRIBUTION,
-      };
+  /**
+   * BATCH FSA ratings for a set of venues (D4) — the card/grid read. One external_refs lookup + one
+   * fsa_establishments lookup, resolved display-ready via the SAME builder as the single `fsaRating`,
+   * so a grid of N cards costs TWO queries, not N. Returns a { [venueId]: rating } map carrying only
+   * renderable ratings — a venue with no confident match or a non-renderable value is simply absent
+   * (the card then shows no badge). SITE-WIDE: keyed by venue id, not scoped to any channel, so it
+   * lights up every Roam food venue with an FSA match, not just F2G members.
+   */
+  fsaRatings: publicProcedure
+    .input(z.object({ venueIds: z.array(z.string().uuid()).min(1).max(60) }))
+    .query(async ({ ctx, input }): Promise<Record<string, VenueFsaRating>> => {
+      const venueIds = Array.from(new Set(input.venueIds));
+      // external_refs / fsa_establishments aren't in the generated DB types until regenerated (A1b).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as { from: (t: string) => any };
+      const { data: refs } = await db
+        .from("external_refs")
+        .select("entity_id, external_id")
+        .eq("entity_type", "venue")
+        .eq("dataset", "fsa")
+        .in("entity_id", venueIds);
+      const refRows = ((refs ?? []) as { entity_id: string; external_id: string | null }[]).filter(
+        (r) => r.external_id,
+      );
+      const fhrsids = Array.from(new Set(refRows.map((r) => String(r.external_id))));
+      if (fhrsids.length === 0) return {};
+
+      const { data: ests } = await db
+        .from("fsa_establishments")
+        .select("fhrsid, rating_value, rating_date, synced_at, local_authority")
+        .in("fhrsid", fhrsids);
+      return mapFsaRatings(refRows, (ests ?? []) as (FsaEstablishmentRow & { fhrsid: string })[]);
     }),
 
   /**
