@@ -7,7 +7,7 @@
 -- asserted as the owner role afterwards.
 -- ============================================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ── structural ───────────────────────────────────────────────────────────────
 select has_table('public', 'job_posts', 'job_posts table exists');
