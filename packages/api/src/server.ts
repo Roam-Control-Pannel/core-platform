@@ -30,6 +30,8 @@ import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
 import { runCjOffersSync } from "./jobs/syncCjOffers.js";
 import { runCjLogoSync } from "./jobs/syncCjLogos.js";
 import { runOwnerDigest } from "./jobs/deliverOwnerDigest.js";
+import { runFsaSync } from "./jobs/syncFsaNi.js";
+import { loadFsaConfig } from "./fsa/client.js";
 import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
@@ -373,6 +375,30 @@ export async function handler(request: Request): Promise<Response> {
     try {
       const service = escalateToService(ctx.env);
       const result = await runCjLogoSync(service, { ...cj, token: cj.token, websiteId: cj.websiteId }, (m) => console.log(m));
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // Internal cron route: pull NI FSA hygiene ratings into fsa_establishments + match to venues (C1).
+  // Same internal-secret gate; dormant when FSA_NI_AUTHORITY_IDS is unset (returns "unconfigured").
+  // Triggered by pg_cron nightly; idempotent (upsert-by-fhrsid; never overwrites a manual match).
+  if (pathname === "/jobs/sync-fsa-ni") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (!ctx.isInternalCall) {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    const cfg = loadFsaConfig();
+    if (!cfg) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 200, cors);
+    }
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runFsaSync(service, cfg, (m) => console.log(m));
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (e) {
       return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
