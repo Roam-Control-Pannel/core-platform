@@ -28,6 +28,7 @@ export * as f2g from "./f2g/index.js";
 export * as membership from "./membership/index.js";
 export * as matching from "./matching/index.js";
 export * as fsa from "./fsa/index.js";
+export * as jobs from "./jobs/index.js";
 // Re-exported at the root so the api's inferred router types can NAME these portably
 // (a namespace-only re-export leaves them reachable only via a deep node_modules path).
 export type { Channel, ChannelTheme, DomainMapping } from "./channels/index.js";
