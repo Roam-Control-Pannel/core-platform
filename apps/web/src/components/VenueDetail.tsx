@@ -54,6 +54,7 @@ import { isOpenNow } from "../lib/openNow";
 import { getFormatLocale } from "../lib/i18n/runtime";
 import { directionsUrl, detectMapsPlatform } from "../lib/directions";
 import { effectiveRating, ROAM_RATING_MIN } from "../lib/rating";
+import { FsaBadge } from "./FsaBadge";
 import { VenueMap } from "./VenueMap";
 import styles from "./VenueDetail.module.css";
 
@@ -550,6 +551,7 @@ function ClaimedDetail({
                   ))}
                 </div>
               ) : null}
+              <FsaBadge venueId={venueId} />
               <GoodToKnow venue={venue} />
               <WhereToFind venue={venue} orderAheadPrepMins={orderAhead.available ? orderAhead.prepMins : undefined} />
             </div>
@@ -811,6 +813,7 @@ function VenueProfileShell({
       {topEntry}
       <div className={styles.profileGrid}>
         <div className={styles.profileMain}>
+          <FsaBadge venueId={venueId} />
           <GoodToKnow venue={venue} unclaimed />
           <WhereToFind venue={venue} />
           <div id="reviews">

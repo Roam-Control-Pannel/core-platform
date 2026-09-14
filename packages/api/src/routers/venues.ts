@@ -30,7 +30,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { places as corePlaces, channels as coreChannels } from "@roam/core";
+import { places as corePlaces, channels as coreChannels, fsa as coreFsa } from "@roam/core";
 import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
 import {
   normaliseVenueDescription,
@@ -361,6 +361,22 @@ async function approvedOwnerEmail(service: ServiceClientLoose, venueId: string):
   return data?.user?.email ?? null;
 }
 
+/** A venue's FSA rating, resolved display-ready for the venue page (C1). Null when nothing renders. */
+export interface VenueFsaRating {
+  /** The display decision (never coerces a status to a number). */
+  rating: coreFsa.DisplayableRating;
+  /** Official-badge asset id + alt, present only for a genuine score. */
+  badge: { assetId: string; alt: string } | null;
+  ratingValue: string;
+  ratingDate: string | null;
+  syncedAt: string | null;
+  localAuthority: string | null;
+  fhrsid: string;
+  /** The establishment's page on the FSA site (for the "view on FSA" link). */
+  detailUrl: string;
+  attribution: { text: string; licenceUrl: string; source: string; sourceUrl: string };
+}
+
 export const venuesRouter = router({
   /**
    * Public: list venues with NO proximity ordering. The no-origin fallback — used
@@ -383,6 +399,52 @@ export const venuesRouter = router({
         categories: v.categories,
         rating: v.rating,
       }));
+    }),
+
+  /**
+   * The venue's FSA food-hygiene rating (C1), display-ready. Public: reads the venue→FSA link
+   * (external_refs dataset='fsa', 0137) + the establishment (fsa_establishments, 0141), both public
+   * open data, then resolves it through @roam/core/fsa.isDisplayableRating HERE (server-side) so the
+   * web never re-derives the legally-sensitive display rule and its bundle never imports core. Returns
+   * null when there's no confident match or the value isn't renderable (e.g. a scheme we don't show) —
+   * a non-numeric status ('AwaitingInspection'/'Exempt') returns its own kind, never a "0".
+   */
+  fsaRating: publicProcedure
+    .input(z.object({ venueId: z.string().uuid() }))
+    .query(async ({ ctx, input }): Promise<VenueFsaRating | null> => {
+      // external_refs / fsa_establishments aren't in the generated DB types until regenerated (A1b).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = ctx.db as unknown as { from: (t: string) => any };
+      const { data: ref } = await db
+        .from("external_refs")
+        .select("external_id")
+        .eq("entity_type", "venue")
+        .eq("entity_id", input.venueId)
+        .eq("dataset", "fsa")
+        .maybeSingle();
+      const fhrsid = ref?.external_id ? String(ref.external_id) : null;
+      if (!fhrsid) return null;
+
+      const { data: est } = await db
+        .from("fsa_establishments")
+        .select("rating_value, rating_date, synced_at, local_authority")
+        .eq("fhrsid", fhrsid)
+        .maybeSingle();
+      if (!est) return null;
+
+      const rating = coreFsa.isDisplayableRating(est.rating_value ?? null);
+      if (rating.kind === "none") return null; // nothing renderable — show no badge at all
+      return {
+        rating,
+        badge: rating.kind === "score" ? coreFsa.ratingBadge(rating.score) : null,
+        ratingValue: String(est.rating_value ?? ""),
+        ratingDate: est.rating_date ?? null,
+        syncedAt: est.synced_at ?? null,
+        localAuthority: est.local_authority ?? null,
+        fhrsid,
+        detailUrl: `https://ratings.food.gov.uk/business/en-GB/${encodeURIComponent(fhrsid)}`,
+        attribution: coreFsa.FSA_ATTRIBUTION,
+      };
     }),
 
   /**
