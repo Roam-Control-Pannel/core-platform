@@ -20,6 +20,7 @@ export { type ClaimOutcome, type ClaimResult, type SendInviteResult, type SendIn
 export { type VenueFsaRating } from "./routers/venues.js"; // venues.fsaRating surfaces it (C1-b)
 export { type JobPost, type JobPostPage } from "./routers/jobs.js"; // jobs.list surfaces them (C4)
 export { type SupplierOrg, type SupplierPage } from "./routers/suppliers.js"; // suppliers.* surface them (C3)
+export { type DirectoryEntry, type DirectoryPage } from "./routers/channels.js"; // channels.directory surfaces them (C2)
 export {
   makeContextFactory,
   type Context,

@@ -58,6 +58,22 @@ async function requireChannel(db: RoamClient, key: string) {
   return channel;
 }
 
+/** One member in the public directory (C2) — safe columns + the matched venue's public basics. */
+export interface DirectoryEntry {
+  memberId: string;
+  name: string;
+  council: string | null;
+  status: string;
+  venue: { id: string; slug: string | null; name: string; locality: string | null; rating: number | null } | null;
+  distanceM: number | null;
+}
+
+export interface DirectoryPage {
+  entries: DirectoryEntry[];
+  hasMore: boolean;
+  nextOffset: number;
+}
+
 export const channelsRouter = router({
   /** Every active channel (default first) — for admin pickers and shell bootstrapping. */
   list: publicProcedure.query(async ({ ctx }) => {
@@ -188,6 +204,63 @@ export const channelsRouter = router({
         });
       }
       return { ok: true as const };
+    }),
+
+  /**
+   * The public MEMBERS DIRECTORY (C2). Searches the channel's LIVE members server-side via the
+   * PII-safe channel_members_search definer RPC (0144) — only safe columns ever leave the DB — and
+   * pages them. Radius is optional (omit `near`/`radiusM` for a nationwide search; the D5/D6 fix).
+   */
+  directory: publicProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        q: z.string().trim().max(120).optional(),
+        council: z.string().trim().max(120).optional(),
+        near: z.object({ lat: z.number(), lng: z.number() }).optional(),
+        radiusM: z.number().int().min(0).max(200_000).optional(),
+        limit: z.number().int().min(1).max(100).default(25),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }): Promise<DirectoryPage> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rpc = (ctx.db as any).rpc.bind(ctx.db) as (fn: string, args: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+      const { data, error } = await rpc("channel_members_search", {
+        p_channel_key: input.channelKey,
+        p_query: input.q ?? null,
+        p_council: input.council ?? null,
+        p_lat: input.near?.lat ?? null,
+        p_lng: input.near?.lng ?? null,
+        p_radius_m: input.radiusM ?? null,
+        p_limit: input.limit + 1, // +1 → hasMore
+        p_offset: input.offset,
+      });
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = (data ?? []) as any[];
+      const hasMore = raw.length > input.limit;
+      const page = hasMore ? raw.slice(0, input.limit) : raw;
+      return {
+        entries: page.map((r) => ({
+          memberId: String(r.member_id),
+          name: String(r.name ?? ""),
+          council: r.council ?? null,
+          status: String(r.status ?? ""),
+          venue: r.venue_id
+            ? {
+                id: String(r.venue_id),
+                slug: r.venue_slug ?? null,
+                name: String(r.venue_name ?? ""),
+                locality: r.venue_locality ?? null,
+                rating: r.venue_rating ?? null,
+              }
+            : null,
+          distanceM: r.distance_m ?? null,
+        })),
+        hasMore,
+        nextOffset: input.offset + page.length,
+      };
     }),
 
   /** Self-serve: a venue owner removes their own venue from a channel. RLS scopes it to the owner. */
