@@ -19,6 +19,7 @@
     "sync-awin-offers": "tsx src/jobs/syncAwinOffers.ts",
     "sync-cj-offers": "tsx src/jobs/syncCjOffers.ts",
     "sync-cj-logos": "tsx src/jobs/syncCjLogos.ts",
+    "sync-fsa-ni": "tsx src/jobs/syncFsaNi.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
