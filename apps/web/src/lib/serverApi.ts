@@ -48,6 +48,8 @@ export interface ChannelSeo {
   tagline: string | null;
   logoUrl: string | null;
   isDefault: boolean;
+  /** Explicit allow-map of exposed surfaces (same shape as ChannelInfo.sections); server-side gate. */
+  sections: Record<string, boolean>;
 }
 export const getChannelInfo = cache(async (): Promise<ChannelSeo | null> => {
   try {
@@ -81,6 +83,42 @@ export const getChannelMap = cache(async (): Promise<ChannelDomain[]> => {
     return [];
   }
 });
+
+/* ── F2G members directory (/directory) ──────────────────────────────────────────────────── */
+
+/** One directory member as the SSR page consumes it — mirror of the API's DirectoryEntry (C2). */
+export interface DirectoryEntrySeo {
+  memberId: string;
+  name: string;
+  council: string | null;
+  status: string;
+  venue: { id: string; slug: string | null; name: string; locality: string | null; rating: number | null } | null;
+  distanceM: number | null;
+}
+export interface DirectoryPageSeo {
+  entries: DirectoryEntrySeo[];
+  hasMore: boolean;
+  nextOffset: number;
+}
+
+/**
+ * The public members directory's first page, server-rendered for crawlers (C2). Channel-aware:
+ * `channels.directory` reads the roster's LIVE members via the PII-safe definer RPC. Fault-tolerant —
+ * any failure yields an empty page so the server render never throws (the client component re-fetches
+ * for the interactive view). `council` supports the (future) per-council landing pages.
+ */
+export const getDirectory = cache(
+  async (channelKey: string, council?: string, limit = 24): Promise<DirectoryPageSeo> => {
+    try {
+      const c = (await anon()) as unknown as {
+        channels: { directory: { query: (i: { channelKey: string; council?: string; limit: number; offset: number }) => Promise<DirectoryPageSeo> } };
+      };
+      return await c.channels.directory.query({ channelKey, ...(council ? { council } : {}), limit, offset: 0 });
+    } catch {
+      return { entries: [], hasMore: false, nextOffset: 0 };
+    }
+  },
+);
 
 export const getVenue = cache(async (venueId: string): Promise<VenueSeo | null> => {
   try {
