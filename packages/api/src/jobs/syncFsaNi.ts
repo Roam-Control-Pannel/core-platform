@@ -29,7 +29,7 @@ type Loose = { from: (t: string) => any };
 const loose = (c: RoamClient) => c as unknown as Loose;
 
 const CHUNK = 500; // upsert / scan page size (cap-proof)
-const CANDIDATE_BLOCK_LIMIT = 60; // venues fetched per establishment (postcode-blocked)
+const CANDIDATE_BLOCK_LIMIT = 2000; // max candidate venues read per postcode block (BT1 is the largest)
 
 /** fhrsids already linked to a venue (external_refs dataset='fsa'), paged past the 1000-row cap. */
 async function alreadyLinkedFhrsids(client: RoamClient): Promise<Set<string>> {
@@ -51,35 +51,59 @@ async function alreadyLinkedFhrsids(client: RoamClient): Promise<Set<string>> {
   return set;
 }
 
-/** Candidate venues for an establishment, blocked by the postcode outward code (as importRoster does). */
-async function candidateVenues(client: RoamClient, postcode: string): Promise<{ id: string; name: string; postcode: string }[]> {
-  const outward = membership.outwardCode(postcode);
-  if (!outward) return [];
+type Candidate = { id: string; name: string; postcode: string };
+
+/**
+ * ALL candidate venues in one postcode outward-code block (e.g. "BT1"), paged past the row cap.
+ * Called ONCE per block, not once per establishment: the matching phase groups establishments by
+ * outward code first, so a run costs one read per block (a few hundred for NI) instead of one per
+ * establishment (~17k) — the difference between a sub-minute run and a 25-minute one, and what
+ * lets the nightly cron finish inside a console/cron timeout.
+ */
+async function candidateVenuesInBlock(client: RoamClient, outward: string): Promise<Candidate[]> {
   const pat = `%${outward.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
-  const { data, error } = await loose(client)
-    .from("venues")
-    .select("id, name, address")
-    .ilike("address", pat)
-    .not("business_status", "eq", "CLOSED_PERMANENTLY")
-    .limit(CANDIDATE_BLOCK_LIMIT);
-  if (error) throw new Error(`fsa sync: candidate read failed: ${error.message}`);
-  return ((data ?? []) as any[]).map((v) => ({
-    id: String(v.id),
-    name: String(v.name ?? ""),
-    postcode: matching.extractPostcode(v.address),
-  }));
+  const out: Candidate[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await loose(client)
+      .from("venues")
+      .select("id, name, address")
+      .ilike("address", pat)
+      .not("business_status", "eq", "CLOSED_PERMANENTLY")
+      .range(from, from + CHUNK - 1);
+    if (error) throw new Error(`fsa sync: candidate read failed: ${error.message}`);
+    const rows = (data ?? []) as any[];
+    for (const v of rows) {
+      out.push({ id: String(v.id), name: String(v.name ?? ""), postcode: matching.extractPostcode(v.address) });
+    }
+    if (rows.length < CHUNK || out.length >= CANDIDATE_BLOCK_LIMIT) break;
+    from += rows.length;
+  }
+  return out;
 }
 
-/** Whether a human has already fixed this venue's FSA match — never overwrite a manual correction. */
-async function venueHasManualFsaRef(client: RoamClient, venueId: string): Promise<boolean> {
-  const { data } = await loose(client)
-    .from("external_refs")
-    .select("method")
-    .eq("entity_type", "venue")
-    .eq("entity_id", venueId)
-    .eq("dataset", "fsa")
-    .maybeSingle();
-  return (data as { method?: string } | null)?.method === "manual";
+/**
+ * Venues whose FSA link a human has fixed (method='manual') — read ONCE per run into a set, so the
+ * "never overwrite a manual correction" rule costs no per-match round-trip.
+ */
+async function manuallyLinkedVenueIds(client: RoamClient): Promise<Set<string>> {
+  const set = new Set<string>();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await loose(client)
+      .from("external_refs")
+      .select("entity_id")
+      .eq("dataset", "fsa")
+      .eq("entity_type", "venue")
+      .eq("method", "manual")
+      .range(from, from + CHUNK - 1);
+    if (error) throw new Error(`fsa sync: manual-refs read failed: ${error.message}`);
+    const rows = (data ?? []) as { entity_id: string }[];
+    for (const r of rows) set.add(String(r.entity_id));
+    if (rows.length < CHUNK) break;
+    from += rows.length;
+  }
+  return set;
 }
 
 export async function runFsaSync(
@@ -129,36 +153,68 @@ export async function runFsaSync(
       .upsert(slice, { onConflict: "fhrsid", ignoreDuplicates: false });
     if (error) throw new Error(`fsa sync: upsert failed: ${error.message}`);
     upserted += slice.length;
+    log(`fsa sync: upserted ${upserted}/${all.length}`);
   }
 
-  // 3) Match NEW establishments (those not already linked) to venues, reusing the B2 engine.
+  // 3) Match NEW establishments (those not already linked) to venues, reusing the B2 engine —
+  //    BATCHED by postcode outward code: one candidate read per block, all of that block's
+  //    establishments scored against it. Same engine, same accept threshold, same decisions.
   const linked = await alreadyLinkedFhrsids(service);
-  let matched = 0;
+  const manual = await manuallyLinkedVenueIds(service);
+  const blocks = new Map<string, ParsedFsaEstablishment[]>();
   for (const e of all) {
     if (!e.postcode) continue; // no block key → can't match
     if (linked.has(e.fhrsid)) continue; // already linked to a venue
-    const cands = await candidateVenues(service, e.postcode);
-    if (cands.length === 0) continue;
-    const res = matching.resolveCandidates({ name: e.businessName, postcode: e.postcode }, cands);
-    if (res.decision !== "accept" || !res.best) continue;
-    const venue = res.best.candidate;
-    if (await venueHasManualFsaRef(service, venue.id)) continue; // human correction is permanent
+    const outward = membership.outwardCode(e.postcode);
+    if (!outward) continue;
+    const list = blocks.get(outward);
+    if (list) list.push(e);
+    else blocks.set(outward, [e]);
+  }
+  log(`fsa sync: matching ${[...blocks.values()].reduce((n, l) => n + l.length, 0)} unlinked establishments across ${blocks.size} postcode blocks`);
+
+  let matched = 0;
+  let blocksDone = 0;
+  const claimed = new Set<string>(); // a venue links to ONE establishment per run (first accept wins)
+  let pendingRefs: Record<string, unknown>[] = [];
+  const flushRefs = async () => {
+    if (pendingRefs.length === 0) return;
+    const batch = pendingRefs;
+    pendingRefs = [];
     const { error } = await loose(service)
       .from("external_refs")
-      .upsert(
-        {
+      .upsert(batch, { onConflict: "entity_type,entity_id,dataset", ignoreDuplicates: false });
+    if (error) throw new Error(`fsa sync: external_ref write failed: ${error.message}`);
+  };
+
+  for (const [outward, ests] of blocks) {
+    const cands = await candidateVenuesInBlock(service, outward);
+    blocksDone++;
+    if (cands.length > 0) {
+      for (const e of ests) {
+        const res = matching.resolveCandidates({ name: e.businessName, postcode: e.postcode }, cands);
+        if (res.decision !== "accept" || !res.best) continue;
+        const venue = res.best.candidate;
+        if (manual.has(venue.id)) continue; // human correction is permanent
+        if (claimed.has(venue.id)) continue; // already matched this run
+        claimed.add(venue.id);
+        pendingRefs.push({
           entity_type: "venue",
           entity_id: venue.id,
           dataset: "fsa",
           external_id: e.fhrsid,
           method: "auto",
           score: Number(res.best.score.toFixed(3)),
-        },
-        { onConflict: "entity_type,entity_id,dataset", ignoreDuplicates: false },
-      );
-    if (error) throw new Error(`fsa sync: external_ref write failed: ${error.message}`);
-    matched++;
+        });
+        matched++;
+        if (pendingRefs.length >= CHUNK) await flushRefs();
+      }
+    }
+    if (blocksDone % 50 === 0 || blocksDone === blocks.size) {
+      log(`fsa sync: blocks ${blocksDone}/${blocks.size} · matched ${matched} so far`);
+    }
   }
+  await flushRefs();
 
   log(`fsa sync: ${upserted} upserted, ${matched} newly matched across ${cfg.authorityIds.length} authorities.`);
   return { authorities: cfg.authorityIds.length, fetched: all.length, upserted, matched, status: "ok" };
