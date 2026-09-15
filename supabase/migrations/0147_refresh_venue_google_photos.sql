@@ -147,7 +147,11 @@ comment on function refresh_venue_google_photos(jsonb) is
   'none); any venue with owner_upload rows → untouched. Stamps venues.google_photos_refreshed_at '
   'on a real refresh. Returns rows inserted. SECURITY DEFINER — service_role only.';
 
+-- Supabase's default privileges grant EXECUTE on public functions DIRECTLY to anon/authenticated,
+-- which a `from public` revoke does not touch — revoke from the client roles explicitly (the
+-- pgTAP guard proves anon cannot call it).
 revoke all on function refresh_venue_google_photos(jsonb) from public;
+revoke execute on function refresh_venue_google_photos(jsonb) from anon, authenticated;
 grant execute on function refresh_venue_google_photos(jsonb) to service_role;
 
 -- ── Which venues can be refreshed, oldest-first ──────────────────────────────────────────
@@ -179,4 +183,5 @@ comment on function list_google_photo_venues(integer, uuid) is
   'scripts/refresh-photos and a rolling-refresh cron. SECURITY DEFINER — service_role only.';
 
 revoke all on function list_google_photo_venues(integer, uuid) from public;
+revoke execute on function list_google_photo_venues(integer, uuid) from anon, authenticated;
 grant execute on function list_google_photo_venues(integer, uuid) to service_role;
