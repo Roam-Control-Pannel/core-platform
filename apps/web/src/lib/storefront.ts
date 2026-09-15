@@ -42,6 +42,7 @@ export const STOREFRONT_CATEGORIES = [
   "coffee",
   "bakery",
   "hot_food",
+  "takeaway",
   "breakfast",
 ] as const;
 export type StorefrontCategory = (typeof STOREFRONT_CATEGORIES)[number];

@@ -36,7 +36,13 @@ function matchesCategory(v: F2GVendor, cat: StorefrontCategory): boolean {
   const needles: Record<Exclude<StorefrontCategory, "all">, string[]> = {
     coffee: ["coffee", "café", "cafe", "espresso"],
     bakery: ["bakery", "bakehouse", "patisserie", "bread"],
-    hot_food: ["takeaway", "fast food", "chippy", "chip", "kebab", "burger", "pizza", "indian", "chinese", "curry", "hot food"],
+    hot_food: ["fast food", "chippy", "chip", "fish", "kebab", "burger", "fried", "hot food", "grill"],
+    // Cuisine takeaways (0146): the world-food scene. Matched on the Google type label, which for
+    // these leaves reads "Chinese restaurant", "Indian restaurant", "Thai restaurant", etc.
+    takeaway: [
+      "takeaway", "chinese", "indian", "italian", "pizza", "pasta", "thai", "mexican", "japanese",
+      "sushi", "seafood", "american", "middle eastern", "kebab", "curry", "noodle", "asian", "vegan", "vegetarian",
+    ],
     breakfast: ["breakfast", "brunch", "deli"],
   };
   return needles[cat].some((n) => hay.includes(n));

@@ -338,6 +338,33 @@ type LooseRpc = (
 ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
 
 /**
+ * True when a PostgREST error means the RPC SIGNATURE we asked for isn't on the live DB — a
+ * schema/deploy skew (the app deployed a new function argument before its migration landed). We
+ * degrade rather than black out (the Sep 2026 F2G storefront-blackout class).
+ */
+export function isMissingFunctionError(error: { message: string; code?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "PGRST202") return true;
+  return /could not find the function|function .* does not exist|in the schema cache/i.test(error.message);
+}
+
+/**
+ * Open-mode storefront supply, resilient to a live DB behind on migration 0145: try the member-ranked
+ * 5-arg venues_food_to_go_near (filter_channel_id) and, ONLY if that exact signature isn't found, fall
+ * back to the legacy 4-arg call (no member tier) so the storefront still fills instead of erroring to
+ * an empty grid. Any OTHER error propagates unchanged (a real failure must not be masked).
+ */
+export async function callFoodToGoNear(
+  rpc: LooseRpc,
+  args: { origin_lat: number; origin_lng: number; page_size: number; page_offset: number },
+  channelId: string,
+): Promise<{ data: unknown; error: { message: string; code?: string } | null }> {
+  const ranked = await rpc("venues_food_to_go_near", { ...args, filter_channel_id: channelId });
+  if (!ranked.error || !isMissingFunctionError(ranked.error)) return ranked;
+  return rpc("venues_food_to_go_near", args); // legacy 4-arg fallback (no member tier)
+}
+
+/**
  * The slice of the service client this file needs beyond the typed surface: a loose `from`
  * (same idiom as LooseRpc — the typed client's table union rejects ad-hoc reads) and the auth
  * admin lookup. Cast `ctx.service` to this at the call site.
@@ -744,15 +771,14 @@ export const venuesRouter = router({
       const mode = channel.membershipMode;
       const { data, error } =
         mode === "open"
-          ? await rpc("venues_food_to_go_near", {
-              origin_lat: input.lat,
-              origin_lng: input.lng,
-              page_size: input.pageSize,
-              page_offset: input.pageOffset,
-              // Pass the channel so the RPC can float confirmed F2G members first (D3). Omitting it
-              // (or an older RPC) collapses to claimed-first/nearest — the pre-D3 ordering.
-              filter_channel_id: channel.id,
-            })
+          ? // Pass the channel so the RPC floats confirmed F2G members first (D3). callFoodToGoNear
+            // degrades to the legacy 4-arg call if the live DB lacks 0145, so a migration/deploy skew
+            // can never blank the storefront again.
+            await callFoodToGoNear(
+              rpc,
+              { origin_lat: input.lat, origin_lng: input.lng, page_size: input.pageSize, page_offset: input.pageOffset },
+              channel.id,
+            )
           : await rpc("venues_in_channel_near", {
               filter_channel_id: channel.id,
               origin_lat: input.lat,
