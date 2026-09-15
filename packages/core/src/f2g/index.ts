@@ -76,6 +76,25 @@ export const FOOD_TO_GO_TYPES: ReadonlySet<string> = new Set([
   "dessert_shop",
   "ice_cream_shop",
   "juice_shop",
+  // Cuisine-specific TAKEAWAY leaves — the NI takeaway scene (Chinese, Indian, pizza/pasta, kebab,
+  // burgers, chippy, Thai, Mexican, sushi). Every leaf is in CATEGORY_PLACES_TYPES["Food & Drink"]
+  // (so it round-trips), and each ADDED here is also added to the SQL RPC array (0146) and — where we
+  // want to proactively supply it — FOOD_TO_GO_SEARCH_TYPES; the three must stay in lockstep. The
+  // broad `restaurant` leaf is deliberately EXCLUDED (it would pull in all sit-down/fine dining), as
+  // are the drink-led leaves (pub/bar/wine_bar/beer_garden).
+  "american_restaurant",
+  "asian_fusion_restaurant",
+  "chinese_restaurant",
+  "indian_restaurant",
+  "italian_restaurant",
+  "japanese_restaurant",
+  "mexican_restaurant",
+  "middle_eastern_restaurant",
+  "seafood_restaurant",
+  "sushi_restaurant",
+  "thai_restaurant",
+  "vegan_restaurant",
+  "vegetarian_restaurant",
 ]);
 
 /**
@@ -117,6 +136,23 @@ export const FOOD_TO_GO_SEARCH_TYPES: readonly string[] = [
   "donut_shop",
   "ice_cream_shop",
   "juice_shop",
+  // Cuisine takeaways (must be a subset of FOOD_TO_GO_TYPES). COST NOTE: each entry is one paid
+  // searchNearby PER ingest cell, so this set is the per-cell fan-out — trim it to control ingest
+  // spend without changing what SHOWS (the read predicate FOOD_TO_GO_TYPES / the RPC array decide
+  // display; this list only decides what we proactively FETCH).
+  "american_restaurant",
+  "asian_fusion_restaurant",
+  "chinese_restaurant",
+  "indian_restaurant",
+  "italian_restaurant",
+  "japanese_restaurant",
+  "mexican_restaurant",
+  "middle_eastern_restaurant",
+  "seafood_restaurant",
+  "sushi_restaurant",
+  "thai_restaurant",
+  "vegan_restaurant",
+  "vegetarian_restaurant",
 ];
 
 // ---------------------------------------------------------------------------

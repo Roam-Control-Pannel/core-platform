@@ -49,11 +49,20 @@ describe("isFoodToGo", () => {
     expect(isFoodToGo(["sandwich_shop", "restaurant"])).toBe(true); // any qualifying leaf wins
   });
 
-  it("rejects pubs, bars and sit-down restaurants", () => {
+  it("accepts cuisine TAKEAWAY leaves (Chinese, Indian, pizza/pasta, kebab, chippy)", () => {
+    expect(isFoodToGo(["chinese_restaurant"])).toBe(true);
+    expect(isFoodToGo(["indian_restaurant"])).toBe(true);
+    expect(isFoodToGo(["italian_restaurant"])).toBe(true);
+    expect(isFoodToGo(["middle_eastern_restaurant"])).toBe(true);
+    expect(isFoodToGo(["seafood_restaurant"])).toBe(true);
+  });
+
+  it("rejects drink-led venues and the blanket restaurant leaf", () => {
     expect(isFoodToGo(["pub"])).toBe(false);
-    expect(isFoodToGo(["bar", "restaurant"])).toBe(false);
-    expect(isFoodToGo(["italian_restaurant"])).toBe(false);
+    expect(isFoodToGo(["bar"])).toBe(false);
     expect(isFoodToGo(["wine_bar"])).toBe(false);
+    // The blanket `restaurant` leaf alone is NOT food-to-go (would pull in all sit-down/fine dining).
+    expect(isFoodToGo(["restaurant"])).toBe(false);
   });
 
   it("is tolerant of case, whitespace, and empty/absent leaves", () => {
