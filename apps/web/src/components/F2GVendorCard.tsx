@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { venuePath } from "../lib/routes";
 import { STOREFRONT, milesFromMetres } from "../lib/storefront";
+import { FsaChip, type CardFsaRating } from "./FsaChip";
 
 export interface F2GVendor {
   id: string;
@@ -29,7 +30,16 @@ export interface F2GVendor {
  * `coverUrl` is resolved in one batch by the parent grid (StorefrontHome) via venues.photoMediaUrls,
  * not per card — so a 40-vendor storefront paints its covers in a single round-trip instead of 40.
  */
-export function F2GVendorCard({ vendor, coverUrl }: { vendor: F2GVendor; coverUrl?: string | undefined }) {
+export function F2GVendorCard({
+  vendor,
+  coverUrl,
+  fsaRating,
+}: {
+  vendor: F2GVendor;
+  coverUrl?: string | undefined;
+  /** Official FSA hygiene rating, batch-resolved by the grid (StorefrontHome) via venues.fsaRatings. */
+  fsaRating?: CardFsaRating | undefined;
+}) {
   const t = useTranslations("storefront");
   const distance = milesFromMetres(vendor.distanceM);
   const tag = (vendor.primaryTypeLabel || vendor.category || "").trim();
@@ -127,6 +137,7 @@ export function F2GVendorCard({ vendor, coverUrl }: { vendor: F2GVendor; coverUr
             </span>
           ) : null}
           {distance ? <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{distance}</span> : null}
+          {fsaRating ? <FsaChip rating={fsaRating} /> : null}
         </div>
       </div>
     </Link>

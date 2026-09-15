@@ -16,6 +16,7 @@ import { useStorefrontPlace } from "../lib/storefrontPlace";
 import { NI_PLACES, NI_REGION } from "../lib/ni";
 import { PlaceSwitcher } from "./PlaceSwitcher";
 import { F2GVendorCard, type F2GVendor } from "./F2GVendorCard";
+import { type CardFsaRating, FsaAttributionLine } from "./FsaChip";
 import {
   STOREFRONT,
   STOREFRONT_CATEGORIES,
@@ -72,6 +73,10 @@ export function StorefrontHome() {
   // one round-trip per card — keyed by venue id, guarded by a ref so re-renders never re-fetch.
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
   const requestedCoverIds = useRef<Set<string>>(new Set());
+  // FSA hygiene ratings, batch-resolved for the whole grid via venues.fsaRatings — keyed by venue id,
+  // guarded by a ref. Absent = no renderable rating (or the FSA corpus isn't populated yet).
+  const [fsaByVenue, setFsaByVenue] = useState<Record<string, CardFsaRating>>({});
+  const requestedFsaIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -184,6 +189,39 @@ export function StorefrontHome() {
       .catch(() => {
         /* leave these cards on the illustrated default cover */
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [trpc, vendors]);
+
+  // Resolve every loaded vendor's FSA hygiene rating in one pass (chunked to the procedure's 60 cap),
+  // so the grid shows official ratings without a per-card call. Failures just leave a card unbadged.
+  useEffect(() => {
+    if (!vendors) return;
+    const wanted = vendors.filter((v) => !requestedFsaIds.current.has(v.id));
+    if (wanted.length === 0) return;
+    const ids = wanted.map((v) => v.id);
+    ids.forEach((id) => requestedFsaIds.current.add(id));
+    let cancelled = false;
+    const resolve = trpc.venues.fsaRatings as unknown as {
+      query: (input: { venueIds: string[] }) => Promise<Record<string, { rating: CardFsaRating }>>;
+    };
+    void (async () => {
+      const acc: Record<string, CardFsaRating> = {};
+      for (let i = 0; i < ids.length; i += 60) {
+        try {
+          const r = await resolve.query({ venueIds: ids.slice(i, i + 60) });
+          for (const [venueId, val] of Object.entries(r ?? {})) {
+            if (val?.rating) acc[venueId] = val.rating;
+          }
+        } catch {
+          /* leave these cards unbadged */
+        }
+      }
+      if (!cancelled && Object.keys(acc).length > 0) {
+        setFsaByVenue((prev) => ({ ...prev, ...acc }));
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -318,11 +356,18 @@ export function StorefrontHome() {
           </p>
         </div>
       ) : (
-        <Grid>
-          {shown.map((v) => (
-            <F2GVendorCard key={v.id} vendor={v} coverUrl={coverUrls[v.id]} />
-          ))}
-        </Grid>
+        <>
+          <Grid>
+            {shown.map((v) => (
+              <F2GVendorCard key={v.id} vendor={v} coverUrl={coverUrls[v.id]} fsaRating={fsaByVenue[v.id]} />
+            ))}
+          </Grid>
+          {Object.keys(fsaByVenue).length > 0 ? (
+            <div style={{ padding: "20px 4px 0" }}>
+              <FsaAttributionLine />
+            </div>
+          ) : null}
+        </>
       )}
 
       {/* Load more — grows the pool category + sort see, so they cover the town, not just page 1. */}
