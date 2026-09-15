@@ -43,7 +43,8 @@ const RADIUS_M = clampInt(Number(process.env.F2G_RADIUS_M ?? "2500"), 100, 50_00
 
 // Estimate only, for the dry-run cost preview. Keep in step with @roam/core/f2g
 // FOOD_TO_GO_SEARCH_TYPES (one paid searchNearby per entry). Not load-bearing.
-const TYPES_PER_POINT = 12;
+// 12 grab-and-go + 13 cuisine-takeaway leaves (added 2026-09, migration 0146).
+const TYPES_PER_POINT = 25;
 
 /**
  * NI town centres to seed (mirrors apps/web/src/lib/ni.ts NI_PLACES). `grid` gives the bigger
