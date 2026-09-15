@@ -65,6 +65,16 @@ non-null `cover_photo_id`.
 F2G venue with no owner upload keeps the placeholder. That is by design (owner controls their media)
 — surfaced here so it isn't a surprise.
 
+**Outcome (Sep 2026) — resolved; see [`venue-photo-refresh.md`](./venue-photo-refresh.md).** The
+probe (`diagnose:photos`) pinned **Layer B**, but the cause was none of the above: Google answered
+every ref with `400 INVALID_ARGUMENT "…retrieve it from Places API endpoints"` — **Places photo
+references expire**, and ours aged out together, platform-wide. Not the key, billing or a code fault,
+and not a Layer-A re-ingest. Fix shipped: a **read-time self-heal** (any viewed venue refreshes its
+own refs — `photos/refresh.ts`, migration 0147) plus a **bulk refresh** (`refresh:photos`, cheap
+photo-only Details mask, claimed venues included under the agreed policy — which also closes the
+"known limitation" above for claimed venues with no owner uploads). `backfill:photos` is the wrong
+tool for expiry (top-tier Details mask, skips claimed).
+
 **What I can build (optional):** a tiny staff-only diagnostic (`venues.photoDiagnostics({ near }`)
 or a script) that returns, for a town, `total / null-cover / claimed-null-cover` counts + one live
 single-resolve result — so the layer is pinned in one call rather than manual probing. Small.

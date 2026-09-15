@@ -285,6 +285,49 @@ export async function getPlaceDetails(
   return (await res.json()) as places.PlaceResult;
 }
 
+/**
+ * Photo-only Details mask — `id,photos`, the CHEAPEST Details tier. Deliberately separate from
+ * DETAILS_BACKFILL_FIELD_MASK (Enterprise + Atmosphere) so a photo-ref REFRESH — which can run
+ * across every venue on the platform and on every stale read — never pays for atmosphere data.
+ */
+const PHOTOS_FIELD_MASK = ["id", "photos"].join(",");
+
+/**
+ * Re-fetch ONLY a place's photos by its stored Places id — the refresh path for EXPIRED photo
+ * references (Places (New) photo names age out; Google then answers the media call with
+ * 400 INVALID_ARGUMENT "…retrieve it from Places API endpoints"). Used by the read-time self-heal
+ * (routers/venues) and the bulk runner (scripts/refresh-photos). Same contract as getPlaceDetails:
+ * returns the raw PlaceResult (mapped by core's placePhotos in the caller), throws on a
+ * transport/HTTP failure, and a place with no photos is NOT an error (photos[] absent/empty).
+ */
+export async function getPlacePhotos(
+  placeId: string,
+  apiKey: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<places.PlaceResult> {
+  const res = await fetchImpl(`${PLACE_DETAILS_BASE}${encodeURIComponent(placeId)}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": PHOTOS_FIELD_MASK,
+    },
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      detail = "(no response body)";
+    }
+    throw new Error(
+      `Places getPlacePhotos(${placeId}) failed: ${res.status} ${res.statusText} — ${detail.slice(0, 300)}`,
+    );
+  }
+
+  return (await res.json()) as places.PlaceResult;
+}
+
 /** Reviews-only Details mask — the Atmosphere-tier `reviews` field plus the place's Maps URL for
  *  the required attribution link. Separate from DETAILS_BACKFILL so the reviews fetch (live, never
  *  persisted per Google's terms) is independent of the once-per-venue enrichment backfill. */

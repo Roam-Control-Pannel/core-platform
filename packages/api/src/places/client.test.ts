@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { searchNearby, searchText, getPlaceDetails, getPlaceReviews, type FetchImpl } from "./client.js";
+import {
+  searchNearby,
+  searchText,
+  getPlaceDetails,
+  getPlacePhotos,
+  getPlaceReviews,
+  type FetchImpl,
+} from "./client.js";
 
 /** Build a fake fetch that records the call and returns a canned response. */
 function fakeFetch(
@@ -171,6 +178,34 @@ describe("getPlaceDetails (photo backfill)", () => {
       { ok: false, status: 404, statusText: "Not Found" },
     );
     await expect(getPlaceDetails("missing", "test-key", impl)).rejects.toThrow(/404/);
+  });
+});
+
+describe("getPlacePhotos (expired-ref refresh)", () => {
+  it("GETs /v1/places/{id} with ONLY the photo-tier field mask (id,photos)", async () => {
+    const { impl, calls } = fakeFetch({ id: "ChIJ_abc", photos: [{ name: "places/ChIJ_abc/photos/p1" }] });
+    await getPlacePhotos("ChIJ_abc", "test-key", impl);
+
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places/ChIJ_abc");
+    expect(calls[0]!.init.method ?? "GET").toBe("GET");
+    const headers = calls[0]!.init.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe("test-key");
+    // The whole point: the cheapest tier. Nothing from the enrichment mask may leak in —
+    // a refresh can run across every venue and on every stale read.
+    expect(headers["X-Goog-FieldMask"]).toBe("id,photos");
+  });
+
+  it("url-encodes the place id and returns the place object directly", async () => {
+    const { impl, calls } = fakeFetch({ id: "a/b id", photos: [] });
+    const place = await getPlacePhotos("a/b id", "test-key", impl);
+    expect(calls[0]!.url).toBe("https://places.googleapis.com/v1/places/a%2Fb%20id");
+    expect(place.id).toBe("a/b id");
+  });
+
+  it("throws on a non-ok HTTP response so the caller can degrade (placeholder, not a crash)", async () => {
+    const { impl } = fakeFetch({ error: "nope" }, { ok: false, status: 404, statusText: "Not Found" });
+    await expect(getPlacePhotos("missing", "test-key", impl)).rejects.toThrow(/404/);
   });
 });
 

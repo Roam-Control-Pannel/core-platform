@@ -22,6 +22,7 @@
  */
 import { createServiceClient } from "@roam/db";
 import { buildPhotoMediaRequestUrl } from "../src/routers/venues.js";
+import { isStalePhotoRefResponse } from "../src/photos/refresh.js";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
   }
 
   let resolveOk = 0;
+  let staleCount = 0;
   let lastStatus = "";
   if (sample.length === 0) {
     console.log("  no google_places photo rows exist at all → nothing to resolve (points to Layer A).");
@@ -112,6 +114,7 @@ async function main(): Promise<void> {
         if (!res.ok) {
           lastStatus = `HTTP ${res.status} ${res.statusText}`;
           const body = (await res.text()).replace(/\s+/g, " ").trim().slice(0, 300);
+          if (isStalePhotoRefResponse(res.status, body)) staleCount++;
           console.log(`    ✗ ${lastStatus}\n      body: ${body}`);
           continue;
         }
@@ -132,7 +135,13 @@ async function main(): Promise<void> {
 
   // ── Verdict ────────────────────────────────────────────────────────────────────────────────────
   console.log("\n── Verdict ──");
-  if (sample.length > 0 && resolveOk === 0) {
+  if (sample.length > 0 && resolveOk === 0 && staleCount === sample.length) {
+    console.log("  EXPIRED REFS: photo rows exist but Google rejects every ref (400 INVALID_ARGUMENT /");
+    console.log("  404). Places (New) photo references age out — not a key, billing or code fault.");
+    console.log("  → The read-time self-heal (routers/venues + migration 0147) refreshes any venue as it is");
+    console.log("    viewed. Bulk-heal everything now:  pnpm --filter @roam/api refresh:photos");
+    console.log("    (smoke first: refresh:photos -- --dry-run --limit=3). Requires 0147 applied.");
+  } else if (sample.length > 0 && resolveOk === 0) {
     console.log(`  LAYER B (resolve failing): photo refs exist but every resolve failed (${lastStatus}).`);
     console.log("  → Fix the read side: check GOOGLE_PLACES_API_KEY_CORE authorization, Google billing,");
     console.log("    Places Photo Media quota (429), and egress to places.googleapis.com. No data change.");

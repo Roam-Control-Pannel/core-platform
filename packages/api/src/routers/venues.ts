@@ -31,7 +31,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { places as corePlaces, channels as coreChannels, fsa as coreFsa } from "@roam/core";
-import { router, publicProcedure, protectedProcedure, internalProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, internalProcedure, escalateToService } from "../trpc.js";
+import type { Context } from "../context.js";
 import {
   normaliseVenueDescription,
   normaliseVenueLinks,
@@ -39,6 +40,17 @@ import {
 import { buildOwnerOpeningTimes } from "../venue-hours.js";
 import { type DayPeriods } from "@roam/core/hours";
 import { upsertBrevoContact } from "../brevo/client.js";
+import { getPlacePhotos } from "../places/client.js";
+import { PLACES_POLICY } from "../places/budget.js";
+import {
+  refreshVenueGooglePhotosCore,
+  isStalePhotoRefResponse,
+  pickFreshRow,
+  RECENTLY_REFRESHED_MS,
+  type RefreshOutcome,
+  type RefreshVenuePhotosDeps,
+  type FreshPhotoRow,
+} from "../photos/refresh.js";
 
 
 /**
@@ -111,10 +123,28 @@ const photoUrlCache = new Map<string, { url: string; expires: number }>();
 /** The venue_photos columns the resolver needs (table newer than generated DB types). */
 type PhotoResolveRow = {
   id: string;
+  /** Needed by the self-heal: which venue to refresh, and which gallery slot to re-serve. */
+  venue_id: string;
+  position: number;
   source: "google_places" | "owner_upload";
   places_photo_ref: string | null;
   storage_path: string | null;
 };
+
+/**
+ * A Photo Media HTTP failure, carrying the status + body the self-heal needs to tell an
+ * EXPIRED ref (400 INVALID_ARGUMENT / 404 → heal) from a key/quota/outage fault (→ don't).
+ * Still a BAD_GATEWAY TRPCError to every caller, so nothing upstream changes shape.
+ */
+class PhotoMediaHttpError extends TRPCError {
+  readonly status: number;
+  readonly body: string;
+  constructor(status: number, statusText: string, body: string) {
+    super({ code: "BAD_GATEWAY", message: `Places photo resolve failed: ${status} ${statusText}` });
+    this.status = status;
+    this.body = body;
+  }
+}
 
 /**
  * Resolve ONE photo row to a renderable url. Owner uploads → the keyless public Storage
@@ -151,10 +181,13 @@ async function resolvePhotoRowUrl(
     });
   }
   if (!res.ok) {
-    throw new TRPCError({
-      code: "BAD_GATEWAY",
-      message: `Places photo resolve failed: ${res.status} ${res.statusText}`,
-    });
+    let body = "";
+    try {
+      body = (await res.text()).slice(0, 300);
+    } catch {
+      body = "";
+    }
+    throw new PhotoMediaHttpError(res.status, res.statusText, body);
   }
   const json = (await res.json()) as { photoUri?: string };
   if (!json.photoUri) {
@@ -162,6 +195,148 @@ async function resolvePhotoRowUrl(
   }
   photoUrlCache.set(row.id, { url: json.photoUri, expires: Date.now() + PHOTO_URL_TTL_MS });
   return json.photoUri;
+}
+
+// ── Expired-ref self-heal ──────────────────────────────────────────────────────────────
+// Places (New) photo references EXPIRE (Sep 2026: every cover on every surface went blank at
+// once — rows intact, key fine, Google answering 400 INVALID_ARGUMENT "retrieve it from Places
+// API endpoints"). When a resolve comes back STALE we refresh that one venue with a cheap
+// photo-only Place Details call, replace its rows through the policy RPC
+// (refresh_venue_google_photos, 0147), and serve the fresh photo. The decision core is pure
+// (photos/refresh.ts); this is its wiring: the service client (the policy RPC and the details
+// quota are service_role-only), per-venue in-flight de-duplication, and an in-process memo.
+
+/** Narrow chainable view of the service client for the three small reads the heal makes. */
+type LooseChain = {
+  eq: (col: string, val: string) => LooseChain;
+  limit: (n: number) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+  order: (col: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+  maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+type LooseServiceDb = { from: (table: string) => { select: (cols: string) => LooseChain } };
+
+/** Concurrent stale resolves for one venue (ten gallery photos) share ONE refresh. */
+const inFlightHeals = new Map<string, Promise<RefreshOutcome>>();
+/** Non-refresh outcomes (skipped / failed), remembered for the refresh window so repeat page
+ *  loads don't re-probe the DB or Google. Bounded: cleared wholesale if it ever grows large. */
+const healMemo = new Map<string, number>();
+const HEAL_MEMO_MAX = 10_000;
+
+function buildRefreshDeps(ctx: Context): RefreshVenuePhotosDeps {
+  const service = escalateToService(ctx.env);
+  const rpc = service.rpc.bind(service) as unknown as LooseRpc;
+  const looseDb = service as unknown as LooseServiceDb;
+  return {
+    getVenue: async (venueId) => {
+      const { data, error } = await looseDb
+        .from("venues")
+        .select("source_ref, google_photos_refreshed_at")
+        .eq("id", venueId)
+        .maybeSingle();
+      const v = data as { source_ref: string | null; google_photos_refreshed_at: string | null } | null;
+      if (error || !v) return null;
+      const { data: owner } = await looseDb
+        .from("venue_photos")
+        .select("id")
+        .eq("venue_id", venueId)
+        .eq("source", "owner_upload")
+        .limit(1);
+      return {
+        sourceRef: v.source_ref ?? null,
+        refreshedAt: v.google_photos_refreshed_at ?? null,
+        hasOwnerUploads: (owner?.length ?? 0) > 0,
+      };
+    },
+    claimDetailsQuota: async () => {
+      // The same wallet backstop as enrichment + reviews. Per-client cap keyed by the forwarded
+      // browser IP (null on a server call → global budget only).
+      const { data, error } = await rpc("claim_places_detail_quota", {
+        p_client_key: ctx.clientKey,
+        p_daily_cap: PLACES_POLICY.detailsDailyBudget,
+        p_client_cap: PLACES_POLICY.clientFetchLimit,
+        p_client_window_secs: PLACES_POLICY.clientWindowSecs,
+      });
+      if (error) return false;
+      const quota = (Array.isArray(data) ? data[0] : data) as { allowed?: boolean } | undefined;
+      return quota?.allowed === true;
+    },
+    getPhotos: (placeId) => getPlacePhotos(placeId, ctx.env.places.apiKey),
+    refreshRows: async (venueId, photos) => {
+      const { data, error } = await rpc("refresh_venue_google_photos", {
+        payload: [{ venue_id: venueId, photos }],
+      });
+      if (error) throw new Error(`refresh_venue_google_photos failed: ${error.message}`);
+      return typeof data === "number" ? data : Number(data ?? 0);
+    },
+    listFreshRows: async (venueId) => {
+      const { data } = await looseDb
+        .from("venue_photos")
+        .select("id, position, places_photo_ref")
+        .eq("venue_id", venueId)
+        .eq("source", "google_places")
+        .order("position", { ascending: true });
+      return (data ?? []) as FreshPhotoRow[];
+    },
+  };
+}
+
+/** Heal one venue's refs — de-duplicated per venue, memoised on a non-refresh outcome. */
+function healVenuePhotos(venueId: string, ctx: Context): Promise<RefreshOutcome> {
+  const memoUntil = healMemo.get(venueId);
+  if (memoUntil !== undefined && memoUntil > Date.now()) {
+    return Promise.resolve({ kind: "skipped", reason: "recently-refreshed" });
+  }
+  const inflight = inFlightHeals.get(venueId);
+  if (inflight) return inflight;
+
+  const run = refreshVenueGooglePhotosCore(venueId, buildRefreshDeps(ctx))
+    .then((outcome) => {
+      if (outcome.kind === "refreshed") {
+        console.log(`[venues.photos] refreshed expired Google photo refs for venue ${venueId} (${outcome.inserted} rows)`);
+      } else {
+        if (healMemo.size >= HEAL_MEMO_MAX) healMemo.clear();
+        healMemo.set(venueId, Date.now() + RECENTLY_REFRESHED_MS);
+        if (outcome.kind === "failed") {
+          console.error(`[venues.photos] refresh failed for venue ${venueId}: ${outcome.error}`);
+        }
+      }
+      return outcome;
+    })
+    .finally(() => inFlightHeals.delete(venueId));
+  inFlightHeals.set(venueId, run);
+  return run;
+}
+
+/**
+ * resolvePhotoRowUrl, plus the self-heal: on a STALE Google ref, refresh the venue and serve the
+ * fresh photo at the same gallery position. The caller asked for the OLD photo id (its page was
+ * rendered from pre-refresh rows), so the fresh url is cached under that id too — the rest of
+ * this page's requests for it hit the cache; the next page load reads fresh ids. Any non-stale
+ * failure (key / quota / outage), or a heal that couldn't run, rethrows the ORIGINAL error so the
+ * caller degrades exactly as before (placeholder) and the true fault stays visible in the logs.
+ */
+async function resolvePhotoRowUrlHealing(row: PhotoResolveRow, ctx: Context): Promise<string> {
+  try {
+    return await resolvePhotoRowUrl(row, ctx.env);
+  } catch (e) {
+    if (
+      row.source !== "google_places" ||
+      !(e instanceof PhotoMediaHttpError) ||
+      !isStalePhotoRefResponse(e.status, e.body)
+    ) {
+      throw e;
+    }
+    const outcome = await healVenuePhotos(row.venue_id, ctx);
+    if (outcome.kind !== "refreshed") throw e;
+    const fresh = pickFreshRow(outcome.rows, row.position);
+    if (!fresh) throw e;
+    const url = await resolvePhotoRowUrl(
+      { ...row, id: fresh.id, position: fresh.position, places_photo_ref: fresh.places_photo_ref },
+      ctx.env,
+    );
+    photoUrlCache.set(row.id, { url, expires: Date.now() + PHOTO_URL_TTL_MS });
+    return url;
+  }
 }
 
 /** A single venue_photos row as read for the gallery (the display read-model). */
@@ -1111,13 +1286,13 @@ export const venuesRouter = router({
       const db = ctx.db as unknown as LoosePhotoSingle;
       const { data, error } = await db
         .from("venue_photos")
-        .select("id, source, places_photo_ref, storage_path")
+        .select("id, venue_id, position, source, places_photo_ref, storage_path")
         .eq("id", input.photoId)
         .maybeSingle();
       if (error) throw new Error(`Failed to load photo: ${error.message}`);
       if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Photo not found." });
 
-      return { url: await resolvePhotoRowUrl(data, ctx.env) };
+      return { url: await resolvePhotoRowUrlHealing(data, ctx) };
     }),
 
   /**
@@ -1148,7 +1323,7 @@ export const venuesRouter = router({
       const db = ctx.db as unknown as LoosePhotoMulti;
       const { data, error } = await db
         .from("venue_photos")
-        .select("id, source, places_photo_ref, storage_path")
+        .select("id, venue_id, position, source, places_photo_ref, storage_path")
         .in("id", ids);
       if (error) throw new Error(`Failed to load photos: ${error.message}`);
 
@@ -1157,7 +1332,8 @@ export const venuesRouter = router({
       const resolved = await Promise.all(
         rows.map(async (row) => {
           try {
-            return [row.id, await resolvePhotoRowUrl(row, ctx.env)] as const;
+            // Self-healing: a stale Google ref refreshes its venue and serves the fresh photo.
+            return [row.id, await resolvePhotoRowUrlHealing(row, ctx)] as const;
           } catch (e) {
             // Drop this one — the card keeps its default cover — but remember the reason.
             if (!firstError) firstError = e instanceof Error ? e.message : "resolve error";
