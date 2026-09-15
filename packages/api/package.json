@@ -13,8 +13,8 @@
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/dev.ts",
     "start": "tsx src/main.ts",
-    "backfill:photos": "tsx --env-file=../../.env scripts/backfill-photos.ts",
-    "diagnose:photos": "tsx --env-file=../../.env scripts/diagnose-photos.ts",
+    "backfill:photos": "tsx --env-file-if-exists=../../.env scripts/backfill-photos.ts",
+    "diagnose:photos": "tsx --env-file-if-exists=../../.env scripts/diagnose-photos.ts",
     "deliver-birthdays": "tsx src/jobs/deliverBirthdays.ts",
     "deliver-owner-digest": "tsx src/jobs/deliverOwnerDigest.ts",
     "sync-awin-offers": "tsx src/jobs/syncAwinOffers.ts",

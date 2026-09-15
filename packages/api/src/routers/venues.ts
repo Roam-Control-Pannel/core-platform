@@ -1153,17 +1153,30 @@ export const venuesRouter = router({
       if (error) throw new Error(`Failed to load photos: ${error.message}`);
 
       const rows = data ?? [];
+      let firstError = "";
       const resolved = await Promise.all(
         rows.map(async (row) => {
           try {
             return [row.id, await resolvePhotoRowUrl(row, ctx.env)] as const;
-          } catch {
-            return null; // drop — the card keeps its default cover
+          } catch (e) {
+            // Drop this one — the card keeps its default cover — but remember the reason.
+            if (!firstError) firstError = e instanceof Error ? e.message : "resolve error";
+            return null;
           }
         }),
       );
       const urls: Record<string, string> = {};
       for (const entry of resolved) if (entry) urls[entry[0]] = entry[1];
+      // A single failure is a stale-ref blip; a whole batch failing is a read-side outage
+      // (Places key/billing/quota/egress). Aggregate into ONE log line — not one per photo —
+      // so a platform-wide blank-cover event is visible in the API logs with its cause,
+      // instead of failing silently. firstError carries the status (e.g. "…403…").
+      const failed = rows.length - Object.keys(urls).length;
+      if (failed > 0) {
+        console.error(
+          `[venues.photoMediaUrls] ${failed}/${rows.length} Places photo resolves failed: ${firstError}`,
+        );
+      }
       return { urls };
     }),
 
