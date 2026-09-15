@@ -31,12 +31,36 @@ function arg(name: string): string | undefined {
   return eq === -1 ? "" : hit.slice(eq + 1);
 }
 
+/**
+ * The 11 Northern Ireland councils, as the FSA registry names them. The DEFAULT mode matches on
+ * RegionName OR on these names, so a registry quirk (a differently-labelled or missing region —
+ * the `/Authorities/basic` endpoint omits RegionName entirely, which is how the first run of this
+ * script returned nothing) can never silently produce an empty NI list.
+ */
+const NI_COUNCILS = [
+  "antrim and newtownabbey",
+  "ards and north down",
+  "armagh city, banbridge and craigavon",
+  "belfast",
+  "causeway coast and glens",
+  "derry city and strabane",
+  "fermanagh and omagh",
+  "lisburn and castlereagh",
+  "mid and east antrim",
+  "mid ulster",
+  "newry, mourne and down",
+];
+
+const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 async function main(): Promise<void> {
   const base = (process.env.FSA_API_BASE ?? "https://api.ratings.food.gov.uk").replace(/\/+$/, "");
   const showAll = arg("all") !== undefined;
   const region = arg("region") ?? (showAll ? null : "Northern Ireland");
+  const niMode = region !== null && norm(region) === "northern ireland";
 
-  const res = await fetch(`${base}/Authorities/basic`, {
+  // The FULL endpoint — `/Authorities/basic` does not carry RegionName.
+  const res = await fetch(`${base}/Authorities`, {
     headers: { "x-api-version": "2", accept: "application/json" },
   });
   if (!res.ok) {
@@ -46,15 +70,25 @@ async function main(): Promise<void> {
   const all = Array.isArray(body.authorities) ? body.authorities : [];
   if (all.length === 0) throw new Error("FSA /Authorities returned no authorities.");
 
-  const match = (a: FsaAuthority) =>
-    region == null || (a.RegionName ?? "").trim().toLowerCase() === region.trim().toLowerCase();
+  const match = (a: FsaAuthority) => {
+    if (region == null) return true;
+    if (norm(a.RegionName) === norm(region)) return true;
+    // NI fallback: the council name itself, independent of how the registry labels the region.
+    return niMode && NI_COUNCILS.some((c) => norm(a.Name).startsWith(c));
+  };
   const rows = all
     .filter(match)
     .sort((a, b) => (a.RegionName ?? "").localeCompare(b.RegionName ?? "") || a.Name.localeCompare(b.Name));
 
   if (rows.length === 0) {
-    console.log(`No authorities matched region ${JSON.stringify(region)}. Re-run with --all to list every region.`);
+    const regions = Array.from(new Set(all.map((a) => a.RegionName ?? "(none)"))).sort();
+    console.log(`No authorities matched region ${JSON.stringify(region)}.`);
+    console.log(`Regions the registry reports: ${regions.join(" · ")}`);
+    console.log("Re-run with --all to list every authority, or --region=<one of the above>.");
     return;
+  }
+  if (niMode && rows.length !== NI_COUNCILS.length) {
+    console.log(`⚠ expected ${NI_COUNCILS.length} NI councils, matched ${rows.length} — check the list below.\n`);
   }
 
   console.log(`FSA authorities${region ? ` in ${region}` : " (all regions)"} — ${rows.length} of ${all.length}:\n`);
