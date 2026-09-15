@@ -65,6 +65,13 @@ export interface BackfillPhotosOptions {
   dryRun?: boolean | undefined;
   /** Flush the upsert payload once it reaches this many venues. Default 50. */
   batchSize?: number | undefined;
+  /**
+   * Also send venues Google returned NO photos for (as an empty photos[]). Default false (the
+   * original backfill: a photoless venue simply keeps its default cover, nothing is written).
+   * The expired-ref REFRESH sets true so the replace-all sink clears the venue's dead rows and
+   * stamps it refreshed — otherwise it would be re-listed stalest-first on every run.
+   */
+  includeEmpty?: boolean | undefined;
 }
 
 export interface BackfillPhotosResult {
@@ -142,7 +149,12 @@ export async function backfillVenuePhotosCore(
         log(`${tag}: ${photos.length} photo(s)`);
       } else {
         venuesWithoutPhotos++;
-        log(`${tag}: no photos on Google — keeps default cover`);
+        if (opts.includeEmpty) {
+          pending.push({ venue_id: v.id, photos: [] });
+          log(`${tag}: no photos on Google — stale rows cleared`);
+        } else {
+          log(`${tag}: no photos on Google — keeps default cover`);
+        }
       }
     } catch (e) {
       failed++;

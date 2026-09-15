@@ -22,6 +22,7 @@
  */
 import { createServiceClient } from "@roam/db";
 import { buildPhotoMediaRequestUrl } from "../src/routers/venues.js";
+import { isStalePhotoRefResponse } from "../src/photos/refresh.js";
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -76,47 +77,71 @@ async function main(): Promise<void> {
   console.log(`  with a cover photo row:    ${withCover}`);
   console.log(`  NO cover (placeholder):    ${nullCover}  (unclaimed ${nullUnclaimed}, claimed ${nullClaimed})`);
 
-  // ── Layer B: a live resolve of a real google_places photo ref ──────────────────────────────────
-  console.log("\n── Layer B · live Places Photo Media resolve ──");
+  // ── Layer B: a live resolve of real google_places photo refs ─────────────────────────────────────
+  // Sample DISTINCT venues (a single venue's photos share a fate, so 3 rows from one venue tells us
+  // nothing about breadth). For each, print the raw ref AND — on failure — the PRODUCTION width (1200,
+  // what the app actually requests) plus Google's response body: that body is what distinguishes a
+  // malformed ref ("Photo name … is not valid" / INVALID_ARGUMENT) from an expired one from a
+  // billing/permission problem — a bare status code cannot.
+  console.log("\n── Layer B · live Places Photo Media resolve (production width 1200) ──");
   const { data: photos } = await looseDb
     .from("venue_photos")
     .select("id, venue_id, places_photo_ref")
     .eq("source", "google_places")
     .not("places_photo_ref", "is", null)
-    .limit(3);
-  const sample = (photos ?? []) as { id: string; venue_id: string; places_photo_ref: string }[];
+    .limit(40);
+  const allRows = (photos ?? []) as { id: string; venue_id: string; places_photo_ref: string }[];
+  // Dedupe to one row per venue, then take up to 5 distinct venues.
+  const seen = new Set<string>();
+  const sample: typeof allRows = [];
+  for (const r of allRows) {
+    if (seen.has(r.venue_id)) continue;
+    seen.add(r.venue_id);
+    sample.push(r);
+    if (sample.length >= 5) break;
+  }
 
   let resolveOk = 0;
+  let staleCount = 0;
   let lastStatus = "";
   if (sample.length === 0) {
     console.log("  no google_places photo rows exist at all → nothing to resolve (points to Layer A).");
   } else {
     for (const p of sample) {
+      console.log(`  · venue ${p.venue_id}  ref="${p.places_photo_ref}"`);
       try {
-        const res = await fetch(buildPhotoMediaRequestUrl(p.places_photo_ref, apiKey, 400));
+        const res = await fetch(buildPhotoMediaRequestUrl(p.places_photo_ref, apiKey, 1200));
         if (!res.ok) {
           lastStatus = `HTTP ${res.status} ${res.statusText}`;
-          console.log(`  ✗ venue ${p.venue_id}: ${lastStatus}`);
+          const body = (await res.text()).replace(/\s+/g, " ").trim().slice(0, 300);
+          if (isStalePhotoRefResponse(res.status, body)) staleCount++;
+          console.log(`    ✗ ${lastStatus}\n      body: ${body}`);
           continue;
         }
         const json = (await res.json()) as { photoUri?: string };
         if (json.photoUri) {
           resolveOk++;
-          console.log(`  ✓ venue ${p.venue_id}: resolved to a photo URL`);
+          console.log(`    ✓ resolved to a photo URL`);
         } else {
           lastStatus = "200 but no photoUri";
-          console.log(`  ✗ venue ${p.venue_id}: ${lastStatus}`);
+          console.log(`    ✗ ${lastStatus}`);
         }
       } catch (e) {
         lastStatus = e instanceof Error ? e.message : "fetch error";
-        console.log(`  ✗ venue ${p.venue_id}: ${lastStatus}`);
+        console.log(`    ✗ ${lastStatus}`);
       }
     }
   }
 
   // ── Verdict ────────────────────────────────────────────────────────────────────────────────────
   console.log("\n── Verdict ──");
-  if (sample.length > 0 && resolveOk === 0) {
+  if (sample.length > 0 && resolveOk === 0 && staleCount === sample.length) {
+    console.log("  EXPIRED REFS: photo rows exist but Google rejects every ref (400 INVALID_ARGUMENT /");
+    console.log("  404). Places (New) photo references age out — not a key, billing or code fault.");
+    console.log("  → The read-time self-heal (routers/venues + migration 0147) refreshes any venue as it is");
+    console.log("    viewed. Bulk-heal everything now:  pnpm --filter @roam/api refresh:photos");
+    console.log("    (smoke first: refresh:photos -- --dry-run --limit=3). Requires 0147 applied.");
+  } else if (sample.length > 0 && resolveOk === 0) {
     console.log(`  LAYER B (resolve failing): photo refs exist but every resolve failed (${lastStatus}).`);
     console.log("  → Fix the read side: check GOOGLE_PLACES_API_KEY_CORE authorization, Google billing,");
     console.log("    Places Photo Media quota (429), and egress to places.googleapis.com. No data change.");
