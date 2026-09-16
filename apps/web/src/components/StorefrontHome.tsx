@@ -245,6 +245,21 @@ export function StorefrontHome() {
     return sortVendors(filtered, sort);
   }, [vendors, cat, sort, deliversOnly, query]);
 
+  // The count line must never read as the town's total when it isn't. The RPC pages at PAGE_SIZE
+  // and reports only hasMore (no total), so: all loaded → "N places nearby"; more pages unloaded →
+  // "N+ places nearby"; a chip / delivers / search narrowing the loaded pool → "K of N(+) places
+  // nearby", so a thin filtered result isn't mistaken for a thin town.
+  const filtering = cat !== "all" || deliversOnly || query.trim() !== "";
+  const loadedCount = vendors?.length ?? 0;
+  const countLine =
+    vendors === null
+      ? " " // keeps the row's height while the grid skeleton shows
+      : filtering
+        ? t("placesCountFiltered", { shown: shown.length, loaded: hasMore ? `${loadedCount}+` : String(loadedCount) })
+        : hasMore
+          ? t("placesCountMore", { count: loadedCount })
+          : t("placesCount", { count: loadedCount });
+
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: "0 20px 64px" }}>
       {/* Hero */}
@@ -318,7 +333,7 @@ export function StorefrontHome() {
       {/* Count + sort */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 0", flexWrap: "wrap" }}>
         <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--ink-2)", fontWeight: 700 }}>
-          {vendors === null ? " " : t("placesCount", { count: shown.length })}
+          {countLine}
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           {STOREFRONT_SORTS.map((s) => {
