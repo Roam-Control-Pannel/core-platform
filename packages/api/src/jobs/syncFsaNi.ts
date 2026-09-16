@@ -88,10 +88,11 @@ async function candidateVenuesInBlock(client: RoamClient, outward: string): Prom
 }
 
 /**
- * Venues whose FSA link a human has fixed (method='manual') — read ONCE per run into a set, so the
- * "never overwrite a manual correction" rule costs no per-match round-trip.
+ * Venues a human has DECIDED about, read ONCE per run into a set so the rule costs no per-match
+ * round-trip: those with a manual link (method='manual' — never overwrite a correction) and those a
+ * reviewer dismissed or unlinked (fsa_match_dismissals, 0148 — never put a removed/wrong link back).
  */
-async function manuallyLinkedVenueIds(client: RoamClient): Promise<Set<string>> {
+async function humanDecidedVenueIds(client: RoamClient): Promise<Set<string>> {
   const set = new Set<string>();
   let from = 0;
   for (;;) {
@@ -105,6 +106,18 @@ async function manuallyLinkedVenueIds(client: RoamClient): Promise<Set<string>> 
     if (error) throw new Error(`fsa sync: manual-refs read failed: ${error.message}`);
     const rows = (data ?? []) as { entity_id: string }[];
     for (const r of rows) set.add(String(r.entity_id));
+    if (rows.length < CHUNK) break;
+    from += rows.length;
+  }
+  from = 0;
+  for (;;) {
+    const { data, error } = await loose(client)
+      .from("fsa_match_dismissals")
+      .select("venue_id")
+      .range(from, from + CHUNK - 1);
+    if (error) throw new Error(`fsa sync: dismissals read failed: ${error.message}`);
+    const rows = (data ?? []) as { venue_id: string }[];
+    for (const r of rows) set.add(String(r.venue_id));
     if (rows.length < CHUNK) break;
     from += rows.length;
   }
@@ -165,7 +178,7 @@ export async function runFsaSync(
   //    BATCHED by postcode outward code: one candidate read per block, all of that block's
   //    establishments scored against it. Same engine, same accept threshold, same decisions.
   const linked = await alreadyLinkedFhrsids(service);
-  const manual = await manuallyLinkedVenueIds(service);
+  const manual = await humanDecidedVenueIds(service);
   const blocks = new Map<string, ParsedFsaEstablishment[]>();
   for (const e of all) {
     if (!e.postcode) continue; // no block key → can't match
@@ -201,7 +214,7 @@ export async function runFsaSync(
         const res = matching.resolveCandidates({ name: e.businessName, postcode: e.postcode, address: e.address }, cands);
         if (res.decision !== "accept" || !res.best) continue;
         const venue = res.best.candidate;
-        if (manual.has(venue.id)) continue; // human correction is permanent
+        if (manual.has(venue.id)) continue; // a human decided (manual link or dismissal) — permanent
         if (claimed.has(venue.id)) continue; // already matched this run
         claimed.add(venue.id);
         pendingRefs.push({

@@ -49,6 +49,7 @@ import { adminActivityRouter } from "./adminActivity.js";
 import { adminSearchRouter } from "./adminSearch.js";
 import { adminActionsRouter } from "./adminActions.js";
 import { channelsAdminRouter } from "./channelsAdmin.js";
+import { fsaAdminRouter } from "./fsaAdmin.js";
 import { ownerDigestRouter } from "./ownerDigest.js";
 
 export const appRouter = router({
@@ -96,6 +97,7 @@ export const appRouter = router({
   adminSearch: adminSearchRouter,
   adminActions: adminActionsRouter,
   channelsAdmin: channelsAdminRouter,
+  fsaAdmin: fsaAdminRouter,
   ownerDigest: ownerDigestRouter,
 });
 

@@ -291,6 +291,42 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /** FSA review (#51): confirm a venue ↔ establishment link — the manual match of record. Audited. */
+  confirmFsaMatch: adminProcedure
+    .input(z.object({ venueId: z.string().uuid(), fhrsid: z.string().min(1).max(40) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.confirmFsaMatch(ctx.service, await actor(ctx as ActingCtx), input);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to confirm the FSA match.");
+      }
+    }),
+
+  /** FSA review: remove a wrong link and dismiss the venue so the nightly sync can't re-link it. Audited. */
+  unlinkFsaMatch: adminProcedure
+    .input(z.object({ venueId: z.string().uuid(), note: z.string().max(200).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.unlinkFsaMatch(ctx.service, await actor(ctx as ActingCtx), input);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to unlink the FSA match.");
+      }
+    }),
+
+  /** FSA review: dismiss ("no FSA record is this venue") or undo. Audited. */
+  setFsaMatchDismissed: adminProcedure
+    .input(z.object({ venueId: z.string().uuid(), dismissed: z.boolean(), note: z.string().max(200).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.setFsaMatchDismissed(ctx.service, await actor(ctx as ActingCtx), input);
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to update the FSA dismissal.");
+      }
+    }),
+
   /** Resolve a moderation queue item (approve = keep / reject = actioned). */
   resolveReport: adminProcedure
     .input(z.object({ reportId: z.string().uuid(), decision: z.enum(["approved", "rejected"]) }))

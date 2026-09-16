@@ -19,8 +19,9 @@ import { ModerationView } from "./views/Moderation";
 import { LookupView } from "./views/Lookup";
 import { AuditView } from "./views/AuditTrail";
 import { ChannelsView } from "./views/Channels";
+import { FsaReviewView } from "./views/FsaReview";
 
-type View = "overview" | "moderation" | "lookup" | "channels" | "audit";
+type View = "overview" | "moderation" | "lookup" | "channels" | "fsa" | "audit";
 type Gate = "checking" | "ok" | "forbidden" | "error";
 interface Me { id: string; role: string }
 
@@ -29,6 +30,7 @@ const NAV: Array<{ key: View; label: string }> = [
   { key: "moderation", label: "Moderation" },
   { key: "lookup", label: "Lookup" },
   { key: "channels", label: "Channels" },
+  { key: "fsa", label: "FSA ratings" },
   { key: "audit", label: "Audit trail" },
 ];
 
@@ -117,6 +119,8 @@ function Authed() {
           <LookupView canAct={canAct} onChanged={refreshBadge} />
         ) : view === "channels" ? (
           <ChannelsView canAct={canAct} />
+        ) : view === "fsa" ? (
+          <FsaReviewView canAct={canAct} />
         ) : (
           <AuditView />
         )}
