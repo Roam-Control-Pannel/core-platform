@@ -51,7 +51,7 @@ async function alreadyLinkedFhrsids(client: RoamClient): Promise<Set<string>> {
   return set;
 }
 
-type Candidate = { id: string; name: string; postcode: string };
+type Candidate = { id: string; name: string; postcode: string; address: string | null };
 
 /**
  * ALL candidate venues in one postcode outward-code block (e.g. "BT1"), paged past the row cap.
@@ -74,7 +74,12 @@ async function candidateVenuesInBlock(client: RoamClient, outward: string): Prom
     if (error) throw new Error(`fsa sync: candidate read failed: ${error.message}`);
     const rows = (data ?? []) as any[];
     for (const v of rows) {
-      out.push({ id: String(v.id), name: String(v.name ?? ""), postcode: matching.extractPostcode(v.address) });
+      out.push({
+        id: String(v.id),
+        name: String(v.name ?? ""),
+        postcode: matching.extractPostcode(v.address),
+        address: v.address == null ? null : String(v.address),
+      });
     }
     if (rows.length < CHUNK || out.length >= CANDIDATE_BLOCK_LIMIT) break;
     from += rows.length;
@@ -192,7 +197,8 @@ export async function runFsaSync(
     blocksDone++;
     if (cands.length > 0) {
       for (const e of ests) {
-        const res = matching.resolveCandidates({ name: e.businessName, postcode: e.postcode }, cands);
+        // Addresses on both sides let the engine strip locality tokens ("Cape Cod Ballymena" ↔ "Cape Cod").
+        const res = matching.resolveCandidates({ name: e.businessName, postcode: e.postcode, address: e.address }, cands);
         if (res.decision !== "accept" || !res.best) continue;
         const venue = res.best.candidate;
         if (manual.has(venue.id)) continue; // human correction is permanent

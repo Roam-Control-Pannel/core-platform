@@ -63,7 +63,7 @@ async function existingRefs(client: RoamClient, channelId: string): Promise<Set<
 }
 
 /** Block candidate venues for a member by the postcode outward code (appears in the free-text address). */
-async function candidatesFor(client: RoamClient, postcode: string): Promise<{ id: string; name: string; postcode: string; thin: boolean }[]> {
+async function candidatesFor(client: RoamClient, postcode: string): Promise<{ id: string; name: string; postcode: string; address: string | null; thin: boolean }[]> {
   const outward = membership.outwardCode(postcode);
   if (!outward) return [];
   // Escape ILIKE wildcards in the (trusted, but be safe) outward code.
@@ -79,6 +79,7 @@ async function candidatesFor(client: RoamClient, postcode: string): Promise<{ id
     id: String(v.id),
     name: String(v.name ?? ""),
     postcode: matching.extractPostcode(v.address),
+    address: v.address == null ? null : String(v.address), // lets the engine strip locality tokens
     thin: v.rating == null || v.opening_times == null, // needs a Places backfill
   }));
 }

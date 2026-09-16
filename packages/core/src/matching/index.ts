@@ -47,6 +47,89 @@ export function normaliseBusinessName(raw: string | null | undefined): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+// ── contextual name comparison (locality + descriptor stripping, containment) ─────────────────
+
+/**
+ * Words that describe WHAT a business is, not WHICH one it is. Both parties routinely differ only
+ * in these ("Starbucks Coffee Company" / "Starbucks", "The Belfry Delicatessen" / "The Belfry Deli",
+ * "Cafollas TakeAway" / "CAFOLLAS FAST FOOD"), so they are removed before the token comparison.
+ * Deliberately modest: a word here is one that appears in thousands of unrelated trading names.
+ * If stripping would leave a name EMPTY ("The Coffee Shop"), the unstripped tokens are used instead —
+ * we never compare nothing against nothing.
+ */
+const GENERIC_DESCRIPTORS = new Set([
+  "cafe", "caffe", "coffee", "coffeehouse", "shop", "store", "stores", "bar", "bars", "pub", "inn",
+  "restaurant", "restaurants", "takeaway", "takeaways", "take", "away", "fast", "food", "foods",
+  "kitchen", "kitchens", "deli", "delicatessen", "bakery", "bakers", "company", "co", "grill",
+  "diner", "eatery", "bistro", "lounge", "liquor", "saloon", "tavern", "express", "centre", "center",
+  "and", "of", "at", "on", "in", "by", "for",
+]);
+
+/** Postcode-shaped tokens (either half of a UK postcode) — never discriminating in a name. */
+const POSTCODE_TOKEN = /^(?:[a-z]{1,2}\d[a-z\d]?|\d[a-z]{2})$/;
+
+const tokenise = (s: string): string[] => s.split(" ").filter(Boolean);
+
+/**
+ * A name's DISCRIMINATING tokens, in context: normalised, minus legal suffixes (already gone), minus
+ * generic descriptors, minus any token that also occurs in EITHER party's address. The address rule
+ * is what removes locality suffixes — "Cape Cod Ballymena", "Domino's Pizza - Bangor - Abbey Street",
+ * "Subway Lisnagelvin" — data-driven from the record itself, with no hardcoded town list. Falls back
+ * (descriptors kept, then everything kept) rather than ever returning an empty set for a real name.
+ */
+export function coreNameTokens(name: string | null | undefined, addresses: readonly (string | null | undefined)[] = []): string[] {
+  const all = tokenise(normaliseBusinessName(name));
+  if (all.length === 0) return [];
+  const addressTokens = new Set<string>();
+  for (const a of addresses) for (const t of tokenise(normaliseBusinessName(a))) addressTokens.add(t);
+  // Drop address/postcode tokens and ≤2-letter tags ("(NI)", "UK", "Mr") — never discriminating.
+  const notLocal = all.filter((t) => !addressTokens.has(t) && !POSTCODE_TOKEN.test(t) && !/^[a-z]{1,2}$/.test(t));
+  const specific = notLocal.filter((t) => !GENERIC_DESCRIPTORS.has(t));
+  if (specific.length > 0) return specific;
+  if (notLocal.length > 0) return notLocal;
+  return all;
+}
+
+/**
+ * Token-containment similarity: 1 when the two core token sets are identical, 0.9 when one is
+ * contained in the other and the contained set is still discriminating (≥ 3 characters — "kfc" is
+ * a brand; a lone digit is not), else 0. Order-insensitive. This is what accepts
+ * "Quirky Cricketer" ⊆ "Quirky Cricketer Coffee Dock" while "Sweet Treats" vs "The Corner Shop"
+ * (no shared core token) stays 0.
+ */
+export function tokenContainment(a: readonly string[], b: readonly string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const A = new Set(a);
+  const B = new Set(b);
+  const [small, big] = A.size <= B.size ? [A, B] : [B, A];
+  for (const t of small) if (!big.has(t)) return 0;
+  if (A.size === B.size) return 1;
+  return [...small].join("").length >= 3 ? 0.9 : 0;
+}
+
+/**
+ * Name similarity IN CONTEXT — the score scoreMatch uses. The maximum of:
+ *   - the plain bigram Dice (the original behaviour, so nothing that matched before scores lower),
+ *   - Dice over the core tokens (locality + descriptors removed),
+ *   - Dice over the core tokens with spaces removed ("smashnbird" == "smash n bird"),
+ *   - token containment.
+ * Fail-closed is preserved by scoreMatch/resolveCandidates: this only decides the NAME component;
+ * the accept threshold, the postcode bonus and the ambiguity margin are untouched.
+ */
+export function nameSimilarityInContext(target: MatchParty, candidate: MatchParty): number {
+  const plain = nameSimilarity(target.name, candidate.name);
+  const addresses = [target.address, candidate.address];
+  const ta = coreNameTokens(target.name, addresses);
+  const tb = coreNameTokens(candidate.name, addresses);
+  if (ta.length === 0 || tb.length === 0) return plain;
+  const coreA = ta.join(" ");
+  const coreB = tb.join(" ");
+  const coreDice = nameSimilarity(coreA, coreB);
+  const compactDice = nameSimilarity(ta.join(""), tb.join(""));
+  const containment = tokenContainment(ta, tb);
+  return Math.max(plain, coreDice, compactDice, containment);
+}
+
 /** Character-bigram multiset of a string. */
 function bigrams(s: string): Map<string, number> {
   const m = new Map<string, number>();
@@ -105,6 +188,11 @@ export type PostcodeAgreement = "full" | "outward" | "none";
 export interface MatchParty {
   name: string;
   postcode?: string | null;
+  /**
+   * Free-text address, when known. Used ONLY to strip locality tokens out of the name before
+   * comparison (see coreNameTokens) — never as a match key. Optional; absent = no stripping.
+   */
+  address?: string | null;
 }
 
 export interface MatchScore {
@@ -119,12 +207,17 @@ export interface MatchScore {
 /**
  * Weights. Name carries most of the signal; postcode agreement adds a bounded bonus. A name-only
  * match (no postcode agreement) therefore CANNOT reach the accept threshold on its own — it can only
- * ever reach review, which is the fail-closed behaviour we want. Provisional until roster-calibrated.
+ * ever reach review, which is the fail-closed behaviour we want.
+ *
+ * OUTWARD-ONLY agreement is capped BELOW accept too (1.0 × 0.8 + 0.04 = 0.84 < 0.85): a perfect name
+ * in the same outward code is exactly the chain's-other-branch case (the Greggs on the next street),
+ * and linking the wrong branch's hygiene rating is the legal exposure this engine exists to prevent.
+ * Auto-accept therefore requires FULL postcode agreement; everything else is at most review.
  */
 export const NAME_WEIGHT = 0.8;
 export const POSTCODE_BONUS: Readonly<Record<PostcodeAgreement, number>> = {
   full: 0.2,
-  outward: 0.1,
+  outward: 0.04,
   none: 0,
 };
 
@@ -151,7 +244,7 @@ export function postcodeAgreement(a: string | null | undefined, b: string | null
 
 /** Score a single candidate against the target: name similarity, lifted by postcode agreement. */
 export function scoreMatch(target: MatchParty, candidate: MatchParty): MatchScore {
-  const nameScore = nameSimilarity(target.name, candidate.name);
+  const nameScore = nameSimilarityInContext(target, candidate);
   const pc = postcodeAgreement(target.postcode, candidate.postcode);
   const score = Math.min(1, nameScore * NAME_WEIGHT + POSTCODE_BONUS[pc]);
   return { score, nameScore, postcode: pc };
