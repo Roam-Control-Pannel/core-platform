@@ -8,31 +8,47 @@ import { mapFsaRatings } from "./venues.js";
  * renders as a status, NEVER as a number; anything unrenderable is DROPPED (the card shows no badge).
  */
 
-const est = (fhrsid: string, rating_value: string) => ({
+const est = (fhrsid: string, rating_value: string, rating_key: string | null = null) => ({
   fhrsid,
   rating_value,
+  rating_key,
   rating_date: "2025-01-01",
   synced_at: "2025-06-01T00:00:00Z",
   local_authority: "Belfast",
 });
 
 describe("mapFsaRatings", () => {
-  it("maps a genuine 0–5 score to a score rating with a badge", () => {
+  it("maps a genuine 0–5 score to a score rating with the official badge for its FSA key", () => {
     const out = mapFsaRatings(
       [{ entity_id: "v1", external_id: "111" }],
-      [est("111", "5")],
+      [est("111", "5", "fhrs_5_en-gb")],
     );
     expect(out.v1?.rating).toEqual({ kind: "score", score: 5 });
-    expect(out.v1?.badge).toEqual({ assetId: "fhrs-5", alt: "Food Hygiene Rating: 5 out of 5" });
+    expect(out.v1?.badge).toEqual({ assetId: "fhrs_5_en-gb", alt: "Food Hygiene Rating: 5 out of 5 (Very good)" });
     expect(out.v1?.fhrsid).toBe("111");
   });
 
-  it("maps a non-numeric status to its kind, never a number", () => {
+  it("still renders the score with NO official badge when the row carries no FSA key", () => {
+    const out = mapFsaRatings([{ entity_id: "v1", external_id: "111" }], [est("111", "5")]);
+    expect(out.v1?.rating).toEqual({ kind: "score", score: 5 });
+    expect(out.v1?.badge).toBeNull();
+  });
+
+  it("maps a non-numeric status to its kind, never a number — with its own official badge", () => {
     const out = mapFsaRatings(
       [{ entity_id: "v2", external_id: "222" }],
-      [est("222", "AwaitingInspection")],
+      [est("222", "AwaitingInspection", "fhrs_awaitinginspection_en-gb")],
     );
     expect(out.v2?.rating.kind).toBe("awaiting");
+    expect(out.v2?.badge).toEqual({
+      assetId: "fhrs_awaitinginspection_en-gb",
+      alt: "Food Hygiene Rating: Awaiting inspection",
+    });
+  });
+
+  it("refuses an official badge whose key disagrees with the displayed value", () => {
+    const out = mapFsaRatings([{ entity_id: "v2", external_id: "222" }], [est("222", "4", "fhrs_5_en-gb")]);
+    expect(out.v2?.rating).toEqual({ kind: "score", score: 4 });
     expect(out.v2?.badge).toBeNull();
   });
 

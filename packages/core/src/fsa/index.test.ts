@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   isDisplayableRating,
-  ratingBadge,
+  officialBadge,
+  ratingAlt,
+  FHRS_BADGE_KEYS,
   parseFsaEstablishment,
   FSA_ATTRIBUTION,
 } from "./index.js";
@@ -40,10 +42,72 @@ describe("isDisplayableRating — the never-show-a-status-as-0 guardrail", () =>
   });
 });
 
-describe("ratingBadge", () => {
-  it("gives a self-hosted asset id + accessible alt for each score", () => {
-    expect(ratingBadge(5)).toEqual({ assetId: "fhrs-5", alt: "Food Hygiene Rating: 5 out of 5" });
-    expect(ratingBadge(0)).toEqual({ assetId: "fhrs-0", alt: "Food Hygiene Rating: 0 out of 5" });
+describe("officialBadge — the official FHRS artwork, keyed by the FSA's own rating key", () => {
+  it("returns the asset id (= the FSA key) + an alt carrying the sticker's descriptor for each score", () => {
+    for (const score of [0, 1, 2, 3, 4, 5] as const) {
+      const key = `fhrs_${score}_en-gb`;
+      expect(officialBadge(key, { kind: "score", score })).toEqual({
+        assetId: key,
+        alt: ratingAlt({ kind: "score", score }),
+      });
+    }
+    expect(officialBadge("fhrs_5_en-gb", { kind: "score", score: 5 })?.alt).toBe(
+      "Food Hygiene Rating: 5 out of 5 (Very good)",
+    );
+    expect(officialBadge("fhrs_0_en-gb", { kind: "score", score: 0 })?.alt).toBe(
+      "Food Hygiene Rating: 0 out of 5 (Urgent improvement necessary)",
+    );
+  });
+
+  it("gives 'awaiting inspection' its own official artwork — never a numeric one", () => {
+    expect(officialBadge("fhrs_awaitinginspection_en-gb", { kind: "awaiting" })).toEqual({
+      assetId: "fhrs_awaitinginspection_en-gb",
+      alt: "Food Hygiene Rating: Awaiting inspection",
+    });
+    // A status paired with a numeric key is a contradiction → no official badge.
+    expect(officialBadge("fhrs_0_en-gb", { kind: "awaiting" })).toBeNull();
+    expect(officialBadge("fhrs_5_en-gb", { kind: "exempt" })).toBeNull();
+  });
+
+  it("has no artwork for 'exempt' (the FSA pack ships none) → in-house mark, words only", () => {
+    expect(officialBadge("fhrs_exempt_en-gb", { kind: "exempt" })).toBeNull();
+    expect(ratingAlt({ kind: "exempt" })).toBe("Food Hygiene Rating: Exempt");
+  });
+
+  it("refuses a key that disagrees with the displayed value (never the wrong sticker)", () => {
+    expect(officialBadge("fhrs_5_en-gb", { kind: "score", score: 4 })).toBeNull();
+    expect(officialBadge("fhrs_exempt_en-gb", { kind: "score", score: 5 })).toBeNull();
+  });
+
+  it("returns null for keys we ship no artwork for (Welsh, Scotland's FHIS, unknown, awaiting publication)", () => {
+    expect(officialBadge("fhrs_5_cy-gb", { kind: "score", score: 5 })).toBeNull();
+    expect(officialBadge("fhis_pass_en-gb", { kind: "none" })).toBeNull();
+    expect(officialBadge("fhrs_awaitingpublication_en-gb", { kind: "awaiting" })).toBeNull();
+    expect(officialBadge("something_new", { kind: "score", score: 5 })).toBeNull();
+  });
+
+  it("never derives a key: a missing key means no official badge (the UI falls back to its own mark)", () => {
+    expect(officialBadge(null, { kind: "score", score: 5 })).toBeNull();
+    expect(officialBadge(undefined, { kind: "exempt" })).toBeNull();
+    expect(officialBadge("  ", { kind: "score", score: 5 })).toBeNull();
+  });
+
+  it("is tolerant of case/whitespace in the key, and 'none' never gets a badge", () => {
+    expect(officialBadge(" FHRS_5_EN-GB ", { kind: "score", score: 5 })?.assetId).toBe("fhrs_5_en-gb");
+    expect(officialBadge("fhrs_5_en-gb", { kind: "none" })).toBeNull();
+    expect(ratingAlt({ kind: "none" })).toBeNull();
+  });
+
+  it("ships exactly the keys the FSA artwork pack covers (six scores + awaiting inspection)", () => {
+    expect([...FHRS_BADGE_KEYS].sort()).toEqual([
+      "fhrs_0_en-gb",
+      "fhrs_1_en-gb",
+      "fhrs_2_en-gb",
+      "fhrs_3_en-gb",
+      "fhrs_4_en-gb",
+      "fhrs_5_en-gb",
+      "fhrs_awaitinginspection_en-gb",
+    ]);
   });
 });
 

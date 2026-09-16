@@ -572,7 +572,11 @@ async function approvedOwnerEmail(service: ServiceClientLoose, venueId: string):
 export interface VenueFsaRating {
   /** The display decision (never coerces a status to a number). */
   rating: coreFsa.DisplayableRating;
-  /** Official-badge asset id + alt, present only for a genuine score. */
+  /**
+   * The official FHRS badge (asset id = the FSA rating key, served from /fsa/<assetId>) + alt text.
+   * Present for scores AND statuses when we ship that key's artwork; null when we don't (the web then
+   * renders its own mark). See @roam/core/fsa.officialBadge.
+   */
   badge: { assetId: string; alt: string } | null;
   ratingValue: string;
   ratingDate: string | null;
@@ -587,6 +591,8 @@ export interface VenueFsaRating {
 /** The fsa_establishments columns the display builder needs (subset; table newer than gen types). */
 type FsaEstablishmentRow = {
   rating_value: string | null;
+  /** FSA RatingKey, e.g. "fhrs_5_en-gb" — selects the official badge artwork. */
+  rating_key?: string | null;
   rating_date: string | null;
   synced_at: string | null;
   local_authority: string | null;
@@ -603,7 +609,7 @@ function buildVenueFsaRating(fhrsid: string, est: FsaEstablishmentRow): VenueFsa
   if (rating.kind === "none") return null; // nothing renderable — show no badge at all
   return {
     rating,
-    badge: rating.kind === "score" ? coreFsa.ratingBadge(rating.score) : null,
+    badge: coreFsa.officialBadge(est.rating_key ?? null, rating),
     ratingValue: String(est.rating_value ?? ""),
     ratingDate: est.rating_date ?? null,
     syncedAt: est.synced_at ?? null,
@@ -688,7 +694,7 @@ export const venuesRouter = router({
 
       const { data: est } = await db
         .from("fsa_establishments")
-        .select("rating_value, rating_date, synced_at, local_authority")
+        .select("rating_value, rating_key, rating_date, synced_at, local_authority")
         .eq("fhrsid", fhrsid)
         .maybeSingle();
       if (!est) return null;
@@ -724,7 +730,7 @@ export const venuesRouter = router({
 
       const { data: ests } = await db
         .from("fsa_establishments")
-        .select("fhrsid, rating_value, rating_date, synced_at, local_authority")
+        .select("fhrsid, rating_value, rating_key, rating_date, synced_at, local_authority")
         .in("fhrsid", fhrsids);
       return mapFsaRatings(refRows, (ests ?? []) as (FsaEstablishmentRow & { fhrsid: string })[]);
     }),

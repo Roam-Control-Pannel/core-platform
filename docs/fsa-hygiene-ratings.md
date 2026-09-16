@@ -16,6 +16,39 @@ as words — never a number (`@roam/core/fsa.isDisplayableRating`).
 Read path: `venues.fsaRating` (single) / `venues.fsaRatings` (batch, per grid) →
 `external_refs` (`dataset='fsa'`) → `fsa_establishments`. Both tables are publicly readable.
 
+## Official badge artwork (decision #6: self-hosted, unaltered)
+
+The venue page shows the FSA's **own** Food Hygiene Rating sticker, not a reproduction. The data is
+OGL; the sticker is FSA branding, permitted for display alongside data taken from the FSA API under
+the FSA's image terms (unmodified, kept current, attributed) — confirm those terms on the API help
+page before adding or changing files. How it is wired:
+
+- **Key → file.** The FSA names each rating image by the establishment's `RatingKey`
+  (`fhrs_5_en-gb`, `fhrs_exempt_en-gb`, …); the sync stores it verbatim (`rating_key`). The keys in
+  the live NI register (2026-09-16) are `fhrs_0…5_en-gb`, `fhrs_awaitinginspection_en-gb` and
+  `fhrs_exempt_en-gb` — NI runs FHRS in English, so no Welsh (`cy-gb`) or Scottish (FHIS) artwork.
+- **What we ship (2026-09-16).** The FSA's online artwork pack, supplied by Andrew and committed
+  byte-for-byte (GitHub upload, branch `RoamLocaApp-patch-1`, commit `5cf4ebe`; renamed to the rating
+  keys, SHA-256 unchanged): seven JPEGs at 150 dpi — the six score stickers (1152×804) and the
+  "Awaiting inspection" banner (1152×591). Each file was viewed and checked against the rating it is
+  filed under before renaming. **The pack has no "Exempt" sticker**, so `fhrs_exempt_en-gb` is NOT in
+  the allowlist and exempt venues (1,075 in NI) keep the in-house text mark. Source page URL + the
+  FSA's image-use wording: _to be recorded here_ (Andrew to supply from the download page).
+- **Server gate** — `@roam/core/fsa.officialBadge(ratingKey, rating)`: returns the badge only when the
+  key is in `FHRS_BADGE_KEYS` (the allowlist of shipped files) **and** agrees with the displayed
+  rating (a `fhrs_5` key on a value of 4 yields no official badge, never the wrong sticker). A status
+  never gets a numeric badge. A missing key is never derived → no official badge.
+- **Web gate** — `apps/web/src/lib/fsaBadges.ts` `FSA_BADGE_ASSETS`: one entry per file actually in
+  `apps/web/public/fsa/`, with the file's intrinsic size (read from the file, so the box is reserved
+  before load). No entry, or a load error → `FsaBadge` falls back to the in-house mark. A page can
+  never show a broken image or lose the rating over an asset gap.
+- **Never edit the files** (no recolour, crop or rename). The card chip (`FsaChip`) stays the compact
+  in-house mark — a sticker built for a shop window doesn't shrink to a 60 px pill.
+
+To add artwork: drop the official file in `public/fsa/<rating_key>.<ext>`, add its key to
+`FHRS_BADGE_KEYS` (core, with the test's expected list) and its entry to `FSA_BADGE_ASSETS` (web),
+and record the download source + date here.
+
 ## Pipeline
 
 1. **Corpus + auto-match — `sync-fsa-ni`** (`packages/api/src/jobs/syncFsaNi.ts`). Pulls each configured

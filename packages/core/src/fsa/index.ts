@@ -49,16 +49,86 @@ export function isDisplayableRating(value: string | number | null | undefined): 
   return { kind: "none" };
 }
 
-/** Official FHRS badge metadata for a genuine score — the self-hosted SVG asset id + alt text (decision #6). */
+// ---------------------------------------------------------------------------
+// Official FHRS badge artwork (decision #6: self-hosted, unaltered FSA artwork, no third-party script)
+// ---------------------------------------------------------------------------
+
+/**
+ * The FSA names its official rating images by the establishment's RatingKey ("fhrs_5_en-gb",
+ * "fhrs_exempt_en-gb", …), which the sync stores verbatim (fsa_establishments.rating_key). We ship the
+ * official image for each key in THIS allowlist under apps/web/public/fsa/<key>.<ext>. The live NI
+ * register (2026-09-16) carries fhrs_0…5, awaitinginspection and exempt (all en-gb; NI runs FHRS in
+ * English); the FSA's online artwork pack supplies the six scores and "Awaiting inspection" but NO
+ * "Exempt" sticker, so exempt is deliberately absent here and renders as the in-house text mark.
+ * A key outside this list — exempt, a Welsh cy-gb key, Scotland's FHIS keys, or a key the FSA adds
+ * later — gets NO official asset, so the UI falls back to its own mark and can never show a broken
+ * image or the wrong scheme's artwork. Grow it only when the matching file ships.
+ */
+export const FHRS_BADGE_KEYS: ReadonlySet<string> = new Set([
+  "fhrs_0_en-gb",
+  "fhrs_1_en-gb",
+  "fhrs_2_en-gb",
+  "fhrs_3_en-gb",
+  "fhrs_4_en-gb",
+  "fhrs_5_en-gb",
+  "fhrs_awaitinginspection_en-gb",
+]);
+
+/** The descriptor the official sticker prints under each score — the artwork's own words. */
+export const FHRS_DESCRIPTOR: Readonly<Record<0 | 1 | 2 | 3 | 4 | 5, string>> = {
+  0: "Urgent improvement necessary",
+  1: "Major improvement necessary",
+  2: "Improvement necessary",
+  3: "Generally satisfactory",
+  4: "Good",
+  5: "Very good",
+};
+
+/** Official badge metadata: the self-hosted asset id (= the FSA rating key) + accessible alt text. */
 export interface RatingBadge {
-  /** Our self-hosted asset id, e.g. "fhrs-5" (served from the web app, unaltered official artwork). */
+  /** The FSA rating key, which is also our asset id (apps/web/public/fsa/<assetId>.<ext>). */
   assetId: string;
-  /** Accessible alt / aria-label. */
+  /** Accessible alt / aria-label — carries the descriptor the artwork prints. */
   alt: string;
 }
 
-export function ratingBadge(score: 0 | 1 | 2 | 3 | 4 | 5): RatingBadge {
-  return { assetId: `fhrs-${score}`, alt: `Food Hygiene Rating: ${score} out of 5` };
+/** Accessible wording for a displayable rating (null for "none"). Shared by badge, chip and alt text. */
+export function ratingAlt(rating: DisplayableRating): string | null {
+  if (rating.kind === "score") return `Food Hygiene Rating: ${rating.score} out of 5 (${FHRS_DESCRIPTOR[rating.score]})`;
+  if (rating.kind === "awaiting") return "Food Hygiene Rating: Awaiting inspection";
+  if (rating.kind === "exempt") return "Food Hygiene Rating: Exempt";
+  return null;
+}
+
+/** The rating keys that legitimately express a displayed rating — the artwork must match what we say. */
+function keysForRating(rating: DisplayableRating): string[] {
+  const locales = ["en-gb", "cy-gb"];
+  switch (rating.kind) {
+    case "score":
+      return locales.map((l) => `fhrs_${rating.score}_${l}`);
+    case "awaiting":
+      return locales.flatMap((l) => [`fhrs_awaitinginspection_${l}`, `fhrs_awaitingpublication_${l}`]);
+    case "exempt":
+      return locales.map((l) => `fhrs_exempt_${l}`);
+    default:
+      return [];
+  }
+}
+
+/**
+ * The official badge for a rating, or null when we hold no official artwork for it. Requires the
+ * FSA's OWN rating key (never derived from the value): it must be one we ship AND agree with the
+ * displayed rating, so a stale or mismatched key (the value says 4, the key says fhrs_5) yields no
+ * official badge rather than the wrong sticker. A status never gets a numeric badge — the display
+ * decision is made first by isDisplayableRating and the key is only allowed to confirm it.
+ */
+export function officialBadge(ratingKey: string | null | undefined, rating: DisplayableRating): RatingBadge | null {
+  if (!ratingKey) return null;
+  const key = ratingKey.trim().toLowerCase();
+  if (!FHRS_BADGE_KEYS.has(key)) return null;
+  if (!keysForRating(rating).includes(key)) return null;
+  const alt = ratingAlt(rating);
+  return alt ? { assetId: key, alt } : null;
 }
 
 /**
