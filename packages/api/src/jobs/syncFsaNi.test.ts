@@ -12,7 +12,7 @@ const CFG: FsaConfig = { baseUrl: "https://fsa.example", authorityIds: [1], page
  * Models the sync's three reads: the linked-fhrsid page (external_refs), the manual-refs page
  * (external_refs filtered by method='manual'), and a postcode block's venues (venues, paged).
  */
-function makeService(opts: { venues?: any[]; linked?: any[]; manualRefs?: any[] }) {
+function makeService(opts: { venues?: any[]; linked?: any[]; manualRefs?: any[]; dismissed?: any[] }) {
   const captures = { fsaUpserts: [] as any[], refUpserts: [] as any[], venueReads: 0 };
   function builder(table: string): any {
     let manualFilter = false;
@@ -32,6 +32,7 @@ function makeService(opts: { venues?: any[]; linked?: any[]; manualRefs?: any[] 
         if (table === "external_refs") {
           return { data: manualFilter ? (opts.manualRefs ?? []) : (opts.linked ?? []), error: null };
         }
+        if (table === "fsa_match_dismissals") return { data: opts.dismissed ?? [], error: null };
         return { data: [], error: null };
       },
       upsert: async (payload: any) => {
@@ -121,6 +122,14 @@ describe("runFsaSync", () => {
   it("never overwrites a human manual match", async () => {
     stubFsaFetch([EST]);
     const { client, captures } = makeService({ venues: [MATCHING_VENUE], linked: [], manualRefs: [{ entity_id: "v-1" }] });
+    const r = await runFsaSync(client, CFG);
+    expect(r.matched).toBe(0);
+    expect(captures.refUpserts).toHaveLength(0);
+  });
+
+  it("never auto-links a venue a reviewer dismissed or unlinked (fsa_match_dismissals)", async () => {
+    stubFsaFetch([EST]);
+    const { client, captures } = makeService({ venues: [MATCHING_VENUE], linked: [], dismissed: [{ venue_id: "v-1" }] });
     const r = await runFsaSync(client, CFG);
     expect(r.matched).toBe(0);
     expect(captures.refUpserts).toHaveLength(0);
