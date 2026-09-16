@@ -6,7 +6,7 @@
 -- HQ); the service side can; and a dismissal dies with its venue (cascade).
 -- ============================================================================
 begin;
-select plan(9);
+select plan(10);
 
 -- ── structural ───────────────────────────────────────────────────────────────
 select has_table('public', 'fsa_match_dismissals', 'fsa_match_dismissals exists');
@@ -48,21 +48,25 @@ begin
     insert into fsa_match_dismissals (venue_id) values ('00000000-0000-0000-0000-00000000e8a1');
   exception when others then anon_write_blocked := true; end;
 
+  -- A DELETE under deny-by-omission RLS does not raise: it silently matches zero rows (so the guard
+  -- trigger never fires either). The proof of denial is that the row SURVIVES the attempt.
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000e8ff","role":"authenticated"}', true);
   begin
     delete from fsa_match_dismissals where venue_id = '00000000-0000-0000-0000-00000000e8a1';
-  exception when others then auth_write_blocked := true; end;
+  exception when others then null; end;
 
   perform set_config('role', 'postgres', true);
+  select exists (select 1 from fsa_match_dismissals where venue_id = '00000000-0000-0000-0000-00000000e8a1')
+    into auth_write_blocked;
   insert into _fd values
     ('anon_no_read', anon_rows = 0),
     ('anon_no_write', anon_write_blocked),
-    ('auth_no_write', auth_write_blocked);
+    ('auth_no_delete', auth_write_blocked);
 end $$;
-select ok((select v from _fd where k = 'anon_no_read'),  'anon sees no dismissal rows (deny-by-omission select)');
-select ok((select v from _fd where k = 'anon_no_write'), 'anon cannot insert a dismissal');
-select ok((select v from _fd where k = 'auth_no_write'), 'authenticated cannot delete a dismissal');
+select ok((select v from _fd where k = 'anon_no_read'),   'anon sees no dismissal rows (deny-by-omission select)');
+select ok((select v from _fd where k = 'anon_no_write'),  'anon cannot insert a dismissal (RLS raises)');
+select ok((select v from _fd where k = 'auth_no_delete'), 'authenticated cannot delete a dismissal (row survives the attempt)');
 
 -- ── cascade ───────────────────────────────────────────────────────────────────
 delete from venues where id = '00000000-0000-0000-0000-00000000e8a2';
