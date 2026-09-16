@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   normaliseBusinessName,
   nameSimilarity,
+  coreNameTokens,
+  tokenContainment,
   extractPostcode,
   postcodeAgreement,
   scoreMatch,
@@ -45,6 +47,87 @@ describe("nameSimilarity", () => {
     expect(nameSimilarity("", "")).toBe(0);
     expect(nameSimilarity("Greggs", "")).toBe(0);
     expect(nameSimilarity(null, "Greggs")).toBe(0);
+  });
+});
+
+describe("coreNameTokens / tokenContainment / nameSimilarityInContext", () => {
+  it("strips locality tokens that occur in either party's address (no hardcoded town list)", () => {
+    expect(coreNameTokens("Cape Cod Ballymena", ["12 Broughshane St, Ballymena BT42 3AU"])).toEqual(["cape", "cod"]);
+    expect(coreNameTokens("Domino's Pizza - Bangor - Abbey Street (NI)", ["Abbey Street, Bangor BT20 4JB"])).toEqual([
+      "dominos",
+      "pizza",
+    ]);
+    expect(coreNameTokens("Subway Lisnagelvin", [null, "Lisnagelvin Shopping Centre, Derry BT47 6DF"])).toEqual(["subway"]);
+  });
+
+  it("strips generic descriptors but never empties a real name", () => {
+    expect(coreNameTokens("Starbucks Coffee Company")).toEqual(["starbucks"]);
+    expect(coreNameTokens("The Belfry Delicatessen")).toEqual(["belfry"]);
+    expect(coreNameTokens("The Coffee Shop")).toEqual(["coffee", "shop"]); // fallback: descriptors kept
+  });
+
+  it("containment: identical → 1, contained + discriminating → 0.9, disjoint → 0, a lone short token → 0", () => {
+    expect(tokenContainment(["cape", "cod"], ["cape", "cod"])).toBe(1);
+    expect(tokenContainment(["quirky", "cricketer"], ["quirky", "cricketer", "dock"])).toBe(0.9);
+    expect(tokenContainment(["kfc"], ["kfc", "omniplex"])).toBe(0.9);
+    expect(tokenContainment(["sweet", "treats"], ["corner"])).toBe(0);
+    expect(tokenContainment(["b5"], ["b5", "grill"])).toBe(0);
+  });
+
+  it("accepts the real-world variants the plain Dice rejected (same full postcode)", () => {
+    const pairs: [string, string, string][] = [
+      ["Cape Cod Ballymena", "Cape Cod", "Broughshane St, Ballymena BT42 3AU"],
+      ["SmashnBird - (Botanic Avenue)", "Smash n Bird", "Botanic Avenue, Belfast BT7 1JR"],
+      ["Cafollas TakeAway - Armagh", "CAFOLLAS FAST FOOD", "Armagh BT61 7LJ"],
+      ["Starbucks Coffee Company", "Starbucks", "Belfast BT14 7EN"],
+      ["The Belfry Delicatessen", "The Belfry Deli", "Coleraine BT52 1DS"],
+      ["Subway", "Subway Lisnagelvin", "Lisnagelvin, Derry BT47 6DF"],
+      ["The Crown Liquor Saloon", "Crown Bar", "Great Victoria St, Belfast BT2 7BA"],
+      ["THE QUIRKY CRICKETER", "The Quirky Cricketer Coffee Dock", "Lisburn BT27 4AF"],
+    ];
+    for (const [roam, fsa, address] of pairs) {
+      const r = resolveCandidates(
+        { name: fsa, postcode: extractPostcode(address), address },
+        [{ id: "v", name: roam, postcode: extractPostcode(address), address }],
+      );
+      expect(r.decision, `${roam} ↔ ${fsa}`).toBe("accept");
+    }
+  });
+
+  it("still rejects unrelated names at the same postcode (fail-closed)", () => {
+    const address = "Belfast BT9 7HN";
+    const pairs: [string, string][] = [
+      ["shake it milksake and dessert bar", "Greggs PLC"],
+      ["Cafe Connect @ LPCCC", "LAGAN VALLEY HOSPITAL"],
+      ["Sweet Treats", "The Corner Shop"],
+      ["Domino's Pizza - Belfast", "Greens Pizza"],
+    ];
+    for (const [roam, fsa] of pairs) {
+      const r = resolveCandidates(
+        { name: fsa, postcode: "BT9 7HN", address },
+        [{ id: "v", name: roam, postcode: "BT9 7HN", address }],
+      );
+      expect(r.decision, `${roam} ↔ ${fsa}`).not.toBe("accept");
+    }
+  });
+
+  it("a chain's two branches on one postcode STILL go to review (ambiguity margin untouched)", () => {
+    const r = resolveCandidates(
+      { name: "Subway", postcode: "BT11 9AE", address: "Kennedy Centre, Belfast BT11 9AE" },
+      [
+        { id: "s1", name: "Subway", postcode: "BT11 9AE", address: "Kennedy Centre, Belfast BT11 9AE" },
+        { id: "s2", name: "Subway Kennedy Centre", postcode: "BT11 9AE", address: "Kennedy Centre, Belfast BT11 9AE" },
+      ],
+    );
+    expect(r.decision).toBe("review");
+  });
+
+  it("never lifts a strong name past accept without full-postcode agreement", () => {
+    const r = resolveCandidates(
+      { name: "Cape Cod", postcode: "BT42 3AU", address: "Ballymena BT42 3AU" },
+      [{ id: "v", name: "Cape Cod Ballymena", postcode: "BT42 9ZZ", address: "Ballymena BT42 9ZZ" }],
+    );
+    expect(r.decision).toBe("review");
   });
 });
 
