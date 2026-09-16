@@ -1,0 +1,57 @@
+/*
+ * FsaBadge — the official FHRS sticker on a venue page. A CSS Module because the layout flips at
+ * phone width (media query) and the artwork needs a plate that reads on both themes.
+ *
+ * Desktop: sticker (fixed width) · dates beside it. Phones (< 600px): sticker full-width on top,
+ * dates beneath. The sticker is the FSA's own black + green artwork and is never recoloured; the
+ * plate is ours — a hairline border so the black artwork doesn't float on the dark theme, and the
+ * page's paper colour so it sits in the panel system like the other venue facts.
+ */
+
+.official {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: var(--space-3);
+  background: var(--paper);
+  min-width: 0;
+}
+
+/* The artwork: width-bound, height from the file's own aspect (width/height attrs + auto height). */
+.sticker {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 8px; /* the artwork's own corner radius is inside its box; this only rounds the bitmap edge */
+}
+
+.meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dates {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.council {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 599px) {
+  .official {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  .sticker {
+    width: 100%;
+  }
+}

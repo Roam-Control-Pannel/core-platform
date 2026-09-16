@@ -1,21 +1,27 @@
 /**
- * FsaBadge — the FSA food-hygiene rating on a venue page (C1-b).
+ * FsaBadge — the FSA food-hygiene rating on a venue page (C1-b; official artwork per decision #6).
  *
  * Self-contained, like the other venue panels: it fetches `venues.fsaRating`, which resolves the
  * rating SERVER-SIDE via @roam/core/fsa (so the legally-sensitive "never show a status as 0" rule
  * lives in exactly one place and the web bundle never imports core). This component only renders the
  * already-decided result:
- *   - score   → the 0–5 rating shown as a self-hosted, on-brand badge (no third-party widget script);
- *   - awaiting/exempt → that status in words (NEVER a number);
+ *   - score / awaiting / exempt with an official badge we ship → the FSA's own sticker (unaltered
+ *     artwork from public/fsa/, chosen by the FSA rating key the server already validated);
+ *   - the same without shipped artwork (or if the file fails to load) → the in-house mark, so the
+ *     rating is never lost and a broken image never shows;
  *   - none / no match / not-yet-configured → renders nothing.
  *
  * The FSA's open-data terms require the RatingDate and an Open Government Licence attribution wherever
- * the rating is shown — both are rendered here, with a link to the establishment's FSA page.
+ * the rating is shown — both are rendered here, with a link to the establishment's FSA page. The
+ * sticker prints its own descriptor ("Very good"), so the text beside it carries the dates; the
+ * accessible name carries the descriptor for screen readers either way.
  */
 "use client";
 
 import { useEffect, useState } from "react";
 import { useTrpc } from "./TrpcProvider";
+import { fsaBadgeAsset } from "../lib/fsaBadges";
+import styles from "./FsaBadge.module.css";
 
 type DisplayableRating =
   | { kind: "score"; score: 0 | 1 | 2 | 3 | 4 | 5 }
@@ -25,6 +31,7 @@ type DisplayableRating =
 
 interface FsaRating {
   rating: DisplayableRating;
+  /** Official artwork: asset id = the FSA rating key (server-validated against what we ship). */
   badge: { assetId: string; alt: string } | null;
   ratingValue: string;
   ratingDate: string | null;
@@ -54,9 +61,12 @@ function fmtDate(iso: string | null): string | null {
 export function FsaBadge({ venueId }: { venueId: string }) {
   const trpc = useTrpc();
   const [data, setData] = useState<FsaRating | null | undefined>(undefined);
+  // Set when the official file fails to load (missing, blocked, corrupt) — the in-house mark takes over.
+  const [artworkFailed, setArtworkFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setArtworkFailed(false);
     const q = trpc.venues.fsaRating as unknown as {
       query: (i: { venueId: string }) => Promise<FsaRating | null>;
     };
@@ -71,32 +81,60 @@ export function FsaBadge({ venueId }: { venueId: string }) {
 
   const rated = fmtDate(data.ratingDate);
   const checked = fmtDate(data.syncedAt);
+  const asset = artworkFailed ? null : fsaBadgeAsset(data.badge?.assetId);
+  const headline =
+    data.rating.kind === "score"
+      ? RATING_WORD[data.rating.score]
+      : data.rating.kind === "awaiting"
+        ? "Rating awaited"
+        : "Exempt from rating";
 
   return (
     <section aria-label="Food hygiene rating" style={{ display: "grid", gap: "var(--space-2)" }}>
       <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
         Food hygiene rating
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", border: "1px solid var(--line)", borderRadius: 12, padding: "var(--space-3)", background: "var(--paper)" }}>
-        {data.rating.kind === "score" ? (
-          <ScoreMark score={data.rating.score} alt={data.badge?.alt ?? `Food Hygiene Rating: ${data.rating.score} out of 5`} />
-        ) : (
-          <StatusMark label={data.rating.kind === "awaiting" ? "Awaiting inspection" : "Exempt"} />
-        )}
-        <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-          {data.rating.kind === "score" ? (
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>{RATING_WORD[data.rating.score]}</div>
-          ) : (
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>
-              {data.rating.kind === "awaiting" ? "Rating awaited" : "Exempt from rating"}
+
+      {asset && data.badge ? (
+        // The official sticker. Unaltered FSA artwork on its own plate; the descriptor is IN the
+        // artwork, so the text column carries the dates only (the alt carries the words for AT).
+        <div className={styles.official}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static, self-hosted official artwork; next/image adds nothing */}
+          <img
+            src={asset.src}
+            alt={data.badge.alt}
+            width={asset.width}
+            height={asset.height}
+            className={styles.sticker}
+            decoding="async"
+            onError={() => setArtworkFailed(true)}
+          />
+          <div className={styles.meta}>
+            <div className={styles.dates}>
+              {rated ? `Rated ${rated}` : "Rating date unavailable"}
+              {checked ? ` · checked ${checked}` : ""}
             </div>
-          )}
-          <div style={{ fontSize: 12, color: "var(--ink-2)" }}>
-            {rated ? `Rated ${rated}` : "Rating date unavailable"}
-            {checked ? ` · checked ${checked}` : ""}
+            {data.localAuthority ? <div className={styles.council}>{data.localAuthority}</div> : null}
           </div>
         </div>
-      </div>
+      ) : (
+        // In-house mark — the pre-artwork rendering, kept verbatim as the fallback.
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", border: "1px solid var(--line)", borderRadius: 12, padding: "var(--space-3)", background: "var(--paper)" }}>
+          {data.rating.kind === "score" ? (
+            <ScoreMark score={data.rating.score} alt={data.badge?.alt ?? `Food Hygiene Rating: ${data.rating.score} out of 5`} />
+          ) : (
+            <StatusMark label={data.rating.kind === "awaiting" ? "Awaiting inspection" : "Exempt"} />
+          )}
+          <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>{headline}</div>
+            <div style={{ fontSize: 12, color: "var(--ink-2)" }}>
+              {rated ? `Rated ${rated}` : "Rating date unavailable"}
+              {checked ? ` · checked ${checked}` : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
         {data.attribution.text}{" "}
         <a href={data.attribution.licenceUrl} target="_blank" rel="noopener noreferrer nofollow" style={{ color: "var(--muted)", textDecoration: "underline" }}>
@@ -110,7 +148,7 @@ export function FsaBadge({ venueId }: { venueId: string }) {
   );
 }
 
-/** The 0–5 score as a self-hosted FHRS-style mark: green when ≥3, amber at 1–2, red at 0. */
+/** The 0–5 score as the in-house mark: green when ≥3, amber at 1–2, red at 0. */
 function ScoreMark({ score, alt }: { score: 0 | 1 | 2 | 3 | 4 | 5; alt: string }) {
   const bg = score >= 3 ? "#0f8a3f" : score >= 1 ? "#C77A00" : "#B4231F";
   return (
