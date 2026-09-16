@@ -9,7 +9,9 @@
  * to load — falls back to the in-house mark, so a page can never show a broken image.
  *
  * Provenance + terms: docs/fsa-hygiene-ratings.md ("Official badge artwork"). The files are the
- * FSA's, unmodified; do not edit, recolour or rename them.
+ * FSA's online artwork pack, byte-for-byte as supplied (JPEG, 150 dpi); do not edit, recolour,
+ * re-encode or rename them. Sizes below were read from the files, not assumed:
+ * the six score stickers are 1152×804, the "Awaiting inspection" banner is 1152×591.
  */
 
 export interface FsaBadgeAsset {
@@ -20,8 +22,21 @@ export interface FsaBadgeAsset {
   height: number;
 }
 
-/** Filled in when the official pack lands — one entry per file under public/fsa/. Empty = fallback mark. */
-export const FSA_BADGE_ASSETS: Readonly<Record<string, FsaBadgeAsset>> = {};
+const score = (n: 0 | 1 | 2 | 3 | 4 | 5): [string, FsaBadgeAsset] => [
+  `fhrs_${n}_en-gb`,
+  { src: `/fsa/fhrs_${n}_en-gb.jpg`, width: 1152, height: 804 },
+];
+
+/** One entry per file under public/fsa/. No "exempt" — the FSA pack ships no sticker for it. */
+export const FSA_BADGE_ASSETS: Readonly<Record<string, FsaBadgeAsset>> = Object.fromEntries([
+  score(0),
+  score(1),
+  score(2),
+  score(3),
+  score(4),
+  score(5),
+  ["fhrs_awaitinginspection_en-gb", { src: "/fsa/fhrs_awaitinginspection_en-gb.jpg", width: 1152, height: 591 }],
+]);
 
 /** The shipped asset for an FSA rating key, or null when we don't hold one. */
 export function fsaBadgeAsset(assetId: string | null | undefined): FsaBadgeAsset | null {

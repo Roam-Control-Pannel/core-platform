@@ -56,11 +56,13 @@ export function isDisplayableRating(value: string | number | null | undefined): 
 /**
  * The FSA names its official rating images by the establishment's RatingKey ("fhrs_5_en-gb",
  * "fhrs_exempt_en-gb", …), which the sync stores verbatim (fsa_establishments.rating_key). We ship the
- * official image for each key in THIS allowlist under apps/web/public/fsa/<key>.<ext>. The list is
- * every key present in the live NI register (2026-09-16: fhrs_0…5, exempt, awaitinginspection — all
- * en-gb; NI runs FHRS in English). A key outside it — a Welsh cy-gb key, Scotland's FHIS keys, or a
- * key the FSA adds later — gets NO official asset, so the UI falls back to its own mark and can never
- * show a broken image or the wrong scheme's artwork. Grow it only when the matching file ships.
+ * official image for each key in THIS allowlist under apps/web/public/fsa/<key>.<ext>. The live NI
+ * register (2026-09-16) carries fhrs_0…5, awaitinginspection and exempt (all en-gb; NI runs FHRS in
+ * English); the FSA's online artwork pack supplies the six scores and "Awaiting inspection" but NO
+ * "Exempt" sticker, so exempt is deliberately absent here and renders as the in-house text mark.
+ * A key outside this list — exempt, a Welsh cy-gb key, Scotland's FHIS keys, or a key the FSA adds
+ * later — gets NO official asset, so the UI falls back to its own mark and can never show a broken
+ * image or the wrong scheme's artwork. Grow it only when the matching file ships.
  */
 export const FHRS_BADGE_KEYS: ReadonlySet<string> = new Set([
   "fhrs_0_en-gb",
@@ -70,7 +72,6 @@ export const FHRS_BADGE_KEYS: ReadonlySet<string> = new Set([
   "fhrs_4_en-gb",
   "fhrs_5_en-gb",
   "fhrs_awaitinginspection_en-gb",
-  "fhrs_exempt_en-gb",
 ]);
 
 /** The descriptor the official sticker prints under each score — the artwork's own words. */

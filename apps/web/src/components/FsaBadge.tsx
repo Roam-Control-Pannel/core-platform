@@ -107,6 +107,7 @@ export function FsaBadge({ venueId }: { venueId: string }) {
             height={asset.height}
             className={styles.sticker}
             decoding="async"
+            loading="lazy" // ~300 KB official JPEG, below the hero; the width/height attrs reserve its box
             onError={() => setArtworkFailed(true)}
           />
           <div className={styles.meta}>

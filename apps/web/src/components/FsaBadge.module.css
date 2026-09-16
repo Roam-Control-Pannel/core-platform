@@ -4,8 +4,8 @@
  *
  * Desktop: sticker (fixed width) · dates beside it. Phones (< 600px): sticker full-width on top,
  * dates beneath. The sticker is the FSA's own black + green artwork and is never recoloured; the
- * plate is ours — a hairline border so the black artwork doesn't float on the dark theme, and the
- * page's paper colour so it sits in the panel system like the other venue facts.
+ * plate is ours — the page's paper colour and hairline border so the black card sits in the panel
+ * system like the other venue facts rather than floating on the page.
  */
 
 .official {

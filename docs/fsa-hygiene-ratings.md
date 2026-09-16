@@ -27,6 +27,13 @@ page before adding or changing files. How it is wired:
   (`fhrs_5_en-gb`, `fhrs_exempt_en-gb`, …); the sync stores it verbatim (`rating_key`). The keys in
   the live NI register (2026-09-16) are `fhrs_0…5_en-gb`, `fhrs_awaitinginspection_en-gb` and
   `fhrs_exempt_en-gb` — NI runs FHRS in English, so no Welsh (`cy-gb`) or Scottish (FHIS) artwork.
+- **What we ship (2026-09-16).** The FSA's online artwork pack, supplied by Andrew and committed
+  byte-for-byte (GitHub upload, branch `RoamLocaApp-patch-1`, commit `5cf4ebe`; renamed to the rating
+  keys, SHA-256 unchanged): seven JPEGs at 150 dpi — the six score stickers (1152×804) and the
+  "Awaiting inspection" banner (1152×591). Each file was viewed and checked against the rating it is
+  filed under before renaming. **The pack has no "Exempt" sticker**, so `fhrs_exempt_en-gb` is NOT in
+  the allowlist and exempt venues (1,075 in NI) keep the in-house text mark. Source page URL + the
+  FSA's image-use wording: _to be recorded here_ (Andrew to supply from the download page).
 - **Server gate** — `@roam/core/fsa.officialBadge(ratingKey, rating)`: returns the badge only when the
   key is in `FHRS_BADGE_KEYS` (the allowlist of shipped files) **and** agrees with the displayed
   rating (a `fhrs_5` key on a value of 4 yields no official badge, never the wrong sticker). A status

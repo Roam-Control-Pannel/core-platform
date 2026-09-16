@@ -59,18 +59,19 @@ describe("officialBadge — the official FHRS artwork, keyed by the FSA's own ra
     );
   });
 
-  it("gives the statuses their own official artwork — never a numeric one", () => {
+  it("gives 'awaiting inspection' its own official artwork — never a numeric one", () => {
     expect(officialBadge("fhrs_awaitinginspection_en-gb", { kind: "awaiting" })).toEqual({
       assetId: "fhrs_awaitinginspection_en-gb",
       alt: "Food Hygiene Rating: Awaiting inspection",
     });
-    expect(officialBadge("fhrs_exempt_en-gb", { kind: "exempt" })).toEqual({
-      assetId: "fhrs_exempt_en-gb",
-      alt: "Food Hygiene Rating: Exempt",
-    });
     // A status paired with a numeric key is a contradiction → no official badge.
     expect(officialBadge("fhrs_0_en-gb", { kind: "awaiting" })).toBeNull();
     expect(officialBadge("fhrs_5_en-gb", { kind: "exempt" })).toBeNull();
+  });
+
+  it("has no artwork for 'exempt' (the FSA pack ships none) → in-house mark, words only", () => {
+    expect(officialBadge("fhrs_exempt_en-gb", { kind: "exempt" })).toBeNull();
+    expect(ratingAlt({ kind: "exempt" })).toBe("Food Hygiene Rating: Exempt");
   });
 
   it("refuses a key that disagrees with the displayed value (never the wrong sticker)", () => {
@@ -97,7 +98,7 @@ describe("officialBadge — the official FHRS artwork, keyed by the FSA's own ra
     expect(ratingAlt({ kind: "none" })).toBeNull();
   });
 
-  it("ships exactly the keys present in the live NI register (2026-09-16)", () => {
+  it("ships exactly the keys the FSA artwork pack covers (six scores + awaiting inspection)", () => {
     expect([...FHRS_BADGE_KEYS].sort()).toEqual([
       "fhrs_0_en-gb",
       "fhrs_1_en-gb",
@@ -106,7 +107,6 @@ describe("officialBadge — the official FHRS artwork, keyed by the FSA's own ra
       "fhrs_4_en-gb",
       "fhrs_5_en-gb",
       "fhrs_awaitinginspection_en-gb",
-      "fhrs_exempt_en-gb",
     ]);
   });
 });
