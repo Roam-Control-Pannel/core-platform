@@ -11,14 +11,20 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Icon } from "@roam/design";
 import { useSession } from "./TrpcProvider";
+import { useChannel } from "./ChannelProvider";
 import styles from "./CreateFab.module.css";
 
 export function CreateFab() {
   const t = useTranslations("chrome.createMenu");
   const session = useSession();
+  const { surface } = useChannel();
   const [open, setOpen] = useState(false);
   const userId = session?.user?.id ?? null;
 
+  // A storefront-surface channel (the Association's co-brand) has none of the Roam social IA —
+  // no plans, events or wall posts to create — so the ＋ must not float over it. Same rule as
+  // SideNav / TabBar.
+  if (surface === "storefront") return null;
   if (!userId) return null;
 
   return (

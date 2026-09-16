@@ -1,0 +1,152 @@
+/*
+ * StorefrontHeader — the Association's navy top bar (f2g channel). A CSS Module because the
+ * responsive behaviour is a media query and globals.css (generated) must not be hand-edited.
+ *
+ * Desktop (≥ 980px): logo · nav · Powered by Roam · Basket · You / Sign in.
+ * Phones + tablet-portrait (< 980px): the nav becomes a horizontal SCROLLER (never clipped — the
+ * old inline `overflow: hidden` cut "For members" to "For…"), with an edge fade as the scroll
+ * affordance; "Powered by Roam" drops below 600px. Home / Orders / You live in the TabBar there,
+ * so the header keeps only logo · nav · Basket (+ Sign in when signed out).
+ * The 979px crossover MUST stay in lockstep with TabBar.module.css / TopBar.module.css.
+ */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--sf-navy-line);
+}
+
+.inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* The nav scroller: flex row, scrolls sideways when it doesn't fit, never clips. */
+.navWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-right: 24px; /* room under the fade so the last item is never hidden behind it */
+}
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Edge fade — the scroll affordance. Only meaningful on phones; harmless on desktop where the
+   nav fits (the fade sits over empty space). */
+.navWrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--sf-navy));
+}
+
+.navLink {
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.powered {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.basket {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* You (signed in) / Sign in (signed out). The avatar disc keeps the tap target ≥ 32px. */
+.you {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.avatarFallback {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 979px) {
+  .inner {
+    gap: 14px;
+    padding: 10px 14px;
+  }
+
+  /* Home / Orders / You are the TabBar's job on phones — the header's "You" would duplicate it. */
+  .you {
+    display: none;
+  }
+  /* …but a signed-out visitor still needs the way in. */
+  .signIn {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 599px) {
+  .powered {
+    display: none;
+  }
+}
