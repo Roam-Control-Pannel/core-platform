@@ -27,6 +27,11 @@ run cleanly and the summary says to re-run tomorrow. Plan each batch to leave he
 
 Run one batch per day.
 
+**Status (2026-09-16):** Phase 1 and Phase 2a have run (eligible NI venues 1,228 → 3,026; cuisine
+takeaways 176 → 789), followed by a manual `sync-fsa-ni` (1,212 venues newly rated). **Phase 2b is
+on the backlog, not yet run** — when picked up: `--phase=2b` on a fresh day's budget, then re-run
+the FSA sync, then re-run the baseline query below.
+
 ## Running it
 
 In the Railway `core-platform` (API) service console, from `/app`:
