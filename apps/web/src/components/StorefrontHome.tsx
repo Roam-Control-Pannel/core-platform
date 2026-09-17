@@ -10,6 +10,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTrpc } from "./TrpcProvider";
 import { useStorefrontPlace } from "../lib/storefrontPlace";
@@ -418,13 +419,20 @@ export function StorefrontHome() {
         </div>
       ) : null}
 
-      {/* Co-brand footer */}
-      <p style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid var(--line)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-        {t("coBrandFooter")}
-      </p>
+      {/* Co-brand footer + the legal links every host must carry (plan Phase 1.3) */}
+      <footer style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid var(--line)", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+        <p style={{ margin: 0 }}>{t("coBrandFooter")}</p>
+        <nav aria-label={t("footer.terms")} style={{ display: "flex", gap: 14, marginTop: 10, flexWrap: "wrap" }}>
+          <Link href="/legal/terms" style={footerLink}>{t("footer.terms")}</Link>
+          <Link href="/legal/privacy" style={footerLink}>{t("footer.privacy")}</Link>
+          <Link href="/legal/attributions" style={footerLink}>{t("footer.attributions")}</Link>
+        </nav>
+      </footer>
     </main>
   );
 }
+
+const footerLink: React.CSSProperties = { color: "var(--muted)", textDecoration: "underline" };
 
 function Grid({ children }: { children: React.ReactNode }) {
   return (

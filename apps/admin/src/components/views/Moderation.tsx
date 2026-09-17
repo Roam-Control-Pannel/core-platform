@@ -54,6 +54,9 @@ export function ModerationView({ canAct, onChanged }: { canAct: boolean; onChang
         </div>
       </header>
 
+      {/* Supplier submissions (plan Phase 1.8): the approval path the C3 hard gate was missing. */}
+      <SupplierQueue canAct={canAct} />
+
       {error ? <ErrorLine message={error} /> : !data ? (
         <div style={{ display: "grid", gap: 10 }}>{Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} height={72} />)}</div>
       ) : data.items.length === 0 ? (
@@ -93,6 +96,72 @@ function Row({ item, canAct, onResolve }: { item: QueueItem; canAct: boolean; on
           {err ? <span style={{ fontSize: 12, color: C.redInk }}>{err}</span> : null}
         </div>
       ) : null}
+    </Panel>
+  );
+}
+
+/* ------------------------------------------------------------------ supplier submissions */
+
+interface PendingSupplier {
+  id: string; name: string; slug: string; description: string | null; category: string; website: string | null;
+  locality: string | null; status: string; moderation: string; ownerHandle: string | null; createdAt: string;
+}
+
+function SupplierQueue({ canAct }: { canAct: boolean }) {
+  const trpc = useTrpc();
+  const [data, setData] = useState<{ pendingCount: number; items: PendingSupplier[] } | undefined>(undefined);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+
+  const load = useCallback(() => {
+    const q = trpc.adminActivity.pendingSuppliers as unknown as { query: (i: { limit: number }) => Promise<{ pendingCount: number; items: PendingSupplier[] }> };
+    q.query({ limit: 50 }).then(setData).catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load supplier submissions."));
+  }, [trpc]);
+  useEffect(() => { load(); }, [load]);
+
+  const decide = async (orgId: string, decision: "approved" | "rejected") => {
+    if (typeof window !== "undefined" && !window.confirm(decision === "approved" ? "Approve this supplier? It goes live and public immediately." : "Reject this supplier? It stays a hidden draft the owner can edit and resubmit.")) return;
+    setBusy((b) => ({ ...b, [orgId]: true })); setErr(null);
+    const mut = trpc.adminActions.moderateSupplier as unknown as { mutate: (i: { orgId: string; decision: "approved" | "rejected" }) => Promise<{ orgId: string }> };
+    try {
+      await mut.mutate({ orgId, decision });
+      setData((d) => (d ? { pendingCount: Math.max(0, d.pendingCount - 1), items: d.items.filter((it) => it.id !== orgId) } : d));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Decision failed.");
+    } finally {
+      setBusy((b) => ({ ...b, [orgId]: false }));
+    }
+  };
+
+  if (!data && !err) return null;
+  if (data && data.items.length === 0 && !err) return null;
+
+  return (
+    <Panel style={{ padding: 18, display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 18 }}>Supplier submissions</div>
+        {data ? <span style={{ fontFamily: F.mono, fontSize: 12, color: data.pendingCount > 0 ? C.red : C.muted }}>{data.pendingCount} awaiting a decision</span> : null}
+      </div>
+      {err ? <ErrorLine message={err} /> : null}
+      {(data?.items ?? []).map((s) => (
+        <div key={s.id} style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, display: "grid", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, color: C.ink }}>{s.name}</span>
+            <span style={{ fontFamily: F.mono, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".06em", color: C.muted }}>{s.category}{s.locality ? ` · ${s.locality}` : ""}</span>
+            {s.moderation === "auto_flagged" ? <span style={{ fontFamily: F.mono, fontSize: 10.5, color: C.red }}>auto-flagged</span> : null}
+            <span style={{ flex: 1 }} />
+            <span style={{ fontFamily: F.mono, fontSize: 11, color: C.faint }}>{timeAgo(s.createdAt)}{s.ownerHandle ? ` · @${s.ownerHandle}` : ""}</span>
+          </div>
+          {s.description ? <div style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.45 }}>{s.description}</div> : null}
+          {s.website ? <a href={s.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: C.inkSoft }}>{s.website}</a> : null}
+          {canAct ? (
+            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+              <button type="button" onClick={() => void decide(s.id, "approved")} disabled={!!busy[s.id]} style={ghostBtn}>{busy[s.id] ? "…" : "Approve & go live"}</button>
+              <button type="button" onClick={() => void decide(s.id, "rejected")} disabled={!!busy[s.id]} style={dangerBtn}>{busy[s.id] ? "…" : "Reject"}</button>
+            </div>
+          ) : null}
+        </div>
+      ))}
     </Panel>
   );
 }

@@ -17,21 +17,29 @@ export function LegalDoc({
   title,
   lastUpdated,
   draft,
+  draftNote,
+  backHref = "/settings",
+  backLabel = "Settings",
   children,
 }: {
   title: string;
   lastUpdated?: string;
   draft?: boolean;
+  /** Replaces the default placeholder wording — e.g. "working version under review" for a real draft. */
+  draftNote?: string;
+  /** Where the back link goes (a storefront host has no /settings). */
+  backHref?: string;
+  backLabel?: string;
   children: ReactNode;
 }) {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "var(--space-4) var(--space-4) var(--space-12)" }}>
       <header style={{ padding: "var(--space-2) 0 var(--space-4)" }}>
         <Link
-          href="/settings"
+          href={backHref}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", textDecoration: "none" }}
         >
-          <span aria-hidden>←</span> Settings
+          <span aria-hidden>←</span> {backLabel}
         </Link>
         <h1 className="t-h2" style={{ fontFamily: "var(--display)", fontWeight: 600, margin: "var(--space-3) 0 0", fontSize: 26 }}>
           {title}
@@ -57,9 +65,7 @@ export function LegalDoc({
           }}
         >
           <Icon name="edit" size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>
-            This is placeholder copy — the final {title} will replace it before launch.
-          </span>
+          <span>{draftNote ?? `This is placeholder copy — the final ${title} will replace it before launch.`}</span>
         </div>
       ) : null}
 

@@ -13,6 +13,7 @@
  * (an FSA outage can never blank the corpus).
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { matching, membership } from "@roam/core";
 import { loadFsaConfig, fetchAuthorityEstablishments, type FsaConfig, type ParsedFsaEstablishment } from "../fsa/client.js";
 
@@ -264,8 +265,8 @@ async function main(): Promise<void> {
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nFSA sync failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("fsa-sync", e);
     process.exitCode = 1;
   });
 }

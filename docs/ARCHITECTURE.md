@@ -80,6 +80,15 @@ Middleware validates this header to bypass user-session auth for trusted server-
 The secret lives only in environment config, never in the repo. This is the *established* pattern
 for cron → API and Edge Function → API calls; do not invent a second mechanism.
 
+**Scoped secrets (holistic plan Phase 1.5).** The header is the same, but a caller presents one of
+two values. `INTERNAL_CALL_SECRET` is *full* scope: crons, Edge Functions, webhooks, ops — every
+internal procedure. `INTERNAL_CALL_SECRET_WEB` is *web* scope: the web app's server route handlers,
+limited to the ingest / enrichment / transit / Brevo procedures enumerated in
+`packages/api/src/internalScopes.ts`. A web-scoped call to any other internal procedure (or to a
+`/jobs/*` route) is FORBIDDEN even though the secret is valid. A second app deployment (`apps/f2g`)
+gets its own scoped secret the same way. Until `INTERNAL_CALL_SECRET_WEB` is set on both the API and
+the web host, the web uses the full secret and nothing changes.
+
 ---
 
 ## The dormant-seam principle (how v1 carries v5 without migration)

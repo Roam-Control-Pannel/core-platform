@@ -16,6 +16,7 @@ import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
 import { channels, f2g } from "@roam/core";
 import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { notifyOps } from "../observability/ops.js";
 
 /**
  * Feature-flag gates for branded channels: a channel key here only resolves live while its flag is
@@ -100,12 +101,20 @@ export const channelsRouter = router({
    * The channel the caller is already on (from the `x-roam-channel` header), with its theme.
    * Falls back to the default channel if the header is missing or names an unknown channel.
    */
-  current: publicProcedure.query(async ({ ctx }) => {
+  current: publicProcedure.query(async ({ ctx }): Promise<(channels.Channel & { gatedOff?: boolean }) | null> => {
     const channel = await channels.getChannelByKey(ctx.db, ctx.channelKey);
-    // Fall back to the default channel when the header names an unknown channel OR a branded channel
-    // whose feature flag is off — the storefront chrome only renders once its flag is live.
+    // A branded channel whose feature flag is OFF is reported AS ITSELF with `gatedOff: true`, so the
+    // web shell can show that brand's maintenance page. (Until holistic plan Phase 1.4 this silently
+    // substituted the default channel — the Association's domain quietly became Roam, and nobody was
+    // told.) It is also an incident: alert, deduped per channel.
     if (channel && !channel.isDefault && (await channelGatedOff(ctx.db, channel.key))) {
-      return (await channels.getDefaultChannel(ctx.db)) ?? channel;
+      void notifyOps({
+        key: `channel.gated-off:${channel.key}`,
+        severity: "warn",
+        title: `Channel '${channel.key}' is serving its maintenance page (feature flag off)`,
+        detail: `Flag ${CHANNEL_FLAGS[channel.key]} is off or missing; requests on this channel's host see the maintenance notice.`,
+      });
+      return { ...channel, gatedOff: true };
     }
     return channel ?? (await channels.getDefaultChannel(ctx.db));
   }),

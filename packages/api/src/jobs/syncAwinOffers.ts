@@ -14,6 +14,7 @@
  * the internal /jobs/sync-awin-offers route driven by pg_cron.
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { retrieveOffers, type AwinConfig } from "../awin/client.js";
 
 export interface AwinSyncResult {
@@ -107,8 +108,8 @@ async function main(): Promise<void> {
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nAwin sync failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("awin-offers-sync", e);
     process.exitCode = 1;
   });
 }

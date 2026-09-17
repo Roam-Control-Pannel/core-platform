@@ -24,6 +24,7 @@ import {
   type RoamClient,
 } from "@roam/db";
 import type { EfaConfig } from "./transit/client.js";
+import type { InternalScope } from "./internalScopes.js";
 
 /** A minimal, transport-agnostic view of the incoming request's headers. */
 export interface HeaderBag {
@@ -35,8 +36,14 @@ export interface ApiEnv {
   supabase: PublicSupabaseConfig;
   /** Service-role key — server-only, used lazily for internal-call escalation. */
   supabaseServiceRoleKey: string;
-  /** Shared secret that marks a call as trusted server-to-server. */
+  /** Shared secret that marks a call as trusted server-to-server (FULL scope: crons, Edge, webhooks). */
   internalCallSecret: string;
+  /**
+   * WEB-scoped internal secret (holistic plan Phase 1.5). Presented by the web app's server route
+   * handlers only; unlocks just the procedures listed in internalScopes.ts. null = not provisioned
+   * yet (the web falls back to the full secret until it is). Must differ from `internalCallSecret`.
+   */
+  internalCallSecretWeb: string | null;
   /**
    * Web Push (VAPID) signing config. Server-only. Note the public key is read from
    * NEXT_PUBLIC_VAPID_PUBLIC_KEY (the SAME value the web bundle inlines) — web-push's
@@ -154,6 +161,13 @@ export interface ApiEnv {
     webOrigin: string;
     applicationFeeBps: number;
   };
+  /**
+   * Ops alerting (holistic plan Phase 1.4). `webhookUrl` null = alerts go to stderr only. See
+   * observability/alerts.ts.
+   */
+  alerts: {
+    webhookUrl: string | null;
+  };
 }
 
 export interface Context {
@@ -161,8 +175,14 @@ export interface Context {
   db: RoamClient;
   /** The caller's access token, if they sent one. */
   accessToken: string | null;
-  /** True iff a valid `x-internal-call` secret was presented. */
+  /** True iff a valid `x-internal-call` secret was presented (either scope). */
   isInternalCall: boolean;
+  /**
+   * Which internal secret was presented: "full" (INTERNAL_CALL_SECRET — crons, Edge, webhooks) or
+   * "web" (INTERNAL_CALL_SECRET_WEB — the web app's server routes, limited to internalScopes.ts).
+   * null when no valid secret was presented. See holistic plan Phase 1.5.
+   */
+  internalScope: InternalScope | null;
   /**
    * Opaque per-client key (the browser IP the web route forwards as `x-roam-client-ip`),
    * or null. Trusted ONLY on an internal call — a direct caller can't set it to spoof
@@ -214,10 +234,16 @@ function secretMatches(presented: string | null | undefined, expected: string): 
 export function makeContextFactory(env: ApiEnv) {
   return function createContext({ headers }: { headers: HeaderBag }): Context {
     const accessToken = extractAccessToken(headers);
-    const isInternalCall = secretMatches(
-      headers.get("x-internal-call"),
-      env.internalCallSecret,
-    );
+    // Full scope first; the web-scoped secret only if it is set AND distinct (a web secret equal
+    // to the full one would be the full one — never let a config slip widen the web's authority
+    // silently, so an equal value is simply not recognised as "web").
+    const presented = headers.get("x-internal-call");
+    const internalScope: InternalScope | null = secretMatches(presented, env.internalCallSecret)
+      ? "full"
+      : env.internalCallSecretWeb && env.internalCallSecretWeb !== env.internalCallSecret && secretMatches(presented, env.internalCallSecretWeb)
+        ? "web"
+        : null;
+    const isInternalCall = internalScope !== null;
 
     // Only honour the forwarded client key on a trusted internal call — otherwise a direct
     // caller could set x-roam-client-ip to poison or evade another client's limit bucket.
@@ -233,7 +259,7 @@ export function makeContextFactory(env: ApiEnv) {
     // widens authority (RLS is unchanged) and an unknown key resolves back to the default channel.
     const channelKey = headers.get("x-roam-channel")?.trim().toLowerCase() || "roam";
 
-    return { db, accessToken, isInternalCall, clientKey, channelKey, env };
+    return { db, accessToken, isInternalCall, internalScope, clientKey, channelKey, env };
   };
 }
 

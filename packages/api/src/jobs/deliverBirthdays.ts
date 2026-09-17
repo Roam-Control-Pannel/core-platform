@@ -25,6 +25,7 @@
  * visible in Railway's cron history.
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { credits, routes } from "@roam/core";
 import { pushToProfileIds, type VapidConfig } from "../push/dispatch.js";
 
@@ -191,8 +192,8 @@ async function main(): Promise<void> {
 // keeps this from firing when the module is merely imported.
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nBirthday delivery failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("birthday-delivery", e);
     process.exitCode = 1;
   });
 }

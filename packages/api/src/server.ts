@@ -24,6 +24,7 @@ import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { makeOriginAllowed } from "./cors.js";
 import { escalateToService } from "./trpc.js";
+import { notifyOps, installOpsHooks } from "./observability/ops.js";
 import { pushToProfileIds } from "./push/dispatch.js";
 import { runBirthdayDelivery } from "./jobs/deliverBirthdays.js";
 import { runAwinOffersSync } from "./jobs/syncAwinOffers.js";
@@ -54,6 +55,9 @@ function loadEnv(): ApiEnv {
     },
     supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
     internalCallSecret: requireEnv("INTERNAL_CALL_SECRET"),
+    // Optional web-scoped secret (holistic plan Phase 1.5). Unset = the web keeps using the full
+    // secret; set (and distinct) = the web's server routes get web scope only (internalScopes.ts).
+    internalCallSecretWeb: process.env.INTERNAL_CALL_SECRET_WEB?.trim() || null,
     vapid: {
       subject: requireEnv("VAPID_SUBJECT"),
       // Deliberately the NEXT_PUBLIC_-prefixed var: this is the SAME public key the
@@ -142,6 +146,9 @@ function loadEnv(): ApiEnv {
         return Number.isFinite(n) && n >= 0 ? n : 500;
       })(),
     },
+    alerts: {
+      webhookUrl: process.env.ALERT_WEBHOOK_URL?.trim() || null,
+    },
   };
 }
 
@@ -189,6 +196,8 @@ function loadTransitConfig(): EfaConfig | null {
 
 const env = loadEnv();
 const createContext = makeContextFactory(env);
+// Last line of defence: unhandled rejections / uncaught exceptions become an ops alert (Phase 1.4).
+installOpsHooks();
 
 /**
  * Allowed browser origins for CORS. Comma-separated CORS_ALLOWED_ORIGINS in prod;
@@ -259,12 +268,47 @@ export async function handler(request: Request): Promise<Response> {
   // Idempotent — deliver_birthday_offers() is `on conflict do nothing` per (venue,user,day),
   // so a double-fire delivers once. Never JWT-gated: there is no user; the secret is the gate.
   const pathname = new URL(request.url).pathname;
+
+  // Health (holistic plan Phase 1.4). Unauthenticated and cheap: process up + one trivial DB read.
+  // Railway's healthcheckPath (railway.json) and any external uptime monitor hit this; a 503 here is
+  // the first thing an on-call person sees. The DB probe alerts (deduped) so a dead database is a
+  // message, not a mystery.
+  if (pathname === "/healthz") {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    let db: "ok" | "error" = "ok";
+    let dbError: string | null = null;
+    try {
+      const service = escalateToService(env);
+      const { error } = await (service as unknown as {
+        from: (t: string) => { select: (c: string) => { limit: (n: number) => Promise<{ error: { message: string } | null }> } };
+      })
+        .from("channels")
+        .select("id")
+        .limit(1);
+      if (error) throw new Error(error.message);
+    } catch (e) {
+      db = "error";
+      dbError = e instanceof Error ? e.message : String(e);
+      void notifyOps({ key: "healthz.db", title: "Health check: database unreachable", detail: dbError });
+    }
+    const body = {
+      ok: db === "ok",
+      db,
+      version: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? null,
+      uptimeSeconds: Math.round(process.uptime()),
+      ...(dbError ? { error: dbError } : {}),
+    };
+    return jsonResponse(body, db === "ok" ? 200 : 503, { ...cors, "Cache-Control": "no-store" });
+  }
+
   if (pathname === "/jobs/deliver-birthdays") {
     if (request.method !== "POST") {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     try {
@@ -288,7 +332,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     try {
@@ -317,7 +361,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const awin = ctx.env.awin;
@@ -341,7 +385,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cj = ctx.env.cj;
@@ -365,7 +409,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cj = ctx.env.cj;
@@ -389,7 +433,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cfg = loadFsaConfig();
@@ -577,6 +621,18 @@ export async function handler(request: Request): Promise<Response> {
     req: request,
     router: appRouter,
     createContext: () => createContext({ headers: toHeaderBag(request.headers) }),
+    // Unexpected server errors are incidents, not just 500s: alert (deduped per procedure) so a
+    // broken procedure is noticed before a user reports it. Expected client errors (auth, input,
+    // not-found, precondition) are silent by design.
+    onError({ error, path }) {
+      if (error.code === "INTERNAL_SERVER_ERROR") {
+        void notifyOps({
+          key: `trpc.internal:${path ?? "unknown"}`,
+          title: `tRPC ${path ?? "unknown"} threw INTERNAL_SERVER_ERROR`,
+          detail: `${error.message}\n${error.cause instanceof Error ? error.cause.stack ?? "" : ""}`,
+        });
+      }
+    },
   });
 
   // Attach CORS headers to the actual response (clone so we can add headers).

@@ -27,6 +27,8 @@ import { InviteApply } from "../components/InviteApply";
 import { LocationGate } from "../components/LocationGate";
 import { PlacePrefsSync } from "../components/PlacePrefsSync";
 import { Analytics } from "../components/Analytics";
+import { ConsentBanner } from "../components/ConsentBanner";
+import { MaintenanceGate } from "../components/MaintenanceGate";
 import { ogCardUrl, channelBaseUrl } from "../lib/seo";
 import { getChannelInfo } from "../lib/serverApi";
 
@@ -127,7 +129,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        {/* Google Analytics (GA4) — loaded after hydration; never blocks first paint. */}
+        {/* Google Analytics (GA4) — loaded after hydration AND only after consent; never blocks first paint. */}
         <Analytics />
         <LocaleProvider>
           <TrpcProvider>
@@ -148,6 +150,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <LocationGate />
             {/* Headless: syncs saved/current place to the account (cross-device). */}
             <PlacePrefsSync />
+            {/* Cookie/analytics consent (hard gate) — analytics loads only after "Accept". */}
+            <ConsentBanner />
+            {/* A switched-off branded channel shows its own maintenance page, never Roam's chrome. */}
+            <MaintenanceGate />
             </MeProvider>
             </ChannelProvider>
           </TrpcProvider>

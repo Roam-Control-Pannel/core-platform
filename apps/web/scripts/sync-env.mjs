@@ -41,7 +41,7 @@ const outPath = resolve(appDir, ".env.local");
  * (SUPABASE_SERVICE_ROLE_KEY, GOOGLE_PLACES_API_KEY_CORE) are intentionally absent so
  * they never reach the web app. Add a key here only when web server code actually needs it.
  */
-const SERVER_ONLY_ALLOWLIST = new Set(["INTERNAL_CALL_SECRET"]);
+const SERVER_ONLY_ALLOWLIST = new Set(["INTERNAL_CALL_SECRET", "INTERNAL_CALL_SECRET_WEB", "ALERT_WEBHOOK_URL"]);
 
 let raw;
 try {

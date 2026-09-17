@@ -34,6 +34,18 @@
     "seasonal": "Seasonal / event",
     "other": "Other"
   },
+  "consent": {
+    "title": "Cookies and analytics",
+    "body": "We use essential cookies to run the site. With your permission we also use Google Analytics to understand how it's used — no analytics run until you choose.",
+    "privacyLink": "Privacy policy",
+    "accept": "Accept analytics",
+    "essentialOnly": "Essential only"
+  },
+  "maintenance": {
+    "title": "This storefront is taking a short break",
+    "body": "We're doing some work behind the scenes. Please check back shortly — nothing about your account or orders has changed.",
+    "poweredBy": "Powered by Roam"
+  },
   "chrome": {
     "brandHome": "Roam home",
     "primaryNav": "Primary",
@@ -1926,7 +1938,12 @@
     },
     "coBrandFooter": "Payments, accounts and order history are handled by Roam. The Association keeps the storefront.",
     "loadMore": "Load more",
-    "loadingMore": "Loading…"
+    "loadingMore": "Loading…",
+    "footer": {
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "attributions": "Attributions"
+    }
   },
   "venueShop": {
     "collection": {
