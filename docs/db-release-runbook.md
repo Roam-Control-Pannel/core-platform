@@ -63,7 +63,44 @@ unconfigured checkout. Add the secrets to activate.
 ## Extending the guard
 When a future migration adds a column the app will read, add it to `REQUIRED_READS` in
 `scripts/check-schema-drift.mjs`. That list is the living contract between app code and live schema —
-if the app depends on it, the guard should assert it.
+if the app depends on it, the guard should assert it. Since holistic plan Phase 1.6 the guard covers
+every channels-era table the app reads (channels, channel_domains, venue_channels, channel_members,
+external_refs, orgs, fsa_establishments, job_posts, orders) **and** the RPCs it calls (`RPC_PROBES`):
+- `PGRST202` on an RPC = the function or **that exact signature** is not applied (or the cache is
+  stale) — the third drift shape, e.g. the 5-arg `venues_food_to_go_near` from 0145.
+- A service-only RPC (`order_channel_for_venue`, `claim_places_detail_quota`) is probed as anon and
+  must answer `42501 permission denied`. A 2xx there is reported as a **hardening regression** (the
+  0149/0151 revoke is not in force) and fails the run.
+When a migration adds an RPC the app calls, add a probe with the exact argument names the app sends,
+and `expect: "ok"` (client-callable) or `expect: "denied"` (service-only).
+
+## Silent skips are visible
+Both workflows no-op without their secrets. The drift script now emits a GitHub Actions `::warning::`
+annotation on a skipped CI run, so "green because unconfigured" shows on the run summary instead of
+passing for green. Until the secrets in the table above are set, every run of `schema-drift.yml` and
+`db-migrate.yml` is a skip — treat a warning there as an action item, not noise.
+
+## Capturing live-only objects (the `venue-media` storage policies)
+Migration `0021` is missing from the repo; the `venue-media` bucket's **write** policies exist only in
+the live project (0076 dropped its public *read* policy, which is all the repo knows about). A rebuild
+from migrations (what the CI `db` gate does on every run) produces a bucket with no upload policy.
+Before authoring the migration that reproduces them, read the live definitions verbatim — never guess:
+```sql
+-- 1. the bucket itself
+select id, name, public, file_size_limit, allowed_mime_types, created_at
+  from storage.buckets where id = 'venue-media';
+
+-- 2. every storage.objects policy that mentions the bucket (qual = USING, with_check = WITH CHECK)
+select policyname, cmd, permissive, roles, qual, with_check
+  from pg_policies
+ where schemaname = 'storage' and tablename = 'objects'
+   and (coalesce(qual, '') ilike '%venue-media%' or coalesce(with_check, '') ilike '%venue-media%')
+ order by policyname;
+```
+Paste the two result sets into the PR that adds `supabase/migrations/NNNN_venue_media_storage.sql`;
+the migration must recreate each policy with `drop policy if exists` + `create policy` using the exact
+`qual`/`with_check` text, plus a pgTAP test that an owner can insert under their venue prefix and a
+stranger cannot.
 
 ## Belt-and-braces in the app
 Even with this runbook, `@roam/core/channels` degrades gracefully if a channel-config column is

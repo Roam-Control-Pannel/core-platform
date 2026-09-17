@@ -39,11 +39,14 @@ function apiUrl(): string {
  * (see context.ts) — the browser can neither reach this client nor set the header itself.
  */
 export function makeInternalTrpcClient(clientIp?: string | null) {
-  const secret = process.env.INTERNAL_CALL_SECRET;
+  // Prefer the WEB-scoped secret (holistic plan Phase 1.5): it unlocks only the procedures these
+  // route handlers call (packages/api/src/internalScopes.ts), so a leak of the web's env can't reach
+  // ban/approve/credits. Falls back to the full secret while the web one isn't configured yet.
+  const secret = process.env.INTERNAL_CALL_SECRET_WEB || process.env.INTERNAL_CALL_SECRET;
   if (!secret) {
     throw new Error(
-      "INTERNAL_CALL_SECRET is not set in the server environment. The internal " +
-        "ingest call cannot be authenticated. Check the root .env and that " +
+      "INTERNAL_CALL_SECRET_WEB (or INTERNAL_CALL_SECRET) is not set in the server environment. " +
+        "The internal ingest call cannot be authenticated. Check the root .env and that " +
         "scripts/sync-env.mjs has run (predev/prebuild hook).",
     );
   }

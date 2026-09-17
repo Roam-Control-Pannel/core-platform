@@ -30,6 +30,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { createServiceClient, type RoamClient } from "@roam/db";
 import type { ApiEnv, Context } from "./context.js";
+import { isAllowedForScope } from "./internalScopes.js";
 
 /**
  * The ONE sanctioned construction site for the RLS-bypassing service client.
@@ -62,12 +63,22 @@ const requireUser = middleware(({ ctx, next }) => {
   return next({ ctx: { ...ctx, accessToken: ctx.accessToken } });
 });
 
-/** Gate: a valid internal-call secret must be present; exposes a service client. */
-const requireInternal = middleware(({ ctx, next }) => {
+/**
+ * Gate: a valid internal-call secret must be present AND its scope must cover this procedure
+ * (internalScopes.ts — the web's secret unlocks only the web routes' procedures); exposes a
+ * service client.
+ */
+const requireInternal = middleware(({ ctx, next, path }) => {
   if (!ctx.isInternalCall) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Internal endpoint.",
+    });
+  }
+  if (!isAllowedForScope(ctx.internalScope, path)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Internal endpoint: outside this caller's scope.",
     });
   }
   // Service-role client built lazily, ONLY on a verified internal call. RLS bypassed.

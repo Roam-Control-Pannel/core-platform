@@ -55,6 +55,9 @@ function loadEnv(): ApiEnv {
     },
     supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
     internalCallSecret: requireEnv("INTERNAL_CALL_SECRET"),
+    // Optional web-scoped secret (holistic plan Phase 1.5). Unset = the web keeps using the full
+    // secret; set (and distinct) = the web's server routes get web scope only (internalScopes.ts).
+    internalCallSecretWeb: process.env.INTERNAL_CALL_SECRET_WEB?.trim() || null,
     vapid: {
       subject: requireEnv("VAPID_SUBJECT"),
       // Deliberately the NEXT_PUBLIC_-prefixed var: this is the SAME public key the
@@ -305,7 +308,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     try {
@@ -329,7 +332,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     try {
@@ -358,7 +361,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const awin = ctx.env.awin;
@@ -382,7 +385,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cj = ctx.env.cj;
@@ -406,7 +409,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cj = ctx.env.cj;
@@ -430,7 +433,7 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
     }
     const ctx = createContext({ headers: toHeaderBag(request.headers) });
-    if (!ctx.isInternalCall) {
+    if (ctx.internalScope !== "full") {
       return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
     }
     const cfg = loadFsaConfig();

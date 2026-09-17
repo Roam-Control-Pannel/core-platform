@@ -10,6 +10,7 @@ const env: ApiEnv = {
   supabase: { url: "https://example.supabase.co", anonKey: "anon-key" },
   supabaseServiceRoleKey: "service-key",
   internalCallSecret: "s3cr3t-internal-call",
+  internalCallSecretWeb: null,
   vapid: {
     subject: "mailto:test@example.com",
     publicKey: "test-public-key",
@@ -76,6 +77,52 @@ describe("internal-call detection", () => {
   it("is false when the header is absent", () => {
     const ctx = createContext({ headers: headers({}) });
     expect(ctx.isInternalCall).toBe(false);
+    expect(ctx.internalScope).toBeNull();
+  });
+
+  it("carries scope 'full' for the full secret", () => {
+    const ctx = createContext({ headers: headers({ "x-internal-call": env.internalCallSecret }) });
+    expect(ctx.internalScope).toBe("full");
+  });
+});
+
+describe("web-scoped internal secret (holistic plan Phase 1.5)", () => {
+  const webEnv: ApiEnv = { ...env, internalCallSecretWeb: "w3b-scoped-secret-value" };
+  const createWebContext = makeContextFactory(webEnv);
+
+  it("recognises the web secret as scope 'web' (internal, but not full)", () => {
+    const ctx = createWebContext({ headers: headers({ "x-internal-call": "w3b-scoped-secret-value" }) });
+    expect(ctx.isInternalCall).toBe(true);
+    expect(ctx.internalScope).toBe("web");
+  });
+
+  it("still recognises the full secret as 'full' when both are configured", () => {
+    const ctx = createWebContext({ headers: headers({ "x-internal-call": env.internalCallSecret }) });
+    expect(ctx.internalScope).toBe("full");
+  });
+
+  it("rejects a wrong web secret of equal length", () => {
+    const ctx = createWebContext({ headers: headers({ "x-internal-call": "x".repeat("w3b-scoped-secret-value".length) }) });
+    expect(ctx.isInternalCall).toBe(false);
+    expect(ctx.internalScope).toBeNull();
+  });
+
+  it("is not recognised at all when unset (null) — the web falls back to the full secret", () => {
+    const ctx = createContext({ headers: headers({ "x-internal-call": "w3b-scoped-secret-value" }) });
+    expect(ctx.isInternalCall).toBe(false);
+  });
+
+  it("a web secret EQUAL to the full secret is treated as full (never silently widened or narrowed)", () => {
+    const sameEnv: ApiEnv = { ...env, internalCallSecretWeb: env.internalCallSecret };
+    const ctx = makeContextFactory(sameEnv)({ headers: headers({ "x-internal-call": env.internalCallSecret }) });
+    expect(ctx.internalScope).toBe("full");
+  });
+
+  it("honours the forwarded client key on a web-scoped call too (the ingest rate limit needs it)", () => {
+    const ctx = createWebContext({
+      headers: headers({ "x-internal-call": "w3b-scoped-secret-value", "x-roam-client-ip": "203.0.113.9" }),
+    });
+    expect(ctx.clientKey).toBe("203.0.113.9");
   });
 });
 
