@@ -248,6 +248,26 @@ async function main() {
     );
     process.exit(1);
   }
+  // The URL must be a Supabase project (PostgREST answers JSON on every path, including a 404). On
+  // 2026-09-17 the secret held the STOREFRONT's own address; a Next.js site answers any path with an
+  // HTML 200, so every probe "passed" while probing nothing. Refuse anything that is not PostgREST.
+  try {
+    const host = new URL(url).host;
+    const r = await fetch(`${url}/rest/v1/`, { headers });
+    const ct = r.headers.get("content-type") ?? "";
+    if (!/json/i.test(ct)) {
+      console.error(
+        `check-schema-drift: SUPABASE_URL (${host}) is not a Supabase project URL — /rest/v1/ answered ${r.status} ${ct || "(no content-type)"},\n` +
+          "  not JSON. This is a website, not the database API. Set SUPABASE_URL to the project's API URL from\n" +
+          "  Supabase → Settings → API → Project URL (https://<ref>.supabase.co, or the project's custom API domain).",
+      );
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`check-schema-drift: could not reach ${url} (${e.message})`);
+    process.exit(1);
+  }
+
   // Fingerprint the database behind the URL so a "which project is this?" question is answerable from
   // the log: the host (a substring of the secret, so not masked) and a few public row counts to compare
   // with `select count(*)` in the SQL editor of the project you believe this is.
@@ -322,8 +342,13 @@ async function main() {
       errors.push(`${table}: could not reach PostgREST (${e.message})`);
       continue;
     }
-    if (res.ok) {
+    if (res.ok && Array.isArray(body)) {
       console.log(`  ✓ ${table} (${columns.join(", ")}) — readable`);
+      continue;
+    }
+    if (res.ok) {
+      // A 2xx that is not a JSON array is not PostgREST answering — never count it as a pass.
+      errors.push(`${table}: ${res.status} but the body is not a PostgREST row array — is SUPABASE_URL the project API?`);
       continue;
     }
     if (isDriftError(body)) {
