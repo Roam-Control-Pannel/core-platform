@@ -125,6 +125,21 @@ export const RPC_PROBES = [
     expect: "denied",
     reason: "Places details budget — service-only since 0151 (holistic plan Phase 1.7)",
   },
+  // 0076's posture. On 2026-09-17 the live project answered `true` to has_function_privilege for both
+  // of these — 0076 had never been applied there. These two stand for the whole 0076 set: a 2xx here
+  // means the migration is missing live and the Places budget / venue upsert are client-callable.
+  {
+    name: "claim_places_fetch_quota",
+    args: { p_client_key: "drift-probe", p_daily_cap: 0, p_client_cap: 0, p_client_window_secs: 1 },
+    expect: "denied",
+    reason: "Places search budget — service-only since 0076 §1",
+  },
+  {
+    name: "upsert_place_venues",
+    args: { places: [] },
+    expect: "denied",
+    reason: "Places ingest writer (SECURITY DEFINER) — service-only since 0076 §1",
+  },
 ];
 
 /** Classify a PostgREST response body as a drift error (missing column / stale schema cache). */
