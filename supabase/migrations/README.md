@@ -1,52 +1,47 @@
-# Data model — migrations
+# Database migrations
 
-SQL-first, RLS-enforced. The database is the single source of truth.
-**Validated:** all four migrations apply clean against PostgreSQL 16 + PostGIS 3.4, every
-Roam table has RLS enabled, dormant seam flags are off, the refund path exists, and venue
-proximity uses a spatial GiST index (global by construction).
+The migration chain is SQL-first and is replayed in filename order by Supabase.
 
-## Apply order
+## Pre-F2G baseline
 
-| File | What it lays down |
+Migrations `0001` through `0115` were consolidated into six dependency-ordered files:
+
+| File | Responsibility |
 |---|---|
-| `0001_foundation.sql` | Extensions (pgcrypto, **postgis**, pg_trgm), enums, `feature_flags`, `profiles`, `venues` (claimed + unclaimed, global geo). |
-| `0002_social_and_content.sql` | Follows, friendships, plans + members + venues, chat threads/participants/messages, **the meet-up loop** (meetups, options, votes, locations), posts (multi-destination), offers + saves + redemptions, push-credit ledger. |
-| `0003_billing_trust_and_dormant_seams.sql` | Billing customers + transactions (**`charge.refunded` path — the DDS gap, closed**), notifications, push subscriptions, moderation queue, user blocks, and the **dormant Stage-5 seams** (shop, trips, automation). |
-| `0004_rls.sql` | Row-Level Security on every table + helper functions (`current_profile`, `are_friends`, `in_thread`). |
+| `0001_core_foundation.sql` | Extensions, shared types, feature flags, profiles, and foundational objects. |
+| `0002_venues_and_discovery.sql` | Venues, claims, media metadata, discovery, search, reviews, locality, and geo objects. |
+| `0003_social_and_community.sql` | Friends, plans, meetups, chat, posts, Town Hall, events, and presence. |
+| `0004_commerce_and_operations.sql` | Billing, offers, marketplace, orders, affiliate deals, notifications, moderation, administration, and transit. |
+| `0005_security_and_api.sql` | Functions, triggers, cross-domain constraints, RLS policies, grants, revocations, and Storage policies. |
+| `0006_bootstrap_data.sql` | Required feature-flag and Storage-bucket rows. |
 
-## The two ideas the schema is built to protect
+Food-to-Go starts at `0116_channels_foundation.sql`. Every migration from `0116` onward retains its original filename and contents.
 
-**Global from day one.** No region-shaped columns. `country_code` is for display/grouping only —
-it never gates access. Proximity is `geography(Point,4326)` with a GiST index, so near→far
-sorting works anywhere on Earth. Unclaimed venues (Google Places base) are world-readable so the
-median global launch experience — browsing places with no owner and no friends yet — is
-graceful, not broken.
+Versions `0007` through `0115` are intentionally retired. Do not reuse those numbers or restore individual retired migrations: their final state is already represented by the six baseline files. New migrations continue after the highest migration version in the repository.
 
-**No migration to light up v2.** The marketplace, travel, and automation tables exist now as
-dormant, RLS-enabled, flag-gated structures. Subscription tiers `free`/`premium`/`gold` all exist;
-only `free` is wired to live checkout (`feature_flags.billing.paid_tiers = false`). Turning any of
-these on later is a flag flip plus (where needed) a policy addition — never a schema rewrite.
+## Local verification
 
-## Local validation (how the check above was run)
+Use the repository-pinned Supabase CLI version when rebuilding and testing:
 
-Supabase provides `auth.uid()` and the `auth` schema in the real platform. To validate migrations
-against a bare Postgres locally, shim them first:
-
-```sql
-create schema if not exists auth;
-create table if not exists auth.users (id uuid primary key default gen_random_uuid());
-create or replace function auth.uid() returns uuid language sql stable
-  as $$ select '00000000-0000-0000-0000-000000000000'::uuid $$;
+```bash
+PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 db reset
+PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 test db --local
 ```
 
-Then apply `000*.sql` in order with `psql -v ON_ERROR_STOP=1`. On the real project use
-`pnpm db:migrate` (Supabase CLI) and regenerate types with `pnpm db:types`.
+Regenerate database types when an intentional schema change requires it:
 
-## What's NOT here yet (next foundation drop)
+```bash
+pnpm db:types
+```
 
-- `packages/db` TypeScript client + generated types wiring.
-- `packages/core` domain logic + `packages/api` tRPC routers.
-- `packages/design` tokens.
-- The moderation automated first-pass (Edge Function) and Stripe webhook handler
-  (incl. the `charge.refunded` writer that fills `refunded_pence`).
-- App scaffolds (web / console / native) and `.env.example`.
+## Existing remote databases
+
+The consolidation rewrites applied migration history. `supabase db push` cannot reconcile a remote whose ledger contains the retired `0007`–`0115` versions. Since there is no production database yet, each existing disposable development or staging project must be backed up and rebuilt from this chain. Follow [the database release runbook](../../docs/db-release-runbook.md#consolidated-history-cutover) and never reset an unverified project.
+
+After the founder has signed in to a rebuilt project, grant the initial HQ owner explicitly:
+
+```bash
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/bootstrap/admin-owner.sql
+```
+
+The script fails visibly if the Auth user does not exist and is safe to rerun once they do.

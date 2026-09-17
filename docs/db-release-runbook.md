@@ -42,10 +42,32 @@ This project's `supabase_migrations.schema_migrations` ledger has under-reported
 `db push` / dumps). Consequences and fixes:
 - The **drift guard is ledger-independent by design** — it probes what the app actually reads
   (`scripts/check-schema-drift.mjs`), not the ledger, so it stays correct regardless.
-- Reconcile the ledger once with `supabase migration repair` so `supabase db push` behaves normally
-  going forward.
-- The repo's migrations are written idempotently (`add column if not exists`, guarded constraints,
-  `update … where`), so re-applying is safe even when the ledger disagrees.
+- Reconcile ordinary ledger drift with `supabase migration repair` only after comparing the actual
+  schema with the intended schema. Do not assume every migration is safe to replay.
+- The pre-F2G consolidation is a special case: deleted historical versions cannot be reconciled by
+  `db push` or by blindly marking migrations applied. Use the cutover below.
+
+## Consolidated-history cutover
+
+Migrations `0001` through `0115` were replaced by six baseline migrations; migrations `0116` and
+later are unchanged. Any remote whose ledger contains the retired `0007`–`0115` versions must be
+rebuilt before the normal `db push` workflow resumes. This is permitted only for confirmed
+non-production projects.
+
+For each project, separately:
+
+1. Confirm the exact project name and ref and confirm it is disposable development or staging.
+2. Back up both schema and data outside the repository, and verify both backup files are non-empty.
+3. Pause application deployments and reset the linked project from the repository migration chain.
+4. Verify the ledger contains `0001`–`0006` and `0116` onward, with no `0007`–`0115` entries.
+5. Reload PostgREST, run the schema-drift probe and representative reads, then restore only data that
+   is still required.
+6. After the founder has signed in, run `supabase/bootstrap/admin-owner.sql` against that exact
+   project.
+
+Stop if the project identity, non-production classification, database credentials, or either backup
+cannot be verified. Do not run the automatic `db-migrate` workflow against an old ledger; the first
+post-consolidation deployment must follow this cutover.
 
 ## Configuration (repo/deploy secrets)
 | Secret | Used by | Purpose |

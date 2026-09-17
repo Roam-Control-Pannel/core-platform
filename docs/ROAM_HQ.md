@@ -49,18 +49,20 @@ delete from admin_users where id = (
 );
 ```
 
-The founder (`andrew@roam-everywhere.com`) is seeded as the first `owner` by migration
-`0114`. If they hadn't signed up when the migration ran, re-run it (it's idempotent) or
-grant manually after their first sign-in.
+The founder (`andrew@roam-everywhere.com`) is granted the first `owner` role explicitly after their
+first sign-in. Run the fail-visible, idempotent bootstrap script against the intended project:
+
+```bash
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/bootstrap/admin-owner.sql
+```
 
 ---
 
 ## Migrations
 
-Roam HQ adds two additive migrations — apply them like any other (`pnpm db:migrate`):
-
-- `0113_admin_users.sql` — the `admin_users` allowlist + the `admin_audit_log` table.
-- `0114_seed_admin_owner.sql` — seeds the founder as the first owner.
+The consolidated pre-F2G baseline creates the `admin_users` allowlist and `admin_audit_log` table.
+The founder grant is deliberately not part of schema migration history because a fresh database may
+not have that Auth user yet; use `supabase/bootstrap/admin-owner.sql` after sign-in.
 
 After applying, regenerate DB types with `pnpm db:types` (the CI/dev typecheck already
 carries hand-added entries for the two new tables, so this only re-syncs the source of
