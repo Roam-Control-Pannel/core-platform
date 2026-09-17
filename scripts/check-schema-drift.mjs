@@ -163,7 +163,33 @@ export function isPermissionDenied(body) {
   const code = String(body?.code ?? "");
   if (code === "42501") return true;
   const msg = String(body?.message ?? "").toLowerCase();
-  return msg.includes("permission denied for function");
+  return msg.includes("permission denied for");
+}
+
+/**
+ * Which Postgres role a Supabase API key resolves to, from the key alone. A legacy key is a JWT whose
+ * payload carries `role` ("anon" | "service_role"); a 2025-format key is prefixed `sb_publishable_`
+ * (anon) or `sb_secret_` (service). Returns null when the shape is unrecognised.
+ *
+ * WHY: every `expect: "denied"` probe is only meaningful as the anon role. Run with the service-role
+ * key, the guard would report every service-only function as client-callable (a service key bypasses
+ * grants) — exactly what happened on the first live run (2026-09-17) — or, worse, pass everything and
+ * certify nothing. So the key's role is checked BEFORE any probe, and a non-anon key aborts the run.
+ */
+export function keyRole(key) {
+  if (typeof key !== "string") return null;
+  if (key.startsWith("sb_publishable_")) return "anon";
+  if (key.startsWith("sb_secret_")) return "service_role";
+  const parts = key.split(".");
+  if (parts.length === 3) {
+    try {
+      const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+      return typeof payload?.role === "string" ? payload.role : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 async function main() {
@@ -181,6 +207,40 @@ async function main() {
   }
 
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+  // ── Preflight: the key MUST be the anon key ──────────────────────────────────────────────────
+  // (1) From the key's own shape/claims.
+  const role = keyRole(key);
+  if (role !== null && role !== "anon") {
+    console.error(
+      `check-schema-drift: SUPABASE_ANON_KEY is a "${role}" key, not the anon key. Refusing to run:\n` +
+        "  the service-only probes are meaningless with elevated privileges, and a service key must not live\n" +
+        "  in this secret. Replace it with the project's anon (public) key — Supabase → Settings → API.",
+    );
+    process.exit(1);
+  }
+  // (2) Behaviourally: places_fetch_quota has ALL revoked from anon (migration 0130), so an anon read
+  //     must be denied. A 2xx here means the request is not running as anon, whatever the key looks like.
+  try {
+    const res = await fetch(`${url}/rest/v1/places_fetch_quota?select=bucket&limit=1`, { headers });
+    const body = await res.json().catch(() => null);
+    if (res.ok) {
+      console.error(
+        "check-schema-drift: the key can read places_fetch_quota, which anon cannot (migration 0130).\n" +
+          "  This request is not running as the anon role — SUPABASE_ANON_KEY is the wrong key. Refusing to run.",
+      );
+      process.exit(1);
+    }
+    if (!isPermissionDenied(body) && !isDriftError(body)) {
+      console.error(`check-schema-drift: preflight got an unexpected ${res.status} — ${body?.message ?? "unknown error"}`);
+      process.exit(1);
+    }
+    console.log("  ✓ preflight — running as the anon role");
+  } catch (e) {
+    console.error(`check-schema-drift: could not reach PostgREST for the preflight (${e.message})`);
+    process.exit(1);
+  }
+
   const drifts = [];
   const errors = [];
   const regressions = [];
@@ -235,7 +295,7 @@ async function main() {
     if (isPermissionDenied(body)) {
       console.log(`  ✓ rpc/${name} — resolves and is denied to anon (service-only, as intended)`);
     } else if (res.ok) {
-      regressions.push(`rpc/${name}: anon may EXECUTE a service-only function — ${reason}`);
+      regressions.push(`rpc/${name}: anon may EXECUTE a service-only function (HTTP ${res.status}) — ${reason}`);
     } else {
       errors.push(`rpc/${name}: unexpected ${res.status} response — ${body?.message ?? "unknown error"}`);
     }

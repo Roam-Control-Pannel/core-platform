@@ -74,6 +74,14 @@ external_refs, orgs, fsa_establishments, job_posts, orders) **and** the RPCs it 
 When a migration adds an RPC the app calls, add a probe with the exact argument names the app sends,
 and `expect: "ok"` (client-callable) or `expect: "denied"` (service-only).
 
+## The guard must run as anon
+`SUPABASE_ANON_KEY` must be the project's **anon (public)** key — never the service-role key. The
+service-only probes are only meaningful as anon; a service key bypasses every grant and reports each
+service-only function as client-callable (the first live run, 2026-09-17, did exactly that). The
+script now refuses to run with a non-anon key: it decodes the key's role claim (legacy JWT `role`,
+or the `sb_publishable_` / `sb_secret_` prefix) and, independently, reads `places_fetch_quota`,
+which 0130 revoked from anon — a 2xx there means elevated privileges, and the run aborts.
+
 ## Silent skips are visible
 Both workflows no-op without their secrets. The drift script now emits a GitHub Actions `::warning::`
 annotation on a skipped CI run, so "green because unconfigured" shows on the run summary instead of
