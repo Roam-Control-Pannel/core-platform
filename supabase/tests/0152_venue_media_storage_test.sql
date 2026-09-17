@@ -46,6 +46,11 @@ declare
   a_upd boolean := false; b_del boolean := false; a_del boolean := false;
   a_sees integer := -1; b_sees integer := -1; anon_sees integer := -1;
 begin
+  -- Supabase Storage (tenant migration 0055) attaches a STATEMENT-level BEFORE DELETE trigger to
+  -- storage.objects that raises unless this setting is 'true' — the Storage API sets it on its own
+  -- deletes. It fires even when the statement matches zero rows, so it is set here (transaction-
+  -- local) for the whole block; RLS still decides which rows each role's DELETE can reach.
+  perform set_config('storage.allow_delete_query', 'true', true);
   -- Owner A uploads under their own venue's folder → allowed.
   perform set_config('role', 'authenticated', true);
   perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000e5201","role":"authenticated"}', true);
