@@ -349,6 +349,17 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /** Approve (goes live + public) or reject (stays a hidden draft) a supplier submission. Audited. */
+  moderateSupplier: adminProcedure
+    .input(z.object({ orgId: z.string().uuid(), decision: z.enum(["approved", "rejected"]), note: z.string().trim().max(200).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await admin.moderateSupplier(ctx.service, await actor(ctx as ActingCtx), input);
+      } catch (e) {
+        fail(e, "Failed to moderate the supplier.");
+      }
+    }),
+
   /** Resolve a moderation queue item (approve = keep / reject = actioned). */
   resolveReport: adminProcedure
     .input(z.object({ reportId: z.string().uuid(), decision: z.enum(["approved", "rejected"]) }))

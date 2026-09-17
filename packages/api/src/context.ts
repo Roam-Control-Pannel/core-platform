@@ -154,6 +154,13 @@ export interface ApiEnv {
     webOrigin: string;
     applicationFeeBps: number;
   };
+  /**
+   * Ops alerting (holistic plan Phase 1.4). `webhookUrl` null = alerts go to stderr only. See
+   * observability/alerts.ts.
+   */
+  alerts: {
+    webhookUrl: string | null;
+  };
 }
 
 export interface Context {

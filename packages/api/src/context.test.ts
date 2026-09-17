@@ -23,6 +23,7 @@ const env: ApiEnv = {
   awin: { apiKey: null, publisherId: null, baseUrl: "https://api.awin.com", region: "GB", membership: "joined", debug: false, offersPath: null, offersMethod: null },
   cj: { token: null, websiteId: null, baseUrl: "https://link-search.api.cj.com", advertiserLookupBaseUrl: "https://advertiser-lookup.api.cj.com", advertiserLookupCid: null, advertiserIds: "joined", linkType: null, promotionType: null, promotionalOnly: true, maxPerCategory: 0, region: "GB", debug: false },
   stripe: { secretKey: null, webhookSecret: null, webhookSecretPlatform: null, webOrigin: "http://localhost:3000", applicationFeeBps: 500 },
+  alerts: { webhookUrl: null },
 };
 
 const createContext = makeContextFactory(env);

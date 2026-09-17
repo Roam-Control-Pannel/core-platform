@@ -14,6 +14,7 @@
  * internal /jobs/sync-cj-offers route (same internal-secret gate as the Awin route).
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { retrieveDeals, type CjConfig } from "../cj/client.js";
 
 export interface CjSyncResult {
@@ -111,8 +112,8 @@ async function main(): Promise<void> {
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nCJ sync failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("cj-offers-sync", e);
     process.exitCode = 1;
   });
 }

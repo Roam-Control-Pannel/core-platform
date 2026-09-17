@@ -16,6 +16,7 @@
  * internal /jobs/sync-cj-logos route (same internal-secret gate as the other sync routes).
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { retrieveAdvertiserLogos } from "../cj/advertisers.js";
 import type { CjConfig } from "../cj/client.js";
 
@@ -120,8 +121,8 @@ async function main(): Promise<void> {
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nCJ logo sync failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("cj-logo-sync", e);
     process.exitCode = 1;
   });
 }

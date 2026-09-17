@@ -46,6 +46,11 @@ export interface ChannelInfo {
   sections: ChannelSections;
   /** Which shell chrome to render ('roam' rail vs 'storefront' header). */
   surface: ChannelSurface;
+  /**
+   * True when this branded channel's feature flag is OFF: the API reports the channel as itself
+   * (so the right brand's maintenance page renders) instead of substituting Roam (plan Phase 1.4).
+   */
+  gatedOff?: boolean;
 }
 
 export interface ChannelState {
@@ -63,6 +68,8 @@ export interface ChannelState {
   channel: ChannelInfo | null;
   /** True once the channel has been resolved (cookie + authoritative read settled). */
   resolved: boolean;
+  /** True when the active branded channel is switched off — MaintenanceGate covers the page. */
+  maintenance: boolean;
 }
 
 const DEFAULT_STATE: ChannelState = {
@@ -71,6 +78,7 @@ const DEFAULT_STATE: ChannelState = {
   isEnabled: () => false,
   channel: null,
   resolved: false,
+  maintenance: false,
 };
 
 /**
@@ -116,9 +124,12 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
         setState({
           key: channel.key,
           surface: channel.surface,
-          isEnabled: (section: string) => isSectionEnabled(channel.sections, section),
+          // A switched-off channel exposes nothing (no nav links to dead surfaces) and is covered
+          // by MaintenanceGate; it is never silently swapped for Roam.
+          isEnabled: (section: string) => !channel.gatedOff && isSectionEnabled(channel.sections, section),
           channel,
           resolved: true,
+          maintenance: channel.gatedOff === true,
         });
       })
       .catch(() => {

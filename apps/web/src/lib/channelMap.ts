@@ -43,9 +43,30 @@ async function loadMap(origin: string): Promise<DomainMapping[]> {
     const domains = Array.isArray(body.domains) ? body.domains : [];
     memo = { at: now, domains };
     return domains;
-  } catch {
-    // Keep any stale copy; otherwise empty (the env classifier has already had its say).
+  } catch (e) {
+    // Keep any stale copy; otherwise empty (the env classifier has already had its say) — but say
+    // so: a silent fail-open is how a branded host quietly becomes Roam (plan Phase 1.4).
+    reportMapFailure(e);
     return memo?.domains ?? [];
+  }
+}
+
+/** Throttled ops alert for a failed channel-map lookup. Best-effort, never awaited, never throws. */
+let lastReportAt = 0;
+const REPORT_EVERY_MS = 10 * 60_000;
+function reportMapFailure(e: unknown): void {
+  const now = Date.now();
+  if (now - lastReportAt < REPORT_EVERY_MS) return;
+  lastReportAt = now;
+  const detail = e instanceof Error ? e.message : String(e);
+  console.error(`[channel-map] lookup failed, resolving hosts fail-open to the default channel: ${detail}`);
+  const url = process.env.ALERT_WEBHOOK_URL;
+  if (!url) return;
+  const text = `[WARN] web — channel-map lookup failed; unmapped hosts fall open to Roam\n${detail}\nkey: web.channel-map · ${new Date(now).toISOString()}`;
+  try {
+    void fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, content: text }) }).catch(() => {});
+  } catch {
+    /* never let alerting break resolution */
   }
 }
 

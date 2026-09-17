@@ -17,6 +17,7 @@
  * missed run reaches.
  */
 import { createServiceClient, type RoamClient } from "@roam/db";
+import { reportJobFailure } from "../observability/ops.js";
 import { sendTransactionalEmail, type EmailSender } from "../brevo/transactional.js";
 import { renderOwnerDigestEmail, type DigestItem } from "../ownerDigest/render.js";
 import { signOwnerToken } from "../ownerDigest/token.js";
@@ -236,8 +237,8 @@ async function main(): Promise<void> {
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 if (isDirectRun) {
-  main().catch((e) => {
-    console.error("\nOwner digest failed:", e instanceof Error ? e.message : e);
+  main().catch(async (e) => {
+    await reportJobFailure("owner-digest", e);
     process.exitCode = 1;
   });
 }
