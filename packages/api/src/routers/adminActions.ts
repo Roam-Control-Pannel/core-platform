@@ -273,6 +273,28 @@ export const adminActionsRouter = router({
       }
     }),
 
+  /**
+   * Move a roster member to live / lapsed / removed (holistic plan Phase 1.2 — the "live" spine).
+   * Subject to the membership state machine; `live` requires a matched venue. Staff-gated + audited
+   * by the core action.
+   */
+  setMemberStatus: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        memberId: z.string().uuid(),
+        status: z.enum(["live", "lapsed", "removed"]),
+        note: z.string().trim().max(200).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await admin.setMemberStatus(ctx.service, await actor(ctx as ActingCtx), input);
+      } catch (e) {
+        fail(e, "Failed to update the member's status.");
+      }
+    }),
+
   /** Dismiss (or undo dismissing) a member from the match-review queue (B4b). Audited. */
   setMatchDismissed: adminProcedure
     .input(

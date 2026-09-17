@@ -12,8 +12,8 @@ import {
 /** The authoritative expected edge set, kept independent of the module's internal table so the test
  * is a genuine second opinion rather than a mirror of the implementation. */
 const ALLOWED: Record<MemberStatus, MemberStatus[]> = {
-  imported: ["invited", "removed"],
-  invited: ["invited", "claimed", "lapsed", "removed"],
+  imported: ["invited", "live", "removed"], // live = activation (plan 1.2/2.2)
+  invited: ["invited", "claimed", "live", "lapsed", "removed"],
   claimed: ["live", "removed"],
   live: ["lapsed", "removed"],
   lapsed: ["invited", "live", "removed"],

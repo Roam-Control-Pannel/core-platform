@@ -1,7 +1,7 @@
 /**
  * StorefrontHome — the NI Food to Go Association storefront home (shown on the f2g channel instead
  * of the Roam home). Co-branded: a white hero with the red "order ahead · collect" kicker, the
- * no-commission promise, and a search; category chips; a nearest/fastest/top-rated sort; and the
+ * 7%-fee statement, and a search; category chips; a nearest/fastest/top-rated sort; and the
  * vendor grid from venues.inChannelNear (with each vendor's real prep time).
  *
  * Category filtering is best-effort off the vendor's Google category/type label until a bespoke

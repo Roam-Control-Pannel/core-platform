@@ -39,8 +39,11 @@ export type MemberStatus = (typeof MEMBER_STATUSES)[number];
  * `lapsed` can be re-invited or restored straight to live.
  */
 const TRANSITIONS: Readonly<Record<MemberStatus, readonly MemberStatus[]>> = {
-  imported: ["invited", "removed"],
-  invited: ["invited", "claimed", "lapsed", "removed"],
+  // `imported → live` / `invited → live`: ACTIVATION (holistic plan Phase 1.2 / 2.2) — a member who
+  // proves membership (HQ mark-live today; membership-number activation in Phase 2) goes live
+  // without passing through the invite/claim hop. `removed` stays reachable from every live state.
+  imported: ["invited", "live", "removed"],
+  invited: ["invited", "claimed", "live", "lapsed", "removed"],
   claimed: ["live", "removed"],
   live: ["lapsed", "removed"],
   lapsed: ["invited", "live", "removed"],
