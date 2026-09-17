@@ -214,6 +214,10 @@ export function VenueFoodToGo({
             />
           ))}
         </ul>
+        {/* The commercial term, stated where the vendor decides to list (0149: fee is per channel). */}
+        <p style={{ margin: "var(--space-3) 0 0", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45 }}>
+          {t("checklist.feeNote")}
+        </p>
       </Card>
 
       {/* Collection settings */}

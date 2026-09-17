@@ -85,6 +85,52 @@ function shape(r: Row): MarketProduct {
 }
 
 type LooseDb = { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+type LooseRpc = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+
+/** The channel an order belongs to + the fee it carries (0149). */
+export interface OrderChannel {
+  channelId: string | null;
+  channelKey: string | null;
+  /** Basis points applied to the goods subtotal. */
+  feeBps: number;
+}
+
+/**
+ * PURE: turn `order_channel_for_venue` rows into the checkout's channel + fee. The RPC returns at
+ * most one row; a missing/odd row (channel table empty, migration not yet applied, a fee outside
+ * the DB bound) degrades to "no channel, the env fee" — an order is never blocked on this, and the
+ * fee can only ever be the channel's or the env default, never something a client sent.
+ */
+export function pickOrderChannel(rows: unknown, fallbackBps: number): OrderChannel {
+  const list = Array.isArray(rows) ? rows : rows && typeof rows === "object" ? [rows] : [];
+  const row = list[0] as { channel_id?: unknown; channel_key?: unknown; platform_fee_bps?: unknown } | undefined;
+  if (!row || typeof row.channel_id !== "string" || typeof row.channel_key !== "string") {
+    return { channelId: null, channelKey: null, feeBps: fallbackBps };
+  }
+  const bps = typeof row.platform_fee_bps === "number" && Number.isInteger(row.platform_fee_bps) ? row.platform_fee_bps : NaN;
+  const feeBps = bps >= 0 && bps <= 3000 ? bps : fallbackBps;
+  return { channelId: row.channel_id, channelKey: row.channel_key, feeBps };
+}
+
+/**
+ * Which channel this venue's order belongs to, and its platform fee — decided SERVER-SIDE from the
+ * venue (roster member → tag → default; migration 0149), never from the browser's x-roam-channel
+ * hint. The service client is required: the RPC is service-only because the fee is money. On any
+ * failure the order still goes through at the env fee, with a warning so it can't fail silently.
+ */
+async function resolveOrderChannel(service: LooseRpc, venueId: string, fallbackBps: number): Promise<OrderChannel> {
+  try {
+    const { data, error } = await service.rpc("order_channel_for_venue", { p_venue_id: venueId });
+    if (error) {
+      console.warn(`[market] order_channel_for_venue failed for venue ${venueId}: ${error.message} — using env fee ${fallbackBps} bps`);
+      return { channelId: null, channelKey: null, feeBps: fallbackBps };
+    }
+    return pickOrderChannel(data, fallbackBps);
+  } catch (e) {
+    console.warn(`[market] order_channel_for_venue threw for venue ${venueId}: ${e instanceof Error ? e.message : String(e)} — using env fee ${fallbackBps} bps`);
+    return { channelId: null, channelKey: null, feeBps: fallbackBps };
+  }
+}
 
 /** The DB row shape read by myOrders / venueOrders (delivery fields + joined basket items). */
 interface OrderReadRow {
@@ -382,7 +428,9 @@ export const marketRouter = router({
       const readyAt = new Date(Date.now() + prepMins * 60_000).toISOString();
 
       const amount = prod.price_pence * input.quantity;
-      const fee = Math.round((amount * ctx.env.stripe.applicationFeeBps) / 10_000);
+      // The fee is the venue's CHANNEL's fee (f2g 7%, roam 5%), resolved server-side — 0149.
+      const orderChannel = await resolveOrderChannel(service as unknown as LooseRpc, prod.venue_id, ctx.env.stripe.applicationFeeBps);
+      const fee = Math.round((amount * orderChannel.feeBps) / 10_000);
       // Every order carries a collection code now (not just vouchers): it's the buyer's ticket to
       // collect and the code the vendor verifies at the counter.
       const redeemCode = randomBytes(5).toString("hex").toUpperCase();
@@ -398,6 +446,7 @@ export const marketRouter = router({
           quantity: input.quantity,
           amount_pence: amount,
           application_fee_pence: fee,
+          channel_id: orderChannel.channelId,
           currency: prod.currency,
           redeem_code: redeemCode,
           ready_at: readyAt,
@@ -584,10 +633,12 @@ export const marketRouter = router({
         readyAt = new Date(Date.now() + collection.prepTimeMins * 60_000).toISOString();
       }
 
+      // The fee is the venue's CHANNEL's fee (f2g 7%, roam 5%), resolved server-side — 0149.
+      const orderChannel = await resolveOrderChannel(service as unknown as LooseRpc, input.venueId, ctx.env.stripe.applicationFeeBps);
       const totals = f2g.computeOrderTotals(
         lines.map((l) => ({ unitPricePence: l.unitPricePence, quantity: l.quantity })),
         deliveryFeePence,
-        ctx.env.stripe.applicationFeeBps,
+        orderChannel.feeBps,
       );
       const redeemCode = randomBytes(5).toString("hex").toUpperCase();
       const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
@@ -604,6 +655,7 @@ export const marketRouter = router({
           quantity: itemCount,
           amount_pence: totals.goodsSubtotalPence,
           application_fee_pence: totals.applicationFeePence,
+          channel_id: orderChannel.channelId,
           delivery_fee_pence: totals.deliveryFeePence,
           fulfilment_type: input.fulfilment,
           delivery_address: deliveryAddressJson,

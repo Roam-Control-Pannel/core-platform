@@ -1892,7 +1892,7 @@
     "hero": {
       "kicker": "Order ahead · Collect",
       "title": "Food to Go near {place}",
-      "body": "Order from Association member kitchens, pay the counter price, and walk in when it's ready. No commission taken out of your local's margin.",
+      "body": "Order from Association member kitchens, pay the counter price, and walk in when it's ready. Your local keeps 93% of every food order — a flat 7% platform fee runs the storefront.",
       "searchPlaceholder": "Search a place, a dish, a coffee"
     },
     "categories": {
@@ -2183,7 +2183,8 @@
         "collectionConfigured": "Order-ahead & collect turned on",
         "fixMenu": "Add a menu item",
         "fixPayments": "Set up payments",
-        "done": "Done"
+        "done": "Done",
+        "feeNote": "Food to Go orders carry a 7% platform fee on the food subtotal, taken at checkout. Delivery charges are yours in full."
       },
       "collection": {
         "title": "Order-ahead & collect",
@@ -2211,7 +2212,7 @@
         "paused": "Pause delivery",
         "pausedHint": "Temporarily stop taking delivery orders — e.g. no driver right now. Collection stays on.",
         "fee": "Delivery fee",
-        "feeHint": "A flat fee added to the order. You keep it in full — commission is on the food only.",
+        "feeHint": "A flat fee added to the order. You keep it in full — the 7% platform fee applies to the food only.",
         "minOrder": "Minimum order",
         "minOrderHint": "Smallest order (before the delivery fee) you'll deliver. Leave 0 for no minimum.",
         "radius": "Delivery radius",
