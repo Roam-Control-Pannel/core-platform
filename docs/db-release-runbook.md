@@ -97,10 +97,28 @@ select policyname, cmd, permissive, roles, qual, with_check
    and (coalesce(qual, '') ilike '%venue-media%' or coalesce(with_check, '') ilike '%venue-media%')
  order by policyname;
 ```
-Paste the two result sets into the PR that adds `supabase/migrations/NNNN_venue_media_storage.sql`;
-the migration must recreate each policy with `drop policy if exists` + `create policy` using the exact
-`qual`/`with_check` text, plus a pgTAP test that an owner can insert under their venue prefix and a
-stranger cannot.
+Done for the policies in `0152_venue_media_storage.sql` (read 2026-09-17; verbatim `qual`/`with_check`;
+pgTAP test covers owner/stranger/anon/wrong-venue). One deliberate addition: an **owner-scoped**
+SELECT policy, because Postgres filters the rows an UPDATE/DELETE reads through its WHERE clause by
+the SELECT policies — with 0076's public-read drop in force, the owner update/delete policies matched
+nothing (the test caught it). The public still cannot list the bucket. **Still open:** the bucket row's `file_size_limit`
+and `allowed_mime_types` (query 1 above) were not captured, so 0152 creates the bucket only when
+absent and never overwrites those two settings. Once read, add an `on conflict (id) do update` with
+the live values (the 0027 profile-media pattern) in a follow-up migration.
+
+The same read also showed `venue_media_read_public` still present on the live project although 0076
+dropped it. That means **0076 did not reach the project** (or only partly). Verify the rest of 0076
+with:
+```sql
+-- both should be false if 0076's revokes are in force
+select has_function_privilege('anon', 'public.claim_places_fetch_quota(text,integer,integer,integer)', 'execute') as anon_fetch_quota,
+       has_function_privilege('authenticated', 'public.upsert_place_venues(jsonb)', 'execute')          as auth_upsert_places;
+-- should be 0 rows if 0076 §6 ran
+select policyname from pg_policies where schemaname = 'storage' and tablename = 'objects'
+  and policyname in ('profile_media_public_read', 'venue_media_read_public');
+```
+If either function answers `true`, re-run `supabase/migrations/0076_security_hardening.sql` in full
+(it is idempotent) and reload the schema cache.
 
 ## Belt-and-braces in the app
 Even with this runbook, `@roam/core/channels` degrades gracefully if a channel-config column is

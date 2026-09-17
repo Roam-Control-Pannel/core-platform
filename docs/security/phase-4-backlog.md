@@ -82,6 +82,14 @@ pagination (order + `created_at,id` cursor) rather than numeric offset.
 
 ### A6 — Capture the `venue-media` storage bucket policies as a migration *(also an infra item — see §C3)*
 
+> **Resolved — migration `0152_venue_media_storage.sql`** (holistic plan Phase 1.6). The three
+> owner-write policies were read from the live project's `pg_policies` on 2026-09-17 and reproduced
+> verbatim, with a pgTAP test (`supabase/tests/0152_venue_media_storage_test.sql`). The live read
+> shows `venue_media_read_public` still present, i.e. 0076's drop never reached the project; 0152
+> re-asserts it, and adds an owner-scoped SELECT policy so the owner's own update/delete still see
+> their rows (a public-read drop alone leaves those policies dead — caught by the test). Bucket
+> size/mime limits are still to be recorded (see the runbook).
+
 Migration `0021` is **missing** (sequence jumps `0020` → `0022`), yet `0076:115` drops a
 `venue_media_read_public` policy and `venues.ts:1252` cites "the 0021 storage RLS". The bucket is public
 (`0070:8`) and takes owner uploads, but its **write scoping exists only in the live project** — it
@@ -156,6 +164,8 @@ touching C1.
 
 ### C3 — `venue-media` storage migration
 
+> **Resolved — see A6** (migration `0152`).
+
 Same item as **A6** — listed here too because it is an infra/DR gap, not just a review LOW. The PR-0
 `db` gate now rebuilds the schema from scratch on every CI run, which makes the missing `0021` storage
 policy a real reproducibility hole. Highest-value infra item in this doc.
@@ -217,8 +227,7 @@ Belfast" from "not yet hydrated." Its own PR, with a test for the single-fetch b
 
 ## Recommended sequencing
 
-1. **A6 / C3** (venue-media storage migration) — highest value; closes a real DR/audit gap now that CI
-   rebuilds from migrations.
+1. ~~**A6 / C3** (venue-media storage migration)~~ — done in `0152`.
 2. **A1** (idempotent upserts) — tiny, removes two user-facing 500s.
 3. **B1** (transitive `pnpm.overrides`) — one PR, clears 25 high advisory-instances.
 4. **C1 / C2** (built-deps allowlist) — one-line Mac-dev fix + dead-entry cleanup.
