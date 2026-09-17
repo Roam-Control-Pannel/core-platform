@@ -122,6 +122,27 @@ select policyname from pg_policies where schemaname = 'storage' and tablename = 
 If either function answers `true`, re-run `supabase/migrations/0076_security_hardening.sql` in full
 (it is idempotent) and reload the schema cache.
 
+## Live parity audit (how the 2026-09-17 audit was done, and how to repeat it)
+The ledger cannot be trusted, so parity is proved object by object. Build the **intended** state
+locally (every migration applied to a Supabase-shaped Postgres), run the same queries on both sides,
+and diff. Run each query on its own in the SQL editor — it shows only the LAST statement's result and
+caps at ~100 rows, so split large lists by name range.
+
+| Object | Query (both sides) | What a diff means |
+|---|---|---|
+| Function existence + grants | `pg_proc` × `has_function_privilege('anon'/'authenticated', oid, 'execute')`, excluding extension functions and trigger returns | missing signature = unapplied migration; grant `true` where intended `false` = a `revoke` never landed (0076 was found this way) |
+| Policy names + commands + roles | `pg_policies` for `public`/`storage` | missing policy = unapplied migration |
+| Table column counts | `information_schema.columns` grouped by table | count differs = an `add column` never landed |
+| Triggers | `pg_trigger where not tgisinternal` | missing trigger = unapplied migration (0130/0131 were found this way) |
+| RLS flags | `pg_class.relrowsecurity/relforcerowsecurity` | `false` where intended `true` |
+| Policy definitions | `md5(coalesce(qual,'') \|\| '#' \|\| coalesce(with_check,''))` | body differs |
+| Function bodies | `md5(pg_get_functiondef(oid))` with `/* */` and `--` comments stripped and **all whitespace removed** | body differs. Do NOT compare raw text: SQL pasted from chat is comment-stripped and reflowed, so raw hashes differ while code is identical |
+
+Findings on 2026-09-17: 0076, 0111, 0112, 0130, 0131, 0132, 0133 had never been applied to the
+project (recovered the same day); everything else matched once formatting was ignored. The fifteen
+formatting-only function bodies are made byte-identical by
+`scripts/db-reconcile-functions-2026-09-17.sql` (cosmetic; keeps grants).
+
 ## Belt-and-braces in the app
 Even with this runbook, `@roam/core/channels` degrades gracefully if a channel-config column is
 briefly unreadable (missing column or stale cache): it retries on the base column set so the app
