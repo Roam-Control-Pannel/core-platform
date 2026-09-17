@@ -101,10 +101,12 @@ Done for the policies in `0152_venue_media_storage.sql` (read 2026-09-17; verbat
 pgTAP test covers owner/stranger/anon/wrong-venue). One deliberate addition: an **owner-scoped**
 SELECT policy, because Postgres filters the rows an UPDATE/DELETE reads through its WHERE clause by
 the SELECT policies — with 0076's public-read drop in force, the owner update/delete policies matched
-nothing (the test caught it). The public still cannot list the bucket. **Still open:** the bucket row's `file_size_limit`
-and `allowed_mime_types` (query 1 above) were not captured, so 0152 creates the bucket only when
-absent and never overwrites those two settings. Once read, add an `on conflict (id) do update` with
-the live values (the 0027 profile-media pattern) in a follow-up migration.
+nothing (the test caught it). The public still cannot list the bucket. The bucket's live limits (10 MB; jpeg/png/webp) were read
+afterwards and recorded in `0153`, which also gives profile-media the same owner-scoped read and
+re-asserts 0076's drop of its public listing policy (also still present live).
+
+**Reading results in the Supabase SQL editor:** it shows only the LAST statement's result set. Run
+probe queries one at a time, or the earlier results are silently not displayed.
 
 The same read also showed `venue_media_read_public` still present on the live project although 0076
 dropped it. That means **0076 did not reach the project** (or only partly). Verify the rest of 0076
