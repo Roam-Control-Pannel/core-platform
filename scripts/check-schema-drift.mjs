@@ -248,6 +248,21 @@ async function main() {
     );
     process.exit(1);
   }
+  // Fingerprint the database behind the URL so a "which project is this?" question is answerable from
+  // the log: the host (a substring of the secret, so not masked) and a few public row counts to compare
+  // with `select count(*)` in the SQL editor of the project you believe this is.
+  try {
+    const host = new URL(url).host;
+    const counts = [];
+    for (const t of ["channels", "venues", "fsa_establishments", "channel_members"]) {
+      const r = await fetch(`${url}/rest/v1/${t}?select=id&limit=1`, { headers: { ...headers, Prefer: "count=exact" } });
+      const cr = r.headers.get("content-range") ?? "";
+      counts.push(`${t}=${cr.includes("/") ? cr.split("/")[1] : `? (HTTP ${r.status})`}`);
+    }
+    console.log(`  fingerprint: host ${host}; public row counts as anon: ${counts.join(", ")}`);
+  } catch (e) {
+    console.log(`  fingerprint: unavailable (${e.message})`);
+  }
   if (info.ref && urlRef && info.ref !== urlRef) {
     console.error(
       `check-schema-drift: SUPABASE_ANON_KEY was minted for project ${info.ref} but SUPABASE_URL points at ${urlRef}.\n` +
