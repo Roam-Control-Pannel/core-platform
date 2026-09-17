@@ -19,13 +19,24 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSession } from "./TrpcProvider";
 import { useMe } from "./MeProvider";
+import { useChannel } from "./ChannelProvider";
 import { STOREFRONT, F2G_LOGO_SRC } from "../lib/storefront";
 import styles from "./StorefrontHeader.module.css";
 
-const NAV: { key: string; href: string }[] = [
+/**
+ * The storefront nav. The first three are the shopper's spine; the Association's own surfaces —
+ * member directory, employability board, supplier directory — appear only when the channel's
+ * `sections` allow-map exposes them (Roam HQ → Channels → Config), so a channel that hasn't switched
+ * one on never links to a page that would render its own "not available here" state. "For members"
+ * stays last as the way in for businesses. (Reading `channels.nav` itself is Phase 4 of the plan.)
+ */
+const BASE_NAV: { key: string; href: string; section?: string }[] = [
   { key: "nearMe", href: "/" },
   { key: "categories", href: "/#categories" },
   { key: "orderAgain", href: "/orders" },
+  { key: "members", href: "/directory", section: "directory" },
+  { key: "jobs", href: "/jobs", section: "jobs" },
+  { key: "suppliers", href: "/suppliers", section: "suppliers" },
   { key: "forMembers", href: "/business" },
 ];
 
@@ -33,7 +44,9 @@ export function StorefrontHeader() {
   const t = useTranslations("storefront.header");
   const session = useSession();
   const me = useMe();
+  const { isEnabled } = useChannel();
   const pathname = usePathname() ?? "/";
+  const NAV = BASE_NAV.filter((item) => !item.section || isEnabled(item.section));
 
   const initial = (me?.displayName ?? me?.handle ?? "").replace(/^@/, "").charAt(0).toUpperCase();
 

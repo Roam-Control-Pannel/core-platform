@@ -26,7 +26,7 @@ interface ChannelInfo {
   nav: NavItem[]; sections: Record<string, boolean>; surface: "roam" | "storefront";
 }
 
-const KNOWN_SECTIONS = ["storefront", "explore", "suppliers", "jobs", "townHall", "market", "deals", "events"];
+const KNOWN_SECTIONS = ["storefront", "directory", "suppliers", "jobs", "explore", "townHall", "market", "deals", "events"];
 const MEMBER_STATUSES = ["imported", "invited", "claimed", "live", "lapsed", "removed"] as const;
 
 export function ChannelsView({ canAct }: { canAct: boolean }) {
@@ -351,6 +351,23 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
     catch (e) { setErr(e instanceof Error ? e.message : "Tag update failed."); }
   };
 
+  // Status actions (plan Phase 1.2 — the "live" spine): mark a matched member live, lapse a live
+  // member, or remove one. The audited adminActions.setMemberStatus path; the state machine is
+  // enforced server-side, so an impossible move surfaces as an error rather than a silent no-op.
+  const setMemberStatus = async (memberId: string, status: "live" | "lapsed" | "removed", label: string) => {
+    if (typeof window !== "undefined" && !window.confirm(`${label} this member?`)) return;
+    setErr(null);
+    const mut = trpc.adminActions.setMemberStatus as unknown as {
+      mutate: (i: { channelKey: string; memberId: string; status: "live" | "lapsed" | "removed" }) => Promise<{ memberId: string; from: string; to: string }>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey, memberId, status });
+      setRows((rs) => rs.map((row) => (row.id === r.memberId ? { ...row, status: r.to } : row)));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Status update failed.");
+    }
+  };
+
   // Send (or resend) a claim invite to a matched member with an email (B3-d). Idempotent — a second
   // call just mints a fresh-expiry link. Per-row outcome feedback; the funnel status updates on reload.
   const [invite, setInvite] = useState<Record<string, string>>({});
@@ -396,7 +413,18 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
             <div key={r.id} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.line}`, fontSize: 13, alignItems: "center" }}>
               <span style={{ flex: 2, color: C.ink, fontWeight: 600 }}>{r.sourceName}<span style={{ fontFamily: F.mono, fontSize: 10, color: C.faint, marginLeft: 6 }}>{r.membershipRef}</span></span>
               <span style={{ flex: 1, color: C.inkSoft }}>{r.sourceCouncil ?? "—"}</span>
-              <span style={{ flex: 1 }}><Tag tone={r.status === "live" ? "ink" : "red"}>{r.status}</Tag></span>
+              <span style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <Tag tone={r.status === "live" ? "ink" : "red"}>{r.status}</Tag>
+                {canAct && r.venueId && (r.status === "imported" || r.status === "invited" || r.status === "claimed" || r.status === "lapsed") ? (
+                  <button type="button" onClick={() => void setMemberStatus(r.id, "live", "Mark live")} style={smallGhost} title="Recognise this member as an active member (counts, lists and ranks as a member)">Mark live</button>
+                ) : null}
+                {canAct && r.status === "live" ? (
+                  <button type="button" onClick={() => void setMemberStatus(r.id, "lapsed", "Lapse")} style={smallGhost} title="Membership lapsed — loses member priority, keeps its listing">Lapse</button>
+                ) : null}
+                {canAct && r.status !== "removed" ? (
+                  <button type="button" onClick={() => void setMemberStatus(r.id, "removed", "Remove")} style={smallGhost} title="Remove from the roster (terminal)">Remove</button>
+                ) : null}
+              </span>
               <span style={{ flex: 2, color: C.inkSoft, display: "flex", alignItems: "center", gap: 8 }}>
                 {r.venue ? r.venue.name : <em style={{ color: C.faint }}>unmatched</em>}
                 {canAct && r.venueId ? (
