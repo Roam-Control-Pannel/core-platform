@@ -18,7 +18,7 @@
 - Preserve the final schema, RLS posture, function ACLs, triggers, indexes, comments, and required bootstrap rows produced by the original chain.
 - Do not commit credentials, database URLs, tokens, passwords, dumps, or backups.
 - Do not stage or modify the unrelated untracked `docs/ROADMAP.md` or `findings/` paths.
-- Stop before a remote reset if the project identity, backup, or non-production classification cannot be verified.
+- Stop before a remote ledger repair or reset if project identity, backups, or schema equivalence cannot be verified.
 
 ---
 
@@ -326,7 +326,7 @@ PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 projects list
 
 Confirm that `kyancopdkxotzzkzqsmf` resolves to the expected non-production project. Record any other project refs without resetting them unless their identity and disposable classification are explicit.
 
-- [ ] **Step 2: Back up each confirmed reset target**
+- [ ] **Step 2: Back up each confirmed cutover target**
 
 Use the target's escaped database URL and write only under `/private/tmp/roam-pre-f2g-reference/<project-ref>/`:
 
@@ -339,16 +339,18 @@ PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 db dump --db-url "$SUPAB
 
 Expected: both files exist and are non-empty. Do not continue if either backup fails.
 
-- [ ] **Step 3: Cut over a confirmed disposable target only after exact identity verification**
+- [ ] **Step 3: Reconcile a schema-equivalent target without replacing application data**
 
 ```bash
-PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 link --project-ref kyancopdkxotzzkzqsmf
-PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 migration list --linked
-PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 db reset --linked
-PNPM_CONFIG_PM_ON_FAIL=ignore pnpm dlx supabase@2.117.0 migration list --linked
+pnpm db:reconcile-history -- \
+  --project-ref kyancopdkxotzzkzqsmf \
+  --confirm-project-ref kyancopdkxotzzkzqsmf \
+  --schema-equivalence-confirmed \
+  --apply \
+  --backup-file /private/tmp/roam-pre-f2g-reference/kyancopdkxotzzkzqsmf/migration-ledger.sql
 ```
 
-Expected after reset: versions `0001` through `0006` and `0116` onward are applied; versions `0007` through `0115` are absent. If credentials, the database password, or exact identity are unavailable, stop remote work and state that cutover remains a post-merge operator step.
+Expected: application data remains in place; versions `0001` through `0006` and `0116` onward are applied; versions `0007` through `0115` are absent; `db push --dry-run` is empty. If schema equivalence is not proven, use the documented non-production rebuild fallback instead. If credentials, the database password, or exact identity are unavailable, stop remote work and state that cutover remains a post-merge operator step.
 
 - [ ] **Step 4: Verify the rebuilt remote**
 

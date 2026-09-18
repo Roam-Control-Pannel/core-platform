@@ -20,7 +20,7 @@ The completed change must preserve the schema, row-level security, grants, funct
 
 ## Chosen Approach
 
-Replace migrations `0001` through `0115` with six clean, dependency-ordered migrations. Keep every migration from `0116` onward unchanged, then rebuild each confirmed disposable remote project from the consolidated history.
+Replace migrations `0001` through `0115` with six clean, dependency-ordered migrations. Keep every migration from `0116` onward unchanged. For an existing environment whose old chain is fully applied, preserve application data and reconcile only the migration ledger; rebuild is the fallback when schema equivalence cannot be established.
 
 The active history will become:
 
@@ -103,7 +103,7 @@ Both histories will be exercised before old files are removed:
 
 CI will continue running `supabase db reset` and pgTAP, now against the compact pre-F2G history followed by the unchanged F2G history. Documentation and workflow comments will be updated so they describe the consolidation boundary and do not imply that every migration is idempotent.
 
-## Remote Database Rebuild
+## Remote Database Cutover
 
 Remote work is destructive and will be performed one project at a time.
 
@@ -116,17 +116,17 @@ Before mutation, the implementation will:
 5. Capture schema, roles, and data backups for each target even when its data is believed disposable.
 6. Record its pre-reset migration list and run the existing read-only drift probe.
 
-For each confirmed non-production target:
+For each target whose old chain is fully applied and whose schema is equivalent to the clean local replay:
 
-1. Link the repository to that exact project ref.
-2. Run a destructive linked reset from the consolidated history, without development sample seed data unless the environment is explicitly intended to contain it.
-3. Confirm the remote migration ledger contains `0001` through `0006`, contains the unchanged `0116`-and-later versions, and contains none of the retired `0007` through `0115` versions.
+1. Run `scripts/reconcile-pre-f2g-migration-history.mjs` with the exact project ref, matching confirmation, schema-equivalence acknowledgement, and a secure absolute backup path.
+2. The script backs up `supabase_migrations.schema_migrations`, removes only retired ledger versions `0007` through `0115`, and re-records `0001` through `0006` from the consolidated files. It does not change application tables or their data.
+3. Confirm `db push --dry-run` reports no pending migrations and that the ledger retains every `0116`-and-later version.
 4. Reload the PostgREST schema cache.
 5. Run schema-drift checks and representative anonymous reads.
 6. Regenerate checked-in database types from the primary remote only after it has passed verification.
 7. Re-establish the administrator row after the intended Auth user exists.
 
-If a discovered project is not clearly disposable, it will not be reset. Its backup and inventory will be reported, and preserving it will require a separate ledger-repair and data-preserving reconciliation plan.
+If schema equivalence cannot be established, do not mark the consolidated migrations applied. A confirmed non-production project may instead be reset from the consolidated history and have required data restored from backup. Any environment that is not clearly disposable requires a separate data-preserving schema reconciliation plan.
 
 The GitHub Actions migration secret points to only one project. After the rebuild, its project ref will be checked against the verified primary target. Additional remotes require separate environments or workflows; they must not silently share one ambiguous secret set.
 
@@ -134,8 +134,8 @@ The GitHub Actions migration secret points to only one project. After the rebuil
 
 - A local replay or schema comparison failure stops the consolidation before any remote operation.
 - A backup failure stops work on that remote.
-- A project-identity mismatch stops the remote reset.
-- A remote reset or verification failure stops processing further remotes.
+- A project-identity mismatch stops any remote ledger repair or reset.
+- A remote cutover or verification failure stops processing further remotes.
 - The old migrations remain available in the parent Git commit and the remote backup remains available for restoration.
 - If the baseline itself is wrong, restore the old migration directory from Git, reset the disposable remote from the old chain, and restore any required data from the captured backup.
 - Application deployment must remain paused until the rebuilt remote passes the schema-drift probe and representative reads.

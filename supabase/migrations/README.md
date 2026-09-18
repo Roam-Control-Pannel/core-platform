@@ -36,9 +36,24 @@ pnpm db:types
 
 ## Existing remote databases
 
-The consolidation rewrites applied migration history. `supabase db push` cannot reconcile a remote whose ledger contains the retired `0007`–`0115` versions. Since there is no production database yet, each existing disposable development or staging project must be backed up and rebuilt from this chain. Follow [the database release runbook](../../docs/db-release-runbook.md#consolidated-history-cutover) and never reset an unverified project.
+The consolidation rewrites applied migration history. `supabase db push` cannot reconcile a remote whose ledger contains the retired `0007`–`0115` versions by itself.
 
-After the founder has signed in to a rebuilt project, grant the initial HQ owner explicitly:
+If the old chain was fully applied and the existing schema is equivalent to a clean replay, preserve all application data and repair only the Supabase migration ledger:
+
+```bash
+pnpm db:reconcile-history -- \
+  --project-ref <PROJECT_REF> \
+  --confirm-project-ref <PROJECT_REF> \
+  --schema-equivalence-confirmed \
+  --apply \
+  --backup-file /absolute/secure/path/<PROJECT_REF>-migration-ledger.sql
+```
+
+The script backs up `supabase_migrations.schema_migrations`, retires only ledger versions `0007`–`0115`, refreshes `0001`–`0006` from the consolidated files, and verifies that `db push --dry-run` has nothing pending. It does not modify application schemas or table data.
+
+If schema equivalence cannot be established, do not repair the ledger. Back up and rebuild the confirmed non-production project instead. Follow [the database release runbook](../../docs/db-release-runbook.md#consolidated-history-cutover) and never reset an unverified project.
+
+After the founder has signed in to the target project, grant the initial HQ owner explicitly:
 
 ```bash
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/bootstrap/admin-owner.sql
