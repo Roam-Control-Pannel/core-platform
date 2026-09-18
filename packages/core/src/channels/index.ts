@@ -192,6 +192,55 @@ export function pickChannelKeyForHost(
   return defaultKey;
 }
 
+/** Drop a leading `www.` so `roam-local.com` and `www.roam-local.com` compare equal. */
+function apexOf(host: string): string {
+  return host.startsWith("www.") ? host.slice(4) : host;
+}
+
+/**
+ * PURE: can this host be answered with the DEFAULT channel WITHOUT consulting the domain map?
+ *
+ * WHY THIS EXISTS. The middleware's second resolution tier fetches the domain map over HTTP, and
+ * the *default* host falls into it on every single request: the env classifier only short-circuits
+ * F2G hosts, so `www.roam-local.com` fetched the map, matched nothing, and returned the default it
+ * would have returned anyway. In the 2026-09-18 Vercel log that lookup was running about once per
+ * page view — roughly doubling function invocations and putting a network hop in front of every
+ * render, for an answer already known.
+ *
+ * `siteHost` is the canonical Roam origin (NEXT_PUBLIC_SITE_URL), so no new configuration is
+ * needed and no domain is hardcoded. A whitelabel host is never the canonical Roam host or a
+ * loopback address, so short-circuiting these cannot mask one.
+ */
+export function isKnownDefaultHost(
+  host: string | null | undefined,
+  siteHost: string | null | undefined,
+): boolean {
+  const h = normalizeHost(host);
+  if (!h) return true; // nothing to look up; the caller defaults anyway
+  // Loopback dev hosts. NB: bare IPv6 is not listed — normalizeHost strips a trailing `:1` from
+  // "::1" as if it were a port, so that form never reaches here; a real browser sends "[::1]:3000"
+  // anyway. Not worth bending the shared normaliser for: an unmatched loopback simply falls through
+  // to the map and still resolves to the default.
+  if (h === "localhost" || h === "127.0.0.1" || h.endsWith(".localhost")) return true;
+  const site = normalizeHost(siteHost);
+  return site !== "" && apexOf(h) === apexOf(site);
+}
+
+/**
+ * PURE: is this origin a platform-generated deployment URL (Vercel / Netlify preview)?
+ *
+ * WHY. The map is fetched from the request's own origin. On a raw deployment URL that endpoint sits
+ * behind the platform's deployment protection and answers 401, which is what produced six of the
+ * seven logged errors on 2026-09-18. The lookup cannot succeed there and cannot be needed there
+ * either: a whitelabel domain is a customer's own domain, never a `*.vercel.app` address. So skip
+ * the tier entirely rather than fetch, fail, and log.
+ */
+export function isPlatformPreviewOrigin(origin: string | null | undefined): boolean {
+  const h = normalizeHost(origin);
+  if (!h) return false;
+  return h.endsWith(".vercel.app") || h.endsWith(".netlify.app");
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** Map a channels row to the domain Channel shape (validating the theme jsonb). */

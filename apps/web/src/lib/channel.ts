@@ -92,6 +92,53 @@ export function channelKeyForHost(rawHost: string | null | undefined): string {
   return DEFAULT_CHANNEL_KEY;
 }
 
+/** Drop a leading `www.` so `roam-local.com` and `www.roam-local.com` compare equal. */
+function apexOf(host: string): string {
+  return host.startsWith("www.") ? host.slice(4) : host;
+}
+
+/**
+ * Can this host be answered with the DEFAULT channel WITHOUT consulting the domain map?
+ *
+ * CANONICAL DEFINITION lives in packages/core/src/channels/index.ts (isKnownDefaultHost), where it
+ * is unit-tested; this is the local twin the middleware uses, in the same mirroring pattern as
+ * routes.ts and categories.ts. Keep the two in lockstep by contract — @roam/core is deliberately
+ * not a dependency of this app.
+ *
+ * WHY IT EXISTS: the resolver's second tier fetches the domain map over HTTP, and the default host
+ * fell into it on every request — matching nothing and returning the default it would have returned
+ * anyway. In the 2026-09-18 Vercel log that ran about once per page view.
+ *
+ * NB bare IPv6 loopback is not listed: normalizeHost strips the trailing `:1` from "::1" as if it
+ * were a port, so that form never arrives. Harmless — it falls through and still resolves to default.
+ */
+export function isKnownDefaultHost(
+  host: string | null | undefined,
+  siteHost: string | null | undefined,
+): boolean {
+  const h = normalizeHost(host);
+  if (!h) return true;
+  if (h === "localhost" || h === "127.0.0.1" || h.endsWith(".localhost")) return true;
+  const site = normalizeHost(siteHost);
+  return site !== "" && apexOf(h) === apexOf(site);
+}
+
+/**
+ * Is this origin a platform-generated deployment URL (Vercel / Netlify preview)?
+ *
+ * CANONICAL DEFINITION lives in packages/core/src/channels/index.ts (isPlatformPreviewOrigin).
+ *
+ * WHY IT EXISTS: the map is fetched from the request's own origin, and on a raw deployment URL that
+ * endpoint sits behind the platform's deployment protection and answers 401 — six of the seven
+ * logged errors on 2026-09-18. The lookup cannot succeed there and is not needed: a whitelabel
+ * domain is a customer's own domain, never a *.vercel.app address.
+ */
+export function isPlatformPreviewOrigin(origin: string | null | undefined): boolean {
+  const h = normalizeHost(origin);
+  if (!h) return false;
+  return h.endsWith(".vercel.app") || h.endsWith(".netlify.app");
+}
+
 /** Read the channel-key cookie in the browser (null on the server or when unset). */
 export function readChannelCookie(): string | null {
   if (typeof document === "undefined") return null;

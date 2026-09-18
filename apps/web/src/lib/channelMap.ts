@@ -19,7 +19,13 @@
  * channel (or a stale memo if we have one), so a transient API blip degrades to Roam chrome rather
  * than breaking navigation.
  */
-import { channelKeyForHost, normalizeHost, DEFAULT_CHANNEL_KEY } from "./channel";
+import {
+  channelKeyForHost,
+  normalizeHost,
+  isKnownDefaultHost,
+  isPlatformPreviewOrigin,
+  DEFAULT_CHANNEL_KEY,
+} from "./channel";
 
 /** One host→channel-key row, matching the /api/channel-map JSON shape. */
 interface DomainMapping {
@@ -27,10 +33,33 @@ interface DomainMapping {
   channelKey: string;
 }
 
-/** In-instance memo TTL. Short: the CDN holds the durable cache; this only de-dupes a warm burst. */
-const TTL_MS = 60_000;
+/**
+ * In-instance memo TTL. Edge instances don't reliably share module state, so this is best-effort —
+ * but it was 60s, which on a cold-ish instance pool bought almost nothing while the lookup ran about
+ * once per page view (2026-09-18 Vercel log). Channel domains change when a whitelabel is onboarded,
+ * i.e. roughly never, so ten minutes of staleness is a fair trade for ten minutes of no fetches.
+ * Onboarding a new domain is still visible within the TTL, and the CDN copy is warm regardless.
+ */
+const TTL_MS = 10 * 60_000;
 
 let memo: { at: number; domains: DomainMapping[] } | null = null;
+
+/**
+ * Per-host resolution memo, including MISSES. Without this, every request for a host that isn't in
+ * the map re-ran the whole tier even when the map itself was memoized. Bounded so a flood of junk
+ * Host headers can't grow it without limit.
+ */
+const HOST_MEMO_MAX = 256;
+const hostMemo = new Map<string, { at: number; key: string }>();
+
+function rememberHost(host: string, key: string): string {
+  if (hostMemo.size >= HOST_MEMO_MAX) {
+    const oldest = hostMemo.keys().next();
+    if (!oldest.done) hostMemo.delete(oldest.value);
+  }
+  hostMemo.set(host, { at: Date.now(), key });
+  return key;
+}
 
 /** Fetch the config map through the CDN-cached endpoint, memoized per warm instance. Fail-open. */
 async function loadMap(origin: string): Promise<DomainMapping[]> {
@@ -79,10 +108,26 @@ export async function resolveChannelKey(origin: string, rawHost: string | null |
   const envKey = channelKeyForHost(rawHost);
   if (envKey !== DEFAULT_CHANNEL_KEY) return envKey;
 
-  // Tier 2: consult the DB-backed config map for a whitelabel domain the classifier doesn't know.
   const host = normalizeHost(rawHost);
   if (!host) return DEFAULT_CHANNEL_KEY;
+
+  // Tier 1b: hosts whose answer is already known (2026-09-18). The canonical Roam host and the
+  // loopback dev hosts are the default channel by definition — they were previously falling all the
+  // way through to a network fetch that matched nothing and returned the default anyway, about once
+  // per page view. A whitelabel host is never the canonical host, so this cannot mask one.
+  if (isKnownDefaultHost(host, process.env.NEXT_PUBLIC_SITE_URL)) return DEFAULT_CHANNEL_KEY;
+
+  // Tier 1c: on a platform deployment URL the map endpoint sits behind deployment protection and
+  // answers 401 — six of the seven logged errors on 2026-09-18. The lookup cannot succeed there and
+  // is not needed: a whitelabel domain is a customer's own domain, never a *.vercel.app address.
+  if (isPlatformPreviewOrigin(origin)) return DEFAULT_CHANNEL_KEY;
+
+  // Per-host memo, hits AND misses: the map memo alone still re-walked this tier per request.
+  const cached = hostMemo.get(host);
+  if (cached && Date.now() - cached.at < TTL_MS) return cached.key;
+
+  // Tier 2: consult the DB-backed config map for a whitelabel domain the classifier doesn't know.
   const domains = await loadMap(origin);
   const hit = domains.find((d) => d.host === host);
-  return hit && hit.channelKey ? hit.channelKey : DEFAULT_CHANNEL_KEY;
+  return rememberHost(host, hit && hit.channelKey ? hit.channelKey : DEFAULT_CHANNEL_KEY);
 }
