@@ -213,7 +213,34 @@ parallel.
 | 3.3 | `/association` UI: overview, members list + CSV, feature requests | 4.3 B | 3 |
 | 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 |
 
-### Phase 4 — The separate F2G app (≈ 32 days)
+### Phase 4 — The separate F2G app (≈ 32 days) — **NOT COMMITTED; trigger-gated (2026-09-18)**
+
+> **Do not start this phase without one of the triggers below being true.**
+>
+> Its original justification died with decision 5.1. D1 asked for a separate app so that "the F2G site
+> moves independently **for the F2G agency**". There is no agency engineer: Roam ships both sides, from
+> one repository, on one cadence. What F2G needs today it already has — both `www.roam-local.com` and
+> `nifood2go.roam-local.com` are domains on **one** Vercel deployment, and the channel system
+> (`surface` / `sections` / `nav`, plus the per-channel canonical host, sitemap, robots and OG art
+> delivered in A3-b) is what makes one app serve two brands. That is the design working as intended,
+> not a stopgap.
+>
+> **Start Phase 4 when any ONE of these becomes true:**
+> 1. **A second whitelabel exists or is signed.** Package extraction (4.1) pays for itself across two
+>    tenants; for one it is cost with no return.
+> 2. **Release cadence genuinely conflicts** — an F2G change is blocked, or made risky, by an unrelated
+>    Roam change in flight (or the reverse), more than occasionally.
+> 3. **Blast radius bites** — a Roam deploy breaks F2G or vice versa, in production, more than once.
+> 4. **The Association asks for something the shared app cannot express** — a layout, route shape or
+>    identity that `sections`/`nav` genuinely cannot carry.
+>
+> **What it costs even after it is built:** two builds, two deploy pipelines, two sets of environment
+> variables, two places for configuration to drift. The 2026-09-17/18 audit is a preview of that class
+> of problem at the schema layer; a second app makes it structural. Weigh that against the triggers.
+>
+> **Cheaper subsets available without the split**, if a specific need appears: per-channel push
+> identity (own VAPID keys and notification title/icon) and per-channel ops alert routing are each
+> small, standalone pieces of 4.2/4.6. Take them individually rather than as a reason to split.
 
 | # | Work | Recon | Days |
 |---|---|---|---|
@@ -233,9 +260,18 @@ parallel.
 | 5.3 | Roster data-protection: DPA wording, retention/erasure, `deleteMe` covering orders + roster, GDPR export | 4.1 H, 4.4 M | 2 |
 | 5.4 | Regenerate DB types (Phase 0 item 5), delete `LooseDb` casts | 4.1 H | 1 |
 
-**Total ≈ 75 engineer-days** — about 15 weeks for one engineer; 9–10 with two once Phase 2 is done
-(Phase 4 and Phases 3+5 in parallel). Andrew's stated priority — the activated/claimed list in a
-portal — lands at the end of Phase 3, roughly week 7 single-handed, not after the app split.
+**Totals.** All five phases ≈ 75 engineer-days. **Committed work, with Phase 4 trigger-gated out,
+≈ 43** (Phases 1–3 and 5). Andrew's stated priority — the activated/claimed list in a portal — lands
+at the end of **Phase 3**, and never depended on the app split.
+
+**What "days" mean in this document.** They are conventional engineer-day estimates for a human team,
+written before this plan was being executed by an agent. They are **not** a wall-clock forecast: Phase 1
+was estimated at 12 days and was delivered, together with an unplanned live-parity audit that recovered
+seven migrations which had never reached the project, in two sittings on 2026-09-17/18. Read the
+numbers as **scope and risk**, not schedule — "12 days" against package extraction (4.1) means *it
+touches a large share of the web app* (24 of 247 source files are channel-aware today, across 153
+components), and that does not shrink with execution speed. Where a number is doing real work in a
+decision, it is the blast radius it stands for, not the hours.
 
 ## 5. Decisions to settle together
 
@@ -248,12 +284,10 @@ Consequences, all simplifications:
 - The Phase 3 feature-request surface (3.4) is no longer a convenience — it **is** the agency's
   interface to Roam, so its status vocabulary and notifications matter more, not less.
 - Phase 4's `CODEOWNERS` work (4.4) reduces to ordinary branch protection for the Roam team.
-- **Phase 4 needs re-justifying before it is committed.** D1's stated driver was that "the F2G site
-  moves independently *for the F2G agency*". With no agency engineers, that driver is gone. What
-  remains is real but narrower: independent release cadence, blast-radius isolation, and its own
-  env/SEO/OG/VAPID/legal surface. At ≈ 32 days it is the single largest phase in this plan, so the
-  question "does F2G need its own app, or its own *host entry* on the existing app?" should be asked
-  again with the agency out of the picture. Not a decision for today; a flag for before Phase 4 starts.
+- **Phase 4 is now trigger-gated, not committed** — D1's driver ("the F2G site moves independently
+  *for the F2G agency*") no longer exists. The four triggers that would restart it are written into
+  the Phase 4 heading; until one is true, F2G stays a host entry on the existing deployment, which is
+  what the channel system was built for and what production already runs.
 
 **5.2 Roster PII in the portal — DECIDED 2026-09-18: Option A.** Officers see business, venue,
 council, membership number, status — no personal e-mail/phone (the Association already holds them).
