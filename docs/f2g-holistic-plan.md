@@ -20,12 +20,10 @@ references use its section numbers; **B** blocker · **H** high · **M** medium.
 | D7 | Hosting reality (Netlify vs Vercel; how nifood2go maps) | **Vercel serves production (2026-09-18).** Project `roam-team/core-platform-web`, deploys from `main`; `www.roam-local.com` and `nifood2go.roam-local.com` are domains on the **same** deployment — the host classifier, not separate sites. A Netlify project (`roam-core-platform`) also builds this repo and posts PR previews; it is not production. Supabase API is on the custom domain `auth.roam-local.com`. |
 | D8 | Membership rule | **The Association's membership number is the validation key.** A business that activates with a valid number is an *active member* (priority + recognition). Non-members are still encouraged to claim/activate, without membership priority. The portal must list activated/claimed businesses. |
 
-**Settled 2026-09-18:** 5.1 (agency access — *changed*, see §5.1) · 5.2 (roster PII, Option A)
-· 5.3 (orders, Option B) · 5.4 (Roam stays 5%) · 5.6 (vendor console stays in `apps/web`)
-· 5.7 (activation second factor as recommended). Custom domain: recon decision #8 stands (no).
-
-**Still open: 5.5.** The condition attached to it ("co-branded is fine as long as it doesn't affect
-Roam Core platform e-mails") **cannot be met** by the recommendation — see §5.5.
+**All of §5 settled 2026-09-18:** 5.1 (agency access — *changed*, see §5.1) · 5.2 (roster PII,
+Option A) · 5.3 (orders, Option B) · 5.4 (Roam stays 5%) · 5.5 (Auth e-mail, **Option A — leave
+Roam's templates alone**) · 5.6 (vendor console stays in `apps/web`) · 5.7 (activation second factor
+as recommended). Custom domain: recon decision #8 stands (no).
 
 ## 2. Phase 0 — establish the facts (this week, no code)
 
@@ -274,20 +272,24 @@ The data spine (`orders.channel_id`, Phase 1.1) is the same for all three, so th
 **5.4 Roam's own fee — CONFIRMED 2026-09-18.** Roam stays at 5%; F2G is 7% via the channel. No
 venue-level override is planned. Already live (migration 0149).
 
-**5.5 Supabase Auth e-mails — STILL OPEN; the stated condition cannot be met.**
-The answer given was "co-branded is fine as long as that doesn't affect our Roam Core platform
-e-mails". It does. Supabase Auth allows **one template set per project**, and Roam and F2G share one
-project, so *any* change to those templates reaches everyone who signs up, resets a password or
-confirms an address on **roam-local.com** as well. There is no per-host variant to hide behind.
+**5.5 Supabase Auth e-mails — DECIDED 2026-09-18: Option A.** Roam's Auth templates are left exactly
+as they are; F2G users receive Roam-branded security mail. Revisit with Option C only if the
+Association asks for it.
+
+*Why the first answer couldn't stand.* It was "co-branded is fine as long as that doesn't affect our
+Roam Core platform e-mails". It would have. Supabase Auth allows **one template set per project**, and
+Roam and F2G share one project, so *any* change to those templates reaches everyone who signs up,
+resets a password or confirms an address on **roam-local.com** as well. There is no per-host variant
+to hide behind. Hence Option A: the only choice that genuinely leaves Roam's mail untouched.
 
 Affected mail: confirm signup, magic link, password reset, e-mail change, invite. Not affected:
 everything we send ourselves through Brevo (owner digest, F2G invites, order mail) — those are already
 per-channel capable.
 
-Three ways out, for a decision:
+The three options as costed:
 | | What Roam users receive | What F2G users receive | Cost |
 |---|---|---|---|
-| **A (recommended)** | unchanged Roam templates | Roam-branded auth mail | none — the F2G site already says "Powered by Roam", so a Roam-branded security e-mail is coherent |
+| **A — CHOSEN** | unchanged Roam templates | Roam-branded auth mail | none — the F2G site already says "Powered by Roam", so a Roam-branded security e-mail is coherent |
 | B | neutral, brand-light templates | the same neutral templates | ~0.5 day; weakens Roam's own mail to gain nothing for F2G |
 | C | Roam templates | true F2G templates | ≈ 3 days: take auth mail off Supabase via the **Send Email Hook**, render per-channel and send through the Brevo path we already run; needs the channel captured into user metadata at sign-up |
 
