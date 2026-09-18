@@ -151,12 +151,41 @@ caps at ~100 rows, so split large lists by name range.
 | Triggers | `pg_trigger where not tgisinternal` | missing trigger = unapplied migration (0130/0131 were found this way) |
 | RLS flags | `pg_class.relrowsecurity/relforcerowsecurity` | `false` where intended `true` |
 | Policy definitions | `md5(coalesce(qual,'') \|\| '#' \|\| coalesce(with_check,''))` | body differs |
-| Function bodies | `md5(pg_get_functiondef(oid))` with `/* */` and `--` comments stripped and **all whitespace removed** | body differs. Do NOT compare raw text: SQL pasted from chat is comment-stripped and reflowed, so raw hashes differ while code is identical |
+| Function bodies | the **canonical checksum** below | body differs. Do NOT compare raw `pg_get_functiondef` text — see the warning under it |
 
 Findings on 2026-09-17: 0076, 0111, 0112, 0130, 0131, 0132, 0133 had never been applied to the
 project (recovered the same day); everything else matched once formatting was ignored. The fifteen
-formatting-only function bodies are made byte-identical by
-`scripts/db-reconcile-functions-2026-09-17.sql` (cosmetic; keeps grants).
+formatting-only function bodies were made byte-identical by
+`scripts/db-reconcile-functions-2026-09-17.sql` (cosmetic; keeps grants), applied 2026-09-18.
+
+### The canonical function checksum
+One query, one number, run on both sides. It strips `/* */` and `--` comments, collapses whitespace,
+and **sums** per-function hashes so neither database collation nor row order can affect it:
+
+```sql
+select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*) as fns
+  from (
+    select md5(regexp_replace(regexp_replace(regexp_replace(
+             pg_get_functiondef(p.oid), '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g'), '\s+', ' ', 'g')) as h
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      left join pg_depend d on d.objid = p.oid and d.deptype = 'e'
+     where n.nspname = 'public' and d.objid is null
+  ) t;
+```
+
+Expected value as of migration 0153: **`267218412372` across 120 functions**. Recompute it after any
+migration that adds or changes a function, by running the same query against a database with every
+migration applied (`supabase db reset`, or the local harness), and update this line in the same PR.
+
+**Why not compare raw text.** Three separate traps, all hit on 2026-09-17/18:
+- SQL applied by pasting into the SQL editor arrives comment-stripped and reflowed, so a function
+  with identical code hashes differently from the repo's copy. Applying a fix through chat therefore
+  *creates* a raw difference. Chasing byte-identity is a treadmill.
+- `string_agg(... order by ...)` depends on the database collation. The repo mirror is `C.UTF-8` and
+  the live project is not, so an ordered aggregate over identical content differs. Sum instead.
+- Per-function hashes are only comparable when both sides use the *same* normalisation. Comparing a
+  normalised list against a raw one makes every row look different.
 
 ## Belt-and-braces in the app
 Even with this runbook, `@roam/core/channels` degrades gracefully if a channel-config column is
