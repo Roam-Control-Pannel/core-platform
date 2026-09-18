@@ -163,7 +163,55 @@ export function isPermissionDenied(body) {
   const code = String(body?.code ?? "");
   if (code === "42501") return true;
   const msg = String(body?.message ?? "").toLowerCase();
-  return msg.includes("permission denied for function");
+  return msg.includes("permission denied for");
+}
+
+/**
+ * Which Postgres role a Supabase API key resolves to, from the key alone. A legacy key is a JWT whose
+ * payload carries `role` ("anon" | "service_role"); a 2025-format key is prefixed `sb_publishable_`
+ * (anon) or `sb_secret_` (service). Returns null when the shape is unrecognised.
+ *
+ * WHY: every `expect: "denied"` probe is only meaningful as the anon role. Run with the service-role
+ * key, the guard would report every service-only function as client-callable (a service key bypasses
+ * grants) — exactly what happened on the first live run (2026-09-17) — or, worse, pass everything and
+ * certify nothing. So the key's role is checked BEFORE any probe, and a non-anon key aborts the run.
+ */
+export function keyRole(key) {
+  return keyInfo(key).role;
+}
+
+/**
+ * Everything the key says about itself: `role` (see keyRole), `shape` ("legacy-jwt" | "publishable" |
+ * "secret" | "unrecognised"), and for a legacy JWT its `ref` claim — the project it was minted for.
+ * The ref lets the guard prove the key and SUPABASE_URL belong to the SAME project: a key from one
+ * project used against another project's URL is rejected by PostgREST as a bad signature (401), or,
+ * if the two projects share a JWT secret, silently probes the wrong database.
+ */
+export function keyInfo(key) {
+  if (typeof key !== "string") return { role: null, shape: "unrecognised", ref: null };
+  const k = key.trim();
+  if (k.startsWith("sb_publishable_")) return { role: "anon", shape: "publishable", ref: null };
+  if (k.startsWith("sb_secret_")) return { role: "service_role", shape: "secret", ref: null };
+  const parts = k.split(".");
+  if (parts.length === 3) {
+    try {
+      const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+      return {
+        role: typeof payload?.role === "string" ? payload.role : null,
+        shape: "legacy-jwt",
+        ref: typeof payload?.ref === "string" ? payload.ref : null,
+      };
+    } catch {
+      return { role: null, shape: "unrecognised", ref: null };
+    }
+  }
+  return { role: null, shape: "unrecognised", ref: null };
+}
+
+/** The project ref from a Supabase URL (`https://<ref>.supabase.co`), or null. */
+export function projectRef(url) {
+  const m = /^https?:\/\/([a-z0-9]{15,})\.supabase\.(co|in)\b/i.exec(String(url ?? ""));
+  return m ? m[1].toLowerCase() : null;
 }
 
 async function main() {
@@ -181,9 +229,108 @@ async function main() {
   }
 
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+  // ── Preflight: the key MUST be this project's anon key ──────────────────────────────────────
+  // Say which project and which kind of key, in the clear: the ref is not sensitive (it is in every
+  // public API URL) and it is what makes a wrong-project or wrong-key run diagnosable from the log.
+  const urlRef = projectRef(url);
+  const info = keyInfo(key);
+  console.log(
+    `  project ${urlRef ?? "(unrecognised URL)"} — key: ${info.shape}` +
+      (info.role ? `, role "${info.role}"` : ", role unknown") +
+      (info.ref ? `, minted for project ${info.ref}` : ""),
+  );
+  if (info.role !== null && info.role !== "anon") {
+    console.error(
+      `check-schema-drift: SUPABASE_ANON_KEY is a "${info.role}" key, not the anon key. Refusing to run:\n` +
+        "  the service-only probes are meaningless with elevated privileges, and a service key must not live\n" +
+        "  in this secret. Replace it with the project's anon (public) key — Supabase → Settings → API.",
+    );
+    process.exit(1);
+  }
+  // The URL must be a Supabase project (PostgREST answers JSON on every path, including a 404). On
+  // 2026-09-17 the secret held the STOREFRONT's own address; a Next.js site answers any path with an
+  // HTML 200, so every probe "passed" while probing nothing. Refuse anything that is not PostgREST.
+  try {
+    const host = new URL(url).host;
+    const r = await fetch(`${url}/rest/v1/`, { headers });
+    const ct = r.headers.get("content-type") ?? "";
+    if (!/json/i.test(ct)) {
+      console.error(
+        `check-schema-drift: SUPABASE_URL (${host}) is not a Supabase project URL — /rest/v1/ answered ${r.status} ${ct || "(no content-type)"},\n` +
+          "  not JSON. This is a website, not the database API. Set SUPABASE_URL to the project's API URL from\n" +
+          "  Supabase → Settings → API → Project URL (https://<ref>.supabase.co, or the project's custom API domain).",
+      );
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`check-schema-drift: could not reach ${url} (${e.message})`);
+    process.exit(1);
+  }
+
+  // Fingerprint the database behind the URL so a "which project is this?" question is answerable from
+  // the log: the host (a substring of the secret, so not masked) and a few public row counts to compare
+  // with `select count(*)` in the SQL editor of the project you believe this is.
+  try {
+    const host = new URL(url).host;
+    const counts = [];
+    for (const t of ["channels", "venues", "fsa_establishments", "channel_members"]) {
+      const r = await fetch(`${url}/rest/v1/${t}?select=id&limit=1`, { headers: { ...headers, Prefer: "count=exact" } });
+      const cr = r.headers.get("content-range") ?? "";
+      counts.push(`${t}=${cr.includes("/") ? cr.split("/")[1] : `? (HTTP ${r.status})`}`);
+    }
+    console.log(`  fingerprint: host ${host}; public row counts as anon: ${counts.join(", ")}`);
+  } catch (e) {
+    console.log(`  fingerprint: unavailable (${e.message})`);
+  }
+  if (info.ref && urlRef && info.ref !== urlRef) {
+    console.error(
+      `check-schema-drift: SUPABASE_ANON_KEY was minted for project ${info.ref} but SUPABASE_URL points at ${urlRef}.\n` +
+        "  Both secrets must come from the SAME project (the one the app reads). Refusing to run.",
+    );
+    process.exit(1);
+  }
+
+  // Behaviourally: places_fetch_quota has RLS on AND all table grants revoked from anon (0130), so an
+  // anon read must answer 42501. Interpreting anything else needs the key facts above:
+  //   - role unknown + 2xx  → cannot tell elevated privileges from drift; abort.
+  //   - role anon    + 2xx  → the request IS anon (the signature verified against this project), so
+  //                           the table revoke is not in force here: that is DRIFT (0130), reported
+  //                           below with everything else rather than aborting.
   const drifts = [];
   const errors = [];
   const regressions = [];
+  try {
+    const res = await fetch(`${url}/rest/v1/places_fetch_quota?select=bucket&limit=1`, { headers });
+    const body = await res.json().catch(() => null);
+    if (res.ok && info.role !== "anon") {
+      console.error(
+        "check-schema-drift: the key can read places_fetch_quota, which anon cannot (migration 0130), and the\n" +
+          "  key's role could not be read from the key itself. Cannot tell a wrong key from drift — refusing to run.\n" +
+          "  Use the project's anon (public) key: a legacy 'eyJ…' JWT with role \"anon\", or an sb_publishable_ key.",
+      );
+      process.exit(1);
+    }
+    if (res.ok) {
+      regressions.push(
+        `table places_fetch_quota: anon may READ it (HTTP ${res.status}) — 0130's table revoke is not in force on project ${urlRef ?? "?"}`,
+      );
+    } else if (isPermissionDenied(body)) {
+      console.log("  ✓ preflight — running as the anon role (places_fetch_quota denied, as 0130 intends)");
+    } else if (res.status === 401) {
+      console.error(
+        `check-schema-drift: PostgREST rejected the key (401 — ${body?.message ?? "unknown"}). The key does not verify\n` +
+          "  against this project: SUPABASE_URL and SUPABASE_ANON_KEY are from different projects, or the key is stale.",
+      );
+      process.exit(1);
+    } else if (!isDriftError(body)) {
+      console.error(`check-schema-drift: preflight got an unexpected ${res.status} — ${body?.message ?? "unknown error"}`);
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`check-schema-drift: could not reach PostgREST for the preflight (${e.message})`);
+    process.exit(1);
+  }
 
   for (const { table, columns, reason } of REQUIRED_READS) {
     const endpoint = `${url}/rest/v1/${table}?select=${columns.join(",")}&limit=1`;
@@ -195,8 +342,13 @@ async function main() {
       errors.push(`${table}: could not reach PostgREST (${e.message})`);
       continue;
     }
-    if (res.ok) {
+    if (res.ok && Array.isArray(body)) {
       console.log(`  ✓ ${table} (${columns.join(", ")}) — readable`);
+      continue;
+    }
+    if (res.ok) {
+      // A 2xx that is not a JSON array is not PostgREST answering — never count it as a pass.
+      errors.push(`${table}: ${res.status} but the body is not a PostgREST row array — is SUPABASE_URL the project API?`);
       continue;
     }
     if (isDriftError(body)) {
@@ -235,7 +387,7 @@ async function main() {
     if (isPermissionDenied(body)) {
       console.log(`  ✓ rpc/${name} — resolves and is denied to anon (service-only, as intended)`);
     } else if (res.ok) {
-      regressions.push(`rpc/${name}: anon may EXECUTE a service-only function — ${reason}`);
+      regressions.push(`rpc/${name}: anon may EXECUTE a service-only function (HTTP ${res.status}) — ${reason}`);
     } else {
       errors.push(`rpc/${name}: unexpected ${res.status} response — ${body?.message ?? "unknown error"}`);
     }
@@ -253,7 +405,10 @@ async function main() {
   if (regressions.length) {
     console.error("\ncheck-schema-drift: HARDENING REGRESSION — a service-only function is client-callable:");
     for (const r of regressions) console.error(`  ✗ ${r}`);
-    console.error("  Fix: re-apply the revoke (migrations 0149 / 0151) — see docs/db-release-runbook.md.");
+    console.error(
+      "  Fix: re-apply the revokes (migrations 0076 / 0130 / 0149 / 0151) TO THIS PROJECT — see docs/db-release-runbook.md.\n" +
+        "  If today's SQL was applied to a different project, that is the finding: this URL is not that project.",
+    );
   }
   if (drifts.length) {
     console.error("\ncheck-schema-drift: SCHEMA DRIFT — the live DB is behind the deployed app:");
