@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeHost,
   isHexColor,
+  isKnownDefaultHost,
+  isPlatformPreviewOrigin,
   parseChannelTheme,
   pickChannelKeyForHost,
   rowToChannel,
@@ -299,5 +301,82 @@ describe("channel reads degrade gracefully when the config columns are unreadabl
       "f2g.local",
     );
     expect(ch?.key).toBe("f2g");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lookup short-circuits (2026-09-18). These exist to keep the middleware off the
+// network for hosts whose answer is already known, and off a lookup that cannot
+// succeed. Both were traced from production logs — see the function comments.
+// ---------------------------------------------------------------------------
+
+describe("isKnownDefaultHost", () => {
+  const SITE = "https://www.roam-local.com";
+
+  it("short-circuits the canonical site host", () => {
+    expect(isKnownDefaultHost("www.roam-local.com", SITE)).toBe(true);
+  });
+
+  it("treats the apex and the www host as the same site", () => {
+    expect(isKnownDefaultHost("roam-local.com", SITE)).toBe(true);
+    expect(isKnownDefaultHost("www.roam-local.com", "https://roam-local.com")).toBe(true);
+  });
+
+  it("ignores scheme, port and case in either argument", () => {
+    expect(isKnownDefaultHost("WWW.Roam-Local.com:443", SITE)).toBe(true);
+    expect(isKnownDefaultHost("roam-local.com", "HTTPS://WWW.ROAM-LOCAL.COM/")).toBe(true);
+  });
+
+  it("short-circuits loopback development hosts", () => {
+    for (const h of ["localhost", "localhost:3000", "127.0.0.1", "app.localhost"]) {
+      expect(isKnownDefaultHost(h, SITE)).toBe(true);
+    }
+  });
+
+  it("does not claim bare IPv6 loopback — normalizeHost mangles it, and falling through is harmless", () => {
+    // normalizeHost("::1") === ":" because the trailing ":1" looks like a port. Documented, not relied on.
+    expect(isKnownDefaultHost("::1", SITE)).toBe(false);
+  });
+
+  it("is true for an empty host — there is nothing to look up", () => {
+    expect(isKnownDefaultHost("", SITE)).toBe(true);
+    expect(isKnownDefaultHost(null, SITE)).toBe(true);
+  });
+
+  it("does NOT short-circuit a whitelabel host — that must still hit the map", () => {
+    expect(isKnownDefaultHost("nifood2go.roam-local.com", SITE)).toBe(false);
+    expect(isKnownDefaultHost("somepartner.co.uk", SITE)).toBe(false);
+  });
+
+  it("does not short-circuit a look-alike domain", () => {
+    expect(isKnownDefaultHost("roam-local.com.evil.test", SITE)).toBe(false);
+    expect(isKnownDefaultHost("notroam-local.com", SITE)).toBe(false);
+  });
+
+  it("short-circuits nothing but loopback when the site host is unset", () => {
+    expect(isKnownDefaultHost("www.roam-local.com", null)).toBe(false);
+    expect(isKnownDefaultHost("localhost", null)).toBe(true);
+  });
+});
+
+describe("isPlatformPreviewOrigin", () => {
+  it("recognises Vercel and Netlify deployment URLs", () => {
+    expect(isPlatformPreviewOrigin("https://core-platform-h1ya8w2-roam-team.vercel.app")).toBe(true);
+    expect(isPlatformPreviewOrigin("https://deploy-preview-411--roam-core-platform.netlify.app")).toBe(true);
+  });
+
+  it("does not match production or whitelabel domains", () => {
+    expect(isPlatformPreviewOrigin("https://www.roam-local.com")).toBe(false);
+    expect(isPlatformPreviewOrigin("https://nifood2go.roam-local.com")).toBe(false);
+    expect(isPlatformPreviewOrigin("http://localhost:3000")).toBe(false);
+  });
+
+  it("does not match a domain that merely contains the platform suffix", () => {
+    expect(isPlatformPreviewOrigin("https://vercel.app.example.com")).toBe(false);
+  });
+
+  it("is false for an empty origin", () => {
+    expect(isPlatformPreviewOrigin("")).toBe(false);
+    expect(isPlatformPreviewOrigin(null)).toBe(false);
   });
 });
