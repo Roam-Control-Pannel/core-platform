@@ -13,16 +13,17 @@ references use its section numbers; **B** blocker · **H** high · **M** medium.
 |---|---|---|
 | D1 | Independence model | **A separate F2G app in this monorepo** ("a branch away from Roam, still attached"): its own build, host and release cadence; **same database and the same API** — Roam core is the engine, so any activity on F2G is activity on Roam and vice versa. F2G is bespoked to the Association (employability board, supplier directory, member directory, …). |
 | D2 | Association portal | **Basic, mostly read-only.** |
-| D3 | Orders visibility to the Association | **To be settled together** — options and a recommendation in §5.3. |
+| D3 | Orders visibility to the Association | **Option B (2026-09-18):** channel totals **plus per-member-venue counts/GMV**; no customer or line data. Needs one line in the membership terms. |
 | D4 | Feature requests | **A table + a Roam HQ queue, with status visible to the Association.** |
 | D5 | Commission | **Copy is wrong; the F2G fee is 7%.** (Roam's default stays 5% unless told otherwise — §5.4.) |
 | D6 | Email sender | **Co-branded Roam.** |
-| D7 | Hosting reality (Netlify vs Vercel; how nifood2go maps) | **Unknown — establish together** (§2). |
+| D7 | Hosting reality (Netlify vs Vercel; how nifood2go maps) | **Vercel serves production (2026-09-18).** Project `roam-team/core-platform-web`, deploys from `main`; `www.roam-local.com` and `nifood2go.roam-local.com` are domains on the **same** deployment — the host classifier, not separate sites. A Netlify project (`roam-core-platform`) also builds this repo and posts PR previews; it is not production. Supabase API is on the custom domain `auth.roam-local.com`. |
 | D8 | Membership rule | **The Association's membership number is the validation key.** A business that activates with a valid number is an *active member* (priority + recognition). Non-members are still encouraged to claim/activate, without membership priority. The portal must list activated/claimed businesses. |
 
-Open, settled in §5: agency access (5.1) · roster PII in the portal (5.2) · orders visibility (5.3)
-· Roam's own fee (5.4) · Supabase Auth e-mail branding (5.5) · where the vendor console lives (5.6)
-· the activation second factor (5.7). Custom domain: recon decision #8 stands (no).
+**All of §5 settled 2026-09-18:** 5.1 (agency access — *changed*, see §5.1) · 5.2 (roster PII,
+Option A) · 5.3 (orders, Option B) · 5.4 (Roam stays 5%) · 5.5 (Auth e-mail, **Option A — leave
+Roam's templates alone**) · 5.6 (vendor console stays in `apps/web`) · 5.7 (activation second factor
+as recommended). Custom domain: recon decision #8 stands (no).
 
 ## 2. Phase 0 — establish the facts (this week, no code)
 
@@ -238,17 +239,27 @@ portal — lands at the end of Phase 3, roughly week 7 single-handed, not after 
 
 ## 5. Decisions to settle together
 
-**5.1 The agency's access.** Recommended: the agency works in this repository on `apps/f2g` and
-`packages/f2g-ui` with `CODEOWNERS` review from Roam on `packages/api`, `supabase/`, `apps/web`,
-`apps/admin` and the shared packages; migrations proposed by PR, applied by Roam. Alternative: a fork
-with one-way sync — every engine change becomes a merge, and "activity on one is activity on the
-other" gets harder to keep true.
+**5.1 The agency's access — DECIDED 2026-09-18, and not as recommended.** *The agency gets no
+development access at all.* Their only route into the roadmap is the **feature-request queue** (D4):
+they raise a request, Roam triages, plans and builds it. No repository access, no `CODEOWNERS` entry,
+no fork, no agency pull requests, no agency-proposed migrations.
 
-**5.2 Roster PII in the portal.** Option A (recommended for v1): officers see business, venue,
+Consequences, all simplifications:
+- The Phase 3 feature-request surface (3.4) is no longer a convenience — it **is** the agency's
+  interface to Roam, so its status vocabulary and notifications matter more, not less.
+- Phase 4's `CODEOWNERS` work (4.4) reduces to ordinary branch protection for the Roam team.
+- **Phase 4 needs re-justifying before it is committed.** D1's stated driver was that "the F2G site
+  moves independently *for the F2G agency*". With no agency engineers, that driver is gone. What
+  remains is real but narrower: independent release cadence, blast-radius isolation, and its own
+  env/SEO/OG/VAPID/legal surface. At ≈ 32 days it is the single largest phase in this plan, so the
+  question "does F2G need its own app, or its own *host entry* on the existing app?" should be asked
+  again with the agency out of the picture. Not a decision for today; a flag for before Phase 4 starts.
+
+**5.2 Roster PII in the portal — DECIDED 2026-09-18: Option A.** Officers see business, venue,
 council, membership number, status — no personal e-mail/phone (the Association already holds them).
-Option B: show roster e-mail with every read audited. A needs no DPA change.
+Option B (roster e-mail with every read audited) is rejected for v1. A needs no DPA change.
 
-**5.3 Orders visibility (D3).**
+**5.3 Orders visibility (D3) — DECIDED 2026-09-18: Option B.**
 
 | Option | The Association sees | Trade-off |
 |---|---|---|
@@ -258,20 +269,39 @@ Option B: show roster e-mail with every read audited. A needs no DPA change.
 
 The data spine (`orders.channel_id`, Phase 1.1) is the same for all three, so this does not block.
 
-**5.4 Roam's own fee.** Global default is 5%; F2G becomes 7% via the channel. Confirm Roam stays 5%;
-no venue-level override is planned.
+**5.4 Roam's own fee — CONFIRMED 2026-09-18.** Roam stays at 5%; F2G is 7% via the channel. No
+venue-level override is planned. Already live (migration 0149).
 
-**5.5 Supabase Auth e-mails.** One template set per project. Recommended: neutral co-branded templates
-rather than per-host variants, which Supabase cannot do.
+**5.5 Supabase Auth e-mails — DECIDED 2026-09-18: Option A.** Roam's Auth templates are left exactly
+as they are; F2G users receive Roam-branded security mail. Revisit with Option C only if the
+Association asks for it.
 
-**5.6 Where the vendor console lives.** Recommended for v1: stays in `apps/web` (`/dashboard`),
+*Why the first answer couldn't stand.* It was "co-branded is fine as long as that doesn't affect our
+Roam Core platform e-mails". It would have. Supabase Auth allows **one template set per project**, and
+Roam and F2G share one project, so *any* change to those templates reaches everyone who signs up,
+resets a password or confirms an address on **roam-local.com** as well. There is no per-host variant
+to hide behind. Hence Option A: the only choice that genuinely leaves Roam's mail untouched.
+
+Affected mail: confirm signup, magic link, password reset, e-mail change, invite. Not affected:
+everything we send ourselves through Brevo (owner digest, F2G invites, order mail) — those are already
+per-channel capable.
+
+The three options as costed:
+| | What Roam users receive | What F2G users receive | Cost |
+|---|---|---|---|
+| **A — CHOSEN** | unchanged Roam templates | Roam-branded auth mail | none — the F2G site already says "Powered by Roam", so a Roam-branded security e-mail is coherent |
+| B | neutral, brand-light templates | the same neutral templates | ~0.5 day; weakens Roam's own mail to gain nothing for F2G |
+| C | Roam templates | true F2G templates | ≈ 3 days: take auth mail off Supabase via the **Send Email Hook**, render per-channel and send through the Brevo path we already run; needs the channel captured into user metadata at sign-up |
+
+**5.6 Where the vendor console lives — DECIDED 2026-09-18: stays in `apps/web`** (`/dashboard`),
 reached co-branded from the F2G app; it is engine tooling (menus, payments, orders). Packaging it into
-a shared `vendor-console` package is a later phase (≈ 8 days) if the agency needs to restyle it.
+a shared `vendor-console` package (≈ 8 days) is not planned — with no agency engineers there is nobody
+asking to restyle it.
 
-**5.7 Activation second factor.** Recommended: the signed-in account's verified e-mail must equal the
-roster `source_email`; if it doesn't, a one-time code is sent to `source_email`. Postcode alone is
-rejected as the factor — it is printed on the venue page, and most SME e-mails are generic domains,
-so "number + postcode" is guessable.
+**5.7 Activation second factor — DECIDED 2026-09-18 as recommended.** The signed-in account's
+verified e-mail must equal the roster `source_email`; if it doesn't, a one-time code is sent to
+`source_email`. Postcode alone is rejected as the factor — it is printed on the venue page, and most
+SME e-mails are generic domains, so "number + postcode" is guessable.
 
 ## 6. Deliberately deferred (with the recon gap they leave open)
 
