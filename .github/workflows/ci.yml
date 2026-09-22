@@ -7,7 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, feat/consolidate-migrations]
+    branches: [main]
 
 # Cancel superseded runs on the same ref to save CI minutes.
 concurrency:
