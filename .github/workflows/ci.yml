@@ -65,7 +65,12 @@ jobs:
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.117.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       # Starts only the Postgres container (not the full stack), so no auth/
       # storage/studio services and none of their env() secrets are needed.
@@ -76,6 +81,11 @@ jobs:
       # migration error, ordering problem, or seed breakage.
       - name: Apply migrations + seed (db reset)
         run: supabase db reset
+
+      # The generated client contract must describe the exact schema rebuilt
+      # above. This catches migrations that land without refreshing the types.
+      - name: Verify generated database types
+        run: node scripts/generate-db-types.mjs --check
 
       # pgTAP assertions over the freshly-migrated schema.
       - name: Run pgTAP tests
