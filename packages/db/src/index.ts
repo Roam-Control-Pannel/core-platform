@@ -13,7 +13,8 @@
  *                           key to a browser or native bundle. Guarded below.
  *
  * The generated `Database` type makes every query column-checked against the real
- * schema. Regenerate it with `pnpm db:types` after any migration.
+ * schema. After resetting the local database, regenerate it with `pnpm db:types`
+ * after any migration; CI verifies the checked-in result against a clean replay.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./generated/database.types.js";

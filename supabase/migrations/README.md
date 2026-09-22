@@ -32,7 +32,12 @@ Regenerate database types when an intentional schema change requires it:
 
 ```bash
 pnpm db:types
+pnpm db:types:check
 ```
+
+Both commands use the rebuilt local database and the `public` schema. The generator writes only
+after the Supabase CLI succeeds, so a failed command cannot truncate the checked-in type file. CI
+pins Supabase CLI `2.117.0`, rebuilds the schema, and runs the check on every database-gated PR.
 
 ## Existing remote databases
 

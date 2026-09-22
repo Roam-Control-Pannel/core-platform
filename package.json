@@ -18,7 +18,8 @@
     "db:migrate": "supabase migration up",
     "db:reconcile-history": "node scripts/reconcile-pre-f2g-migration-history.mjs",
     "db:drift-check": "node scripts/check-schema-drift.mjs",
-    "db:types": "supabase gen types typescript --project-id kyancopdkxotzzkzqsmf > packages/db/src/generated/database.types.ts",
+    "db:types": "node scripts/generate-db-types.mjs",
+    "db:types:check": "node scripts/generate-db-types.mjs --check",
     "db:reset": "supabase db reset",
     "clean": "turbo run clean && rm -rf node_modules"
   },

@@ -64,9 +64,9 @@ The consolidated pre-F2G baseline creates the `admin_users` allowlist and `admin
 The founder grant is deliberately not part of schema migration history because a fresh database may
 not have that Auth user yet; use `supabase/bootstrap/admin-owner.sql` after sign-in.
 
-After applying, regenerate DB types with `pnpm db:types` (the CI/dev typecheck already
-carries hand-added entries for the two new tables, so this only re-syncs the source of
-truth against the live project).
+After applying, reset the local database and regenerate DB types with `pnpm db:types`. The generator
+reads the rebuilt local `public` schema rather than a hosted project, and CI rejects schema changes
+whose generated contract was not committed.
 
 ---
 
