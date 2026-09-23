@@ -5,6 +5,8 @@
  *   Roster     — browse the channel's channel_members (status / council / name search, paged).
  *   Review     — the B4b match-review queue: unbound members + ranked candidates → confirm / dismiss.
  *   Onboarding — the funnel (counts by status) and a by-council breakdown.
+ *   Officers   — who at the PARTNER organisation may sign in to their own portal (plan 3.1). Search
+ *                a real account, then appoint it; every appointment and revocation is audited.
  *
  * Reads via channelsAdmin.*, writes via adminActions.* (each audited server-side). Acting roles get
  * the editors; viewers see everything read-only. Matches the Lookup/Moderation view conventions.
@@ -16,7 +18,7 @@ import { useTrpc } from "../TrpcProvider";
 import { C, F } from "../../theme";
 import { ErrorLine, Kicker, Label, Panel } from "../ui";
 
-type Tab = "config" | "roster" | "review" | "onboarding" | "import";
+type Tab = "config" | "roster" | "review" | "onboarding" | "import" | "officers";
 
 interface NavItem { key: string; href: string; labelKey: string }
 interface ChannelInfo {
@@ -25,6 +27,12 @@ interface ChannelInfo {
   logoUrl: string | null; membershipMode: "open" | "members";
   nav: NavItem[]; sections: Record<string, boolean>; surface: "roam" | "storefront";
 }
+
+interface ChannelOfficer {
+  profileId: string; handle: string | null; displayName: string | null;
+  role: "officer" | "viewer"; note: string | null; createdAt: string;
+}
+interface UserHit { id: string; handle: string | null; displayName: string | null; banned: boolean }
 
 const KNOWN_SECTIONS = ["storefront", "directory", "suppliers", "jobs", "explore", "townHall", "market", "deals", "events"];
 const MEMBER_STATUSES = ["imported", "invited", "claimed", "live", "lapsed", "removed"] as const;
@@ -74,7 +82,7 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
             ))}
           </select>
           <span style={{ flex: 1 }} />
-          {(["config", "roster", "review", "onboarding", "import"] as Tab[]).map((t) => (
+          {(["config", "roster", "review", "onboarding", "import", "officers"] as Tab[]).map((t) => (
             <Toggle key={t} active={tab === t} onClick={() => setTab(t)}>{t[0]!.toUpperCase() + t.slice(1)}</Toggle>
           ))}
         </div>
@@ -91,6 +99,8 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
           <ReviewTab channelKey={selected.key} canAct={canAct} />
         ) : tab === "onboarding" ? (
           <OnboardingTab channelKey={selected.key} />
+        ) : tab === "officers" ? (
+          <OfficersTab channelKey={selected.key} channelName={selected.name} canAct={canAct} />
         ) : (
           <ImportTab channelKey={selected.key} canAct={canAct} />
         )}
@@ -924,6 +934,151 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div style={{ display: "grid", gap: 6 }}>
       <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Officers — who at the PARTNER organisation may sign in to their own portal (plan 3.1).
+ *
+ * This is the most consequential button in the console: appointing someone hands a person outside
+ * Roam read access to everything about that channel. So the flow is deliberately two-step — search
+ * for a real account, look at it, then appoint it — rather than typing an address into a box. Every
+ * appointment and revocation is audited server-side.
+ *
+ * The roles are the partner's own (`officer` / `viewer`, migration 0156), not Roam HQ's. An officer
+ * of one channel can never reach another; the gate and the pgTAP suite both prove it.
+ */
+function OfficersTab({ channelKey, channelName, canAct }: { channelKey: string; channelName: string; canAct: boolean }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<ChannelOfficer[] | undefined>(undefined);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [term, setTerm] = useState("");
+  const [results, setResults] = useState<UserHit[] | null>(null);
+  const [role, setRole] = useState<"officer" | "viewer">("officer");
+
+  const load = useCallback(() => {
+    setRows(undefined);
+    (trpc.channelsAdmin.officers.query({ channelKey }) as Promise<ChannelOfficer[]>)
+      .then(setRows)
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load officers."));
+  }, [trpc, channelKey]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function search() {
+    setErr(null);
+    if (!term.trim()) { setResults(null); return; }
+    try {
+      setResults(await (trpc.adminSearch.users.query({ q: term.trim(), limit: 10 }) as Promise<UserHit[]>));
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "User search failed.");
+    }
+  }
+
+  async function appoint(profileId: string) {
+    setBusy(true); setErr(null);
+    try {
+      await trpc.adminActions.setChannelOfficer.mutate({ channelKey, profileId, role });
+      setResults(null); setTerm("");
+      load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to appoint officer.");
+    } finally { setBusy(false); }
+  }
+
+  async function revoke(profileId: string, who: string) {
+    if (!window.confirm(`Remove ${who} from ${channelName}? They lose access to the organisation's portal immediately.`)) return;
+    setBusy(true); setErr(null);
+    try {
+      await trpc.adminActions.removeChannelOfficer.mutate({ channelKey, profileId });
+      load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to remove officer.");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 22 }}>
+      {err ? <ErrorLine message={err} /> : null}
+
+      <div>
+        <Label>Officers of {channelName}</Label>
+        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+          These people can sign in to the organisation&rsquo;s own portal and see this channel — and only this channel.
+        </div>
+        <div style={{ display: "grid", gap: 4, marginTop: 10 }}>
+          {rows === undefined ? (
+            <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div>
+          ) : rows.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: C.muted }}>Nobody has been appointed yet.</div>
+          ) : rows.map((r) => (
+            <div key={r.profileId} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, borderBottom: `1px solid ${C.line}`, padding: "7px 0" }}>
+              <span style={{ flex: 1, color: C.ink }}>
+                {r.displayName ?? r.handle ?? r.profileId}
+                {r.handle ? <span style={{ color: C.muted }}> @{r.handle}</span> : null}
+              </span>
+              <span style={{ fontFamily: F.mono, fontSize: 10.5, textTransform: "uppercase", color: C.muted }}>{r.role}</span>
+              {canAct ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => revoke(r.profileId, r.displayName ?? r.handle ?? "this person")}
+                  style={{ ...inputStyle, padding: "5px 10px", fontSize: 12, cursor: busy ? "default" : "pointer" }}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {canAct ? (
+        <div>
+          <Label>Appoint someone</Label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+            <input
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void search(); }}
+              placeholder="Search by name or @handle"
+              style={{ ...inputStyle, flex: 1, minWidth: 220 }}
+            />
+            <select value={role} onChange={(e) => setRole(e.target.value as "officer" | "viewer")} aria-label="Role" style={selectStyle}>
+              <option value="officer">officer — may act for the organisation</option>
+              <option value="viewer">viewer — read only</option>
+            </select>
+            <button type="button" onClick={() => void search()} style={{ ...inputStyle, cursor: "pointer" }}>Search</button>
+          </div>
+
+          {results ? (
+            <div style={{ display: "grid", gap: 4, marginTop: 10 }}>
+              {results.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: C.muted }}>No accounts match that. They must have a Roam account before they can be appointed.</div>
+              ) : results.map((u) => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, borderBottom: `1px solid ${C.line}`, padding: "7px 0" }}>
+                  <span style={{ flex: 1 }}>
+                    {u.displayName ?? u.handle ?? u.id}
+                    {u.handle ? <span style={{ color: C.muted }}> @{u.handle}</span> : null}
+                    {u.banned ? <span style={{ color: C.muted, fontFamily: F.mono, fontSize: 10.5 }}> · banned</span> : null}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy || u.banned}
+                    onClick={() => void appoint(u.id)}
+                    style={{ ...inputStyle, padding: "5px 10px", fontSize: 12, cursor: busy || u.banned ? "default" : "pointer" }}
+                  >
+                    Appoint as {role}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

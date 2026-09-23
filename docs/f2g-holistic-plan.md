@@ -316,12 +316,19 @@ where data corruption lives, and a one-way pull has to prove itself first.
 
 ### Phase 3 — Association portal v1 + feature requests (≈ 11 days; in `apps/web`, moves later)
 
-| # | Work | Recon | Days |
-|---|---|---|---|
-| 3.1 | `channel_admins` + `associationProcedure` + HQ officer management + pgTAP scoping proof | 4.3 B | 2 |
-| 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped, audited | 4.3 B/H | 3 |
-| 3.3 | `/association` UI: overview, members list + CSV, feature requests | 4.3 B | 3 |
-| 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 |
+| # | Work | Recon | Days | Status |
+|---|---|---|---|---|
+| 3.1 | `channel_admins` (0156) + `associationProcedure` + HQ officer management + pgTAP scoping proof | 4.3 B | 2 | **DONE** |
+| 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped, audited | 4.3 B/H | 3 | |
+| 3.3 | `/association` UI: overview, members list + CSV, feature requests | 4.3 B | 3 | |
+| 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 | |
+
+**3.1 as built.** `channel_admins` is a separate table from `admin_users` on purpose: a Roam HQ row is
+cross-tenant by design, so making an Association officer a Roam admin would hand one partner the keys
+to every other partner. The channel is resolved from the caller's appointment, never from
+`x-roam-channel` — the header only *chooses* among channels the caller already holds, and both the API
+gate and pgTAP prove an officer of A reads nothing of B. `is_channel_admin(uuid)` states the predicate
+once, so 3.2's aggregates and 3.4's RLS cannot drift apart from it.
 
 ### Phase 4 — The separate F2G app (≈ 32 days) — **NOT COMMITTED; trigger-gated (2026-09-18)**
 

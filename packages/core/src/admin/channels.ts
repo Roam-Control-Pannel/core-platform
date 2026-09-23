@@ -248,4 +248,123 @@ export async function removeChannelDomain(
     detail: { channel: channelKey, host: h },
   });
 }
+
+// ── the partner's own officers (F2G plan 3.1, migration 0156) ───────────────────────────────────
+//
+// Appointing an officer hands a partner organisation read access to everything about THEIR channel.
+// It is therefore a privileged act: Roam staff only, through adminProcedure, and audited like every
+// other one. `channel_admins` has no client write policy at all, so this path — service-role under a
+// verified staff session — is the only way a row gets created, changed or removed.
+//
+// Appointment is BY PROFILE ID, not by e-mail. `profiles` holds no e-mail (it lives in auth.users),
+// and resolving one would mean scanning the auth admin API; Roam HQ already has a people search
+// (adminSearch.users), so the console finds the person and passes their id. That also makes the act
+// deliberate: you appoint a specific account you have looked at, not a string you typed.
+
+/** The partner officers of one channel, as the console lists them. */
+export interface ChannelOfficerRow {
+  profileId: string;
+  handle: string | null;
+  displayName: string | null;
+  role: ChannelAdminRole;
+  note: string | null;
+  createdAt: string;
+}
+
+/** A partner officer's authority within their own channel. Mirrors migration 0156's check. */
+export type ChannelAdminRole = "officer" | "viewer";
+
+function parseChannelAdminRole(value: unknown): ChannelAdminRole {
+  return value === "officer" ? "officer" : "viewer";
+}
+
+/** Who holds a role at this channel. */
+export async function listChannelOfficers(
+  client: RoamClient,
+  channelKey: string,
+): Promise<ChannelOfficerRow[]> {
+  const channel = await getChannelByKey(client, channelKey);
+  if (!channel) throw new Error(`admin: unknown channel '${channelKey}'`);
+
+  const { data, error } = await loose(client)
+    .from("channel_admins")
+    .select("profile_id, role, note, created_at, profiles(handle, display_name)")
+    .eq("channel_id", channel.id)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`admin: officer list failed: ${error.message}`);
+
+  return ((data ?? []) as any[]).map((r) => ({
+    profileId: String(r.profile_id),
+    handle: r.profiles?.handle ?? null,
+    displayName: r.profiles?.display_name ?? null,
+    role: parseChannelAdminRole(r.role),
+    note: r.note ?? null,
+    createdAt: String(r.created_at),
+  }));
+}
+
+/**
+ * Appoint someone, or change the role they already hold.
+ *
+ * Upsert on (channel_id, profile_id) — the unique index in 0156 — so re-appointing updates the role
+ * rather than leaving two rows whose precedence nobody has defined. This is a plain unique index, not
+ * a partial one, so PostgREST can use it as a conflict arbiter.
+ */
+export async function setChannelOfficer(
+  client: RoamClient,
+  actor: AdminActor,
+  channelKey: string,
+  profileId: string,
+  role: ChannelAdminRole,
+  note?: string | null,
+): Promise<void> {
+  const channel = await getChannelByKey(client, channelKey);
+  if (!channel) throw new Error(`admin: unknown channel '${channelKey}'`);
+
+  const { error } = await loose(client)
+    .from("channel_admins")
+    .upsert(
+      {
+        channel_id: channel.id,
+        profile_id: profileId,
+        role: parseChannelAdminRole(role),
+        note: note ?? null,
+        created_by: actor.id,
+      },
+      { onConflict: "channel_id,profile_id" },
+    );
+  if (error) throw new Error(`admin: officer appointment failed: ${error.message}`);
+
+  await recordAudit(client, actor, {
+    action: "set_channel_officer",
+    entityType: "channel",
+    entityId: channel.id,
+    detail: { channel: channelKey, profileId, role: parseChannelAdminRole(role) },
+  });
+}
+
+/** Revoke someone's role at this channel. Idempotent: removing a role nobody holds is not an error. */
+export async function removeChannelOfficer(
+  client: RoamClient,
+  actor: AdminActor,
+  channelKey: string,
+  profileId: string,
+): Promise<void> {
+  const channel = await getChannelByKey(client, channelKey);
+  if (!channel) throw new Error(`admin: unknown channel '${channelKey}'`);
+
+  const { error } = await loose(client)
+    .from("channel_admins")
+    .delete()
+    .eq("channel_id", channel.id)
+    .eq("profile_id", profileId);
+  if (error) throw new Error(`admin: officer removal failed: ${error.message}`);
+
+  await recordAudit(client, actor, {
+    action: "remove_channel_officer",
+    entityType: "channel",
+    entityId: channel.id,
+    detail: { channel: channelKey, profileId },
+  });
+}
 /* eslint-enable @typescript-eslint/no-explicit-any */
