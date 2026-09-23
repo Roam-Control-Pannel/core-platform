@@ -78,8 +78,8 @@ select is(
   'the venue status advanced to claimed');
 select is(
   (select status from channel_members where id = '00000000-0000-0000-0000-0000000cd0e1'),
-  'claimed',
-  'the roster member advanced to claimed');
+  'live',
+  'the roster member advanced to live (0154 — a verified claim is membership, not a waiting room)');
 select is(
   (select claimed_by from channel_members where id = '00000000-0000-0000-0000-0000000cd0e1'),
   '00000000-0000-0000-0000-0000000cd0a1'::uuid,

@@ -22,6 +22,7 @@
     "sync-cj-offers": "tsx src/jobs/syncCjOffers.ts",
     "sync-cj-logos": "tsx src/jobs/syncCjLogos.ts",
     "sync-fsa-ni": "tsx src/jobs/syncFsaNi.ts",
+    "sync-hubspot-members": "tsx src/jobs/syncHubspotMembers.ts",
     "fsa:authorities": "tsx scripts/list-fsa-authorities.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",

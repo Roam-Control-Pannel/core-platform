@@ -622,60 +622,297 @@ function ReviewTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
 
 /* ------------------------------------------------------------------------- import */
 
-interface ImportReport { runId: string | null; imported: number; updated: number; matchedAccept: number; matchedReview: number; matchedReject: number; errors: number; warnings: number; backfillCandidates: string[] }
+interface RosterColumn { index: number; header: string; field: string | null; via: "alias" | "override" | null }
+interface RowIssue { line: number; reason: string }
+interface ImportReport {
+  runId: string | null; dryRun: boolean; imported: number; updated: number;
+  matchedAccept: number; matchedReview: number; matchedReject: number; matchedConflict: number;
+  errors: number; warnings: number; backfillCandidates: string[];
+  columns: RosterColumn[]; errorsSample: RowIssue[]; warningsSample: RowIssue[];
+  conflictsSample: { member: string; venueId: string }[];
+}
 
+/** The canonical fields a column may be bound to — mirrors @roam/core/membership ROSTER_FIELDS. */
+const ROSTER_FIELDS = ["name", "postcode", "email", "address", "council", "phone", "ref", "town"] as const;
+
+interface HubspotStatus {
+  configured: boolean;
+  connected: boolean;
+  status?: string;
+  portalId?: string | null;
+  scopes?: string[];
+  connectedAt?: string | null;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+}
+
+/**
+ * The partner's own CRM as a roster source — the whitelabel path.
+ *
+ * A CSV is a one-off; this is the connection. The partner approves read-only access in THEIR HubSpot
+ * and the nightly sync keeps the roster current, which is what makes onboarding the next whitelabel
+ * a click rather than an engineering task. Roam never sees a password, and the partner can revoke by
+ * uninstalling the app on their side.
+ */
+function HubspotPanel({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
+  const trpc = useTrpc();
+  const [status, setStatus] = useState<HubspotStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = async () => {
+    const q = trpc.adminActions.hubspotStatus as unknown as { query: (i: { channelKey: string }) => Promise<HubspotStatus> };
+    try { setStatus(await q.query({ channelKey })); } catch { /* panel is informational; never block the tab */ }
+  };
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [channelKey]);
+
+  const connect = async () => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.hubspotConnectUrl as unknown as {
+      mutate: (i: { channelKey: string }) => Promise<{ status: string; url?: string }>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey });
+      if (r.status === "ok" && r.url) window.open(r.url, "_blank", "noopener");
+      else if (r.status === "unconfigured") setErr("No HubSpot app is configured on this deployment.");
+      else if (r.status === "no_encryption_key") setErr("INTEGRATION_ENCRYPTION_KEY is not set, so a credential could not be stored. Connection not started.");
+      else setErr("That channel cannot be connected.");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not start the connection."); }
+    finally { setBusy(false); }
+  };
+
+  const disconnect = async () => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.hubspotDisconnect as unknown as { mutate: (i: { channelKey: string }) => Promise<unknown> };
+    try { await mut.mutate({ channelKey }); setNote("Disconnected. Ask the partner to uninstall the app in HubSpot too."); await load(); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Could not disconnect."); }
+    finally { setBusy(false); }
+  };
+
+  const sync = async (dryRun: boolean) => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.syncHubspot as unknown as {
+      mutate: (i: { channelKey: string; full: boolean; dryRun: boolean }) => Promise<any>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey, full: true, dryRun });
+      if (r.status === "unconfigured") setErr("No HubSpot app is configured on this deployment.");
+      else setNote(
+        `${dryRun ? "Rehearsal" : "Synced"}: ${r.fetched} read · ${r.inserted} new · ${r.updated} updated · ` +
+        `${r.withEmail} with an e-mail (${r.withoutEmail} without) · ${r.matchedAccept} matched · ` +
+        `${r.matchedReview} to review · ${r.ambiguousContacts} companies with several contacts`,
+      );
+      if (!dryRun) await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Sync failed."); }
+    finally { setBusy(false); }
+  };
+
+  if (status && !status.configured) return null; // no app on this deployment: say nothing rather than tease
+
+  return (
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: 14, display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <strong style={{ fontFamily: F.ui, fontSize: 14 }}>HubSpot</strong>
+        {status?.connected ? <Tag>Connected</Tag> : null}
+        {status && !status.connected && status.status ? <Tag tone="red">{status.status}</Tag> : null}
+        <span style={{ flex: 1 }} />
+        {canAct ? (
+          <>
+            <button type="button" onClick={() => void connect()} disabled={busy} style={status?.connected ? ghostBtn : primaryBtn}>
+              {status?.connected ? "Reconnect" : "Connect"}
+            </button>
+            {status?.connected ? (
+              <>
+                <button type="button" onClick={() => void sync(true)} disabled={busy} style={ghostBtn}>Rehearse sync</button>
+                <button type="button" onClick={() => void sync(false)} disabled={busy} style={ghostBtn}>Sync now</button>
+                <button type="button" onClick={() => void disconnect()} disabled={busy} style={ghostBtn}>Disconnect</button>
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+        {status?.connected
+          ? `Portal ${status.portalId ?? "—"} · connected ${status.connectedAt?.slice(0, 10) ?? "—"} · last sync ${status.lastSyncAt?.slice(0, 16).replace("T", " ") ?? "never"}`
+          : "The partner approves read-only access to their companies and contacts in their own HubSpot. No password is shared with Roam, and they can revoke it at any time."}
+      </div>
+      {status?.lastError ? <ErrorLine message={status.lastError} /> : null}
+      {err ? <ErrorLine message={err} /> : null}
+      {note ? <div style={{ fontSize: 12.5, color: "#1F6B41" }}>{note}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * Roster import — DRY RUN FIRST, always.
+ *
+ * A partner's roster is their record, not ours, and the first contact with a real export should not
+ * also be the moment it lands in the roster of record. So the flow is: load the file → read how each
+ * column was understood → fix any column by hand → rehearse → only then commit. "Commit" is disabled
+ * until a rehearsal of THIS EXACT input has succeeded, so the destructive step can never be the first
+ * button pressed, and editing the file or the mapping retracts the permission to commit.
+ */
 function ImportTab({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
   const trpc = useTrpc();
   const [csv, setCsv] = useState("");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
+  /** The csv+mapping a successful dry run was performed against — the commit button's permission. */
+  const [rehearsed, setRehearsed] = useState<string | null>(null);
 
-  const run = async () => {
+  const signature = `${csv}\u0000${JSON.stringify(mapping)}`;
+  const canCommit = rehearsed === signature && !!report && report.errors === 0;
+
+  const run = async (dryRun: boolean) => {
     if (!csv.trim()) return;
-    setBusy(true); setErr(null); setReport(null);
-    const mut = trpc.adminActions.importRoster as unknown as { mutate: (i: { channelKey: string; csv: string }) => Promise<ImportReport> };
-    try { setReport(await mut.mutate({ channelKey, csv })); }
-    catch (e) { setErr(e instanceof Error ? e.message : "Import failed."); }
-    finally { setBusy(false); }
+    setBusy(true); setErr(null);
+    const mut = trpc.adminActions.importRoster as unknown as {
+      mutate: (i: { channelKey: string; csv: string; dryRun: boolean; mapping?: Record<string, string> }) => Promise<ImportReport>;
+    };
+    try {
+      const out = await mut.mutate({ channelKey, csv, dryRun, ...(Object.keys(mapping).length ? { mapping } : {}) });
+      setReport(out);
+      // A rehearsal grants permission to commit this exact input; a real run spends it.
+      setRehearsed(dryRun ? signature : null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Import failed.");
+      setReport(null); setRehearsed(null);
+    } finally { setBusy(false); }
+  };
+
+  const onFile = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCsv(typeof reader.result === "string" ? reader.result : "");
+      setFileName(file.name);
+      setReport(null); setRehearsed(null); setErr(null);
+    };
+    reader.onerror = () => setErr("Could not read that file.");
+    reader.readAsText(file);
+  };
+
+  const remap = (header: string, field: string) => {
+    setMapping((m) => ({ ...m, [header]: field }));
+    setRehearsed(null); // the mapping changed — the previous rehearsal no longer describes this run
   };
 
   if (!canAct) return <div style={{ fontSize: 12.5, color: C.muted }}>View-only — ask an owner for acting access to import a roster.</div>;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {/* The connected source comes first: a CSV is the fallback, the CRM is the roster of record. */}
+      <HubspotPanel channelKey={channelKey} canAct={canAct} />
       <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
-        Paste the Association roster CSV (header row + one member per row). It imports idempotently by
-        member reference, runs the matcher, and reports the outcome. Matched venues with thin data
-        enrich automatically as their pages are viewed.
+        Load the Association roster (CSV), check how each column was read, then rehearse the import.
+        Nothing is written until you commit. Import is idempotent by member reference; matched venues
+        with thin data enrich automatically as their pages are viewed.
       </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <label style={{ ...ghostBtn, display: "inline-block" }}>
+          Choose CSV…
+          <input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => onFile(e.target.files?.[0])} style={{ display: "none" }} />
+        </label>
+        {fileName ? <span style={{ fontFamily: F.mono, fontSize: 12, color: C.muted }}>{fileName}</span> : null}
+      </div>
+
       <textarea
         value={csv}
-        onChange={(e) => setCsv(e.target.value)}
-        placeholder={"name,postcode,email,ref\nMario's Pizzeria,BT1 1AA,owner@mario.example,ASSOC-1"}
+        onChange={(e) => { setCsv(e.target.value); setReport(null); setRehearsed(null); }}
+        placeholder={"Name,Postcode,Address,Town/City\nCaptain's Table,BT21 0HE,22 Parade,Donaghadee"}
         rows={10}
         style={{ ...inputStyle, width: "100%", fontFamily: F.mono, fontSize: 12.5, resize: "vertical" }}
       />
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button type="button" onClick={() => void run()} disabled={busy || !csv.trim()} style={primaryBtn}>{busy ? "Importing…" : "Import roster"}</button>
-        {report ? <span style={{ fontSize: 12.5, color: "#1F6B41" }}>Done.</span> : null}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => void run(true)} disabled={busy || !csv.trim()} style={primaryBtn}>
+          {busy ? "Working…" : "Rehearse (dry run)"}
+        </button>
+        <button type="button" onClick={() => void run(false)} disabled={busy || !canCommit} style={{ ...ghostBtn, opacity: canCommit ? 1 : 0.45, cursor: canCommit ? "pointer" : "not-allowed" }}>
+          Commit import
+        </button>
+        {report?.dryRun ? <span style={{ fontSize: 12.5, color: C.muted }}>Nothing written — this was a rehearsal.</span> : null}
+        {report && !report.dryRun ? <span style={{ fontSize: 12.5, color: "#1F6B41" }}>Imported.</span> : null}
+        {report && report.errors > 0 && report.dryRun ? <span style={{ fontSize: 12.5, color: C.red }}>Fix the errors below before committing.</span> : null}
       </div>
+
       {err ? <ErrorLine message={err} /> : null}
+
       {report ? (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
-          {[
-            ["Imported", report.imported], ["Updated", report.updated],
-            ["Matched", report.matchedAccept], ["Review", report.matchedReview],
-            ["Rejected", report.matchedReject], ["To enrich", report.backfillCandidates.length],
-            ["Errors", report.errors], ["Warnings", report.warnings],
-          ].map(([label, n]) => (
-            <div key={String(label)} style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: "10px 14px", minWidth: 80 }}>
-              <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 22 }}>{Number(n).toLocaleString()}</div>
-              <div style={{ fontFamily: F.mono, fontSize: 10, textTransform: "uppercase", color: C.muted, marginTop: 3 }}>{label}</div>
+        <>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+            {[
+              ["Imported", report.imported], ["Updated", report.updated],
+              ["Matched", report.matchedAccept], ["Review", report.matchedReview],
+              ["Conflicts", report.matchedConflict], ["Rejected", report.matchedReject],
+              ["To enrich", report.backfillCandidates.length],
+              ["Errors", report.errors], ["Warnings", report.warnings],
+            ].map(([label, n]) => (
+              <div key={String(label)} style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: "10px 14px", minWidth: 80 }}>
+                <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: 22 }}>{Number(n).toLocaleString()}</div>
+                <div style={{ fontFamily: F.mono, fontSize: 10, textTransform: "uppercase", color: C.muted, marginTop: 3 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {report.columns.length ? (
+            <div style={{ display: "grid", gap: 6 }}>
+              <Label>Columns read</Label>
+              <div style={{ display: "grid", gap: 6 }}>
+                {report.columns.map((col) => (
+                  <div key={col.index} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "#fafafa", borderRadius: 4 }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 12, flex: 1, minWidth: 0, color: C.ink }}>{col.header}</span>
+                    <span style={{ fontFamily: F.mono, fontSize: 10, color: C.muted }}>{col.via === "override" ? "manual" : col.field ? "auto" : "not used"}</span>
+                    <select
+                      value={mapping[col.header] ?? col.field ?? ""}
+                      onChange={(e) => remap(col.header, e.target.value)}
+                      style={{ ...selectStyle, fontSize: 12.5, padding: "5px 8px" }}
+                    >
+                      <option value="">— carry to audit only —</option>
+                      {ROSTER_FIELDS.map((f) => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          ) : null}
+
+          {report.conflictsSample.length ? (
+            <IssueList
+              label={`Withheld — venue already held by another member (${report.matchedConflict})`}
+              tone="red"
+              lines={report.conflictsSample.map((c) => `${c.member} → venue ${c.venueId}`)}
+            />
+          ) : null}
+          {report.errorsSample.length ? (
+            <IssueList label={`Rows skipped (${report.errors})`} tone="red" lines={report.errorsSample.map((i) => `line ${i.line}: ${i.reason}`)} />
+          ) : null}
+          {report.warningsSample.length ? (
+            <IssueList label={`Imported with gaps (${report.warnings})`} tone="ink" lines={report.warningsSample.map((i) => `line ${i.line}: ${i.reason}`)} />
+          ) : null}
+        </>
       ) : null}
+    </div>
+  );
+}
+
+/** A capped, scrollable list of row-level complaints from an import run. */
+function IssueList({ label, lines, tone }: { label: string; lines: string[]; tone: "ink" | "red" }) {
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <Label>{label}</Label>
+      <div style={{ maxHeight: 190, overflowY: "auto", border: `1px solid ${C.line}`, borderRadius: 4 }}>
+        {lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: F.mono, fontSize: 11.5, padding: "5px 10px", color: tone === "red" ? C.red : C.inkSoft, borderTop: i ? `1px solid ${C.line}` : undefined }}>
+            {line}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

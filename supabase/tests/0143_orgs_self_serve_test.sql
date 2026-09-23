@@ -25,9 +25,14 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000cd0a1', 'live-supplier@f2g.example'),   -- A: LIVE f2g member
   ('00000000-0000-0000-0000-0000000cd0a2', 'not-a-member@rando.example');  -- B: not a member
 
-insert into channel_members (id, channel_id, source_name, membership_ref, status, claimed_by)
+-- Matched to a venue: half of the canonical membership predicate as of 0154 (live AND matched).
+insert into venues (id, name, geo, status, categories) values
+  ('00000000-0000-0000-0000-0000000cd0c1', 'Supplier A Cafe',
+   ST_SetSRID(ST_MakePoint(-5.9300, 54.6000), 4326), 'claimed', array['cafe']);
+
+insert into channel_members (id, channel_id, source_name, membership_ref, status, claimed_by, venue_id)
 select '00000000-0000-0000-0000-0000000cd0b1', c.id, 'Supplier A', 'ASSOC-C3A', 'live',
-       '00000000-0000-0000-0000-0000000cd0a1'
+       '00000000-0000-0000-0000-0000000cd0a1', '00000000-0000-0000-0000-0000000cd0c1'
 from channels c where c.key = 'f2g';
 
 create temp table _og (k text primary key, v boolean);

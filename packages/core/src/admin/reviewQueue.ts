@@ -124,7 +124,13 @@ export async function channelReviewQueue(
   for (const m of page) {
     const postcode = m.source_postcode ? String(m.source_postcode) : null;
     const cands = postcode ? await candidateVenuesFor(client, postcode) : [];
-    const res = resolveCandidates({ name: String(m.source_name ?? ""), postcode }, cands);
+    // Pass the roster address for locality-token stripping, exactly as importRoster does — the queue
+    // re-scores on demand, so if the two disagreed the reviewer would be shown a different number
+    // from the one that sent the member here.
+    const res = resolveCandidates(
+      { name: String(m.source_name ?? ""), postcode, address: m.source_address ?? null },
+      cands,
+    );
     // Only surface candidates that clear the review floor — below it is noise, not a plausible match.
     const shown = res.ranked
       .filter((c) => c.score >= MATCH_THRESHOLDS.review)

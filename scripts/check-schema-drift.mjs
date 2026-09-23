@@ -40,8 +40,8 @@
 export const REQUIRED_READS = [
   {
     table: "channels",
-    columns: ["key", "surface", "sections", "nav", "membership_mode", "platform_fee_bps"],
-    reason: "F2G storefront chrome + open-mode venue query + per-channel fee (migrations 0122, 0134, 0149)",
+    columns: ["key", "surface", "sections", "nav", "membership_mode", "platform_fee_bps", "org_name", "contact_email"],
+    reason: "F2G storefront chrome + open-mode venue query + per-channel fee + partner identity (migrations 0122, 0134, 0149, 0154)",
   },
   {
     table: "channel_domains",
@@ -50,13 +50,21 @@ export const REQUIRED_READS = [
   },
   {
     table: "venue_channels",
-    columns: ["venue_id", "channel_id"],
-    reason: "curated-mode storefront + order channel tag lookup (migration 0116)",
+    columns: ["venue_id", "channel_id", "role"],
+    reason: "curated-mode storefront + order channel tag lookup + member vs listed (migrations 0116, 0154)",
   },
   {
     table: "channel_members",
-    columns: ["id", "channel_id", "status", "membership_ref", "venue_id", "source_council", "claimed_by", "lapsed_at"],
-    reason: "membership spine: roster, matching, HQ status actions, lapse stamp (migrations 0135, 0139, 0150)",
+    columns: [
+      "id", "channel_id", "status", "membership_ref", "venue_id", "source_council", "claimed_by", "lapsed_at",
+      "source_system", "source_system_id", "member_no", "last_seen_import_id",
+    ],
+    reason: "membership spine: roster, matching, HQ status actions, lapse stamp, CRM identity (migrations 0135, 0139, 0150, 0154)",
+  },
+  {
+    table: "channel_integrations",
+    columns: ["id", "channel_id", "provider", "status", "external_account_id"],
+    reason: "whitelabel partner OAuth connections — HubSpot member sync (migration 0155)",
   },
   {
     table: "external_refs",
@@ -106,6 +114,12 @@ export const RPC_PROBES = [
     args: { p_channel_id: "00000000-0000-0000-0000-000000000000" },
     expect: "ok",
     reason: "member-priority ranking (migration 0145)",
+  },
+  {
+    name: "venues_in_channel_near",
+    args: { filter_channel_id: "00000000-0000-0000-0000-000000000000", origin_lat: 54.5973, origin_lng: -5.9301, page_size: 1, page_offset: 0 },
+    expect: "ok",
+    reason: "members-mode storefront discovery, now carrying is_member (migrations 0120, 0154)",
   },
   {
     name: "channel_members_search",

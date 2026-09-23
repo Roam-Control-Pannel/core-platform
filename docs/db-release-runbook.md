@@ -174,7 +174,10 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0153: **`267218412372` across 120 functions**. Recompute it after any
+Expected value as of migration 0154: **`264424425230` across 120 functions**.
+(Was `267218412372` at 0153; 0154 changed six function bodies — `f2g_member_venue_ids`,
+`venues_in_channel_near`, `channel_members_search`, `f2g_can_post_as_member`, `f2g_can_post_supplier`,
+`claim_channel_member_venue` — and added none, so the count is unchanged.) Recompute it after any
 migration that adds or changes a function, by running the same query against a database with every
 migration applied (`supabase db reset`, or the local harness), and update this line in the same PR.
 

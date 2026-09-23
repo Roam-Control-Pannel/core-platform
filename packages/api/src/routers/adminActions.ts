@@ -10,8 +10,12 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { admin } from "@roam/core";
+import { admin, channels as coreChannels } from "@roam/core";
 import { importRoster, recordImportBackfill } from "../jobs/importRoster.js";
+import { runHubspotSync } from "../jobs/syncHubspotMembers.js";
+import { loadHubspotAppConfig, authorizeUrl } from "../hubspot/oauth.js";
+import { getIntegration, disconnectIntegration, toStatus, forgetCachedToken } from "../hubspot/store.js";
+import { canSealSecrets } from "../integrations/secretBox.js";
 import { sendMemberInvite } from "../f2g/invite.js";
 import { router, adminProcedure } from "../trpc.js";
 import type { Context } from "../context.js";
@@ -180,22 +184,46 @@ export const adminActionsRouter = router({
    * plus the thin matched venue ids, which the caller enriches (B3-c) via places.enrichVenue and then
    * reports back through recordImportBackfill.
    */
+  /**
+   * Import (or REHEARSE importing) an Association roster. `dryRun` defaults to TRUE: committing a
+   * partner's roster to the roster of record must be something the operator asked for explicitly, not
+   * what happens when a field is omitted. `mapping` lets the operator bind an unfamiliar header to a
+   * canonical field from the HQ preview, so a new export shape needs no release.
+   */
   importRoster: adminProcedure
-    .input(z.object({ channelKey: z.string().min(1).max(32), csv: z.string().min(1).max(5_000_000) }))
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        csv: z.string().min(1).max(5_000_000),
+        dryRun: z.boolean().default(true),
+        mapping: z.record(z.string().max(200), z.string().max(40)).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
         const who = await actor(ctx as ActingCtx);
-        const report = await importRoster(ctx.service, { channelKey: input.channelKey, csv: input.csv, actorId: who.id });
-        await admin.recordAudit(ctx.service, who, {
-          action: "import_roster",
-          entityType: "channel",
-          entityId: input.channelKey,
-          detail: {
-            imported: report.imported, updated: report.updated,
-            matchedAccept: report.matchedAccept, matchedReview: report.matchedReview,
-            matchedReject: report.matchedReject, errors: report.errors,
-          },
+        const report = await importRoster(ctx.service, {
+          channelKey: input.channelKey,
+          csv: input.csv,
+          actorId: who.id,
+          dryRun: input.dryRun,
+          mapping: input.mapping,
         });
+        // A dry run wrote nothing, so there is no state change to attribute. The audit trail records
+        // imports, not rehearsals of them.
+        if (!input.dryRun) {
+          await admin.recordAudit(ctx.service, who, {
+            action: "import_roster",
+            entityType: "channel",
+            entityId: input.channelKey,
+            detail: {
+              imported: report.imported, updated: report.updated,
+              matchedAccept: report.matchedAccept, matchedReview: report.matchedReview,
+              matchedReject: report.matchedReject, matchedConflict: report.matchedConflict,
+              errors: report.errors,
+            },
+          });
+        }
         return report;
       } catch (e) {
         fail(e, "Roster import failed.");
@@ -237,6 +265,123 @@ export const adminActionsRouter = router({
         return result;
       } catch (e) {
         fail(e, "Failed to send invite.");
+      }
+    }),
+
+  /**
+   * Begin "Connect your HubSpot" for a channel: returns the URL to send the partner to.
+   *
+   * The link is a short-lived signed capability (the `state` parameter names the channel and is
+   * HMAC-verified at the callback), so issuing it is the authorised step and the public callback
+   * needs no Roam session of its own. One HubSpot app serves every whitelabel — adding a partner is
+   * this click, not an engineering task.
+   */
+  hubspotConnectUrl: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const app = loadHubspotAppConfig();
+        if (!app) return { status: "unconfigured" as const };
+        // Refuse to start a flow whose credential we could not then store safely — better here than
+        // after the partner has approved access and we drop their token on the floor.
+        if (!canSealSecrets()) return { status: "no_encryption_key" as const };
+        const channel = await coreChannels.getChannelByKey(ctx.service, input.channelKey);
+        if (!channel || channel.isDefault) return { status: "unknown_channel" as const };
+        await admin.recordAudit(ctx.service, who, {
+          action: "hubspot_connect_started",
+          entityType: "channel",
+          entityId: input.channelKey,
+          detail: {},
+        });
+        return { status: "ok" as const, url: authorizeUrl(app, input.channelKey) };
+      } catch (e) {
+        fail(e, "Could not start the HubSpot connection.");
+      }
+    }),
+
+  /** Whether a channel has a working HubSpot connection, which portal, and when it last synced. */
+  hubspotStatus: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const app = loadHubspotAppConfig();
+        const channel = await coreChannels.getChannelByKey(ctx.service, input.channelKey);
+        if (!channel) return { configured: !!app, connected: false as const };
+        const row = await getIntegration(ctx.service, channel.id);
+        return { configured: !!app, ...toStatus(row) };
+      } catch (e) {
+        fail(e, "Could not read the HubSpot connection.");
+      }
+    }),
+
+  /** Forget a partner's credential. They should also uninstall the app on their side. */
+  hubspotDisconnect: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const channel = await coreChannels.getChannelByKey(ctx.service, input.channelKey);
+        if (!channel) return { ok: false as const };
+        await disconnectIntegration(ctx.service, channel.id);
+        forgetCachedToken(channel.id);
+        await admin.recordAudit(ctx.service, who, {
+          action: "hubspot_disconnected",
+          entityType: "channel",
+          entityId: input.channelKey,
+          detail: {},
+        });
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Could not disconnect HubSpot.");
+      }
+    }),
+
+  /**
+   * Pull a partner's membership from HubSpot on demand (plan 2.3), rather than waiting for the
+   * nightly cron — the "sync now" an officer will get in the portal (Phase 3), available to HQ
+   * first. `dryRun` defaults TRUE for the same reason it does on importRoster: reading a partner's
+   * CRM into the roster of record should be something someone asked for, not a default.
+   */
+  syncHubspot: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        full: z.boolean().default(false),
+        dryRun: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const app = loadHubspotAppConfig();
+        if (!app) return { status: "unconfigured" as const };
+        const result = await runHubspotSync(
+          ctx.service,
+          app,
+          {
+            channelKey: input.channelKey,
+            since: input.full ? null : new Date(Date.now() - 36 * 60 * 60 * 1000),
+            dryRun: input.dryRun,
+            actorId: who.id,
+          },
+          (m) => console.log(m),
+        );
+        if (!input.dryRun) {
+          await admin.recordAudit(ctx.service, who, {
+            action: "sync_hubspot_members",
+            entityType: "channel",
+            entityId: input.channelKey,
+            detail: {
+              full: input.full, fetched: result.fetched, inserted: result.inserted,
+              updated: result.updated, withEmail: result.withEmail,
+              matchedAccept: result.matchedAccept, matchedConflict: result.matchedConflict,
+            },
+          });
+        }
+        return result;
+      } catch (e) {
+        fail(e, "HubSpot sync failed.");
       }
     }),
 

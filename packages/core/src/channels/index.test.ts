@@ -116,6 +116,10 @@ describe("rowToChannel", () => {
       nav: [],
       sections: {},
       surface: "roam",
+      // 0154's partner-identity columns default to null when the row does not carry them — which is
+      // also what a live DB served before 0154 (see BASE_CHANNEL_COLS).
+      orgName: null,
+      contactEmail: null,
     });
   });
   it("defaults missing nullable fields", () => {

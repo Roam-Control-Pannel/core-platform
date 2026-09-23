@@ -19,7 +19,7 @@
  * service at boot, not silently degrade auth at request time.
  */
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { money } from "@roam/core";
+import { money, channels as coreChannels } from "@roam/core";
 import { appRouter } from "./routers/index.js";
 import { makeContextFactory, type ApiEnv, type HeaderBag } from "./context.js";
 import { makeOriginAllowed } from "./cors.js";
@@ -33,6 +33,9 @@ import { runCjLogoSync } from "./jobs/syncCjLogos.js";
 import { runOwnerDigest } from "./jobs/deliverOwnerDigest.js";
 import { runFsaSync } from "./jobs/syncFsaNi.js";
 import { loadFsaConfig } from "./fsa/client.js";
+import { runAllHubspotSyncs } from "./jobs/syncHubspotMembers.js";
+import { loadHubspotAppConfig, verifyState, exchangeCode, describeToken } from "./hubspot/oauth.js";
+import { connectIntegration } from "./hubspot/store.js";
 import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
@@ -247,6 +250,25 @@ function jsonResponse(body: unknown, status: number, cors: Record<string, string
 }
 
 /**
+ * A plain page for the one endpoint a PERSON lands on rather than a program: the OAuth callback,
+ * where a partner's browser arrives after they approve access. The message is escaped because it can
+ * include values from the query string (a provider's error code), and no CORS headers are set —
+ * this is a top-level navigation, not a cross-origin fetch.
+ */
+function htmlResponse(message: string, status: number): Response {
+  const safe = message.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+  );
+  return new Response(
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+      `<title>Roam</title>` +
+      `<body style="font:16px/1.5 system-ui,sans-serif;max-width:34rem;margin:15vh auto;padding:0 1.5rem;color:#20140E">` +
+      `<p>${safe}</p></body>`,
+    { status, headers: { "Content-Type": "text/html; charset=utf-8" } },
+  );
+}
+
+/**
  * The fetch handler. Point any fetch-native runtime at this.
  *   export default { fetch: handler }   // edge / Bun / Deno
  *   // or wrap in a Netlify Function that forwards (request) => handler(request)
@@ -446,6 +468,82 @@ export async function handler(request: Request): Promise<Response> {
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (e) {
       return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // HubSpot member sync (plan 2.3), across EVERY connected partner. `?full=1` ignores the
+  // incremental window; `?dry=1` computes and reports without writing. Full scope only — it reads
+  // partners' contact PII, so the web deployment's scoped secret must never reach it (plan 1.5).
+  if (pathname === "/jobs/sync-hubspot-members") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (ctx.internalScope !== "full") {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    const app = loadHubspotAppConfig();
+    if (!app) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 200, cors);
+    }
+    const params = new URL(request.url).searchParams;
+    const full = params.get("full") === "1";
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runAllHubspotSyncs(
+        service,
+        app,
+        { since: full ? null : new Date(Date.now() - 36 * 60 * 60 * 1000), dryRun: params.get("dry") === "1" },
+        (m) => console.log(m),
+      );
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // HubSpot OAuth callback — where a partner lands after approving access in their own portal.
+  //
+  // PUBLIC by necessity (HubSpot redirects a browser here, carrying no Roam credentials), so the
+  // `state` parameter is the entire authorisation: it is HMAC-signed with a short expiry and names
+  // the channel being connected. An unsigned or stale state is refused before any token exchange —
+  // otherwise anyone could bind their own HubSpot portal to someone else's channel.
+  if (pathname === "/integrations/hubspot/callback") {
+    const app = loadHubspotAppConfig();
+    if (!app) return htmlResponse("HubSpot is not configured on this deployment.", 503);
+
+    const params = new URL(request.url).searchParams;
+    const denied = params.get("error");
+    if (denied) return htmlResponse(`HubSpot returned: ${denied}. Nothing was connected.`, 400);
+
+    const channelKey = verifyState(params.get("state"), app.stateSecret);
+    if (!channelKey) return htmlResponse("That connect link is invalid or has expired. Start again from Roam HQ.", 400);
+
+    const code = params.get("code");
+    if (!code) return htmlResponse("HubSpot did not return an authorisation code.", 400);
+
+    try {
+      const service = escalateToService(createContext({ headers: toHeaderBag(request.headers) }).env);
+      const channel = await coreChannels.getChannelByKey(service, channelKey);
+      if (!channel) return htmlResponse("Unknown channel for that connect link.", 400);
+
+      const tokens = await exchangeCode(app, code);
+      // Record WHICH portal was approved: the commonest quiet failure in a multi-tenant OAuth
+      // integration is a partner approving while signed into the wrong account.
+      const described = await describeToken(app, tokens.accessToken);
+      await connectIntegration(service, {
+        channelId: channel.id,
+        tokens,
+        externalAccountId: described.hubId,
+        scopes: described.scopes,
+      });
+      return htmlResponse(
+        `HubSpot connected for ${channel.name}${described.hubId ? ` (portal ${described.hubId})` : ""}. ` +
+          `You can close this window.`,
+        200,
+      );
+    } catch (e) {
+      return htmlResponse(`Could not complete the connection: ${e instanceof Error ? e.message : String(e)}`, 500);
     }
   }
 

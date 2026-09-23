@@ -1,4 +1,4 @@
-# F2G whitelabel platform — holistic plan (2026-09-17, rev 2)
+# F2G whitelabel platform — holistic plan (2026-09-17, rev 3 of 2026-09-23)
 
 **Input:** [`f2g-platform-recon-2026-09.md`](./f2g-platform-recon-2026-09.md) (as-built, 129 verified
 gaps, 12 blockers) + Andrew's decisions of 2026-09-17 (§1). Rev 2 folds in an independent review of
@@ -6,6 +6,11 @@ rev 1 against the code (portal re-sequenced ahead of the app split; membership m
 real schema; Phase 3/4 re-scoped and re-estimated; dropped highs restored). **Output:** the target
 shape of the NI Food to Go Association ("F2G") whitelabel and the phased work to get there. Recon gap
 references use its section numbers; **B** blocker · **H** high · **M** medium.
+
+**Rev 3 (2026-09-23)** folds in the real roster sample and the Association's answers. It is a
+correction, not a refinement: there are **no membership numbers until 2027** and the sample has **no
+e-mail column**, so the number can be neither the key nor the credential, and HubSpot — their CRM —
+has to supply both. Changed: §2 item 4, §3.2, §3.5 (new), Phase 2.
 
 ## 1. Decisions taken (2026-09-17)
 
@@ -32,7 +37,7 @@ Six things the repo cannot tell us. Each is a short check on your side; the plan
 1. **Where the web app runs.** From your laptop: `curl -sI https://nifood2go.roam-local.com | grep -i -E "^(server|x-nf-|x-vercel)"`. `server: Netlify` / `x-nf-request-id` = Netlify; `x-vercel-id` = Vercel. In that dashboard: is `nifood2go.roam-local.com` a **domain alias on the Roam site** or a second site? Note the site name(s). The answer gets written into `docs/ARCHITECTURE.md` in Phase 4.3 (recon 4.2 H: hosting undocumented).
 2. **How nifood2go resolves to the f2g channel.** Same dashboard, environment variables: is `NEXT_PUBLIC_F2G_HOSTS` set (env classifier) or absent (DB `channel_domains` row + `/api/channel-map`)? Paste variable **names** only.
 3. **Which scheduled jobs and secrets exist.** Railway: which of `cron-owner-digest`, `cron-cj-logos`, `cron-sync-fsa-ni` exist, with schedules. GitHub repository secrets: are the Supabase access token / DB URL secrets set? (Without them the migrate and drift workflows silently skip — recon 4.1 H.)
-4. **A sample roster CSV with the membership-number column** (recon decision #1, still outstanding). This is now load-bearing: D8 makes the number the credential, but the importer only stores a real reference when the CSV has one (`packages/core/src/membership/import.ts:48,142` — otherwise it derives an `AUTO:` key from name+postcode+e-mail). Confirm: the Association issues numbers to every member; their format (digits? prefix? reused after lapse?); whether members know their number.
+4. ~~**A sample roster CSV with the membership-number column**~~ — **ANSWERED 2026-09-23, and it changed the design.** The sample is 48 rows of `Name | Postcode | Address | Town/City`. There is **no e-mail column, no phone, and no membership number**: the Association's CEO confirms numbers are not being issued until **2027**. They hold their membership data in **HubSpot**, and can supply the full list. Consequences are worked through in §3.2 below and in Phase 2; the short version is that the membership number can no longer be the credential *or* the key, and the CRM has to supply both.
 5. **Supabase CLI access** for whoever regenerates DB types (recon 4.1 H: types stale since 0134; 182+ loose casts). A Phase 0 ask because it gates 5.4 and makes every later migration safer.
 6. **Data controller for the roster.** The plan assumes the Association is controller and Roam is processor under a short data-processing agreement; that wording must exist before the portal shows roster rows (§5.2).
 
@@ -101,30 +106,71 @@ Six things the repo cannot tell us. Each is a short check on your side; the plan
 
 ### 3.2 Membership model (D8) — against the real schema
 
-- **The roster is the source of truth; the membership number is the key, and it becomes mandatory.**
-  `channel_members.membership_ref` is unique per channel (`0135:62-63`) but is only the Association's
-  number when the CSV carries one; the importer will **reject** rows without a real reference (no more
-  `AUTO:` keys) once Phase 0 item 4 confirms every member has one.
-- **One canonical definition, used everywhere:** an *active member* is a `channel_members` row with
-  `status = 'live'`, `claimed_by` set, linked to a venue. Ranking (`f2g_member_venue_ids`, today
-  `claimed|live ∪ tag`), the directory (today `live` only), the jobs/supplier entitlements (today
-  `claimed_by = auth.uid() and status='live'`), members-mode listing and the portal counts all read
-  exactly that. **Backfill:** every existing `claimed` row that came through a verified invite moves
-  to `live` in the same migration, so nobody who has already claimed loses priority.
+> **REVISED 2026-09-23 after the real sample arrived.** The first bullet below said the membership
+> number is the key and becomes mandatory. That is now impossible: there are no numbers until 2027.
+> The revision is stated first because it invalidates the original premise, not because it refines it.
+
+- **~~The membership number is the key, and it becomes mandatory.~~ There is no number.** The sample
+  carries none, and the Association is not issuing them until 2027, so `membership_ref` falls back to
+  the derived `AUTO:name|postcode|e-mail` key (`packages/core/src/membership/import.ts:103-106`) —
+  which on this roster reduces to name+postcode, **both fields the Association edits**. Correct a typo
+  in their spreadsheet and the derived key changes, so the next import *inserts a duplicate member
+  instead of updating one*. The idempotency guarantee in `0135:62-63` is only as stable as the key fed
+  to it, and this key is not stable. **Resolution: identity comes from the CRM.** The Association runs
+  **HubSpot**, whose object ids are immutable, so `channel_members` gains `source_system` +
+  `source_system_id` and `membership_ref` is derived from those. The 2027 membership number lands in a
+  separate `member_no` column as an *attribute*. **The key never becomes the number** — re-keying a
+  roster later is a migration nobody should sign up for, and a second whitelabel may have no numbers
+  at all.
+- **The credential is e-mail possession, not a number.** The sample has no e-mail column either, and
+  `sendMemberInvite` returns `no_email` without one (`packages/api/src/f2g/invite.ts:179`) — so today
+  **100% of this roster is un-invitable** and the funnel stalls at step three, silently. HubSpot holds
+  the contact e-mail the spreadsheet omits; that is the integration's first job, ahead of any
+  convenience. §5.7's "second factor" (verified account e-mail equals the roster e-mail, or a one-time
+  code to it) is therefore **promoted to the primary and only factor** until 2027, when the number
+  becomes a genuine second one. That is a real reduction in assurance and is recorded as such.
+- **Consequently, match quality is an access-control decision, not a data-quality one.** With no number
+  to prove identity, "you control the e-mail on a roster row bound to venue X" is the entire proof, so
+  a wrong auto-match hands a real business's listing to someone who legitimately controls their own
+  e-mail. This promotes the review queue and the duplicate-venue guard from hygiene to security
+  controls. The sample makes the risk concrete: **13 of 48 rows (27%) are chain branches** (Apache ×5,
+  Monte Carlo ×3, Pizza Crew ×3, Love Pizza ×2) and two postcodes each carry two different members.
+- **One canonical definition — which is TWO predicates, not one** (corrected 2026-09-23 against the
+  shipped code; delivered by migration 0154):
+
+  | | Predicate | Read by |
+  |---|---|---|
+  | **Membership** — counted, listed, ranked | `status = 'live'` AND `venue_id is not null` | `f2g_member_venue_ids`, the directory, members-mode listing, portal counts |
+  | **Entitlement** — may post as a member | membership AND `claimed_by = auth.uid()` | `f2g_can_post_as_member`, `f2g_can_post_supplier` |
+
+  An earlier draft of this bullet made membership require `claimed_by` too. That was wrong: 0150
+  shipped an HQ "mark live" action whose own documentation says a staff-marked member "still needs to
+  claim/activate to post — but they ARE counted, listed and ranked from this moment". Collapsing the
+  two predicates would have silently un-ranked every member HQ has marked live.
+
+  Before 0154 the predicate was said three different ways — the ranking helper counted `claimed|live`
+  and every `venue_channels` tag; the directory counted `live` only; the entitlements counted `live` +
+  `claimed_by` but not a bound venue. **Consequently the claim definer (0139) now writes `live`, not
+  `claimed`:** 0150 backfilled exactly those rows to `live` as "already proven", so leaving new
+  claimants at `claimed` put them outside the live-only predicate and required a manual HQ step to be
+  ranked. `claimed` is now a legacy status — still valid, still in the state machine, never written.
 - **Transitions widened** (`packages/core/src/membership/index.ts:41-48` forbids anything → `live`
   except from `claimed`/`lapsed`): activation adds `imported → live` and `invited → live`.
 - **`venue_channels.role`** (`member` | `listed`) is a new column (the table is key-only today,
   `0116:30-37`); `venues_in_channel_near` and the ranking filter on it, so a listed non-member never
   shows as a member when the mode flips.
 - **Two activation paths on the F2G site** (`/activate`, replacing `/f2g/claim`):
-  1. *Member:* sign in → pick the venue → enter the membership number → the server checks: the number
-     exists in the roster for this channel; the roster row is unbound or already bound to **this**
-     venue (a number can never claim a different listing; unbound rows bind only when the roster
-     postcode matches the venue, otherwise the pair goes to HQ review); a **second factor** (§5.7:
-     the signed-in account's verified e-mail equals the roster `source_email`, or a one-time code sent
-     to `source_email`); per-account and per-number throttling; failed attempts audited. Success: a
-     new definer (`activate_channel_member_venue`, extending 0139) sets `venues.owner_id`, `claimed_by`,
+  1. *Member:* sign in → pick the venue → **prove control of the roster e-mail** (the signed-in
+     account's verified e-mail equals `source_email`, or a one-time code sent to it) → the server
+     checks that the roster row is unbound or already bound to **this** venue, and that an unbound row
+     binds only when the roster postcode matches the venue (otherwise the pair goes to HQ review);
+     per-account and per-row throttling; failed attempts audited. Success: a new definer
+     (`activate_channel_member_venue`, extending 0139) sets `venues.owner_id`, `claimed_by`,
      `claimed_at`, `status='live'`, `venue_channels.role='member'`.
+     *From 2027*, `member_no` is added as a second factor on top — the flow does not otherwise change.
+     *Members with no e-mail even in HubSpot* have no self-serve path at all and are activated by HQ
+     one at a time; the portal must report how many those are, because that number is the ceiling on
+     self-serve onboarding.
   2. *Non-member:* sign in → claim the venue (existing approval flow) → server-side tag
      `venue_channels.role='listed'`, NI-fenced; storefront listing, no priority, no member
      entitlements, a standing "become a member" prompt.
@@ -175,6 +221,55 @@ unchanged in Phase 4.
 - **Legal on the F2G host:** real terms (with the fee), privacy, attributions (FSA/OGL, Google); consent
   banner gating GA4 on every host (recon 4.4 H); DPA wording for the roster.
 
+### 3.5 Membership data from HubSpot (added 2026-09-23)
+
+The Association keeps its membership in HubSpot. That makes the CRM the roster of record and the CSV a
+fallback, and it resolves two problems the spreadsheet cannot (§3.2): the **contact e-mail** that is
+the activation credential, and the **immutable object id** that is the idempotency key.
+
+- **Direction: one-way, HubSpot → Roam, in v1.** Roam mirrors; it never edits the Association's CRM.
+  Write-back is Phase 2b and only after the pull has proved itself.
+- **OAuth with a Connect button, not a per-partner token (decided 2026-09-23).** Roam Core is a
+  whitelabel platform, so onboarding a partner has to be self-service: ONE HubSpot app, and each
+  partner approves scoped read access inside their own portal. A per-partner private-app token would
+  mean a Roam engineer provisioning every future partnership by hand — the thing this design exists to
+  avoid. It also reads better in the DPA: the partner grants revocable, scoped access and can withdraw
+  it themselves, rather than Roam holding a standing secret. (Precedent: the same pattern already runs
+  in the Kudos Cards product.)
+- **Credentials live in `channel_integrations` (migration 0155), encrypted.** Environment variables
+  cannot hold N partners' refresh tokens, and the credential must not go near `channels`, which is
+  world-readable (`0116`). The table is service-managed (RLS with no policy + tripwire trigger) and the
+  refresh token is AES-256-GCM ciphertext under a key held in the API environment, never in the
+  database — so a database dump alone yields nothing usable.
+- **Objects: companies lead, contacts attach.** A member is a company (the trading business we match to
+  a venue); its associated contacts supply the e-mail and phone. Where a company has several contacts,
+  the roster row takes one — the choice rule is a decision to settle against the real property schema,
+  not to guess at here.
+- **Shape: the `syncFsaNi` pattern**, which already does this job against a 16,949-row external
+  register — a job in `packages/api/src/jobs/`, an internal `/jobs/*` route at `full` scope (Phase 1.5),
+  a `railway.cron-sync-hubspot-members.json` service, incremental on `hs_lastmodifieddate`, every run
+  audited and reportable.
+  **No migration:** the plan originally widened `external_refs.dataset` to `'hubspot'`, which 0154 made
+  unnecessary — `channel_members.source_system_id` holds the CRM identity on the row itself, uniquely
+  indexed and queryable, so an `external_refs` row would only duplicate it.
+- **Never destructive.** The sync inserts and updates; it does not delete, lapse or un-match anybody,
+  and it writes only `source_*` columns — `status`, `venue_id` and `claimed_by` belong to Roam's
+  onboarding, not to the partner's CRM. An empty pull is treated as no change, because from here a
+  partner API returning nothing is indistinguishable from an outage.
+- **The contact tie-break is measured, not guessed.** Where a company has several contacts, the rule is
+  fixed and deterministic — prefer one with an e-mail, then the OLDEST by `createdate` (adding a
+  contact in HubSpot must never silently redirect where an invite is sent). Every run reports
+  `ambiguousContacts`, so when the Association answers the open question we will know how many members
+  it actually affected.
+- **Credentials:** a HubSpot **public app** owned by Roam, requesting only `crm.objects.companies.read`
+  and `crm.objects.contacts.read`. Read-only is not a formality — Roam has no business holding write
+  access to a partner's CRM to do a job that only reads. Env: `HUBSPOT_CLIENT_ID`,
+  `HUBSPOT_CLIENT_SECRET`, `HUBSPOT_REDIRECT_URI`, plus `INTEGRATION_ENCRYPTION_KEY` for credential
+  storage. The app stays unlisted and is installed by link; no marketplace review is needed.
+- **Data protection:** this converts a one-off CSV hand-over into a *continuous* pull of contact PII
+  from the Association's systems. The DPA (§2 item 6) must be signed before 2.3 ships — not before it
+  is written, but before it runs against live HubSpot.
+
 ## 4. Phases
 
 Effort = engineer-days including tests and review. Each phase is one or more PRs on green;
@@ -194,15 +289,30 @@ parallel.
 | 1.7 | Function EXECUTE hardening migration (~43 `revoke … from public`-only functions) + pgTAP | 4.1 H | 1 |
 | 1.8 | Supplier approval in HQ (approve/reject pending orgs, audited) | 4.4 H | 1 |
 
-### Phase 2 — Membership spine v2 (≈ 13 days; needs Phase 0 item 4)
+### Phase 2 — Membership spine v2, without membership numbers (≈ 14 days) — **revised 2026-09-23**
 
-| # | Work | Recon | Days |
-|---|---|---|---|
-| 2.1 | Schema: mandatory `membership_ref`, `venue_channels.role`, `last_seen_import_id`, `lapsed_at`, `channels.origin`/`contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; pgTAP | 4.4 B, 4.3 H | 3 |
-| 2.2 | `/activate`: member path (number + second factor + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed | 4.4 B, 4.1 H | 5 |
-| 2.3 | Roster lifecycle: reject rows without a number; lapse after grace; restore on re-appearance; import reports readable in HQ; duplicate-venue guard in auto-accept | 4.4 H, 4.3 M | 2 |
-| 2.4 | Invite hardening (pre-fill, lands on `/activate`, second factor); per-channel sender name + channel-origin links; `F2G_INVITE_SECRET` rotation documented | 4.1 M, 4.2 H | 2 |
-| 2.5 | HQ: roster e-mail masked by default, PII reads audited; membership-number column | 4.3 H | 1 |
+Re-scoped once the real sample landed (§2 item 4). The number is gone as both key and credential, so
+the CRM takes over both jobs and the roster CSV becomes a fallback import path rather than the spine.
+
+| # | Work | Recon | Days | Status |
+|---|---|---|---|---|
+| 2.1 | Identity: `source_system` + `source_system_id`, `member_no` reserved for 2027, `venue_channels.role`, `last_seen_import_id`, `channels.contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; council derived from the matched venue's FSA `local_authority`; claim definer lands on `live`; pgTAP (31) | 4.4 B, 4.3 H | 3 | **DONE** (0154) |
+| 2.2 | **Import hardening** — postcode sanitiser; roster address passed to the matcher (import *and* review queue); `town` recognised; duplicate-venue guard in auto-accept; dry-run; operator column mapping; HQ file picker + preview + rehearse-then-commit | 4.4 H, 4.3 M | 3 | **DONE** |
+| 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron across every connected partner + HQ "sync now", audited; dormant without a HubSpot app | 4.4 B | 4 | **DONE** |
+| 2.3b | **Partner self-connect (OAuth)** — one Roam-owned HubSpot app, `channel_integrations` (0155) with an encrypted refresh token per channel, signed-state callback, HQ Connect / Rehearse / Sync now / Disconnect | 4.3 B | 2 | **DONE** |
+| 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | |
+| 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | |
+
+**Deferred out of Phase 2 by the sample:** roster *lifecycle* (lapse after grace, restore on
+re-appearance) moves behind 2.3. It was only ever safe because the number was mandatory — "rows absent
+from this import lapse" is a destructive rule, and running it on a key derived from an editable name
+would lapse members over a corrected typo. Once HubSpot ids are the key it becomes safe again.
+
+### Phase 2b — HubSpot write-back (≈ 3 days; optional, after 2.3 has run clean for a fortnight)
+
+Push Roam onboarding status (`matched` / `invited` / `claimed` / `live`) into a HubSpot property, so
+the Association sees adoption inside the tool they already use. Held deliberately: two-way sync is
+where data corruption lives, and a one-way pull has to prove itself first.
 
 ### Phase 3 — Association portal v1 + feature requests (≈ 11 days; in `apps/web`, moves later)
 
@@ -346,9 +456,28 @@ Stripe, GA); member self-service membership view; Stripe onboarding branding; we
 refund/dispute/expiry events; `venue_views` channel column; FSA coverage scoped to members; digest
 opt-out per channel; packaging the vendor console (5.6). Each stays on the recon's list.
 
-## 7. Immediate next steps
+## 7. Immediate next steps (rev 3, 2026-09-23)
 
-1. You: the six Phase 0 items (§2) — item 4 (the CSV with membership numbers) is the one that blocks
-   Phase 2 — and answers to §5.1–5.7.
-2. Me, now: Phase 1.1 (orders channel + 7% fee + copy) and 1.2 (`live` spine + nav) as the first two
-   PRs; they fix what a member sees today and unblock every member feature.
+Phase 1 has shipped in full and the live-vs-repo parity audit is closed. Phase 0 items 1–4 are
+answered; 5 (Supabase CLI access) and 6 (the DPA) remain, and **6 now gates Phase 2.3**.
+
+1. Me, done: **2.2** (import hardening), **2.1** (identity model, migration 0154 — applied) and
+   **2.3** + **2.3b** (HubSpot sync and partner self-connect). Both are dormant until a HubSpot app is
+   configured, so they deploy safely ahead of the app, the first connection and the DPA.
+2. Me, next: **2.4** (`/activate` on e-mail possession) and **2.5** (HQ PII masking). Phase 3 (the
+   Association portal) is unblocked throughout and can run alongside — none of it needs the roster's
+   contents.
+3. You, to make 2.3 live:
+   - a **HubSpot public app** in a Roam developer account, unlisted, scopes
+     `crm.objects.companies.read` + `crm.objects.contacts.read`, redirect URI
+     `https://<api-host>/integrations/hubspot/callback`. Put `HUBSPOT_CLIENT_ID`,
+     `HUBSPOT_CLIENT_SECRET` and `HUBSPOT_REDIRECT_URI` on the API service.
+   - `INTEGRATION_ENCRYPTION_KEY` (`openssl rand -base64 32`) on the API service. Without it the
+     Connect button refuses to start rather than storing a credential it cannot protect. Losing or
+     rotating this key means every partner must reconnect.
+   - apply **migration 0155**.
+   - a Railway cron service from `railway.cron-sync-hubspot-members.json`.
+   Then in Roam HQ: Channels → the partner → Import → **Connect**, and rehearse before syncing.
+4. Open question for the Association: where a member company has several HubSpot contacts, which is
+   the roster contact? The sync does not block on it — it applies a deterministic
+   oldest-with-an-e-mail rule and reports how often it had to choose.

@@ -74,6 +74,14 @@ export interface Channel {
   sections: ChannelSections;
   /** Which shell chrome to render (see channels.surface). */
   surface: ChannelSurface;
+  /**
+   * The PARTNER organisation behind this channel (migration 0154), where one exists — the recon's
+   * "no Association identity". `orgName` is their legal/trading name where it differs from `name`;
+   * `contactEmail` is their own address, never a Roam one. Null on the default channel and on any
+   * channel read from a DB that predates 0154 (see BASE_CHANNEL_COLS).
+   */
+  orgName: string | null;
+  contactEmail: string | null;
 }
 
 /** One hostname → channel-key mapping row, as the pure resolver consumes it. */
@@ -257,6 +265,8 @@ export function rowToChannel(row: any): Channel {
     nav: parseChannelNav(row.nav),
     sections: parseChannelSections(row.sections),
     surface: parseChannelSurface(row.surface),
+    orgName: row.org_name ?? null,
+    contactEmail: row.contact_email ?? null,
   };
 }
 
@@ -265,14 +275,14 @@ export function rowToChannel(row: any): Channel {
 // ---------------------------------------------------------------------------
 
 const CHANNEL_COLS =
-  "id, key, name, tagline, is_default, theme, logo_url, membership_mode, nav, sections, surface";
+  "id, key, name, tagline, is_default, theme, logo_url, membership_mode, nav, sections, surface, org_name, contact_email";
 
 /**
  * The original (migration 0116) column set — everything the newer slices ADDED (membership_mode 0122,
- * nav/sections/surface 0134) omitted. rowToChannel defaults every one of those absent fields safely
- * (membership_mode→'open', nav→[], sections→{}, surface→'roam'), so a row read with only these still
- * produces a valid Channel. This is the fallback set used when the live DB can't serve the newer
- * columns yet — see channelSelect below.
+ * nav/sections/surface 0134, org_name/contact_email 0154) omitted. rowToChannel defaults every one of
+ * those absent fields safely (membership_mode→'open', nav→[], sections→{}, surface→'roam', org/contact
+ * →null), so a row read with only these still produces a valid Channel. This is the fallback set used
+ * when the live DB can't serve the newer columns yet — see channelSelect below.
  */
 const BASE_CHANNEL_COLS = "id, key, name, tagline, is_default, theme, logo_url";
 
@@ -349,6 +359,23 @@ export async function getChannelByKey(
       .maybeSingle(),
   );
   if (error) throw new Error(`channels: key lookup failed: ${error.message}`);
+  return data ? rowToChannel(data) : null;
+}
+
+/**
+ * Look a channel up by its primary key. Needed wherever a row already references a channel_id and
+ * the caller wants the key/name back — for example the whitelabel integration sync, which iterates
+ * connected partners by id and reports per channel key.
+ */
+export async function getChannelById(client: RoamClient, id: string): Promise<Channel | null> {
+  const { data, error } = await channelSelect((cols) =>
+    (client as any)
+      .from("channels")
+      .select(cols)
+      .eq("id", id)
+      .maybeSingle(),
+  );
+  if (error) throw new Error(`channels: id lookup failed: ${error.message}`);
   return data ? rowToChannel(data) : null;
 }
 
