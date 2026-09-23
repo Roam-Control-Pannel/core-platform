@@ -235,8 +235,20 @@ the activation credential, and the **immutable object id** that is the idempoten
   not to guess at here.
 - **Shape: the `syncFsaNi` pattern**, which already does this job against a 16,949-row external
   register — a job in `packages/api/src/jobs/`, an internal `/jobs/*` route at `full` scope (Phase 1.5),
-  a `railway.cron-sync-hubspot.json` service, incremental on `hs_lastmodifieddate`, every run audited
-  and reportable. `external_refs.dataset` widens from `('roam_venue','fsa')` to include `'hubspot'`.
+  a `railway.cron-sync-hubspot-members.json` service, incremental on `hs_lastmodifieddate`, every run
+  audited and reportable.
+  **No migration:** the plan originally widened `external_refs.dataset` to `'hubspot'`, which 0154 made
+  unnecessary — `channel_members.source_system_id` holds the CRM identity on the row itself, uniquely
+  indexed and queryable, so an `external_refs` row would only duplicate it.
+- **Never destructive.** The sync inserts and updates; it does not delete, lapse or un-match anybody,
+  and it writes only `source_*` columns — `status`, `venue_id` and `claimed_by` belong to Roam's
+  onboarding, not to the partner's CRM. An empty pull is treated as no change, because from here a
+  partner API returning nothing is indistinguishable from an outage.
+- **The contact tie-break is measured, not guessed.** Where a company has several contacts, the rule is
+  fixed and deterministic — prefer one with an e-mail, then the OLDEST by `createdate` (adding a
+  contact in HubSpot must never silently redirect where an invite is sent). Every run reports
+  `ambiguousContacts`, so when the Association answers the open question we will know how many members
+  it actually affected.
 - **Credentials:** a read-only private-app token (`crm.objects.companies.read`,
   `crm.objects.contacts.read`) as a Railway secret. Read-only is not a formality — Roam has no business
   holding write access to a partner's CRM to do a job that only reads.
@@ -272,7 +284,7 @@ the CRM takes over both jobs and the roster CSV becomes a fallback import path r
 |---|---|---|---|---|
 | 2.1 | Identity: `source_system` + `source_system_id`, `member_no` reserved for 2027, `venue_channels.role`, `last_seen_import_id`, `channels.contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; council derived from the matched venue's FSA `local_authority`; claim definer lands on `live`; pgTAP (31) | 4.4 B, 4.3 H | 3 | **DONE** (0154) |
 | 2.2 | **Import hardening** — postcode sanitiser; roster address passed to the matcher (import *and* review queue); `town` recognised; duplicate-venue guard in auto-accept; dry-run; operator column mapping; HQ file picker + preview + rehearse-then-commit | 4.4 H, 4.3 M | 3 | **DONE** |
-| 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron + officer-triggered "sync now", `external_refs.dataset` widened to `'hubspot'`, audited | 4.4 B | 4 | |
+| 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron + HQ "sync now", audited; dormant without `HUBSPOT_TOKEN` | 4.4 B | 4 | **DONE** |
 | 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | |
 | 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | |
 
@@ -434,12 +446,20 @@ opt-out per channel; packaging the vendor console (5.6). Each stays on the recon
 Phase 1 has shipped in full and the live-vs-repo parity audit is closed. Phase 0 items 1–4 are
 answered; 5 (Supabase CLI access) and 6 (the DPA) remain, and **6 now gates Phase 2.3**.
 
-1. Me, done: **Phase 2.2** — import hardening, against the real sample.
-2. Me, next: **Phase 2.1** (identity model) then **2.3** (HubSpot sync v1), which together restore a
-   stable key and supply the missing credential. Phase 3 (the Association portal) is unblocked
-   throughout and can run alongside — none of it needs the roster's contents.
-3. You: a read-only HubSpot private-app token for the environment; the DPA wording before 2.3 runs
-   against live HubSpot; and the full membership list whenever the Association is ready — with 2.2
-   shipped, it can be rehearsed in HQ before anything is written.
-4. Open question for the Association, to settle against their real property schema: where a member
-   company has several HubSpot contacts, which one is the roster contact?
+1. Me, done: **2.2** (import hardening), **2.1** (identity model, migration 0154 — applied) and
+   **2.3** (HubSpot sync v1). The sync is dormant until `HUBSPOT_TOKEN` is set, so it deploys safely
+   ahead of both the token and the DPA.
+2. Me, next: **2.4** (`/activate` on e-mail possession) and **2.5** (HQ PII masking). Phase 3 (the
+   Association portal) is unblocked throughout and can run alongside — none of it needs the roster's
+   contents.
+3. You, to make 2.3 live:
+   - a read-only HubSpot private-app token (`crm.objects.companies.read`,
+     `crm.objects.contacts.read`) as `HUBSPOT_TOKEN` on the API service;
+   - the DPA wording **before** the first run against live HubSpot — this is a continuous pull of
+     contact PII, not a one-off hand-over;
+   - a Railway cron service from `railway.cron-sync-hubspot-members.json`.
+   Run it as a dry run first: it reports what it would write without writing, including how many
+   members have no e-mail anywhere in the CRM (the ceiling on self-serve onboarding).
+4. Open question for the Association: where a member company has several HubSpot contacts, which is
+   the roster contact? The sync does not block on it — it applies a deterministic
+   oldest-with-an-e-mail rule and reports how often it had to choose.

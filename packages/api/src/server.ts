@@ -33,6 +33,8 @@ import { runCjLogoSync } from "./jobs/syncCjLogos.js";
 import { runOwnerDigest } from "./jobs/deliverOwnerDigest.js";
 import { runFsaSync } from "./jobs/syncFsaNi.js";
 import { loadFsaConfig } from "./fsa/client.js";
+import { runHubspotSync } from "./jobs/syncHubspotMembers.js";
+import { loadHubspotConfig } from "./hubspot/client.js";
 import { verifyStripeSignature } from "./stripe/client.js";
 import type { EfaConfig } from "./transit/client.js";
 
@@ -443,6 +445,40 @@ export async function handler(request: Request): Promise<Response> {
     try {
       const service = escalateToService(ctx.env);
       const result = await runFsaSync(service, cfg, (m) => console.log(m));
+      return jsonResponse({ ok: true, ...result }, 200, cors);
+    } catch (e) {
+      return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);
+    }
+  }
+
+  // HubSpot member sync (plan 2.3). `?full=1` ignores the incremental window and re-reads the whole
+  // portal; `?dry=1` computes and reports without writing. Full scope only — this reads a partner's
+  // contact PII, so the web deployment's scoped secret must never reach it (plan 1.5).
+  if (pathname === "/jobs/sync-hubspot-members") {
+    if (request.method !== "POST") {
+      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405, cors);
+    }
+    const ctx = createContext({ headers: toHeaderBag(request.headers) });
+    if (ctx.internalScope !== "full") {
+      return jsonResponse({ ok: false, error: "forbidden" }, 403, cors);
+    }
+    const cfg = loadHubspotConfig();
+    if (!cfg) {
+      return jsonResponse({ ok: false, error: "unconfigured" }, 200, cors);
+    }
+    const params = new URL(request.url).searchParams;
+    const full = params.get("full") === "1";
+    try {
+      const service = escalateToService(ctx.env);
+      const result = await runHubspotSync(
+        service,
+        cfg,
+        {
+          since: full ? null : new Date(Date.now() - 36 * 60 * 60 * 1000),
+          dryRun: params.get("dry") === "1",
+        },
+        (m) => console.log(m),
+      );
       return jsonResponse({ ok: true, ...result }, 200, cors);
     } catch (e) {
       return jsonResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500, cors);

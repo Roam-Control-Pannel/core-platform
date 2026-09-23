@@ -12,6 +12,8 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { admin } from "@roam/core";
 import { importRoster, recordImportBackfill } from "../jobs/importRoster.js";
+import { runHubspotSync } from "../jobs/syncHubspotMembers.js";
+import { loadHubspotConfig } from "../hubspot/client.js";
 import { sendMemberInvite } from "../f2g/invite.js";
 import { router, adminProcedure } from "../trpc.js";
 import type { Context } from "../context.js";
@@ -261,6 +263,47 @@ export const adminActionsRouter = router({
         return result;
       } catch (e) {
         fail(e, "Failed to send invite.");
+      }
+    }),
+
+  /**
+   * Pull the Association's membership from HubSpot on demand (plan 2.3), rather than waiting for the
+   * nightly cron — the "sync now" an officer will get in the portal (Phase 3), available to HQ first.
+   * `dryRun` defaults TRUE for the same reason it does on importRoster: reading a partner's CRM into
+   * the roster of record should be something someone asked for, not a default.
+   */
+  syncHubspot: adminProcedure
+    .input(z.object({ full: z.boolean().default(false), dryRun: z.boolean().default(true) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const who = await actor(ctx as ActingCtx);
+        const cfg = loadHubspotConfig();
+        if (!cfg) return { status: "unconfigured" as const };
+        const result = await runHubspotSync(
+          ctx.service,
+          cfg,
+          {
+            since: input.full ? null : new Date(Date.now() - 36 * 60 * 60 * 1000),
+            dryRun: input.dryRun,
+            actorId: who.id,
+          },
+          (m) => console.log(m),
+        );
+        if (!input.dryRun) {
+          await admin.recordAudit(ctx.service, who, {
+            action: "sync_hubspot_members",
+            entityType: "channel",
+            entityId: cfg.channelKey,
+            detail: {
+              full: input.full, fetched: result.fetched, inserted: result.inserted,
+              updated: result.updated, withEmail: result.withEmail,
+              matchedAccept: result.matchedAccept, matchedConflict: result.matchedConflict,
+            },
+          });
+        }
+        return result;
+      } catch (e) {
+        fail(e, "HubSpot sync failed.");
       }
     }),
 

@@ -22,7 +22,8 @@
  * Runs with the service client under an internalProcedure. Cap-proof where it scans the roster.
  */
 import type { RoamClient } from "@roam/db";
-import { membership, matching, channels as coreChannels } from "@roam/core";
+import { membership, channels as coreChannels } from "@roam/core";
+import { matchRosterMembers } from "./matchRosterMembers.js";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Loose = { from: (t: string) => any };
@@ -68,8 +69,7 @@ export interface ImportRosterReport {
   conflictsSample: { member: string; venueId: string }[];
 }
 
-const MATCH_BLOCK_LIMIT = 60; // candidate venues fetched per member (postcode-blocked)
-const CHUNK = 500; // upsert / scan page size (cap-proof)
+const CHUNK = 500; // upsert / scan page size (cap-proof) // upsert / scan page size (cap-proof)
 
 /** All membership_refs already on the channel, paged past the 1000-row cap. */
 async function existingRefs(client: RoamClient, channelId: string): Promise<Set<string>> {
@@ -88,63 +88,6 @@ async function existingRefs(client: RoamClient, channelId: string): Promise<Set<
     from += rows.length;
   }
   return refs;
-}
-
-/** Block candidate venues for a member by the postcode outward code (appears in the free-text address). */
-async function candidatesFor(client: RoamClient, postcode: string): Promise<{ id: string; name: string; postcode: string; address: string | null; thin: boolean }[]> {
-  const outward = membership.outwardCode(postcode);
-  if (!outward) return [];
-  // Escape ILIKE wildcards in the (trusted, but be safe) outward code.
-  const pat = `%${outward.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
-  const { data, error } = await loose(client)
-    .from("venues")
-    .select("id, name, address, opening_times, rating")
-    .ilike("address", pat)
-    .not("business_status", "eq", "CLOSED_PERMANENTLY")
-    .limit(MATCH_BLOCK_LIMIT);
-  if (error) throw new Error(`importRoster: candidate read failed: ${error.message}`);
-  return ((data ?? []) as any[]).map((v) => ({
-    id: String(v.id),
-    name: String(v.name ?? ""),
-    postcode: matching.extractPostcode(v.address),
-    address: v.address == null ? null : String(v.address), // lets the engine strip locality tokens
-    thin: v.rating == null || v.opening_times == null, // needs a Places backfill
-  }));
-}
-
-/**
- * Every venue already bound to a member of this channel → the member holding it. Read ONCE and paged
- * past the 1000-row cap, so the duplicate-venue guard costs no per-member round trip.
- */
-async function boundVenues(client: RoamClient, channelId: string): Promise<Map<string, string>> {
-  const bound = new Map<string, string>();
-  let from = 0;
-  for (;;) {
-    const { data, error } = await loose(client)
-      .from("channel_members")
-      .select("id, venue_id")
-      .eq("channel_id", channelId)
-      .not("venue_id", "is", null)
-      .range(from, from + CHUNK - 1);
-    if (error) throw new Error(`importRoster: bound-venue read failed: ${error.message}`);
-    const rows = (data ?? []) as { id: string; venue_id: string | null }[];
-    for (const r of rows) if (r.venue_id) bound.set(String(r.venue_id), String(r.id));
-    if (rows.length < CHUNK) break;
-    from += rows.length;
-  }
-  return bound;
-}
-
-/** Whether a human has already fixed this member's match — never overwrite a manual correction. */
-async function hasManualRef(client: RoamClient, memberId: string): Promise<boolean> {
-  const { data } = await loose(client)
-    .from("external_refs")
-    .select("method")
-    .eq("entity_type", "channel_member")
-    .eq("entity_id", memberId)
-    .eq("dataset", "roam_venue")
-    .maybeSingle();
-  return (data as { method?: string } | null)?.method === "manual";
 }
 
 export async function importRoster(client: RoamClient, args: ImportRosterArgs): Promise<ImportRosterReport> {
@@ -203,81 +146,27 @@ export async function importRoster(client: RoamClient, args: ImportRosterArgs): 
     }
   }
 
-  // Match each member (that has a postcode) and persist accepts.
-  let matchedAccept = 0;
-  let matchedReview = 0;
-  let matchedReject = 0;
-  let matchedConflict = 0;
-  const backfill = new Set<string>();
-  const conflictsSample: { member: string; venueId: string }[] = [];
-  // Venue → member already holding it. Seeded from the DB and extended as this run binds, so two rows
-  // of the SAME file cannot both take one venue either.
-  const taken = await boundVenues(client, channel.id);
-
-  for (const r of parsed.rows) {
-    const m = refToId.get(r.membershipRef);
-    // A dry run has not inserted new members, so `m` is absent for them — match on the parsed row and
-    // simply skip the id-dependent steps (nothing manual can exist for a row that does not exist yet).
-    if (!dryRun && !m) continue;
-    const postcode = r.sourcePostcode;
-    if (!postcode) continue; // no postcode → cannot block; leave unmatched
-    if (m && (await hasManualRef(client, m.id))) continue; // human correction is permanent
-
-    const cands = await candidatesFor(client, postcode);
-    // The roster ADDRESS is passed as context, not as a key: the matcher uses it only to strip
-    // locality tokens out of the name before comparing ("Apache Lisburn" vs Google's "Apache Pizza"),
-    // which is exactly the shape real roster names take. Withholding it threw away the strongest
-    // disambiguator we hold — and the review queue re-scores from the same persisted column, so both
-    // surfaces now agree on the score.
-    const res = matching.resolveCandidates(
-      { name: r.sourceName, postcode, address: r.sourceAddress },
-      cands,
-    );
-
-    if (res.decision === "accept" && res.best) {
-      const v = res.best.candidate;
-      // A venue belongs to at most ONE member. With no membership number to prove identity, the
-      // roster match IS the identity claim behind activation, so binding one venue to two members
-      // would let the wrong business be activated. confirmMatch has always refused this on the manual
-      // path (reviewQueue.ts); the automatic path silently allowed it. Withheld → human review.
-      const holder = taken.get(v.id);
-      if (holder && (!m || holder !== m.id)) {
-        matchedConflict++;
-        matchedReview++;
-        if (conflictsSample.length < 50) conflictsSample.push({ member: r.membershipRef, venueId: v.id });
-        continue;
-      }
-
-      if (!dryRun && m) {
-        const { error: refErr } = await loose(client)
-          .from("external_refs")
-          .upsert(
-            {
-              entity_type: "channel_member",
-              entity_id: m.id,
-              dataset: "roam_venue",
-              external_id: v.id,
-              method: "auto",
-              score: Number(res.best.score.toFixed(3)),
-            },
-            { onConflict: "entity_type,entity_id,dataset", ignoreDuplicates: false },
-          );
-        if (refErr) throw new Error(`importRoster: external_ref write failed: ${refErr.message}`);
-        const { error: bindErr } = await loose(client)
-          .from("channel_members")
-          .update({ venue_id: v.id })
-          .eq("id", m.id);
-        if (bindErr) throw new Error(`importRoster: venue bind failed: ${bindErr.message}`);
-      }
-      taken.set(v.id, m?.id ?? r.membershipRef);
-      matchedAccept++;
-      if (v.thin) backfill.add(v.id);
-    } else if (res.decision === "review") {
-      matchedReview++; // surfaced by the B4b review queue (no auto-bind)
-    } else {
-      matchedReject++;
-    }
-  }
+  // Match each member (that has a postcode) and persist accepts — through the SHARED match phase, so
+  // the CSV path and the HubSpot sync (plan 2.3) can never drift to different answers about which
+  // venue a member is. A dry run has not inserted new members, so those rows carry a null id and the
+  // matcher computes their decision without the id-dependent steps.
+  const match = await matchRosterMembers(client, {
+    channelId: channel.id,
+    dryRun,
+    members: parsed.rows.map((r) => ({
+      id: refToId.get(r.membershipRef)?.id ?? null,
+      ref: r.membershipRef,
+      name: r.sourceName,
+      postcode: r.sourcePostcode,
+      address: r.sourceAddress,
+    })),
+  });
+  const matchedAccept = match.accepted;
+  const matchedReview = match.review;
+  const matchedReject = match.rejected;
+  const matchedConflict = match.conflicts;
+  const conflictsSample = match.conflictsSample;
+  const backfill = match.backfillCandidates;
 
   const errorsSample = parsed.errors.slice(0, 50);
   const warningsSample = parsed.warnings.slice(0, 50);
