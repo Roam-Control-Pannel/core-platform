@@ -24,6 +24,15 @@ COPY . .
 # Frozen install: reproducible, matches the committed pnpm-lock.yaml exactly.
 RUN pnpm install --frozen-lockfile
 
+# MUST come after the install, never before. pnpm treats NODE_ENV=production as --prod and omits
+# devDependencies — and tsx, which IS this service's runtime (see the CMD below), is a
+# devDependency. Set above the install line, the image would build and then fail to start.
+#
+# Set here it does what it should: libraries that branch on NODE_ENV take their production path.
+# The API's own tRPC config no longer depends on this being right (packages/api/src/trpc.ts pins
+# isDev explicitly) — this is the second layer, not the only one.
+ENV NODE_ENV=production
+
 # Railway injects $PORT at runtime; main.ts reads it and fail-fasts if absent.
 # Start only the API service from the workspace root.
 CMD ["pnpm", "--filter", "@roam/api", "start"]

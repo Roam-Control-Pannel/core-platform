@@ -46,7 +46,19 @@ export function escalateToService(env: ApiEnv): RoamClient {
   });
 }
 
-const t = initTRPC.context<Context>().create();
+/**
+ * `isDev` decides whether tRPC attaches a stack trace to every error it returns
+ * (getErrorShape: `if (config.isDev && typeof error.stack === "string") shape.data.stack = …`).
+ * A stack names container paths and exact dependency versions, to whoever asked — including an
+ * unauthenticated caller who simply hit a wrong URL. That is free reconnaissance.
+ *
+ * tRPC's own default is `NODE_ENV !== "production"`, which fails OPEN: any deployment that forgets
+ * to set NODE_ENV leaks. Ours fails CLOSED — stacks appear only when someone has explicitly said
+ * this is a development run. Production does not have to remember anything to be safe.
+ */
+const t = initTRPC.context<Context>().create({
+  isDev: process.env.NODE_ENV === "development",
+});
 
 export const router = t.router;
 export const middleware = t.middleware;
