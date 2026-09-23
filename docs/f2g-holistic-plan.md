@@ -135,12 +135,25 @@ Six things the repo cannot tell us. Each is a short check on your side; the plan
   e-mail. This promotes the review queue and the duplicate-venue guard from hygiene to security
   controls. The sample makes the risk concrete: **13 of 48 rows (27%) are chain branches** (Apache ×5,
   Monte Carlo ×3, Pizza Crew ×3, Love Pizza ×2) and two postcodes each carry two different members.
-- **One canonical definition, used everywhere:** an *active member* is a `channel_members` row with
-  `status = 'live'`, `claimed_by` set, linked to a venue. Ranking (`f2g_member_venue_ids`, today
-  `claimed|live ∪ tag`), the directory (today `live` only), the jobs/supplier entitlements (today
-  `claimed_by = auth.uid() and status='live'`), members-mode listing and the portal counts all read
-  exactly that. **Backfill:** every existing `claimed` row that came through a verified invite moves
-  to `live` in the same migration, so nobody who has already claimed loses priority.
+- **One canonical definition — which is TWO predicates, not one** (corrected 2026-09-23 against the
+  shipped code; delivered by migration 0154):
+
+  | | Predicate | Read by |
+  |---|---|---|
+  | **Membership** — counted, listed, ranked | `status = 'live'` AND `venue_id is not null` | `f2g_member_venue_ids`, the directory, members-mode listing, portal counts |
+  | **Entitlement** — may post as a member | membership AND `claimed_by = auth.uid()` | `f2g_can_post_as_member`, `f2g_can_post_supplier` |
+
+  An earlier draft of this bullet made membership require `claimed_by` too. That was wrong: 0150
+  shipped an HQ "mark live" action whose own documentation says a staff-marked member "still needs to
+  claim/activate to post — but they ARE counted, listed and ranked from this moment". Collapsing the
+  two predicates would have silently un-ranked every member HQ has marked live.
+
+  Before 0154 the predicate was said three different ways — the ranking helper counted `claimed|live`
+  and every `venue_channels` tag; the directory counted `live` only; the entitlements counted `live` +
+  `claimed_by` but not a bound venue. **Consequently the claim definer (0139) now writes `live`, not
+  `claimed`:** 0150 backfilled exactly those rows to `live` as "already proven", so leaving new
+  claimants at `claimed` put them outside the live-only predicate and required a manual HQ step to be
+  ranked. `claimed` is now a legacy status — still valid, still in the state machine, never written.
 - **Transitions widened** (`packages/core/src/membership/index.ts:41-48` forbids anything → `live`
   except from `claimed`/`lapsed`): activation adds `imported → live` and `invited → live`.
 - **`venue_channels.role`** (`member` | `listed`) is a new column (the table is key-only today,
@@ -257,7 +270,7 @@ the CRM takes over both jobs and the roster CSV becomes a fallback import path r
 
 | # | Work | Recon | Days | Status |
 |---|---|---|---|---|
-| 2.1 | Identity: `source_system` + `source_system_id`, `membership_ref` derived from them, `member_no` reserved for 2027, `venue_channels.role`, `last_seen_import_id`, `lapsed_at`, `channels.contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; council derived from the matched venue's FSA `local_authority`; pgTAP | 4.4 B, 4.3 H | 3 | |
+| 2.1 | Identity: `source_system` + `source_system_id`, `member_no` reserved for 2027, `venue_channels.role`, `last_seen_import_id`, `channels.contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; council derived from the matched venue's FSA `local_authority`; claim definer lands on `live`; pgTAP (31) | 4.4 B, 4.3 H | 3 | **DONE** (0154) |
 | 2.2 | **Import hardening** — postcode sanitiser; roster address passed to the matcher (import *and* review queue); `town` recognised; duplicate-venue guard in auto-accept; dry-run; operator column mapping; HQ file picker + preview + rehearse-then-commit | 4.4 H, 4.3 M | 3 | **DONE** |
 | 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron + officer-triggered "sync now", `external_refs.dataset` widened to `'hubspot'`, audited | 4.4 B | 4 | |
 | 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | |
