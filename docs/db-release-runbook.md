@@ -232,7 +232,7 @@ Expected value as of migration 0156: **`267909696849` across 123 functions**.
 | 0153 | `267218412372` | 120 | — |
 | 0154 | `264424425230` | 120 | six bodies changed (`f2g_member_venue_ids`, `venues_in_channel_near`, `channel_members_search`, `f2g_can_post_as_member`, `f2g_can_post_supplier`, `claim_channel_member_venue`); none added |
 | 0155 | `264724087417` | 121 | `channel_integrations_guard_client_roles` added |
-| 0156 | `267909696849` | 123 | `channel_admins_guard_client_roles` + `is_channel_admin` added |
+| 0156 | `267909696849` | 123 | `channel_admins_guard_client_roles` + `is_channel_admin` added — **confirmed against live 2026-09-23** |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by
@@ -245,6 +245,14 @@ known-good value. The 0155/0156 rows above were computed on a PostgreSQL 16 repl
 came out at exactly `264424425230` / 120 — the figure previously verified against live — and were then
 cross-checked by a second, independent clean replay. Do the same before trusting a new number: if your
 harness cannot reproduce the previous row, fix the harness before recording the next one.
+
+**The 2026-09-23 consolidation cross-check.** The 0156 prediction was computed from a replay of the
+**consolidated** chain (six baselines + `0116`–`0156`, PR #417), while live still runs the **original**
+`0001`–`0115` chain plus the F2G migrations. Live returned `267909696849` / 123 — the predicted value,
+exactly. Two different migration chains producing a byte-identical function set is independent evidence
+that the consolidation is equivalent to what it replaced, which is the claim #417 rests on and which
+the `db` CI job has not been able to check since the 2026-09-23 ghcr.io outage. Treat it as corroboration
+of the consolidation, not as a substitute for the `db` gate.
 
 **Why not compare raw text.** Three separate traps, all hit on 2026-09-17/18:
 - SQL applied by pasting into the SQL editor arrives comment-stripped and reflowed, so a function
