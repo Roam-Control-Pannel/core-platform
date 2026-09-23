@@ -69,8 +69,34 @@ jobs:
 
       # Starts only the Postgres container (not the full stack), so no auth/
       # storage/studio services and none of their env() secrets are needed.
+      #
+      # RETRIED, because ghcr.io intermittently sheds load with `toomanyrequests` and
+      # that aborts the WHOLE image pull — even when almost every layer has already
+      # downloaded. Docker keeps the layers it did fetch, so each attempt resumes
+      # further along rather than starting over; retrying is mechanically likely to
+      # finish the pull, not merely hopeful.
+      #
+      # This is a deploy gate, not just a badge: Railway only deploys a commit whose
+      # check suite passed, so a registry hiccup here silently blocks production. On
+      # 2026-09-23 three consecutive runs (two on a PR, one on main) died on this
+      # step and skipped the production deploy.
+      #
+      # Deliberately bounded: five attempts with linear backoff, then a real failure.
+      # A genuinely broken migration must still fail this job promptly — this retries
+      # the image pull, it does not paper over SQL.
       - name: Start local Postgres
-        run: supabase db start
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if supabase db start; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq 5 ]; then break; fi
+            delay=$((attempt * 15))
+            echo "::warning::supabase db start failed (attempt ${attempt}/5) — retrying in ${delay}s"
+            sleep "${delay}"
+          done
+          echo "::error::supabase db start failed after 5 attempts"
+          exit 1
 
       # Re-applies all migrations + seed.sql from scratch; fails the job on any
       # migration error, ordering problem, or seed breakage.
