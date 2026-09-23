@@ -42,10 +42,61 @@ This project's `supabase_migrations.schema_migrations` ledger has under-reported
 `db push` / dumps). Consequences and fixes:
 - The **drift guard is ledger-independent by design** — it probes what the app actually reads
   (`scripts/check-schema-drift.mjs`), not the ledger, so it stays correct regardless.
-- Reconcile the ledger once with `supabase migration repair` so `supabase db push` behaves normally
-  going forward.
-- The repo's migrations are written idempotently (`add column if not exists`, guarded constraints,
-  `update … where`), so re-applying is safe even when the ledger disagrees.
+- Reconcile ordinary ledger drift with `supabase migration repair` only after comparing the actual
+  schema with the intended schema. Do not assume every migration is safe to replay.
+- The pre-F2G consolidation is a special case: deleted historical versions cannot be reconciled by
+  `db push` or by blindly marking migrations applied. Use the cutover below.
+
+## Consolidated-history cutover
+
+Migrations `0001` through `0115` were replaced by six baseline migrations; migrations `0116` and
+later are unchanged. Any remote whose ledger contains the retired `0007`–`0115` versions must have
+its migration history reconciled before the normal `db push` workflow resumes.
+
+For each project, separately, first confirm the exact project name/ref, take full schema and data
+backups, pause deployments, and compare the existing schema with a clean replay.
+
+### Data-preserving ledger reconciliation
+
+Use this path when the old migration chain was fully applied and schema equivalence has been
+established. No application table data needs to be copied or replaced: the final schema already
+matches, so only `supabase_migrations.schema_migrations` is stale.
+
+```bash
+pnpm db:reconcile-history -- \
+  --project-ref <PROJECT_REF> \
+  --confirm-project-ref <PROJECT_REF> \
+  --schema-equivalence-confirmed \
+  --apply \
+  --backup-file /absolute/secure/path/<PROJECT_REF>-migration-ledger.sql
+```
+
+The command uses pinned Supabase CLI `2.117.0`, creates a dedicated ledger backup before mutation,
+marks retired `0007`–`0115` versions reverted, re-records `0001`–`0006` from the consolidated local
+files, and finishes with `db push --dry-run`. It is rerunnable after partial failure. The backup path
+must be outside the repository and must not already exist.
+
+After it succeeds:
+
+1. Confirm the migration list contains `0001`–`0006` and `0116` onward, with no `0007`–`0115` rows.
+2. Reload PostgREST and run the schema-drift probe plus representative reads.
+3. Resume the normal migration workflow only after those checks pass.
+
+### Rebuild fallback
+
+If schema equivalence cannot be established, do not mark migrations applied. For a confirmed
+non-production project only:
+
+1. Reset the linked project from the repository migration chain.
+2. Verify the ledger contains `0001`–`0006` and `0116` onward, with no `0007`–`0115` entries.
+3. Reload PostgREST, run the schema-drift probe and representative reads, then restore only data that
+   is still required.
+4. After the founder has signed in, run `supabase/bootstrap/admin-owner.sql` against that exact
+   project.
+
+Stop if the project identity, non-production classification, database credentials, or either backup
+cannot be verified. Do not run the automatic `db-migrate` workflow against an old ledger; the first
+post-consolidation deployment must follow one of these cutover paths.
 
 ## Configuration (repo/deploy secrets)
 | Secret | Used by | Purpose |

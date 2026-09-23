@@ -58,8 +58,9 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
 
-      # Applies every migration not yet recorded on the project. Idempotent migrations (the repo's
-      # `add ... if not exists` style) make a re-run safe even where the ledger under-reports.
+      # Applies every migration not yet recorded on the project. This assumes the target already
+      # uses the consolidated migration ledger; db push cannot reconcile the retired 0007–0115
+      # versions. Follow docs/db-release-runbook.md for the one-time cutover first.
       # `db push` reads the DB password from SUPABASE_DB_PASSWORD.
       - name: Apply migrations
         if: steps.guard.outputs.configured == 'true'
