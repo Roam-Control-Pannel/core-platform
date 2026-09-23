@@ -1,19 +1,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { RoamClient } from "@roam/db";
 import { runHubspotSync } from "./syncHubspotMembers.js";
-import type { HubspotConfig } from "../hubspot/client.js";
+import type { HubspotAppConfig } from "../hubspot/oauth.js";
+import { forgetCachedToken } from "../hubspot/store.js";
+import { sealSecret } from "../integrations/secretBox.js";
 import { hubspot } from "@roam/core";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const CFG: HubspotConfig = {
+const APP: HubspotAppConfig = {
   baseUrl: "https://api.hubapi.test",
-  token: "pat-test",
-  channelKey: "f2g",
+  appUrl: "https://app.hubspot.test",
+  clientId: "client-test",
+  clientSecret: "secret-test",
+  redirectUri: "https://api.roam.test/integrations/hubspot/callback",
+  stateSecret: "state-secret",
   propertyMap: hubspot.DEFAULT_PROPERTY_MAP,
   pageSize: 100,
   maxPages: 10,
 };
+
+/** Every run names the partner whose roster it syncs — there is no implicit "the" channel. */
+const ARGS = { channelKey: "f2g" } as const;
 
 const F2G = { id: "chan-f2g", key: "f2g", name: "Food to Go", is_default: false, theme: {}, membership_mode: "open", nav: [], sections: {}, surface: "storefront" };
 
@@ -37,6 +45,14 @@ function makeClient(cfg: { channel: any; existing: any[]; bound?: any[]; venues?
           return Promise.resolve({ data: cfg.existing, error: null });
         }
         if (table === "venues") return Promise.resolve({ data: cfg.venues ?? [], error: null });
+        // The partner's stored credential. Sealed, as it is on disk — accessTokenFor decrypts it and
+        // trades it for a short-lived access token before any CRM call.
+        if (table === "channel_integrations") {
+          return Promise.resolve({
+            data: { refresh_token_encrypted: sealSecret("refresh-token-test"), status: "connected" },
+            error: null,
+          });
+        }
         if (table === "external_refs") return Promise.resolve({ data: null, error: null });
         return Promise.resolve({ data: null, error: null });
       };
@@ -65,6 +81,7 @@ function stubHubspot(companies: any[], assoc: any[] = [], contacts: any[] = []):
   return vi.fn(async (url: any) => {
     const u = String(url);
     const ok = (body: any) => ({ ok: true, status: 200, json: async () => body, text: async () => JSON.stringify(body) }) as any;
+    if (u.includes("/oauth/v1/token")) return ok({ access_token: "at-test", refresh_token: "refresh-token-test", expires_in: 1800 });
     if (u.includes("/crm/v3/objects/companies")) return ok({ results: companies });
     if (u.includes("/crm/v4/associations/companies/contacts/batch/read")) return ok({ results: assoc });
     if (u.includes("/crm/v3/objects/contacts/batch/read")) return ok({ results: contacts });
@@ -73,13 +90,24 @@ function stubHubspot(companies: any[], assoc: any[] = [], contacts: any[] = []):
 }
 
 const originalFetch = globalThis.fetch;
-beforeEach(() => { vi.restoreAllMocks(); });
-afterEach(() => { globalThis.fetch = originalFetch; });
+const originalKey = process.env.INTEGRATION_ENCRYPTION_KEY;
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  // A fixed key so sealed fixtures are reproducible; the real one lives only in the API environment.
+  process.env.INTEGRATION_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+  forgetCachedToken(); // access tokens are cached per channel across calls — start each test cold
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  if (originalKey === undefined) delete process.env.INTEGRATION_ENCRYPTION_KEY;
+  else process.env.INTEGRATION_ENCRYPTION_KEY = originalKey;
+});
 
 describe("runHubspotSync", () => {
   it("is dormant with no config — it must deploy safely long before a token exists", async () => {
     const { client, captures } = makeClient({ channel: F2G, existing: [] });
-    const r = await runHubspotSync(client, null);
+    const r = await runHubspotSync(client, null, { ...ARGS });
     expect(r.status).toBe("unconfigured");
     expect(captures.inserts).toEqual([]);
   });
@@ -92,7 +120,7 @@ describe("runHubspotSync", () => {
     );
     const { client, captures } = makeClient({ channel: F2G, existing: [] });
 
-    const r = await runHubspotSync(client, CFG);
+    const r = await runHubspotSync(client, APP, { ...ARGS });
 
     expect(r.status).toBe("ok");
     expect(r.inserted).toBe(1);
@@ -121,7 +149,7 @@ describe("runHubspotSync", () => {
       existing: [{ id: "m1", source_system_id: "8001" }],
     });
 
-    const r = await runHubspotSync(client, CFG);
+    const r = await runHubspotSync(client, APP, { ...ARGS });
 
     expect(r.inserted).toBe(0);
     expect(r.updated).toBe(1);
@@ -135,7 +163,7 @@ describe("runHubspotSync", () => {
     globalThis.fetch = stubHubspot([{ id: "8001", properties: { name: "Harbour Grill", zip: "BT21 0HE" } }]);
     const { client, captures } = makeClient({ channel: F2G, existing: [{ id: "m1", source_system_id: "8001" }] });
 
-    await runHubspotSync(client, CFG);
+    await runHubspotSync(client, APP, { ...ARGS });
 
     // A sync must never roll a live member backwards or re-point their venue.
     const memberWrites = [
@@ -157,7 +185,7 @@ describe("runHubspotSync", () => {
     globalThis.fetch = stubHubspot([]);
     const { client, captures } = makeClient({ channel: F2G, existing: [{ id: "m1", source_system_id: "8001" }] });
 
-    const r = await runHubspotSync(client, CFG);
+    const r = await runHubspotSync(client, APP, { ...ARGS });
 
     expect(r.status).toBe("ok");
     expect(r.fetched).toBe(0);
@@ -169,7 +197,7 @@ describe("runHubspotSync", () => {
     globalThis.fetch = stubHubspot([{ id: "8002", properties: { name: "Quiet Cafe", zip: "BT1 1AA" } }]);
     const { client } = makeClient({ channel: F2G, existing: [] });
 
-    const r = await runHubspotSync(client, CFG);
+    const r = await runHubspotSync(client, APP, { ...ARGS });
 
     expect(r.withEmail).toBe(0);
     expect(r.withoutEmail).toBe(1); // the ceiling on self-serve onboarding, reported every run
@@ -186,7 +214,7 @@ describe("runHubspotSync", () => {
     );
     const { client, captures } = makeClient({ channel: F2G, existing: [] });
 
-    const r = await runHubspotSync(client, CFG);
+    const r = await runHubspotSync(client, APP, { ...ARGS });
 
     expect(r.ambiguousContacts).toBe(1);
     const insert = captures.inserts.find((i) => i.table === "channel_members")!;
@@ -197,7 +225,7 @@ describe("runHubspotSync", () => {
     globalThis.fetch = stubHubspot([{ id: "8003", properties: { name: "Rehearsal Cafe", zip: "BT1 1AA" } }]);
     const { client, captures } = makeClient({ channel: F2G, existing: [] });
 
-    const r = await runHubspotSync(client, CFG, { dryRun: true });
+    const r = await runHubspotSync(client, APP, { ...ARGS, dryRun: true });
 
     expect(r.dryRun).toBe(true);
     expect(r.inserted).toBe(1); // ...as it WOULD be
@@ -209,6 +237,6 @@ describe("runHubspotSync", () => {
   it("refuses a channel that does not exist rather than writing a roster nowhere", async () => {
     globalThis.fetch = stubHubspot([{ id: "8001", properties: { name: "X", zip: "BT1 1AA" } }]);
     const { client } = makeClient({ channel: null, existing: [] });
-    await expect(runHubspotSync(client, CFG)).rejects.toThrow(/unknown channel/);
+    await expect(runHubspotSync(client, APP, { ...ARGS })).rejects.toThrow(/unknown channel/);
   });
 });

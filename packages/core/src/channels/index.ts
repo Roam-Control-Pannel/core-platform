@@ -363,6 +363,23 @@ export async function getChannelByKey(
 }
 
 /**
+ * Look a channel up by its primary key. Needed wherever a row already references a channel_id and
+ * the caller wants the key/name back — for example the whitelabel integration sync, which iterates
+ * connected partners by id and reports per channel key.
+ */
+export async function getChannelById(client: RoamClient, id: string): Promise<Channel | null> {
+  const { data, error } = await channelSelect((cols) =>
+    (client as any)
+      .from("channels")
+      .select(cols)
+      .eq("id", id)
+      .maybeSingle(),
+  );
+  if (error) throw new Error(`channels: id lookup failed: ${error.message}`);
+  return data ? rowToChannel(data) : null;
+}
+
+/**
  * Resolve an incoming hostname to its channel, falling back to the default channel when the host
  * is unmapped. This is the one call the web middleware makes per request.
  */

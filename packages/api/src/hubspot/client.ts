@@ -1,48 +1,40 @@
 /**
- * HubSpot CRM client (F2G plan 2.3) — reads the Association's membership out of their own system.
+ * HubSpot CRM client (F2G plan 2.3) — reads a partner's membership out of their own system.
+ *
+ * MULTI-TENANT BY CONSTRUCTION. Roam Core is a whitelabel platform, so this client is never bound to
+ * one portal: it takes an access-token resolver for the channel being read. Partner A's nightly sync
+ * and partner B's on-demand sync run through the same code with different credentials, and adding a
+ * partner is a "Connect" click (see ./oauth.ts, ./store.ts), not an engineering task.
  *
  * READ-ONLY, deliberately. Roam has no business holding write access to a partner's CRM to do a job
- * that only reads, so the private-app token needs just `crm.objects.companies.read` and
- * `crm.objects.contacts.read`. Write-back of onboarding status is plan 2b and will be a separate,
- * explicitly-scoped decision.
+ * that only reads, so the app asks for `crm.objects.companies.read` and `crm.objects.contacts.read`
+ * and nothing else. Write-back of onboarding status is plan 2b and will be a separate, explicitly
+ * re-consented decision.
  *
- * DORMANT by default: with no `HUBSPOT_TOKEN`, `loadHubspotConfig()` returns null and the job/route
- * no-op with "unconfigured" — the same posture as FSA/Awin/CJ, so this ships and deploys safely long
- * before the token exists.
+ * DORMANT by default: with no HubSpot app configured, `loadHubspotAppConfig()` returns null and the
+ * job/route no-op with "unconfigured" — the same posture as FSA/Awin/CJ, so this ships and deploys
+ * safely long before any partner connects.
  *
- * Shape mirrors ../fsa/client.ts: config from env, paged fetches, best-effort logging, and all the
- * parsing delegated to @roam/core/hubspot so the rules are testable without a token (which matters
- * here more than usual — we cannot reach their portal to try things).
+ * Shape mirrors ../fsa/client.ts: paged fetches, best-effort logging, and all the parsing delegated
+ * to @roam/core/hubspot so the rules are testable without a token (which matters here more than
+ * usual — we cannot reach a real portal to try things).
  */
 import { hubspot } from "@roam/core";
+import type { HubspotAppConfig } from "./oauth.js";
 
+/**
+ * What a read needs: the app's settings, plus a way to get an access token for THE PARTNER whose
+ * portal is being read. The token is a function rather than a value because it is short-lived and
+ * per-channel — a long-running API process reading two partners' portals must not share one.
+ */
 export interface HubspotConfig {
-  baseUrl: string;
-  token: string;
-  /** Which channel's roster this portal feeds. */
-  channelKey: string;
-  /** HubSpot property names per roster field; env-overridable (see @roam/core/hubspot). */
-  propertyMap: hubspot.HubspotPropertyMap;
-  /** Objects per page. HubSpot caps list/search at 100. */
-  pageSize: number;
-  /** Safety bound on pages per run, so a paging bug cannot loop forever against a metered API. */
-  maxPages: number;
+  app: HubspotAppConfig;
+  accessToken: () => Promise<string>;
 }
 
-/** Build the config from env, or null when the token is unset (feature dormant). */
-export function loadHubspotConfig(): HubspotConfig | null {
-  const token = process.env.HUBSPOT_TOKEN?.trim();
-  if (!token) return null;
-  const pageSize = Number(process.env.HUBSPOT_PAGE_SIZE ?? "100");
-  const maxPages = Number(process.env.HUBSPOT_MAX_PAGES ?? "200");
-  return {
-    baseUrl: (process.env.HUBSPOT_API_BASE ?? "https://api.hubapi.com").replace(/\/+$/, ""),
-    token,
-    channelKey: process.env.HUBSPOT_CHANNEL_KEY?.trim() || "f2g",
-    propertyMap: hubspot.parsePropertyMap(process.env.HUBSPOT_PROPERTY_MAP),
-    pageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.min(pageSize, 100) : 100,
-    maxPages: Number.isFinite(maxPages) && maxPages > 0 ? Math.min(maxPages, 1000) : 200,
-  };
+/** Convenience for the common shape: the app config plus a resolver bound to one channel. */
+export function readerFor(app: HubspotAppConfig, accessToken: () => Promise<string>): HubspotConfig {
+  return { app, accessToken };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -56,10 +48,11 @@ export class HubspotError extends Error {
 }
 
 async function call(cfg: HubspotConfig, path: string, init?: RequestInit): Promise<any> {
-  const res = await fetch(`${cfg.baseUrl}${path}`, {
+  const token = await cfg.accessToken();
+  const res = await fetch(`${cfg.app.baseUrl}${path}`, {
     ...init,
     headers: {
-      authorization: `Bearer ${cfg.token}`,
+      authorization: `Bearer ${token}`,
       "content-type": "application/json",
       accept: "application/json",
       ...(init?.headers ?? {}),
@@ -92,12 +85,12 @@ export async function fetchCompanies(
   since: Date | null,
   log: (msg: string) => void = () => {},
 ): Promise<hubspot.HubspotCompany[]> {
-  const props = hubspot.companyProperties(cfg.propertyMap);
+  const props = hubspot.companyProperties(cfg.app.propertyMap);
   const out: hubspot.HubspotCompany[] = [];
   let skipped = 0;
   let after: string | undefined;
 
-  for (let page = 0; page < cfg.maxPages; page++) {
+  for (let page = 0; page < cfg.app.maxPages; page++) {
     let body: any;
     if (since) {
       body = await call(cfg, `/crm/v3/objects/companies/search`, {
@@ -107,19 +100,19 @@ export async function fetchCompanies(
             { filters: [{ propertyName: "hs_lastmodifieddate", operator: "GTE", value: String(since.getTime()) }] },
           ],
           properties: props,
-          limit: cfg.pageSize,
+          limit: cfg.app.pageSize,
           ...(after ? { after } : {}),
         }),
       });
     } else {
-      const qs = new URLSearchParams({ limit: String(cfg.pageSize), properties: props.join(",") });
+      const qs = new URLSearchParams({ limit: String(cfg.app.pageSize), properties: props.join(",") });
       if (after) qs.set("after", after);
       body = await call(cfg, `/crm/v3/objects/companies?${qs.toString()}`);
     }
 
     const results: any[] = Array.isArray(body?.results) ? body.results : [];
     for (const rec of results) {
-      const parsed = hubspot.parseCompany(rec, cfg.propertyMap);
+      const parsed = hubspot.parseCompany(rec, cfg.app.propertyMap);
       if (parsed) out.push(parsed);
       else skipped++;
     }
@@ -145,7 +138,7 @@ export async function fetchContactsByCompany(
 ): Promise<Map<string, hubspot.HubspotContact[]>> {
   const byCompany = new Map<string, hubspot.HubspotContact[]>();
   if (companyIds.length === 0) return byCompany;
-  const props = hubspot.contactProperties(cfg.propertyMap);
+  const props = hubspot.contactProperties(cfg.app.propertyMap);
   const BATCH = 100;
 
   for (let i = 0; i < companyIds.length; i += BATCH) {
@@ -192,7 +185,7 @@ export async function fetchContactsByCompany(
         continue;
       }
       for (const rec of (Array.isArray(read?.results) ? read.results : []) as any[]) {
-        const parsed = hubspot.parseContact(rec, cfg.propertyMap);
+        const parsed = hubspot.parseContact(rec, cfg.app.propertyMap);
         if (parsed) byId.set(parsed.id, parsed);
       }
     }

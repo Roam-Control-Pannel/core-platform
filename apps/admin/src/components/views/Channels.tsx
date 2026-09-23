@@ -635,6 +635,115 @@ interface ImportReport {
 /** The canonical fields a column may be bound to — mirrors @roam/core/membership ROSTER_FIELDS. */
 const ROSTER_FIELDS = ["name", "postcode", "email", "address", "council", "phone", "ref", "town"] as const;
 
+interface HubspotStatus {
+  configured: boolean;
+  connected: boolean;
+  status?: string;
+  portalId?: string | null;
+  scopes?: string[];
+  connectedAt?: string | null;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+}
+
+/**
+ * The partner's own CRM as a roster source — the whitelabel path.
+ *
+ * A CSV is a one-off; this is the connection. The partner approves read-only access in THEIR HubSpot
+ * and the nightly sync keeps the roster current, which is what makes onboarding the next whitelabel
+ * a click rather than an engineering task. Roam never sees a password, and the partner can revoke by
+ * uninstalling the app on their side.
+ */
+function HubspotPanel({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
+  const trpc = useTrpc();
+  const [status, setStatus] = useState<HubspotStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = async () => {
+    const q = trpc.adminActions.hubspotStatus as unknown as { query: (i: { channelKey: string }) => Promise<HubspotStatus> };
+    try { setStatus(await q.query({ channelKey })); } catch { /* panel is informational; never block the tab */ }
+  };
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [channelKey]);
+
+  const connect = async () => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.hubspotConnectUrl as unknown as {
+      mutate: (i: { channelKey: string }) => Promise<{ status: string; url?: string }>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey });
+      if (r.status === "ok" && r.url) window.open(r.url, "_blank", "noopener");
+      else if (r.status === "unconfigured") setErr("No HubSpot app is configured on this deployment.");
+      else if (r.status === "no_encryption_key") setErr("INTEGRATION_ENCRYPTION_KEY is not set, so a credential could not be stored. Connection not started.");
+      else setErr("That channel cannot be connected.");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Could not start the connection."); }
+    finally { setBusy(false); }
+  };
+
+  const disconnect = async () => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.hubspotDisconnect as unknown as { mutate: (i: { channelKey: string }) => Promise<unknown> };
+    try { await mut.mutate({ channelKey }); setNote("Disconnected. Ask the partner to uninstall the app in HubSpot too."); await load(); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Could not disconnect."); }
+    finally { setBusy(false); }
+  };
+
+  const sync = async (dryRun: boolean) => {
+    setBusy(true); setErr(null); setNote(null);
+    const mut = trpc.adminActions.syncHubspot as unknown as {
+      mutate: (i: { channelKey: string; full: boolean; dryRun: boolean }) => Promise<any>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey, full: true, dryRun });
+      if (r.status === "unconfigured") setErr("No HubSpot app is configured on this deployment.");
+      else setNote(
+        `${dryRun ? "Rehearsal" : "Synced"}: ${r.fetched} read · ${r.inserted} new · ${r.updated} updated · ` +
+        `${r.withEmail} with an e-mail (${r.withoutEmail} without) · ${r.matchedAccept} matched · ` +
+        `${r.matchedReview} to review · ${r.ambiguousContacts} companies with several contacts`,
+      );
+      if (!dryRun) await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Sync failed."); }
+    finally { setBusy(false); }
+  };
+
+  if (status && !status.configured) return null; // no app on this deployment: say nothing rather than tease
+
+  return (
+    <div style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: 14, display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <strong style={{ fontFamily: F.ui, fontSize: 14 }}>HubSpot</strong>
+        {status?.connected ? <Tag>Connected</Tag> : null}
+        {status && !status.connected && status.status ? <Tag tone="red">{status.status}</Tag> : null}
+        <span style={{ flex: 1 }} />
+        {canAct ? (
+          <>
+            <button type="button" onClick={() => void connect()} disabled={busy} style={status?.connected ? ghostBtn : primaryBtn}>
+              {status?.connected ? "Reconnect" : "Connect"}
+            </button>
+            {status?.connected ? (
+              <>
+                <button type="button" onClick={() => void sync(true)} disabled={busy} style={ghostBtn}>Rehearse sync</button>
+                <button type="button" onClick={() => void sync(false)} disabled={busy} style={ghostBtn}>Sync now</button>
+                <button type="button" onClick={() => void disconnect()} disabled={busy} style={ghostBtn}>Disconnect</button>
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>
+        {status?.connected
+          ? `Portal ${status.portalId ?? "—"} · connected ${status.connectedAt?.slice(0, 10) ?? "—"} · last sync ${status.lastSyncAt?.slice(0, 16).replace("T", " ") ?? "never"}`
+          : "The partner approves read-only access to their companies and contacts in their own HubSpot. No password is shared with Roam, and they can revoke it at any time."}
+      </div>
+      {status?.lastError ? <ErrorLine message={status.lastError} /> : null}
+      {err ? <ErrorLine message={err} /> : null}
+      {note ? <div style={{ fontSize: 12.5, color: "#1F6B41" }}>{note}</div> : null}
+    </div>
+  );
+}
+
 /**
  * Roster import — DRY RUN FIRST, always.
  *
@@ -696,6 +805,8 @@ function ImportTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {/* The connected source comes first: a CSV is the fallback, the CRM is the roster of record. */}
+      <HubspotPanel channelKey={channelKey} canAct={canAct} />
       <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
         Load the Association roster (CSV), check how each column was read, then rehearse the import.
         Nothing is written until you commit. Import is idempotent by member reference; matched venues

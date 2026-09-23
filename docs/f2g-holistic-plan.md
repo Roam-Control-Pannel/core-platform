@@ -229,6 +229,18 @@ the activation credential, and the **immutable object id** that is the idempoten
 
 - **Direction: one-way, HubSpot → Roam, in v1.** Roam mirrors; it never edits the Association's CRM.
   Write-back is Phase 2b and only after the pull has proved itself.
+- **OAuth with a Connect button, not a per-partner token (decided 2026-09-23).** Roam Core is a
+  whitelabel platform, so onboarding a partner has to be self-service: ONE HubSpot app, and each
+  partner approves scoped read access inside their own portal. A per-partner private-app token would
+  mean a Roam engineer provisioning every future partnership by hand — the thing this design exists to
+  avoid. It also reads better in the DPA: the partner grants revocable, scoped access and can withdraw
+  it themselves, rather than Roam holding a standing secret. (Precedent: the same pattern already runs
+  in the Kudos Cards product.)
+- **Credentials live in `channel_integrations` (migration 0155), encrypted.** Environment variables
+  cannot hold N partners' refresh tokens, and the credential must not go near `channels`, which is
+  world-readable (`0116`). The table is service-managed (RLS with no policy + tripwire trigger) and the
+  refresh token is AES-256-GCM ciphertext under a key held in the API environment, never in the
+  database — so a database dump alone yields nothing usable.
 - **Objects: companies lead, contacts attach.** A member is a company (the trading business we match to
   a venue); its associated contacts supply the e-mail and phone. Where a company has several contacts,
   the roster row takes one — the choice rule is a decision to settle against the real property schema,
@@ -249,9 +261,11 @@ the activation credential, and the **immutable object id** that is the idempoten
   contact in HubSpot must never silently redirect where an invite is sent). Every run reports
   `ambiguousContacts`, so when the Association answers the open question we will know how many members
   it actually affected.
-- **Credentials:** a read-only private-app token (`crm.objects.companies.read`,
-  `crm.objects.contacts.read`) as a Railway secret. Read-only is not a formality — Roam has no business
-  holding write access to a partner's CRM to do a job that only reads.
+- **Credentials:** a HubSpot **public app** owned by Roam, requesting only `crm.objects.companies.read`
+  and `crm.objects.contacts.read`. Read-only is not a formality — Roam has no business holding write
+  access to a partner's CRM to do a job that only reads. Env: `HUBSPOT_CLIENT_ID`,
+  `HUBSPOT_CLIENT_SECRET`, `HUBSPOT_REDIRECT_URI`, plus `INTEGRATION_ENCRYPTION_KEY` for credential
+  storage. The app stays unlisted and is installed by link; no marketplace review is needed.
 - **Data protection:** this converts a one-off CSV hand-over into a *continuous* pull of contact PII
   from the Association's systems. The DPA (§2 item 6) must be signed before 2.3 ships — not before it
   is written, but before it runs against live HubSpot.
@@ -284,7 +298,8 @@ the CRM takes over both jobs and the roster CSV becomes a fallback import path r
 |---|---|---|---|---|
 | 2.1 | Identity: `source_system` + `source_system_id`, `member_no` reserved for 2027, `venue_channels.role`, `last_seen_import_id`, `channels.contact_email`/`org_name`; canonical member definition applied to `f2g_member_venue_ids`, `venues_in_channel_near`, directory, entitlements; council derived from the matched venue's FSA `local_authority`; claim definer lands on `live`; pgTAP (31) | 4.4 B, 4.3 H | 3 | **DONE** (0154) |
 | 2.2 | **Import hardening** — postcode sanitiser; roster address passed to the matcher (import *and* review queue); `town` recognised; duplicate-venue guard in auto-accept; dry-run; operator column mapping; HQ file picker + preview + rehearse-then-commit | 4.4 H, 4.3 M | 3 | **DONE** |
-| 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron + HQ "sync now", audited; dormant without `HUBSPOT_TOKEN` | 4.4 B | 4 | **DONE** |
+| 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron across every connected partner + HQ "sync now", audited; dormant without a HubSpot app | 4.4 B | 4 | **DONE** |
+| 2.3b | **Partner self-connect (OAuth)** — one Roam-owned HubSpot app, `channel_integrations` (0155) with an encrypted refresh token per channel, signed-state callback, HQ Connect / Rehearse / Sync now / Disconnect | 4.3 B | 2 | **DONE** |
 | 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | |
 | 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | |
 
@@ -447,19 +462,22 @@ Phase 1 has shipped in full and the live-vs-repo parity audit is closed. Phase 0
 answered; 5 (Supabase CLI access) and 6 (the DPA) remain, and **6 now gates Phase 2.3**.
 
 1. Me, done: **2.2** (import hardening), **2.1** (identity model, migration 0154 — applied) and
-   **2.3** (HubSpot sync v1). The sync is dormant until `HUBSPOT_TOKEN` is set, so it deploys safely
-   ahead of both the token and the DPA.
+   **2.3** + **2.3b** (HubSpot sync and partner self-connect). Both are dormant until a HubSpot app is
+   configured, so they deploy safely ahead of the app, the first connection and the DPA.
 2. Me, next: **2.4** (`/activate` on e-mail possession) and **2.5** (HQ PII masking). Phase 3 (the
    Association portal) is unblocked throughout and can run alongside — none of it needs the roster's
    contents.
 3. You, to make 2.3 live:
-   - a read-only HubSpot private-app token (`crm.objects.companies.read`,
-     `crm.objects.contacts.read`) as `HUBSPOT_TOKEN` on the API service;
-   - the DPA wording **before** the first run against live HubSpot — this is a continuous pull of
-     contact PII, not a one-off hand-over;
+   - a **HubSpot public app** in a Roam developer account, unlisted, scopes
+     `crm.objects.companies.read` + `crm.objects.contacts.read`, redirect URI
+     `https://<api-host>/integrations/hubspot/callback`. Put `HUBSPOT_CLIENT_ID`,
+     `HUBSPOT_CLIENT_SECRET` and `HUBSPOT_REDIRECT_URI` on the API service.
+   - `INTEGRATION_ENCRYPTION_KEY` (`openssl rand -base64 32`) on the API service. Without it the
+     Connect button refuses to start rather than storing a credential it cannot protect. Losing or
+     rotating this key means every partner must reconnect.
+   - apply **migration 0155**.
    - a Railway cron service from `railway.cron-sync-hubspot-members.json`.
-   Run it as a dry run first: it reports what it would write without writing, including how many
-   members have no e-mail anywhere in the CRM (the ceiling on self-serve onboarding).
+   Then in Roam HQ: Channels → the partner → Import → **Connect**, and rehearse before syncing.
 4. Open question for the Association: where a member company has several HubSpot contacts, which is
    the roster contact? The sync does not block on it — it applies a deterministic
    oldest-with-an-e-mail rule and reports how often it had to choose.

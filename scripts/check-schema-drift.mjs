@@ -62,6 +62,11 @@ export const REQUIRED_READS = [
     reason: "membership spine: roster, matching, HQ status actions, lapse stamp, CRM identity (migrations 0135, 0139, 0150, 0154)",
   },
   {
+    table: "channel_integrations",
+    columns: ["id", "channel_id", "provider", "status", "external_account_id"],
+    reason: "whitelabel partner OAuth connections — HubSpot member sync (migration 0155)",
+  },
+  {
     table: "external_refs",
     columns: ["id", "entity_type", "entity_id", "dataset", "external_id", "method"],
     reason: "roster ↔ venue / FSA match ledger (migration 0137)",

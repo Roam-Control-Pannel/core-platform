@@ -24,7 +24,9 @@
 import { createServiceClient, type RoamClient } from "@roam/db";
 import { channels as coreChannels, hubspot } from "@roam/core";
 import { reportJobFailure } from "../observability/ops.js";
-import { loadHubspotConfig, fetchCompanies, fetchContactsByCompany, type HubspotConfig } from "../hubspot/client.js";
+import { fetchCompanies, fetchContactsByCompany, readerFor } from "../hubspot/client.js";
+import { loadHubspotAppConfig, type HubspotAppConfig } from "../hubspot/oauth.js";
+import { accessTokenFor, listConnectedChannels, markSynced } from "../hubspot/store.js";
 import { matchRosterMembers } from "./matchRosterMembers.js";
 
 export interface HubspotSyncResult {
@@ -77,6 +79,8 @@ async function existingBySystemId(
 }
 
 export interface HubspotSyncArgs {
+  /** Which partner's roster to sync. Every run names one — there is no implicit "the" channel. */
+  channelKey: string;
   /** Only pull companies modified since this instant (a nightly delta). Null = full sync. */
   since?: Date | null | undefined;
   /** Compute and report, write nothing. */
@@ -86,8 +90,8 @@ export interface HubspotSyncArgs {
 
 export async function runHubspotSync(
   client: RoamClient,
-  cfg: HubspotConfig | null,
-  args: HubspotSyncArgs = {},
+  app: HubspotAppConfig | null,
+  args: HubspotSyncArgs,
   log: (msg: string) => void = () => {},
 ): Promise<HubspotSyncResult> {
   const empty: HubspotSyncResult = {
@@ -95,14 +99,17 @@ export async function runHubspotSync(
     ambiguousContacts: 0, matchedAccept: 0, matchedReview: 0, matchedReject: 0, matchedConflict: 0,
     backfillCandidates: [], dryRun: args.dryRun === true,
   };
-  if (!cfg) return empty;
+  if (!app) return empty;
 
   const dryRun = args.dryRun === true;
   const startedAt = new Date().toISOString();
 
-  const channel = await coreChannels.getChannelByKey(client, cfg.channelKey);
-  if (!channel) throw new Error(`hubspot sync: unknown channel '${cfg.channelKey}'`);
+  const channel = await coreChannels.getChannelByKey(client, args.channelKey);
+  if (!channel) throw new Error(`hubspot sync: unknown channel '${args.channelKey}'`);
   if (channel.isDefault) throw new Error("hubspot sync: the default channel has no roster");
+
+  // The credential belongs to THIS partner: resolved per channel, refreshed on demand, never shared.
+  const cfg = readerFor(app, () => accessTokenFor(client, app, channel.id));
 
   const companies = await fetchCompanies(cfg, args.since ?? null, log);
   log(`hubspot sync: ${companies.length} company record(s) read${args.since ? " (incremental)" : ""}.`);
@@ -204,6 +211,7 @@ export async function runHubspotSync(
       finished_at: new Date().toISOString(),
     });
     if (error) throw new Error(`hubspot sync: run-report write failed: ${error.message}`);
+    await markSynced(client, channel.id);
   }
 
   log(
@@ -239,6 +247,36 @@ function requireEnv(name: string): string {
  * missing one because a clock drifted is not. */
 const INCREMENTAL_WINDOW_MS = 36 * 60 * 60 * 1000;
 
+/**
+ * Sync EVERY connected partner, one after another — the whitelabel shape. A partner whose grant has
+ * been revoked is logged and skipped rather than failing the run: one partner's broken connection
+ * must never stop another partner's roster updating.
+ */
+export async function runAllHubspotSyncs(
+  client: RoamClient,
+  app: HubspotAppConfig | null,
+  args: { since?: Date | null | undefined; dryRun?: boolean | undefined } = {},
+  log: (msg: string) => void = () => {},
+): Promise<{ channels: number; results: { channelKey: string; result?: HubspotSyncResult; error?: string }[] }> {
+  if (!app) return { channels: 0, results: [] };
+  const connected = await listConnectedChannels(client);
+  const results: { channelKey: string; result?: HubspotSyncResult; error?: string }[] = [];
+
+  for (const { channelId } of connected) {
+    const channel = await coreChannels.getChannelById(client, channelId);
+    if (!channel) continue;
+    try {
+      const result = await runHubspotSync(client, app, { ...args, channelKey: channel.key }, log);
+      results.push({ channelKey: channel.key, result });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      log(`hubspot sync: ${channel.key} failed — ${error}`);
+      results.push({ channelKey: channel.key, error });
+    }
+  }
+  return { channels: connected.length, results };
+}
+
 async function main(): Promise<void> {
   const service = createServiceClient({
     url: requireEnv("SUPABASE_URL"),
@@ -247,23 +285,31 @@ async function main(): Promise<void> {
   const full = process.argv.includes("--full");
   const dryRun = process.argv.includes("--dry-run");
   console.log(`\n🧾  HubSpot member sync — ${new Date().toISOString()}${full ? " (full)" : ""}${dryRun ? " (dry run)" : ""}\n`);
-  const r = await runHubspotSync(
+
+  const { channels, results } = await runAllHubspotSyncs(
     service,
-    loadHubspotConfig(),
+    loadHubspotAppConfig(),
     { since: full ? null : new Date(Date.now() - INCREMENTAL_WINDOW_MS), dryRun },
     (m) => console.log(`  ${m}`),
   );
+
   console.log("\n──────── summary ────────");
-  console.log(`status:        ${r.status}`);
-  console.log(`fetched:       ${r.fetched}`);
-  console.log(`inserted:      ${r.inserted}`);
-  console.log(`updated:       ${r.updated}`);
-  console.log(`with e-mail:   ${r.withEmail}`);
-  console.log(`no e-mail:     ${r.withoutEmail}`);
-  console.log(`ambiguous:     ${r.ambiguousContacts}`);
-  console.log(`matched:       ${r.matchedAccept}`);
-  console.log(`review:        ${r.matchedReview} (of which ${r.matchedConflict} venue conflicts)`);
+  console.log(`connected partners: ${channels}`);
+  for (const { channelKey, result: r, error } of results) {
+    if (error || !r) {
+      console.log(`  ${channelKey}: FAILED — ${error}`);
+      continue;
+    }
+    console.log(
+      `  ${channelKey}: ${r.inserted} new, ${r.updated} updated, ${r.withEmail}/${r.fetched} with e-mail, ` +
+        `${r.matchedAccept} matched, ${r.matchedReview} to review (${r.matchedConflict} conflicts), ` +
+        `${r.ambiguousContacts} ambiguous contacts`,
+    );
+  }
   console.log("─────────────────────────\n");
+
+  // A partner whose sync failed should not look like a green run in the cron log.
+  if (results.some((r) => r.error)) process.exitCode = 1;
 }
 
 const isDirectRun = process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
