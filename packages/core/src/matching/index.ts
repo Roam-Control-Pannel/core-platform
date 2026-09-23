@@ -21,7 +21,7 @@
  * import job (B3) persists each decision in `external_refs` so matching is one-time and a human
  * correction is permanent.
  */
-import { normalisePostcode, outwardCode } from "../membership/index.js";
+import { normalisePostcode, outwardCode, UK_POSTCODE_RE } from "../membership/index.js";
 
 // ── name normalisation ────────────────────────────────────────────────────────────────────────
 
@@ -166,16 +166,15 @@ export function nameSimilarity(a: string | null | undefined, b: string | null | 
 
 // ── postcode extraction (venue side stores the postcode inside free-text `address`) ─────────────
 
-/** UK/NI postcode pattern (outward + inward), tolerant of missing/oddly-spaced internal space. */
-const UK_POSTCODE = /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i;
-
 /**
  * Pull a UK/NI postcode out of a free-text address (venues store no discrete postcode column), and
- * return it normalised. "" if the text carries no recognisable postcode.
+ * return it normalised. "" if the text carries no recognisable postcode. The pattern is shared with
+ * the membership layer (UK_POSTCODE_RE) so the roster side and the venue side agree on what counts
+ * as a postcode — two copies of this regex would be two definitions of the match block key.
  */
 export function extractPostcode(address: string | null | undefined): string {
   if (!address) return "";
-  const m = address.match(UK_POSTCODE);
+  const m = address.match(UK_POSTCODE_RE);
   return m ? normalisePostcode(m[0]) : "";
 }
 

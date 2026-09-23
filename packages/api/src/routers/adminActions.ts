@@ -180,22 +180,46 @@ export const adminActionsRouter = router({
    * plus the thin matched venue ids, which the caller enriches (B3-c) via places.enrichVenue and then
    * reports back through recordImportBackfill.
    */
+  /**
+   * Import (or REHEARSE importing) an Association roster. `dryRun` defaults to TRUE: committing a
+   * partner's roster to the roster of record must be something the operator asked for explicitly, not
+   * what happens when a field is omitted. `mapping` lets the operator bind an unfamiliar header to a
+   * canonical field from the HQ preview, so a new export shape needs no release.
+   */
   importRoster: adminProcedure
-    .input(z.object({ channelKey: z.string().min(1).max(32), csv: z.string().min(1).max(5_000_000) }))
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        csv: z.string().min(1).max(5_000_000),
+        dryRun: z.boolean().default(true),
+        mapping: z.record(z.string().max(200), z.string().max(40)).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
         const who = await actor(ctx as ActingCtx);
-        const report = await importRoster(ctx.service, { channelKey: input.channelKey, csv: input.csv, actorId: who.id });
-        await admin.recordAudit(ctx.service, who, {
-          action: "import_roster",
-          entityType: "channel",
-          entityId: input.channelKey,
-          detail: {
-            imported: report.imported, updated: report.updated,
-            matchedAccept: report.matchedAccept, matchedReview: report.matchedReview,
-            matchedReject: report.matchedReject, errors: report.errors,
-          },
+        const report = await importRoster(ctx.service, {
+          channelKey: input.channelKey,
+          csv: input.csv,
+          actorId: who.id,
+          dryRun: input.dryRun,
+          mapping: input.mapping,
         });
+        // A dry run wrote nothing, so there is no state change to attribute. The audit trail records
+        // imports, not rehearsals of them.
+        if (!input.dryRun) {
+          await admin.recordAudit(ctx.service, who, {
+            action: "import_roster",
+            entityType: "channel",
+            entityId: input.channelKey,
+            detail: {
+              imported: report.imported, updated: report.updated,
+              matchedAccept: report.matchedAccept, matchedReview: report.matchedReview,
+              matchedReject: report.matchedReject, matchedConflict: report.matchedConflict,
+              errors: report.errors,
+            },
+          });
+        }
         return report;
       } catch (e) {
         fail(e, "Roster import failed.");

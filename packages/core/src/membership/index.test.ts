@@ -6,6 +6,7 @@ import {
   normaliseMembershipRef,
   normalisePostcode,
   outwardCode,
+  sanitiseSourcePostcode,
   type MemberStatus,
 } from "./index.js";
 
@@ -87,6 +88,45 @@ describe("normalisePostcode", () => {
 
   it("equal postcodes with different formatting compare equal after normalisation", () => {
     expect(normalisePostcode("bt1 1aa")).toBe(normalisePostcode("BT11AA"));
+  });
+
+  it("drops characters a postcode cannot contain, not just whitespace", () => {
+    // A leading backtick is the classic spreadsheet text-escape artifact, and the real F2G sample
+    // carries one. Keeping it corrupted the outward code and silently cost that member its match.
+    expect(normalisePostcode("`BT43 7EP")).toBe("BT43 7EP");
+    expect(normalisePostcode("BT43-7EP")).toBe("BT43 7EP");
+    expect(normalisePostcode("'BT1 1AA'")).toBe("BT1 1AA");
+    expect(normalisePostcode("`BT43 7EP")).toBe(normalisePostcode("BT43 7EP"));
+  });
+});
+
+describe("sanitiseSourcePostcode", () => {
+  it("accepts a clean or dirty postcode cell", () => {
+    expect(sanitiseSourcePostcode("BT21 0HE")).toBe("BT21 0HE");
+    expect(sanitiseSourcePostcode("`BT43 7EP")).toBe("BT43 7EP");
+    expect(sanitiseSourcePostcode("bt11aa")).toBe("BT1 1AA");
+  });
+
+  it("extracts the postcode when the cell holds a fuller address", () => {
+    expect(sanitiseSourcePostcode("3 Tullygarvan Mill, BT23 6FR")).toBe("BT23 6FR");
+    expect(sanitiseSourcePostcode("Unit 9 Great Victoria Street BT2 7GN Belfast")).toBe("BT2 7GN");
+  });
+
+  it("keeps a bare outward code — a coarser block key is still a real one", () => {
+    expect(sanitiseSourcePostcode("BT47")).toBe("BT47");
+    expect(sanitiseSourcePostcode("bt1")).toBe("BT1");
+  });
+
+  it("rejects anything that is not a postcode", () => {
+    // These must yield "" rather than a block key: the importer turns the outward code into an
+    // ILIKE `%…%` over every venue address, so "n/a" → "NA" would score the member against a large
+    // slice of unrelated venues. No block key is better than a meaningless one.
+    for (const junk of ["n/a", "N/A", "TBC", "-", "unknown", "???", "0"]) {
+      expect(sanitiseSourcePostcode(junk)).toBe("");
+    }
+    expect(sanitiseSourcePostcode("")).toBe("");
+    expect(sanitiseSourcePostcode(null)).toBe("");
+    expect(sanitiseSourcePostcode(undefined)).toBe("");
   });
 });
 

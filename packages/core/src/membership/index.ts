@@ -74,6 +74,16 @@ export function normaliseMembershipRef(raw: string | null | undefined): string {
 }
 
 /**
+ * A full UK/NI postcode (outward + inward), tolerant of a missing or oddly-spaced internal space.
+ * Lives here rather than in ../matching because both layers need it and membership is the lower one
+ * (matching imports from membership, never the reverse).
+ */
+export const UK_POSTCODE_RE = /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i;
+
+/** An outward code on its own ("BT47", "BT1") — a usable, coarser block key. */
+const OUTWARD_ONLY_RE = /^[A-Z]{1,2}\d[A-Z\d]?$/;
+
+/**
  * Normalise a UK/NI postcode to its canonical form: uppercase, no stray whitespace, and a single
  * space separating the outward and inward codes (the inward code is always the last 3 characters).
  * This is the match BLOCK KEY the matcher (B2) groups candidates by, so both the roster side and the
@@ -81,15 +91,23 @@ export function normaliseMembershipRef(raw: string | null | undefined): string {
  *
  *   "bt11aa"   → "BT1 1AA"
  *   " BT47 6XX " → "BT47 6XX"
+ *   "`BT43 7EP" → "BT43 7EP"  (see below)
  *   "bt1"      → "BT1"        (outward-only: no inward code to split off)
  *   ""/null    → ""
  *
  * Tolerant, not validating: it does not reject malformed input (the matcher decides confidence), it
- * only canonicalises spacing/case so equal postcodes compare equal.
+ * only canonicalises so equal postcodes compare equal.
+ *
+ * A UK postcode contains ONLY letters and digits, so every other character is noise and is dropped —
+ * not just whitespace. That is not cosmetic: the real F2G sample carries `` `BT43 7EP `` (a leading
+ * backtick, the classic spreadsheet text-escape artifact). Keeping the backtick made the outward code
+ * `` `BT43 ``, which the importer turns into an ILIKE pattern that matches no venue address at all —
+ * so the member was silently REJECTED with zero candidates rather than matched. One stray character
+ * cost a member their listing, and nothing in the run report said why.
  */
 export function normalisePostcode(raw: string | null | undefined): string {
   if (!raw) return "";
-  const compact = raw.replace(/\s+/g, "").toUpperCase();
+  const compact = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   // A full UK/NI postcode is 5–8 chars (2–4 outward + 3 inward); anything shorter is an
   // outward-only code (e.g. "BT47") with no inward part to split off — leave it as-is.
   if (compact.length < 5) return compact;
@@ -104,6 +122,33 @@ export function outwardCode(raw: string | null | undefined): string {
   if (!norm) return "";
   const space = norm.indexOf(" ");
   return space === -1 ? norm : norm.slice(0, space);
+}
+
+/**
+ * Canonicalise a ROSTER postcode CELL — the import-side counterpart to normalisePostcode.
+ *
+ * normalisePostcode canonicalises something already known to be a postcode. A spreadsheet cell is not
+ * that: it may hold a whole address, a note ("n/a", "tbc"), or nothing. This decides whether the cell
+ * contains a postcode at all, and returns "" when it does not.
+ *
+ *   "`BT43 7EP"              → "BT43 7EP"   (junk characters dropped)
+ *   "22 Parade, BT21 0HE"    → "BT21 0HE"   (extracted from a fuller address)
+ *   "BT47"                   → "BT47"       (outward-only — still a usable block key)
+ *   "n/a" / "TBC" / "-"      → ""           (NOT a postcode; do not block on it)
+ *
+ * Returning "" for junk matters as much as extracting a real code. The importer turns whatever comes
+ * back into an ILIKE `%outward%` over every venue address: "n/a" normalises to "NA", and `%NA%` matches
+ * a large slice of the table, so the matcher would score a member against a bag of unrelated venues.
+ * Better no block key (member left unmatched, reported) than a meaningless one.
+ */
+export function sanitiseSourcePostcode(raw: string | null | undefined): string {
+  if (!raw) return "";
+  // A full postcode anywhere in the cell wins, even when surrounded by the rest of an address.
+  const found = raw.match(UK_POSTCODE_RE);
+  if (found) return normalisePostcode(found[0]);
+  // Otherwise accept only a bare outward code; anything else is not a postcode.
+  const compact = normalisePostcode(raw);
+  return OUTWARD_ONLY_RE.test(compact) ? compact : "";
 }
 
 // Roster CSV parsing (B3-a) lives in ./import to keep this file focused; re-exported here so it is
