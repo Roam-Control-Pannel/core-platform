@@ -18,8 +18,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { hubspot } from "@roam/core";
 
-/** The read-only scopes a partner is asked to grant. Changing this list requires re-consent. */
-export const HUBSPOT_SCOPES = ["crm.objects.companies.read", "crm.objects.contacts.read"] as const;
+/**
+ * The scopes a partner is asked to grant. Changing this list requires re-consent.
+ *
+ * `oauth` is HubSpot's own scope for the authorisation flow itself — it grants no CRM access. It is
+ * listed because the app's `requiredScopes` declares it, and the authorize request must ask for every
+ * scope the app requires or HubSpot refuses the grant. The other two are READS. Nothing here can
+ * write to a partner's CRM, which is the property the tests actually assert.
+ */
+export const HUBSPOT_SCOPES = [
+  "oauth",
+  "crm.objects.companies.read",
+  "crm.objects.contacts.read",
+] as const;
 
 /** How long a connect link stays valid. Short: it is clicked immediately or not at all. */
 export const STATE_TTL_MS = 15 * 60 * 1000;

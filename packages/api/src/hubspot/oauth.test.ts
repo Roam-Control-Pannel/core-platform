@@ -66,7 +66,12 @@ describe("authorizeUrl", () => {
   });
 
   it("requests nothing that can write to a partner's CRM", () => {
-    for (const scope of HUBSPOT_SCOPES) expect(scope.endsWith(".read")).toBe(true);
+    // Asserted as "no write scope" rather than "every scope ends .read": HubSpot's own `oauth` scope
+    // is required to run the authorisation flow at all and grants no CRM access, so an ends-with-read
+    // check would be testing the shape of the strings instead of the property we care about.
+    for (const scope of HUBSPOT_SCOPES) expect(scope.includes(".write")).toBe(false);
+    expect(HUBSPOT_SCOPES).toContain("crm.objects.companies.read");
+    expect(HUBSPOT_SCOPES).toContain("crm.objects.contacts.read");
   });
 
   it("never puts the client secret in a browser-facing URL", () => {
