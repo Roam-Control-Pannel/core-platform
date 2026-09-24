@@ -72,6 +72,11 @@ export const REQUIRED_READS = [
     reason: "partner organisation officers — the Association portal's authority (migration 0156)",
   },
   {
+    table: "channel_feature_requests",
+    columns: ["id", "channel_id", "created_by", "title", "category", "status", "roam_notes"],
+    reason: "partner feature requests + Roam's reply (migration 0159)",
+  },
+  {
     table: "external_refs",
     columns: ["id", "entity_type", "entity_id", "dataset", "external_id", "method"],
     reason: "roster ↔ venue / FSA match ledger (migration 0137)",
@@ -131,6 +136,26 @@ export const RPC_PROBES = [
     args: { p_channel_key: "f2g", p_query: null, p_council: null, p_lat: null, p_lng: null, p_radius_m: null, p_limit: 1, p_offset: 0 },
     expect: "ok",
     reason: "PII-safe members directory (migration 0144)",
+  },
+  {
+    // Anon is DENIED: 0157 grants these to `authenticated` only, because an anonymous caller has no
+    // appointment for is_channel_admin to check. This probe watches the GRANT rather than the gate —
+    // if anon ever gains EXECUTE here, a partner's aggregates become reachable without signing in,
+    // and that is the drift worth catching from outside the database. The gate itself is proved by
+    // supabase/tests/0157_channel_portal_aggregates_test.sql.
+    name: "channel_portal_overview",
+    args: { p_channel_id: "00000000-0000-0000-0000-000000000000" },
+    expect: "denied",
+    reason: "Association portal aggregates are authenticated-only (migration 0157)",
+  },
+  {
+    // The members list carries the most sensitive shape in the portal, so its grant is watched too.
+    // Decision 5.2 keeps contact details out of the function's signature entirely; this probe guards
+    // the other half — that reaching it at all requires being signed in.
+    name: "channel_portal_members",
+    args: { p_channel_id: "00000000-0000-0000-0000-000000000000" },
+    expect: "denied",
+    reason: "Association portal members list is authenticated-only (migration 0158)",
   },
   {
     name: "order_channel_for_venue",

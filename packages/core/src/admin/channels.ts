@@ -343,6 +343,106 @@ export async function setChannelOfficer(
   });
 }
 
+// ── the feature-request queue (F2G plan 3.4, migration 0159) ────────────────────────────────────
+//
+// Partners file requests; Roam triages them. The table has no client UPDATE policy, so this
+// service-role path is the only way a status or a reply is ever written — and every change is
+// audited, because "who declined our request, and when" is a question an association will ask.
+
+/** One request as the HQ queue shows it, with the channel it came from. */
+export interface FeatureRequestRow {
+  id: string;
+  channelId: string;
+  channelKey: string | null;
+  channelName: string | null;
+  createdBy: string | null;
+  title: string;
+  detail: string | null;
+  category: string;
+  status: string;
+  roamNotes: string | null;
+  createdAt: string;
+}
+
+/** Every partner's requests, newest first; optionally narrowed to one status. */
+export async function listFeatureRequestQueue(
+  client: RoamClient,
+  opts: { status?: string | null; limit?: number } = {},
+): Promise<FeatureRequestRow[]> {
+  let q = loose(client)
+    .from("channel_feature_requests")
+    .select("id, channel_id, created_by, title, detail, category, status, roam_notes, created_at, channels(key, name)")
+    .order("created_at", { ascending: false })
+    .limit(Math.min(Math.max(opts.limit ?? 100, 1), 500));
+  if (opts.status) q = q.eq("status", opts.status);
+
+  const { data, error } = await q;
+  if (error) throw new Error(`admin: feature-request queue failed: ${error.message}`);
+  return ((data ?? []) as any[]).map((r) => ({
+    id: String(r.id),
+    channelId: String(r.channel_id),
+    channelKey: r.channels?.key ?? null,
+    channelName: r.channels?.name ?? null,
+    createdBy: r.created_by ?? null,
+    title: String(r.title ?? ""),
+    detail: r.detail ?? null,
+    category: String(r.category ?? "other"),
+    status: String(r.status ?? "new"),
+    roamNotes: r.roam_notes ?? null,
+    createdAt: String(r.created_at),
+  }));
+}
+
+/**
+ * Triage a request: set its status and/or Roam's reply, then audit.
+ *
+ * Returns the row as it now stands, including `created_by` and the channel — the caller needs both
+ * to notify the officer who filed it, and re-reading here means the notification describes what was
+ * actually stored rather than what was requested.
+ */
+export async function setFeatureRequestStatus(
+  client: RoamClient,
+  actor: AdminActor,
+  id: string,
+  patch: { status?: string | null; roamNotes?: string | null },
+): Promise<FeatureRequestRow | null> {
+  const update: Record<string, unknown> = {};
+  if (patch.status) update.status = patch.status;
+  if ("roamNotes" in patch) update.roam_notes = patch.roamNotes?.trim() || null;
+  if (Object.keys(update).length === 0) throw new Error("admin: no feature-request changes supplied");
+
+  const { data, error } = await loose(client)
+    .from("channel_feature_requests")
+    .update(update)
+    .eq("id", id)
+    .select("id, channel_id, created_by, title, detail, category, status, roam_notes, created_at, channels(key, name)")
+    .maybeSingle();
+  if (error) throw new Error(`admin: feature-request update failed: ${error.message}`);
+  if (!data) return null;
+
+  const row = data as any;
+  await recordAudit(client, actor, {
+    action: "set_channel_feature_request",
+    entityType: "channel_feature_request",
+    entityId: id,
+    detail: { channel: row.channels?.key ?? null, changed: Object.keys(update), status: row.status },
+  });
+
+  return {
+    id: String(row.id),
+    channelId: String(row.channel_id),
+    channelKey: row.channels?.key ?? null,
+    channelName: row.channels?.name ?? null,
+    createdBy: row.created_by ?? null,
+    title: String(row.title ?? ""),
+    detail: row.detail ?? null,
+    category: String(row.category ?? "other"),
+    status: String(row.status ?? "new"),
+    roamNotes: row.roam_notes ?? null,
+    createdAt: String(row.created_at),
+  };
+}
+
 /** Revoke someone's role at this channel. Idempotent: removing a role nobody holds is not an error. */
 export async function removeChannelOfficer(
   client: RoamClient,

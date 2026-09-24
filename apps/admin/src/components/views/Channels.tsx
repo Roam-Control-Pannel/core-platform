@@ -18,7 +18,7 @@ import { useTrpc } from "../TrpcProvider";
 import { C, F } from "../../theme";
 import { ErrorLine, Kicker, Label, Panel } from "../ui";
 
-type Tab = "config" | "roster" | "review" | "onboarding" | "import" | "officers";
+type Tab = "config" | "roster" | "review" | "onboarding" | "import" | "officers" | "requests";
 
 interface NavItem { key: string; href: string; labelKey: string }
 interface ChannelInfo {
@@ -33,6 +33,12 @@ interface ChannelOfficer {
   role: "officer" | "viewer"; note: string | null; createdAt: string;
 }
 interface UserHit { id: string; handle: string | null; displayName: string | null; banned: boolean }
+interface FeatureRequestRow {
+  id: string; channelKey: string | null; channelName: string | null;
+  title: string; detail: string | null; category: string;
+  status: string; roamNotes: string | null; createdAt: string;
+}
+const FR_STATUSES = ["new", "triaged", "planned", "in_progress", "shipped", "declined"] as const;
 
 const KNOWN_SECTIONS = ["storefront", "directory", "suppliers", "jobs", "explore", "townHall", "market", "deals", "events"];
 const MEMBER_STATUSES = ["imported", "invited", "claimed", "live", "lapsed", "removed"] as const;
@@ -82,7 +88,7 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
             ))}
           </select>
           <span style={{ flex: 1 }} />
-          {(["config", "roster", "review", "onboarding", "import", "officers"] as Tab[]).map((t) => (
+          {(["config", "roster", "review", "onboarding", "import", "officers", "requests"] as Tab[]).map((t) => (
             <Toggle key={t} active={tab === t} onClick={() => setTab(t)}>{t[0]!.toUpperCase() + t.slice(1)}</Toggle>
           ))}
         </div>
@@ -101,6 +107,8 @@ export function ChannelsView({ canAct }: { canAct: boolean }) {
           <OnboardingTab channelKey={selected.key} />
         ) : tab === "officers" ? (
           <OfficersTab channelKey={selected.key} channelName={selected.name} canAct={canAct} />
+        ) : tab === "requests" ? (
+          <RequestsTab canAct={canAct} />
         ) : (
           <ImportTab channelKey={selected.key} canAct={canAct} />
         )}
@@ -1079,6 +1087,114 @@ function OfficersTab({ channelKey, channelName, canAct }: { channelKey: string; 
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Requests — the cross-partner feature-request queue (plan 3.4).
+ *
+ * Deliberately NOT scoped to the selected channel: triage is a Roam-wide job, and every partner's
+ * requests belong in one queue. Setting a status or writing a reply is the only way those columns
+ * are ever written — the table has no client UPDATE policy — and each change is audited server-side
+ * and e-mails the officer who filed it.
+ */
+function RequestsTab({ canAct }: { canAct: boolean }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<FeatureRequestRow[] | undefined>(undefined);
+  const [filter, setFilter] = useState<string>("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [err, setErr] = useState<string | null>(null);
+  const [lastSend, setLastSend] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setRows(undefined);
+    (trpc.channelsAdmin.featureRequests.query({ status: filter || null, limit: 200 }) as Promise<FeatureRequestRow[]>)
+      .then(setRows)
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load the queue."));
+  }, [trpc, filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function apply(id: string, status?: string) {
+    setBusyId(id); setErr(null); setLastSend(null);
+    try {
+      // Typed rather than a loose record: the mutation's input is a discriminated shape, and
+      // "save the reply without changing the status" is a real case that must send no status at all.
+      const patch: { id: string; status?: typeof FR_STATUSES[number]; roamNotes?: string | null } = { id };
+      if (status) patch.status = status as typeof FR_STATUSES[number];
+      if (id in notes) patch.roamNotes = notes[id]?.trim() || null;
+      const res = await trpc.adminActions.setChannelFeatureRequest.mutate(patch) as { notified: boolean };
+      // Say whether the partner was actually told. A silent "saved" would hide a bounced address.
+      setLastSend(res.notified ? "Saved. The officer who filed it was e-mailed." : "Saved. No e-mail went out (no address, or Brevo is unconfigured).");
+      load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to update the request.");
+    } finally { setBusyId(null); }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      {err ? <ErrorLine message={err} /> : null}
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Status" style={selectStyle}>
+          <option value="">All statuses</option>
+          {FR_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {lastSend ? <span style={{ fontSize: 12.5, color: C.muted }}>{lastSend}</span> : null}
+      </div>
+
+      {rows === undefined ? (
+        <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: C.muted }}>Nothing in the queue.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {rows.map((r) => (
+            <div key={r.id} style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <strong style={{ fontSize: 14 }}>{r.title}</strong>
+                <span style={{ fontFamily: F.mono, fontSize: 10.5, textTransform: "uppercase", color: C.muted }}>
+                  {r.channelName ?? r.channelKey ?? "—"} · {r.category}
+                </span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700 }}>{r.status}</span>
+              </div>
+              {r.detail ? <p style={{ margin: "6px 0 0", fontSize: 13, color: C.inkSoft, whiteSpace: "pre-wrap" }}>{r.detail}</p> : null}
+              <div style={{ marginTop: 6, fontSize: 11, color: C.muted }}>Filed {r.createdAt.slice(0, 10)}</div>
+
+              {canAct ? (
+                <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                  <textarea
+                    value={notes[r.id] ?? r.roamNotes ?? ""}
+                    onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
+                    placeholder="Reply to the partner (they see this)"
+                    rows={2}
+                    style={{ ...inputStyle, resize: "vertical" }}
+                    maxLength={4000}
+                  />
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {FR_STATUSES.filter((s) => s !== r.status).map((s) => (
+                      <button key={s} type="button" disabled={busyId === r.id} onClick={() => void apply(r.id, s)}
+                        style={{ ...inputStyle, padding: "5px 10px", fontSize: 12, cursor: busyId === r.id ? "default" : "pointer" }}>
+                        {s}
+                      </button>
+                    ))}
+                    <button type="button" disabled={busyId === r.id} onClick={() => void apply(r.id)}
+                      style={{ ...inputStyle, padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: busyId === r.id ? "default" : "pointer" }}>
+                      Save reply only
+                    </button>
+                  </div>
+                </div>
+              ) : r.roamNotes ? (
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: C.inkSoft }}><strong>Roam:</strong> {r.roamNotes}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -16,6 +16,15 @@ export { type MarketProduct } from "./routers/market.js";
 export { type MarketListing } from "./routers/listings.js";
 export { type ImportRosterReport } from "./jobs/importRoster.js"; // adminActions.importRoster surfaces it
 export { type HubspotSyncResult } from "./jobs/syncHubspotMembers.js"; // adminActions.syncHubspot surfaces it
+// The association router returns these straight from @roam/core, so consumers need them nameable here.
+export {
+  type ChannelPortalOverview,
+  type CouncilCount,
+  type PortalOrderTotals,
+  type VenueOrderTotals,
+  type PortalMemberRow,
+  type PortalMembersPage,
+} from "@roam/core/association";
 // f2g.claimWithInvite surfaces ClaimOutcome; adminActions.sendInvite surfaces SendInviteResult/Outcome.
 export { type ClaimOutcome, type ClaimResult, type SendInviteResult, type SendInviteOutcome } from "./f2g/invite.js";
 export { type VenueFsaRating } from "./routers/venues.js"; // venues.fsaRating surfaces it (C1-b)
