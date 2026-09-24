@@ -133,6 +133,17 @@ export const RPC_PROBES = [
     reason: "PII-safe members directory (migration 0144)",
   },
   {
+    // Anon is DENIED: 0157 grants these to `authenticated` only, because an anonymous caller has no
+    // appointment for is_channel_admin to check. This probe watches the GRANT rather than the gate —
+    // if anon ever gains EXECUTE here, a partner's aggregates become reachable without signing in,
+    // and that is the drift worth catching from outside the database. The gate itself is proved by
+    // supabase/tests/0157_channel_portal_aggregates_test.sql.
+    name: "channel_portal_overview",
+    args: { p_channel_id: "00000000-0000-0000-0000-000000000000" },
+    expect: "denied",
+    reason: "Association portal aggregates are authenticated-only (migration 0157)",
+  },
+  {
     name: "order_channel_for_venue",
     args: { p_venue_id: "00000000-0000-0000-0000-000000000000" },
     expect: "denied",

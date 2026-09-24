@@ -319,9 +319,25 @@ where data corruption lives, and a one-way pull has to prove itself first.
 | # | Work | Recon | Days | Status |
 |---|---|---|---|---|
 | 3.1 | `channel_admins` (0156) + `associationProcedure` + HQ officer management + pgTAP scoping proof | 4.3 B | 2 | **DONE** |
-| 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped, audited | 4.3 B/H | 3 | |
+| 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped (0157) | 4.3 B/H | 3 | **DONE** |
 | 3.3 | `/association` UI: overview, members list + CSV, feature requests | 4.3 B | 3 | |
 | 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 | |
+
+**3.2 as built, and two things the schema forced.** The aggregates are SECURITY DEFINER RPCs that each
+re-ask `is_channel_admin` themselves, because they are PostgREST-reachable: a signed-in user can call
+them directly with any channel id, without passing the API's gate. A caller without an appointment gets
+**no rows** — not a row of zeros, which would read as a genuinely quiet week.
+
+*Suppliers are not channel-scoped in the schema.* `orgs` has no `channel_id`; creation is gated by
+`f2g_can_post_supplier()` and nothing else. A raw supplier count would therefore show one partner
+another partner's numbers, so the portal counts suppliers **owned by this channel's members** — which
+is both containable and the more meaningful figure. If suppliers ever need to belong to a channel, that
+is a schema change, not a query change.
+
+*"Audited" is not part of 3.2.* These are counts and money, with no PII: the signatures cannot express a
+buyer, a line item or a member's contact details. The reads that do carry PII are 3.3's members list,
+under 2.5's masking and audit rules, and that is where the audit belongs rather than on every dashboard
+render.
 
 **3.1 as built.** `channel_admins` is a separate table from `admin_users` on purpose: a Roam HQ row is
 cross-tenant by design, so making an Association officer a Roam admin would hand one partner the keys

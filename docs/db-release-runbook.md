@@ -225,7 +225,7 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0156: **`267909696849` across 123 functions**.
+Expected value as of migration 0157: **`274280598490` across 127 functions**.
 
 | After | canonical_sum | fns | What moved |
 |---|---|---|---|
@@ -233,6 +233,7 @@ Expected value as of migration 0156: **`267909696849` across 123 functions**.
 | 0154 | `264424425230` | 120 | six bodies changed (`f2g_member_venue_ids`, `venues_in_channel_near`, `channel_members_search`, `f2g_can_post_as_member`, `f2g_can_post_supplier`, `claim_channel_member_venue`); none added |
 | 0155 | `264724087417` | 121 | `channel_integrations_guard_client_roles` added |
 | 0156 | `267909696849` | 123 | `channel_admins_guard_client_roles` + `is_channel_admin` added — **confirmed against live 2026-09-23** |
+| 0157 | `274280598490` | 127 | the four `channel_portal_*` aggregates added |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by
