@@ -15,7 +15,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { RoamClient } from "@roam/db";
 import { channels, f2g } from "@roam/core";
-import { router, publicProcedure, protectedProcedure } from "../trpc.js";
+import { router, publicProcedure, protectedProcedure, escalateToService } from "../trpc.js";
 import { notifyOps } from "../observability/ops.js";
 
 /**
@@ -25,6 +25,21 @@ import { notifyOps } from "../observability/ops.js";
  * off. (The vendor dashboard + Roam-side badges gate on the same flag via useF2gEnabled separately.)
  */
 const CHANNEL_FLAGS: Record<string, string> = { f2g: "marketplace.f2g.enabled" };
+
+/**
+ * Map a listing definer's refusal to a tRPC error. `ListingError` carries the reason the DATABASE
+ * gave, so the message a venue owner sees is the one the check that actually refused them produced,
+ * rather than a guess made by pattern-matching an error string in the router.
+ */
+function asListingError(e: unknown, fallback: string): TRPCError {
+  if (e instanceof channels.ListingError) {
+    return new TRPCError({ code: "FORBIDDEN", message: e.message });
+  }
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: e instanceof Error ? e.message : fallback,
+  });
+}
 
 /** True when `channelKey` is flag-gated and its flag is currently OFF (so it must not resolve live). */
 export async function channelGatedOff(db: RoamClient, channelKey: string): Promise<boolean> {
@@ -177,10 +192,17 @@ export const channelsRouter = router({
     }),
 
   /**
-   * SELF-SERVE onboarding: a venue owner tags their OWN claimed venue into a channel (e.g. lists it
-   * on Food to Go). Authority is RLS: the `venue_channels` owner-write policy only permits the write
-   * when the caller owns the claimed venue, so a signed-in user can never tag a venue they don't own.
-   * Idempotent. Staff tagging of any venue is a separate, audited path (adminActions.setVenueChannel).
+   * SELF-SERVE onboarding: a venue owner LISTS their OWN claimed venue on a channel (e.g. on Food to
+   * Go). Listing is not joining — the row is always `role = 'listed'`, and membership is the
+   * Association's to grant (0160).
+   *
+   * CHANGED (0161): authority is no longer the `venue_channels` owner-write policy, which is gone.
+   * That policy constrained which venue could be written but could not see the region fence below,
+   * so an owner could write the table directly through PostgREST into any channel. The write now
+   * goes through `tag_venue_listing`, a SECURITY DEFINER function revoked from every client role,
+   * which re-checks ownership itself — so this router is the only thing that can reach it, and the
+   * fence cannot be walked around. Staff tagging of any venue stays a separate audited path
+   * (adminActions.setVenueChannel).
    */
   tagVenue: protectedProcedure
     .input(z.object({ venueId: z.string().uuid(), channelKey: z.string().min(1).max(32) }))
@@ -199,26 +221,15 @@ export const channelsRouter = router({
         });
       }
       const { data: me } = await ctx.db.auth.getUser();
+      const actorId = me.user?.id;
+      if (!actorId) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to list a venue." });
       try {
-        // 'listed', always: this is the owner opting their own venue in. Membership is the
-        // Association's to grant, not the venue's to claim (0160).
-        await channels.tagVenueIntoChannel(
-          ctx.db,
-          channel.id,
-          input.venueId,
-          "listed",
-          me.user?.id ?? null,
-        );
+        // Escalate ONLY here, after the fence, and pass the caller's own id — the definer decides
+        // whether they own the venue. The service client is never handed the caller's intent
+        // unchecked.
+        await channels.listVenueOnChannel(escalateToService(ctx.env), channel.id, input.venueId, actorId);
       } catch (e) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message:
-            e instanceof Error && /row-level security/i.test(e.message)
-              ? "You can only list a venue you own and have claimed."
-              : e instanceof Error
-                ? e.message
-                : "Failed to list the venue.",
-        });
+        throw asListingError(e, "Failed to list the venue.");
       }
       return { ok: true as const };
     }),
@@ -281,11 +292,23 @@ export const channelsRouter = router({
     }),
 
   /** Self-serve: a venue owner removes their own venue from a channel. RLS scopes it to the owner. */
+  /**
+   * Withdraw a listing. Same shape as tagVenue since 0161: the definer checks ownership, and refuses
+   * to remove a `member` tag — an owner may withdraw their own listing, but resigning the
+   * Association's membership on its behalf would silently un-rank a member the roster placed.
+   */
   untagVenue: protectedProcedure
     .input(z.object({ venueId: z.string().uuid(), channelKey: z.string().min(1).max(32) }))
     .mutation(async ({ ctx, input }) => {
       const channel = await requireChannel(ctx.db, input.channelKey);
-      await channels.untagVenueFromChannel(ctx.db, channel.id, input.venueId);
+      const { data: me } = await ctx.db.auth.getUser();
+      const actorId = me.user?.id;
+      if (!actorId) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to unlist a venue." });
+      try {
+        await channels.unlistVenueFromChannel(escalateToService(ctx.env), channel.id, input.venueId, actorId);
+      } catch (e) {
+        throw asListingError(e, "Failed to unlist the venue.");
+      }
       return { ok: true as const };
     }),
 });

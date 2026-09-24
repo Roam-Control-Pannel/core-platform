@@ -27,7 +27,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         // crawlable set. Both pages also carry a noindex meta tag, for crawlers that arrive by link.
         disallow: [
           "/account", "/following", "/friends", "/notifications", "/threads", "/plans", "/dashboard",
-          "/admin-login", "/association", "/api/",
+          "/admin-login", "/association", "/activate", "/f2g/claim", "/api/",
         ],
       },
     ],

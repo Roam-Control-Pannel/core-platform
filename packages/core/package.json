@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./activation": "./src/activation/index.ts",
     "./admin": "./src/admin/index.ts",
     "./association": "./src/association/index.ts",
     "./meetup": "./src/meetup/index.ts",

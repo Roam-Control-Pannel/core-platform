@@ -135,17 +135,29 @@ describe("sendMemberInvite — guard branches", () => {
 });
 
 describe("renderInviteEmail", () => {
-  it("includes the claim URL and channel name, and escapes the source name", async () => {
+  it("includes the activation URL and channel name, and escapes the source name", async () => {
     const { subject, html, text } = renderInviteEmail({
       sourceName: "Bob & Sons <Cafe>",
-      claimUrl: "https://foodtogo.example/f2g/claim?token=abc",
+      claimUrl: "https://foodtogo.example/activate?token=abc",
       channelName: "Food to Go",
     });
     expect(subject).toContain("Food to Go");
-    expect(html).toContain("https://foodtogo.example/f2g/claim?token=abc");
+    expect(html).toContain("https://foodtogo.example/activate?token=abc");
     expect(html).toContain("Bob &amp; Sons &lt;Cafe&gt;"); // escaped, no raw < & >
     expect(html).not.toContain("Bob & Sons <Cafe>");
-    expect(text).toContain("https://foodtogo.example/f2g/claim?token=abc");
+    expect(text).toContain("https://foodtogo.example/activate?token=abc");
+  });
+
+  it("tells the recipient the link alone does nothing — the bearer-link risk 2.4 closed", async () => {
+    const { text, html } = renderInviteEmail({
+      sourceName: "Cafe",
+      claimUrl: "https://foodtogo.example/activate?token=abc",
+      channelName: "Food to Go",
+    });
+    // Someone who receives a forwarded invite must be able to tell from the mail itself that
+    // clicking it is not enough, so an unexpected invite reads as harmless rather than alarming.
+    expect(text).toContain("short code");
+    expect(html).toContain("short code");
   });
 
   it("falls back to a friendly greeting when the source name is blank", async () => {

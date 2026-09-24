@@ -27,6 +27,7 @@ export * as channels from "./channels/index.js";
 export * as f2g from "./f2g/index.js";
 export * as membership from "./membership/index.js";
 export * as association from "./association/index.js";
+export * as activation from "./activation/index.js";
 export * as matching from "./matching/index.js";
 export * as fsa from "./fsa/index.js";
 export * as hubspot from "./hubspot/index.js";

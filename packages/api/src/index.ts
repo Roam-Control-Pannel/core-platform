@@ -27,6 +27,16 @@ export {
 } from "@roam/core/association";
 // f2g.claimWithInvite surfaces ClaimOutcome; adminActions.sendInvite surfaces SendInviteResult/Outcome.
 export { type ClaimOutcome, type ClaimResult, type SendInviteResult, type SendInviteOutcome } from "./f2g/invite.js";
+// The activation router (2.4) returns these directly, so every client must be able to name them.
+export {
+  type IssueOutcome,
+  type IssueResult,
+  type VerifyOutcome,
+  type VerifyResult,
+  type ActivateOutcome,
+  type ActivateResult,
+  type BindOutcome,
+} from "./f2g/activation.js";
 export { type VenueFsaRating } from "./routers/venues.js"; // venues.fsaRating surfaces it (C1-b)
 export { type JobPost, type JobPostPage } from "./routers/jobs.js"; // jobs.list surfaces them (C4)
 export { type SupplierOrg, type SupplierPage } from "./routers/suppliers.js"; // suppliers.* surface them (C3)
