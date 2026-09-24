@@ -529,3 +529,73 @@ export async function untagVenueFromChannel(
     .eq("venue_id", venueId);
   if (error) throw new Error(`channels: untag venue failed: ${error.message}`);
 }
+
+// ── self-serve listing, through the definers ────────────────────────────────────────────────────
+// 0161 removed `venue_channels_owner_write`, so an owner has NO direct write to the table: these two
+// are the whole of the self-serve path. Both take the SERVICE client — the functions are revoked
+// from every client role — and both re-check ownership inside the database, so the caller cannot
+// forget to. The region fence stays in the router, which is now the only thing that can reach them.
+
+/** Why a listing write was refused, when it was. */
+export type ListingRefusal = "not_owner" | "not_a_listing" | "venue_not_found";
+
+export class ListingError extends Error {
+  constructor(readonly refusal: ListingRefusal, message: string) {
+    super(message);
+    this.name = "ListingError";
+  }
+}
+
+function listingRefusal(message: string): ListingError | null {
+  if (message.includes("NOT_VENUE_OWNER")) {
+    return new ListingError("not_owner", "You can only list a venue you own and have claimed.");
+  }
+  if (message.includes("NOT_A_LISTING")) {
+    return new ListingError(
+      "not_a_listing",
+      "This venue is a member of the organisation. Ask them to remove it rather than unlisting it here.",
+    );
+  }
+  if (message.includes("VENUE_NOT_FOUND")) {
+    return new ListingError("venue_not_found", "That venue no longer exists.");
+  }
+  return null;
+}
+
+/** List a venue the actor owns on a channel, as `role = 'listed'`. Idempotent; never promotes. */
+export async function listVenueOnChannel(
+  service: RoamClient,
+  channelId: string,
+  venueId: string,
+  actorId: string,
+): Promise<void> {
+  const rpc = service.rpc.bind(service) as unknown as (
+    fn: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ error: { message: string } | null }>;
+  const { error } = await rpc("tag_venue_listing", {
+    p_venue_id: venueId,
+    p_channel_id: channelId,
+    p_actor_id: actorId,
+  });
+  if (error) throw listingRefusal(error.message) ?? new Error(`channels: list venue failed: ${error.message}`);
+}
+
+/** Withdraw the actor's own listing. Refuses to remove a `member` tag — that is the roster's. */
+export async function unlistVenueFromChannel(
+  service: RoamClient,
+  channelId: string,
+  venueId: string,
+  actorId: string,
+): Promise<void> {
+  const rpc = service.rpc.bind(service) as unknown as (
+    fn: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ error: { message: string } | null }>;
+  const { error } = await rpc("untag_venue_listing", {
+    p_venue_id: venueId,
+    p_channel_id: channelId,
+    p_actor_id: actorId,
+  });
+  if (error) throw listingRefusal(error.message) ?? new Error(`channels: unlist venue failed: ${error.message}`);
+}

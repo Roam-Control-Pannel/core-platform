@@ -26,6 +26,7 @@ interface Me { channelId: string; channelKey: string | null; channelName: string
 interface Overview {
   membersTotal: number;
   funnel: { imported: number; invited: number; claimed: number; live: number; lapsed: number; removed: number };
+  membersUnreachable: number;
   listedNonMembers: number;
   memberVenues: number;
   memberVenuesRated: number;
@@ -161,6 +162,16 @@ function OverviewTab() {
           <Tile label="Imported" value={ov.funnel.imported} />
           <Tile label="Lapsed" value={ov.funnel.lapsed} />
         </div>
+        {ov.membersUnreachable > 0 ? (
+          <p style={note}>
+            <strong>{ov.membersUnreachable}</strong>{" "}
+            {ov.membersUnreachable === 1 ? "member is" : "members are"} still waiting to activate and
+            {ov.membersUnreachable === 1 ? " has" : " have"} no email address on file. Activation is
+            proved by email, so they can&rsquo;t start on their own — this is the ceiling on
+            self-serve onboarding, not a sign that members are slow. Roam can activate them
+            individually, and adding their addresses removes the limit.
+          </p>
+        ) : null}
         <p style={note}>
           {ov.listedNonMembers} non-member {ov.listedNonMembers === 1 ? "venue is" : "venues are"} listed
           on the storefront. Listed venues appear, but are never ranked or badged as members.

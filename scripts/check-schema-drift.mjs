@@ -79,6 +79,21 @@ export const REQUIRED_READS = [
     reason: "partner organisation officers — the Association portal's authority (migration 0156)",
   },
   {
+    table: "channel_activation_codes",
+    columns: ["id", "member_id", "venue_id", "profile_id", "expires_at", "attempts", "consumed_at"],
+    // Service-managed with RLS on and NO policy (0161): anon is refused outright rather than handed
+    // an empty set, so this is asserted the denied way round. A 2xx here would be a table of
+    // credentials readable from a browser.
+    expect: "denied",
+    reason: "one-time activation codes — service-managed, no client path (migration 0161)",
+  },
+  {
+    table: "channel_activation_attempts",
+    columns: ["id", "channel_id", "member_id", "venue_id", "profile_id", "outcome", "created_at"],
+    expect: "denied",
+    reason: "activation attempt audit — service-managed, no client path (migration 0161)",
+  },
+  {
     table: "channel_feature_requests",
     columns: ["id", "channel_id", "created_by", "title", "category", "status", "roam_notes"],
     // Its SELECT policy calls is_channel_officer → is_channel_admin, and 0151 revoked EXECUTE on

@@ -85,7 +85,7 @@ export interface SendInviteDeps {
   inviteTtlMs: number;
   brevoApiKey: string | null;
   sender: EmailSender;
-  /** Web app origin — the claim link is `${webOrigin}/f2g/claim?token=…`. */
+  /** Web app origin — the activation link is `${webOrigin}/activate?token=…`. */
   webOrigin: string;
 }
 
@@ -121,24 +121,25 @@ export function renderInviteEmail(args: {
 }): { subject: string; html: string; text: string } {
   const { sourceName, claimUrl, channelName } = args;
   const safeName = sourceName.trim() || "there";
-  const subject = `Claim your ${channelName} listing`;
+  const subject = `Activate your ${channelName} listing`;
   const text = [
     `Hi ${safeName},`,
     "",
-    `Your business has a listing on ${channelName}. Claim it to manage your details, menu and orders.`,
+    `Your business has a listing on ${channelName}. Activate it to manage your details, menu and orders.`,
     "",
-    `Claim your listing: ${claimUrl}`,
+    `Activate your listing: ${claimUrl}`,
     "",
-    "If you weren't expecting this, you can ignore this email — nothing changes until you claim.",
+    "You'll be asked to confirm a short code sent to your organisation's email address, so this link",
+    "is safe to ignore if you weren't expecting it — on its own it does nothing.",
   ].join("\n");
   const html = `
 <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
   <p>Hi ${escapeHtml(safeName)},</p>
-  <p>Your business has a listing on <strong>${escapeHtml(channelName)}</strong>. Claim it to manage your details, menu and orders.</p>
+  <p>Your business has a listing on <strong>${escapeHtml(channelName)}</strong>. Activate it to manage your details, menu and orders.</p>
   <p style="margin:28px 0">
-    <a href="${escapeAttr(claimUrl)}" style="background:#0f766e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;font-weight:600">Claim your listing</a>
+    <a href="${escapeAttr(claimUrl)}" style="background:#0f766e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;font-weight:600">Activate your listing</a>
   </p>
-  <p style="color:#6b7280;font-size:13px">If you weren't expecting this, you can ignore this email — nothing changes until you claim.</p>
+  <p style="color:#6b7280;font-size:13px">You&rsquo;ll be asked to confirm a short code sent to your organisation&rsquo;s email address, so this link is safe to ignore if you weren&rsquo;t expecting it — on its own it does nothing.</p>
 </div>`.trim();
   return { subject, html, text };
 }
@@ -185,7 +186,11 @@ export async function sendMemberInvite(
 
   const { token } = issueInviteToken(member.id, member.venue_id, deps.inviteSecret, deps.inviteTtlMs);
   const base = deps.webOrigin.replace(/\/+$/, "");
-  const claimUrl = `${base}/f2g/claim?token=${encodeURIComponent(token)}`;
+  // CHANGED (2.4): /activate, not /f2g/claim. The link no longer confers anything — it names the
+  // (member, venue) pair so the member does not have to hunt for their own row, and the page still
+  // demands proof of e-mail possession. That closes the bearer-link risk: a forwarded invite is now
+  // worth nothing on its own.
+  const claimUrl = `${base}/activate?token=${encodeURIComponent(token)}`;
   const rendered = renderInviteEmail({
     sourceName: member.source_name,
     claimUrl,

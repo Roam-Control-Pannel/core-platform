@@ -24,6 +24,12 @@ const rpc = (client: RoamClient): Rpc => client as unknown as Rpc;
 export interface ChannelPortalOverview {
   membersTotal: number;
   funnel: { imported: number; invited: number; claimed: number; live: number; lapsed: number; removed: number };
+  /**
+   * Awaiting activation with NO e-mail address on file (0162). These members have no self-serve path
+   * at all — e-mail possession is the only credential until 2027 — so this is the ceiling on
+   * self-serve onboarding, and the difference between a conversion problem and a data problem.
+   */
+  membersUnreachable: number;
   /** Non-members that opted a venue into the storefront: listed, never ranked or badged as members. */
   listedNonMembers: number;
   memberVenues: number;
@@ -54,6 +60,7 @@ export async function getPortalOverview(
       lapsed: Number(row.members_lapsed ?? 0),
       removed: Number(row.members_removed ?? 0),
     },
+    membersUnreachable: Number(row.members_unreachable ?? 0),
     listedNonMembers: Number(row.listed_non_members ?? 0),
     memberVenues: Number(row.member_venues ?? 0),
     memberVenuesRated: Number(row.member_venues_rated ?? 0),

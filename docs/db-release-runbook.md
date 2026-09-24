@@ -225,7 +225,7 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0161: **`292433798764` across 134 functions**.
+Expected value as of migration 0162: **`292820344529` across 134 functions**.
 
 | After | canonical_sum | fns | What moved |
 |---|---|---|---|
@@ -238,6 +238,7 @@ Expected value as of migration 0161: **`292433798764` across 134 functions**.
 | 0159 | `284458429678` | 130 | `is_channel_officer` + `channel_feature_requests_guard_client_roles` added |
 | 0160 | `284458429678` | 130 | **unchanged** — 0160 moves a policy and a column default, no function body. A clean replay through 0160 reproducing the 0159 figure exactly is the harness cross-check this table asks for |
 | 0161 | `292433798764` | 134 | `activate_channel_member_venue`, `tag_venue_listing`, `untag_venue_listing` and `channel_activation_guard_client_roles` added |
+| 0162 | `292820344529` | 134 | `channel_portal_overview` replaced (one column added); none added or removed |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by
