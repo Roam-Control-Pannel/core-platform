@@ -481,21 +481,37 @@ export async function isVenueInChannel(
   return !!data;
 }
 
+/** What a `venue_channels` row means. See the column comment on `venue_channels.role` (0160). */
+export type VenueChannelRole = "member" | "listed";
+
 /**
  * Tag a venue into a channel (idempotent). `addedBy` records who onboarded it. RLS decides whether
  * the caller may write: a venue owner via their user client, or staff/service via the service client.
+ *
+ * `role` is REQUIRED and has no default here, mirroring the column (0160 dropped `default 'member'`).
+ * Until 0160 this insert omitted the column, so the self-serve path — a venue owner opting their own
+ * venue into a storefront — silently took 'member' and gained member priority in ranking, the member
+ * badge and a place in the members directory, with no Association involvement. A caller must now say
+ * what it means: 'listed' for self-serve, 'member' only from the audited HQ action. The write policy
+ * enforces the same thing independently — a client credential can only ever write 'listed'.
  */
 export async function tagVenueIntoChannel(
   client: RoamClient,
   channelId: string,
   venueId: string,
+  role: VenueChannelRole,
   addedBy?: string | null,
 ): Promise<void> {
   const { error } = await (client as any)
     .from("venue_channels")
     .upsert(
-      { channel_id: channelId, venue_id: venueId, added_by: addedBy ?? null },
-      { onConflict: "channel_id,venue_id", ignoreDuplicates: true },
+      { channel_id: channelId, venue_id: venueId, role, added_by: addedBy ?? null },
+      // Conflict handling differs by direction, and deliberately. A 'member' write PROMOTES an
+      // existing row — HQ conferring membership on a venue that had self-listed is the ordinary
+      // case, and ignoring it would silently leave the venue a non-member. A 'listed' write never
+      // touches an existing row, so an owner re-listing can never demote a membership the
+      // Association placed.
+      { onConflict: "channel_id,venue_id", ignoreDuplicates: role === "listed" },
     );
   if (error) throw new Error(`channels: tag venue failed: ${error.message}`);
 }

@@ -300,8 +300,22 @@ the CRM takes over both jobs and the roster CSV becomes a fallback import path r
 | 2.2 | **Import hardening** — postcode sanitiser; roster address passed to the matcher (import *and* review queue); `town` recognised; duplicate-venue guard in auto-accept; dry-run; operator column mapping; HQ file picker + preview + rehearse-then-commit | 4.4 H, 4.3 M | 3 | **DONE** |
 | 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron across every connected partner + HQ "sync now", audited; dormant without a HubSpot app | 4.4 B | 4 | **DONE** |
 | 2.3b | **Partner self-connect (OAuth)** — one Roam-owned HubSpot app, `channel_integrations` (0155) with an encrypted refresh token per channel, signed-state callback, HQ Connect / Rehearse / Sync now / Disconnect | 4.3 B | 2 | **DONE** |
-| 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | |
+| 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | **in progress** — 0160 landed first (see below) |
 | 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | |
+
+**2.4, part one — a live defect found on the way in (0160).** 2.4's whole premise is that membership
+is the Association's to grant. Recon for it found that since 2.1 shipped, it wasn't: `venue_channels.role`
+carried `default 'member'`, the self-serve tagging path (`channels.tagVenue`) inserted without the
+column, and `venue_channels_owner_write` (0116) constrained *which* venue an owner could write but not
+*which role*. So an ordinary "list my venue on Food to Go" made the venue a member — member priority in
+ranking (0145), the member badge, a row in the members directory — and a signed-in owner could also set
+`role = 'member'` outright through PostgREST. Live from 0154 (applied 2026-09-23) until 0160.
+
+0160 narrows the owner-write policy to `role = 'listed'` and drops the column default, so an omission
+fails loudly instead of granting membership; `tagVenueIntoChannel` now takes the role as a required
+argument, 'listed' from self-serve and 'member' only from the audited HQ action. Existing rows are
+**not** rewritten — a row HQ added is indistinguishable from one a venue self-tagged — so the review
+query lives in the release runbook and the call is the Association's.
 
 **Deferred out of Phase 2 by the sample:** roster *lifecycle* (lapse after grace, restore on
 re-appearance) moves behind 2.3. It was only ever safe because the number was mandatory — "rows absent

@@ -127,7 +127,11 @@ export async function setVenueChannel(
   // The default channel shows every venue, so tagging into it is meaningless and would pollute
   // membership assumptions — reject it here too, mirroring the self-serve requireChannel guard.
   if (channel.isDefault) throw new Error(`admin: the default channel '${channelKey}' can't be tagged into`);
-  if (member) await tagVenueIntoChannel(client, channel.id, venueId, actor.id);
+  // 'member': this is the audited HQ path, one of only two routes to channel membership (the other
+  // being SECURITY DEFINER activation). Before 0160 the role came from the column default, which
+  // meant the self-serve path reached membership too; now every membership passes through here or
+  // through activation, and lands in the audit log below.
+  if (member) await tagVenueIntoChannel(client, channel.id, venueId, "member", actor.id);
   else await untagVenueFromChannel(client, channel.id, venueId);
   await recordAudit(client, actor, {
     action: member ? "tag_venue_channel" : "untag_venue_channel",
