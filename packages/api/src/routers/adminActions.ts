@@ -179,6 +179,55 @@ export const adminActionsRouter = router({
     }),
 
   /**
+   * Appoint a partner officer, or change the role they hold (plan 3.1, migration 0156).
+   *
+   * This is the act that lets someone outside Roam see a whole channel's membership, so it is
+   * staff-only and audited. Re-appointing the same person updates their role; `channel_admins` has
+   * no client write policy, so this path is the only way such a row can exist.
+   */
+  setChannelOfficer: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        profileId: z.string().uuid(),
+        role: z.enum(["officer", "viewer"]),
+        note: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.setChannelOfficer(
+          ctx.service,
+          await actor(ctx as ActingCtx),
+          input.channelKey,
+          input.profileId,
+          input.role,
+          input.note ?? null,
+        );
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to appoint channel officer.");
+      }
+    }),
+
+  /** Revoke a partner officer's role. Idempotent — revoking a role nobody holds is not an error. */
+  removeChannelOfficer: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32), profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await admin.removeChannelOfficer(
+          ctx.service,
+          await actor(ctx as ActingCtx),
+          input.channelKey,
+          input.profileId,
+        );
+        return { ok: true as const };
+      } catch (e) {
+        fail(e, "Failed to remove channel officer.");
+      }
+    }),
+
+  /**
    * Bulk-import an Association roster CSV into a channel and run the matcher (B3-a/b). Staff-gated +
    * audited; the detailed per-run outcome is recorded in channel_import_runs. Returns the run report
    * plus the thin matched venue ids, which the caller enriches (B3-c) via places.enrichVenue and then

@@ -160,9 +160,117 @@ const requireAdmin = middleware(async ({ ctx, next }) => {
   });
 });
 
+/**
+ * Gate: an officer of a PARTNER organisation — the Association, not Roam (F2G plan 3.1).
+ *
+ * The third authority, and the one that is easiest to get catastrophically wrong. adminProcedure
+ * grants a named Roam human cross-tenant reach; this grants a partner's officer reach into exactly
+ * ONE channel. Get the scoping wrong and one partner reads another partner's members.
+ *
+ * WHICH CHANNEL IS RESOLVED FROM `channel_admins`, NEVER GRANTED BY THE REQUEST. `ctx.channelKey`
+ * comes from the `x-roam-channel` header, which the caller controls — so it is used only to CHOOSE
+ * among channels this caller already has an appointment for, never to confer one. An officer of A
+ * who sends `x-roam-channel: b` gets a FORBIDDEN, not channel B; the pgTAP suite proves the same
+ * containment at the database level, so neither layer is the only thing standing between two
+ * partners' data.
+ *
+ * The appointment is read under the CALLER'S OWN client, against the `channel_admins_self_read`
+ * policy — the check that decides whether to escalate must not need the escalated client to run.
+ * The lookup is additionally scoped `.eq("profile_id", uid)` rather than trusting RLS alone, for the
+ * same reason requireAdmin does it: if that policy were ever broadened, a bare select would return
+ * somebody else's appointment and hand the caller their channel.
+ */
+const requireChannelAdmin = middleware(async ({ ctx, next }) => {
+  if (!ctx.accessToken) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This action requires you to be signed in.",
+    });
+  }
+
+  const { data: authData } = await ctx.db.auth.getUser();
+  const uid = authData?.user?.id;
+  if (!uid) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "This action requires you to be signed in.",
+    });
+  }
+
+  // `channel_admins` is newer than the checked-in generated types (regenerating them needs a local
+  // Supabase replay — see task #22), so this one read goes through the same loose accessor the admin
+  // routers already use. The runtime behaviour is unaffected; only the compile-time shape is widened,
+  // and the result is narrowed immediately below.
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const looseDb = ctx.db as unknown as { from: (t: string) => any };
+  const { data, error } = await looseDb
+    .from("channel_admins")
+    .select("channel_id, role, channels(key, name)")
+    .eq("profile_id", uid);
+
+  if (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not verify your access to this organisation.",
+    });
+  }
+
+  const appointments = (data ?? []) as unknown as {
+    channel_id: string;
+    role: string;
+    channels: { key: string; name: string } | null;
+  }[];
+
+  if (appointments.length === 0) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This area is for partner organisation officers.",
+    });
+  }
+
+  // The header picks among what the caller already holds; it cannot add to it.
+  const requested = ctx.channelKey;
+  const chosen =
+    appointments.find((a) => a.channels?.key === requested) ??
+    (appointments.length === 1 ? appointments[0] : undefined);
+
+  if (!chosen) {
+    // Several appointments and the request named none of them. Refusing beats guessing: picking one
+    // arbitrarily would silently answer about the wrong organisation.
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "You hold roles at more than one organisation; open the one you mean.",
+    });
+  }
+
+  // Appointment confirmed. The service client is built here, on this verified path only — and every
+  // procedure behind this gate must still scope its reads to ctx.association.channelId, because the
+  // service client bypasses RLS.
+  const service: RoamClient = escalateToService(ctx.env);
+  return next({
+    ctx: {
+      ...ctx,
+      service,
+      association: {
+        channelId: chosen.channel_id,
+        channelKey: chosen.channels?.key ?? null,
+        channelName: chosen.channels?.name ?? null,
+        role: chosen.role as ChannelAdminRole,
+      },
+    },
+  });
+});
+
 export const protectedProcedure = publicProcedure.use(requireUser);
 export const internalProcedure = publicProcedure.use(requireInternal);
 export const adminProcedure = publicProcedure.use(requireAdmin);
+export const associationProcedure = publicProcedure.use(requireChannelAdmin);
 
 /** The authority tiers within Roam HQ; see admin_users.role (migration 0113). */
 export type AdminRole = "viewer" | "admin" | "owner";
+
+/**
+ * A partner officer's authority within their OWN channel (migration 0156). Deliberately a different
+ * vocabulary from AdminRole: these are not Roam staff, and the two must never be confused.
+ */
+export type ChannelAdminRole = "officer" | "viewer";

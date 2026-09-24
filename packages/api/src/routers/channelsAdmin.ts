@@ -40,6 +40,20 @@ export const channelsAdminRouter = router({
       }
     }),
 
+  /**
+   * The partner organisation's own officers (plan 3.1). Read-only here; appointing and revoking are
+   * audited writes in adminActions, mirroring the observe/act split this router already follows.
+   */
+  officers: adminProcedure
+    .input(z.object({ channelKey: z.string().min(1).max(32) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.listChannelOfficers(ctx.service, input.channelKey);
+      } catch (e) {
+        boom(e, "Failed to load channel officers.");
+      }
+    }),
+
   /** A page of a channel's roster, newest first, filterable by status / council / name search. */
   roster: adminProcedure
     .input(

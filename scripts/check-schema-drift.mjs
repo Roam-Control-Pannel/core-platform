@@ -67,6 +67,11 @@ export const REQUIRED_READS = [
     reason: "whitelabel partner OAuth connections — HubSpot member sync (migration 0155)",
   },
   {
+    table: "channel_admins",
+    columns: ["id", "channel_id", "profile_id", "role"],
+    reason: "partner organisation officers — the Association portal's authority (migration 0156)",
+  },
+  {
     table: "external_refs",
     columns: ["id", "entity_type", "entity_id", "dataset", "external_id", "method"],
     reason: "roster ↔ venue / FSA match ledger (migration 0137)",
