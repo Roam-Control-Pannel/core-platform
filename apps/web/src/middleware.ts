@@ -29,6 +29,22 @@ function isRoamOnlyPath(pathname: string): boolean {
   return pathname === "/explore" || pathname.startsWith("/explore/");
 }
 
+/**
+ * The mirror image: a path that only means something UNDER a brand channel. "admin-login" on Roam's
+ * own consumer site would read as a staff entrance to Roam HQ, which is a different app on a
+ * different host entirely, so on the default channel it redirects home. Tidiness, not a control —
+ * the authority check is server-side, in `channel_admins`.
+ *
+ * `/association` is deliberately NOT here. Host resolution is fail-open (an unmapped host or a
+ * lookup blip resolves to the default channel), so anything listed is something a blip can redirect
+ * away from. Bouncing an officer out of the portal they are working in is a worse failure than a
+ * slightly odd URL being reachable on the wrong host — and the portal gates itself on the caller's
+ * appointment regardless of which host serves it. The entrance is cosmetic; the room is not.
+ */
+function isBrandOnlyPath(pathname: string): boolean {
+  return pathname === "/admin-login";
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const host =
     req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
@@ -39,6 +55,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // A brand channel must never fall through to that generic browse, so redirect /explore to the
   // storefront home. Server-side here so it catches direct URLs and history, not just in-app links.
   if (channelKey !== DEFAULT_CHANNEL_KEY && isRoamOnlyPath(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  // And a partner's own entrance belongs to a partner's own host.
+  if (channelKey === DEFAULT_CHANNEL_KEY && isBrandOnlyPath(req.nextUrl.pathname)) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
