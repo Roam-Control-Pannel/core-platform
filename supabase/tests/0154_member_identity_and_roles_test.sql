@@ -72,13 +72,17 @@ select throws_ok(
   'a membership number is unique within a channel (from 2027)');
 
 -- ── 3. venue_channels.role ───────────────────────────────────────────────────
-insert into venue_channels (channel_id, venue_id)
-  select id, '00000000-0000-0000-0000-0000000e5414' from channels where key = 'f2g';
+-- AMENDED BY 0160. This fixture used to omit `role` and assert it defaulted to 'member'. That
+-- default was the 0154 defect: it turned an omission in the self-serve tagging path into a grant of
+-- membership. 0160 dropped it, so the write is explicit here and the absence of a default is
+-- asserted in 0160's own test.
+insert into venue_channels (channel_id, venue_id, role)
+  select id, '00000000-0000-0000-0000-0000000e5414', 'member' from channels where key = 'f2g';
 
 select is(
   (select role from venue_channels where venue_id = '00000000-0000-0000-0000-0000000e5414'),
   'member',
-  'an existing-style tag defaults to member, so pre-0154 ranking is unchanged');
+  'a service-side tag written as member is ranked as one, as it was before 0154');
 
 select throws_ok(
   $$insert into venue_channels (channel_id, venue_id, role)

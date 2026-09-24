@@ -225,7 +225,7 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0159: **`284458429678` across 130 functions**.
+Expected value as of migration 0160: **`284458429678` across 130 functions**.
 
 | After | canonical_sum | fns | What moved |
 |---|---|---|---|
@@ -236,6 +236,7 @@ Expected value as of migration 0159: **`284458429678` across 130 functions**.
 | 0157 | `274280598490` | 127 | the four `channel_portal_*` aggregates added |
 | 0158 | `278440079767` | 128 | `channel_portal_members` added |
 | 0159 | `284458429678` | 130 | `is_channel_officer` + `channel_feature_requests_guard_client_roles` added |
+| 0160 | `284458429678` | 130 | **unchanged** — 0160 moves a policy and a column default, no function body. A clean replay through 0160 reproducing the 0159 figure exactly is the harness cross-check this table asks for |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by
@@ -265,6 +266,39 @@ of the consolidation, not as a substitute for the `db` gate.
   the live project is not, so an ordered aggregate over identical content differs. Sum instead.
 - Per-function hashes are only comparable when both sides use the *same* normalisation. Comparing a
   normalised list against a raw one makes every row look different.
+
+## Outstanding data review: `venue_channels.role = 'member'` (from 0160)
+
+Migration 0160 closed a hole in which the ordinary self-serve "list my venue on Food to Go" action
+conferred channel **membership** — member priority in ranking, the member badge, a row in the members
+directory — because `venue_channels.role` defaulted to `'member'` and the self-serve insert omitted
+it. That was live from 0154 (applied 2026-09-23) until 0160.
+
+0160 deliberately does **not** rewrite existing rows. `venue_channels` records `added_by`, but a row
+HQ added is indistinguishable from one a venue self-tagged: both carry a real user id, and pre-0154
+rows predate the role distinction entirely. Rewriting blind would demote legitimate members the
+Association placed. The Association decides; this query produces the list to decide from.
+
+```sql
+-- Every venue currently ranked and badged as a channel member, with whether the membership spine
+-- actually knows about it. `on_roster = false` is the set to review: ranked as a member with no
+-- roster row behind it, which is what the self-serve path used to produce.
+select v.id as venue_id, v.name, vc.added_by, vc.created_at,
+       exists (select 1 from channel_members m
+                where m.channel_id = vc.channel_id and m.venue_id = vc.venue_id) as on_roster
+  from venue_channels vc
+  join venues v on v.id = vc.venue_id
+  join channels c on c.id = vc.channel_id
+ where vc.role = 'member' and c.key = 'f2g'
+ order by on_roster, vc.created_at desc;
+```
+
+To demote a reviewed row, write the role rather than deleting the tag — the venue should stay listed
+on the storefront, it just stops being a member:
+
+```sql
+update venue_channels set role = 'listed' where venue_id = '<uuid>' and channel_id = '<uuid>';
+```
 
 ## Belt-and-braces in the app
 Even with this runbook, `@roam/core/channels` degrades gracefully if a channel-config column is

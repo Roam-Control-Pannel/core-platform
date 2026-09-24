@@ -32,8 +32,8 @@ insert into venues (id, name, geo, status, owner_id, categories) values
   ('00000000-0000-0000-0000-0000000e4903', 'Roster Cafe',
    ST_SetSRID(ST_MakePoint(-5.9320, 54.6020), 4326), 'unclaimed', null, array['cafe']);
 
-insert into venue_channels (channel_id, venue_id)
-  select id, '00000000-0000-0000-0000-0000000e4902' from channels where key = 'f2g';
+insert into venue_channels (channel_id, venue_id, role)
+  select id, '00000000-0000-0000-0000-0000000e4902', 'member' from channels where key = 'f2g';
 
 insert into channel_members (channel_id, source_name, membership_ref, venue_id, status)
   select id, 'Roster Cafe', 'F2G-0149-TEST', '00000000-0000-0000-0000-0000000e4903', 'claimed'

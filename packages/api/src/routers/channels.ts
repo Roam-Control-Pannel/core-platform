@@ -200,7 +200,15 @@ export const channelsRouter = router({
       }
       const { data: me } = await ctx.db.auth.getUser();
       try {
-        await channels.tagVenueIntoChannel(ctx.db, channel.id, input.venueId, me.user?.id ?? null);
+        // 'listed', always: this is the owner opting their own venue in. Membership is the
+        // Association's to grant, not the venue's to claim (0160).
+        await channels.tagVenueIntoChannel(
+          ctx.db,
+          channel.id,
+          input.venueId,
+          "listed",
+          me.user?.id ?? null,
+        );
       } catch (e) {
         throw new TRPCError({
           code: "FORBIDDEN",
