@@ -66,6 +66,14 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
+          # Resolving `latest` is a GitHub Releases API call. Unauthenticated, that shares a 60/hour
+          # quota with every other runner on the same egress IP, and on 2026-09-24 it ran out: the
+          # step failed in 0.2s with "Failed to resolve latest Supabase CLI release: rate limit
+          # exceeded", which reds the check suite and — because Railway gates deploys on it — stops
+          # production deploying. The action's own `github-token` input exists for exactly this; the
+          # per-repo token raises the quota to 1000/hour. No extra permissions needed: resolving a
+          # public release only needs an authenticated identity.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Starts only the Postgres container (not the full stack), so no auth/
       # storage/studio services and none of their env() secrets are needed.

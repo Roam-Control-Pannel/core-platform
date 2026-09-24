@@ -34,6 +34,13 @@
  * read still answers 200 with `[]` (RLS filters rows, not columns), so RLS-locked tables are probed
  * exactly like public ones — only a MISSING column produces the drift shape.
  *
+ * EXCEPT when the table's RLS policy calls a SECURITY DEFINER function that anon may not EXECUTE
+ * (0151's posture). Postgres then refuses the statement outright with SQLSTATE 42501 rather than
+ * returning an empty set, so such a table carries `expect: "denied"` and is asserted the other way
+ * round: a 42501 is the pass, and a 2xx is a HARDENING regression. This still proves the columns
+ * exist, because name resolution happens while the statement is planned — before the policy's
+ * function is ever called — so a missing column yields 42703 (drift) and never reaches 42501.
+ *
  * Keep each `columns` list to what the app actually selects (packages/core, packages/api, apps/web),
  * citing the migration that introduced it, so a failure names the migration to apply.
  */
@@ -74,7 +81,10 @@ export const REQUIRED_READS = [
   {
     table: "channel_feature_requests",
     columns: ["id", "channel_id", "created_by", "title", "category", "status", "roam_notes"],
-    reason: "partner feature requests + Roam's reply (migration 0159)",
+    // Its SELECT policy calls is_channel_officer → is_channel_admin, and 0151 revoked EXECUTE on
+    // those from anon, so an anonymous read is refused rather than answered with an empty set.
+    expect: "denied",
+    reason: "partner feature requests + Roam's reply — officers only (migration 0159)",
   },
   {
     table: "external_refs",
@@ -376,7 +386,7 @@ async function main() {
     process.exit(1);
   }
 
-  for (const { table, columns, reason } of REQUIRED_READS) {
+  for (const { table, columns, reason, expect = "ok" } of REQUIRED_READS) {
     const endpoint = `${url}/rest/v1/${table}?select=${columns.join(",")}&limit=1`;
     let res, body;
     try {
@@ -384,6 +394,20 @@ async function main() {
       body = await res.json().catch(() => null);
     } catch (e) {
       errors.push(`${table}: could not reach PostgREST (${e.message})`);
+      continue;
+    }
+    if (expect === "denied") {
+      // Drift is checked first: a missing column is refused while the statement is planned, before
+      // the policy's function runs, so it must not be mistaken for the expected refusal.
+      if (isDriftError(body)) {
+        drifts.push({ kind: "read", table, columns, reason, code: body?.code, message: body?.message });
+      } else if (isPermissionDenied(body)) {
+        console.log(`  ✓ ${table} (${columns.join(", ")}) — resolves and is denied to anon (officers only, as intended)`);
+      } else if (res.ok) {
+        regressions.push(`${table}: anon may READ an officers-only table (HTTP ${res.status}) — ${reason}`);
+      } else {
+        errors.push(`${table}: unexpected ${res.status} response — ${body?.message ?? "unknown error"}`);
+      }
       continue;
     }
     if (res.ok && Array.isArray(body)) {
