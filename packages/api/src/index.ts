@@ -22,6 +22,8 @@ export {
   type CouncilCount,
   type PortalOrderTotals,
   type VenueOrderTotals,
+  type PortalMemberRow,
+  type PortalMembersPage,
 } from "@roam/core/association";
 // f2g.claimWithInvite surfaces ClaimOutcome; adminActions.sendInvite surfaces SendInviteResult/Outcome.
 export { type ClaimOutcome, type ClaimResult, type SendInviteResult, type SendInviteOutcome } from "./f2g/invite.js";

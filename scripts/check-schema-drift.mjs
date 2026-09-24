@@ -144,6 +144,15 @@ export const RPC_PROBES = [
     reason: "Association portal aggregates are authenticated-only (migration 0157)",
   },
   {
+    // The members list carries the most sensitive shape in the portal, so its grant is watched too.
+    // Decision 5.2 keeps contact details out of the function's signature entirely; this probe guards
+    // the other half — that reaching it at all requires being signed in.
+    name: "channel_portal_members",
+    args: { p_channel_id: "00000000-0000-0000-0000-000000000000" },
+    expect: "denied",
+    reason: "Association portal members list is authenticated-only (migration 0158)",
+  },
+  {
     name: "order_channel_for_venue",
     args: { p_venue_id: "00000000-0000-0000-0000-000000000000" },
     expect: "denied",

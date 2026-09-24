@@ -320,7 +320,7 @@ where data corruption lives, and a one-way pull has to prove itself first.
 |---|---|---|---|---|
 | 3.1 | `channel_admins` (0156) + `associationProcedure` + HQ officer management + pgTAP scoping proof | 4.3 B | 2 | **DONE** |
 | 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped (0157) | 4.3 B/H | 3 | **DONE** |
-| 3.3 | `/association` UI: overview, members list + CSV, feature requests | 4.3 B | 3 | |
+| 3.3 | `/association` UI: overview, members list + CSV (0158). Feature requests land with 3.4, which creates their table | 4.3 B | 3 | **DONE** |
 | 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 | |
 
 **3.2 as built, and two things the schema forced.** The aggregates are SECURITY DEFINER RPCs that each

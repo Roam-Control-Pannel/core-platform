@@ -112,6 +112,122 @@ export async function getOrderTotals(
   };
 }
 
+/**
+ * One row of the portal's members list. Decision 5.2 Option A: business, venue, council, membership
+ * number, status, activation date — and no personal contact details, which are not columns of the
+ * RPC at all rather than columns this interface declines to declare.
+ */
+export interface PortalMemberRow {
+  memberId: string;
+  business: string;
+  /** Null until the Association introduces membership numbers in 2027. */
+  memberNo: string | null;
+  venueId: string | null;
+  venueName: string | null;
+  venueSlug: string | null;
+  council: string | null;
+  status: string;
+  /** When someone claimed this roster row. Null while it is still unclaimed. */
+  activatedAt: string | null;
+}
+
+export interface PortalMembersPage {
+  rows: PortalMemberRow[];
+  /** Total matching rows, for paging. Comes from the same query as the page it labels. */
+  total: number;
+}
+
+/**
+ * `| undefined` is spelled out on every optional field because the workspace runs
+ * `exactOptionalPropertyTypes`. A zod-parsed input arrives with the key present and the value
+ * undefined, which that flag treats as distinct from the key being absent.
+ */
+export interface PortalMembersFilter {
+  status?: string | null | undefined;
+  council?: string | null | undefined;
+  query?: string | null | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export async function getPortalMembers(
+  client: RoamClient,
+  channelId: string,
+  filter: PortalMembersFilter = {},
+): Promise<PortalMembersPage> {
+  const { data, error } = await rpc(client).rpc("channel_portal_members", {
+    p_channel_id: channelId,
+    p_status: filter.status ?? null,
+    p_council: filter.council ?? null,
+    p_query: filter.query ?? null,
+    p_limit: filter.limit ?? 50,
+    p_offset: filter.offset ?? 0,
+  });
+  if (error) throw new Error(`association: members list failed: ${error.message}`);
+  const raw = (data as any[]) ?? [];
+  return {
+    // total_count rides on every row; an empty page legitimately means zero matches.
+    total: raw.length > 0 ? Number(raw[0].total_count ?? 0) : 0,
+    rows: raw.map((r) => ({
+      memberId: String(r.member_id),
+      business: String(r.business ?? ""),
+      memberNo: r.member_no ?? null,
+      venueId: r.venue_id ?? null,
+      venueName: r.venue_name ?? null,
+      venueSlug: r.venue_slug ?? null,
+      council: r.council ?? null,
+      status: String(r.status ?? ""),
+      activatedAt: r.activated_at ?? null,
+    })),
+  };
+}
+
+/** The members-list CSV header, in the order the export writes them. */
+export const MEMBERS_CSV_COLUMNS = [
+  "Business",
+  "Membership number",
+  "Venue",
+  "Council",
+  "Status",
+  "Activated",
+] as const;
+
+/**
+ * Escape one CSV field per RFC 4180: quote when the value contains a comma, quote, CR or LF, and
+ * double any embedded quotes.
+ *
+ * There is one extra rule that is not RFC 4180 and is not optional. A field beginning with `=`,
+ * `+`, `-`, `@`, tab or CR is prefixed with a single quote, because Excel and Sheets treat such a
+ * value as a FORMULA. A member called `=cmd|'/c calc'!A1` would otherwise become an attack on
+ * whoever opens the export — and this data arrives from a partner's CRM, so its contents are not
+ * ours to trust. The prefix is the documented defence and it is visible in the cell rather than
+ * silently altering the value.
+ */
+export function csvField(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  const injectionRisk = /^[=+\-@\t\r]/.test(s);
+  const body = injectionRisk ? `'${s}` : s;
+  return /[",\r\n]/.test(body) ? `"${body.replace(/"/g, '""')}"` : body;
+}
+
+/** Render the members list as CSV. CRLF line endings, as RFC 4180 specifies. */
+export function membersToCsv(rows: PortalMemberRow[]): string {
+  const lines = [MEMBERS_CSV_COLUMNS.map(csvField).join(",")];
+  for (const r of rows) {
+    lines.push(
+      [
+        csvField(r.business),
+        csvField(r.memberNo ?? ""),
+        csvField(r.venueName ?? ""),
+        csvField(r.council ?? ""),
+        csvField(r.status),
+        csvField(r.activatedAt ? r.activatedAt.slice(0, 10) : ""),
+      ].join(","),
+    );
+  }
+  return lines.join("\r\n");
+}
+
 export interface VenueOrderTotals {
   venueId: string;
   venueName: string;

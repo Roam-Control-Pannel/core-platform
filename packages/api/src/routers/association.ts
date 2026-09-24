@@ -77,6 +77,74 @@ export const associationRouter = router({
     }
   }),
 
+  /**
+   * The members list (decision 5.2, Option A): business, membership number, venue, council, status,
+   * activation date. No contact details — they are not columns of the RPC, so this cannot leak them
+   * by adding a field here.
+   */
+  members: associationProcedure
+    .input(
+      z.object({
+        status: z.enum(["imported", "invited", "claimed", "live", "lapsed", "removed"]).nullish(),
+        council: z.string().max(120).nullish(),
+        query: z.string().max(200).nullish(),
+        limit: z.number().int().min(1).max(200).default(50),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        return await association.getPortalMembers(ctx.service, ctx.association.channelId, input);
+      } catch (e) {
+        boom(e, "Failed to load members.");
+      }
+    }),
+
+  /**
+   * The same list as CSV. Built server-side so the escaping — including the leading apostrophe that
+   * stops Excel executing a business name as a formula — lives in one tested place rather than being
+   * reimplemented in the browser.
+   *
+   * Capped at 5,000 rows: an association roster is hundreds, so the cap only ever bites on a runaway,
+   * and `truncated` tells the UI to say so rather than handing over a silently partial export.
+   */
+  membersCsv: associationProcedure
+    .input(
+      z.object({
+        status: z.enum(["imported", "invited", "claimed", "live", "lapsed", "removed"]).nullish(),
+        council: z.string().max(120).nullish(),
+        query: z.string().max(200).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const CAP = 5000;
+      try {
+        const page = await association.getPortalMembers(ctx.service, ctx.association.channelId, {
+          ...input,
+          limit: 500,
+          offset: 0,
+        });
+        const rows = [...page.rows];
+        // The RPC caps a page at 500, so walk it rather than asking for a number it will refuse.
+        while (rows.length < Math.min(page.total, CAP)) {
+          const next = await association.getPortalMembers(ctx.service, ctx.association.channelId, {
+            ...input,
+            limit: 500,
+            offset: rows.length,
+          });
+          if (next.rows.length === 0) break; // defensive: never spin if the RPC stops yielding
+          rows.push(...next.rows);
+        }
+        return {
+          csv: association.membersToCsv(rows.slice(0, CAP)),
+          rowCount: Math.min(rows.length, CAP),
+          truncated: page.total > CAP,
+        };
+      } catch (e) {
+        boom(e, "Failed to export members.");
+      }
+    }),
+
   /** Per-member-venue order totals — the half of Option B that makes the portal worth opening. */
   orderTotalsByVenue: associationProcedure.input(period).query(async ({ ctx, input }) => {
     try {
