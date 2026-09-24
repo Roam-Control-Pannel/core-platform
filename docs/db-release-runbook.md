@@ -225,7 +225,7 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0158: **`278440079767` across 128 functions**.
+Expected value as of migration 0159: **`284458429678` across 130 functions**.
 
 | After | canonical_sum | fns | What moved |
 |---|---|---|---|
@@ -235,6 +235,7 @@ Expected value as of migration 0158: **`278440079767` across 128 functions**.
 | 0156 | `267909696849` | 123 | `channel_admins_guard_client_roles` + `is_channel_admin` added — **confirmed against live 2026-09-23** |
 | 0157 | `274280598490` | 127 | the four `channel_portal_*` aggregates added |
 | 0158 | `278440079767` | 128 | `channel_portal_members` added |
+| 0159 | `284458429678` | 130 | `is_channel_officer` + `channel_feature_requests_guard_client_roles` added |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by

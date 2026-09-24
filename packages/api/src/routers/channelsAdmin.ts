@@ -54,6 +54,20 @@ export const channelsAdminRouter = router({
       }
     }),
 
+  /**
+   * The cross-partner feature-request queue (plan 3.4). Not scoped to one channel: triage is a
+   * Roam-wide job, and seeing every partner's requests together is the point of a queue.
+   */
+  featureRequests: adminProcedure
+    .input(z.object({ status: z.string().max(20).nullish(), limit: z.number().int().min(1).max(500).default(100) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await admin.listFeatureRequestQueue(ctx.service, { status: input.status ?? null, limit: input.limit });
+      } catch (e) {
+        boom(e, "Failed to load the feature-request queue.");
+      }
+    }),
+
   /** A page of a channel's roster, newest first, filterable by status / council / name search. */
   roster: adminProcedure
     .input(

@@ -72,6 +72,11 @@ export const REQUIRED_READS = [
     reason: "partner organisation officers — the Association portal's authority (migration 0156)",
   },
   {
+    table: "channel_feature_requests",
+    columns: ["id", "channel_id", "created_by", "title", "category", "status", "roam_notes"],
+    reason: "partner feature requests + Roam's reply (migration 0159)",
+  },
+  {
     table: "external_refs",
     columns: ["id", "entity_type", "entity_id", "dataset", "external_id", "method"],
     reason: "roster ↔ venue / FSA match ledger (migration 0137)",

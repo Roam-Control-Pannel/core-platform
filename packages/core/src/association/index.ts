@@ -228,6 +228,109 @@ export function membersToCsv(rows: PortalMemberRow[]): string {
   return lines.join("\r\n");
 }
 
+// ── feature requests (plan 3.4) ─────────────────────────────────────────────────────────────────
+
+export const FEATURE_REQUEST_CATEGORIES = [
+  "storefront",
+  "members",
+  "jobs",
+  "suppliers",
+  "reporting",
+  "other",
+] as const;
+
+export const FEATURE_REQUEST_STATUSES = [
+  "new",
+  "triaged",
+  "planned",
+  "in_progress",
+  "shipped",
+  "declined",
+] as const;
+
+export interface FeatureRequest {
+  id: string;
+  channelId: string;
+  createdBy: string | null;
+  title: string;
+  detail: string | null;
+  category: string;
+  status: string;
+  /** Roam's reply. Visible to the partner by design — this is the reply channel. */
+  roamNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function toFeatureRequest(r: any): FeatureRequest {
+  return {
+    id: String(r.id),
+    channelId: String(r.channel_id),
+    createdBy: r.created_by ?? null,
+    title: String(r.title ?? ""),
+    detail: r.detail ?? null,
+    category: String(r.category ?? "other"),
+    status: String(r.status ?? "new"),
+    roamNotes: r.roam_notes ?? null,
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  };
+}
+
+type Table = { from: (t: string) => any };
+const tbl = (client: RoamClient): Table => client as unknown as Table;
+
+/**
+ * This channel's requests, newest first.
+ *
+ * Takes the CALLER'S OWN client, not a service client: the read runs against the
+ * `channel_feature_requests_read` policy, so the containment is enforced by RLS rather than by this
+ * function remembering to filter. A caller with no appointment gets an empty list from the database
+ * itself.
+ */
+export async function listFeatureRequests(client: RoamClient, channelId: string): Promise<FeatureRequest[]> {
+  const { data, error } = await tbl(client)
+    .from("channel_feature_requests")
+    .select("id, channel_id, created_by, title, detail, category, status, roam_notes, created_at, updated_at")
+    .eq("channel_id", channelId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`association: feature requests failed: ${error.message}`);
+  return ((data as any[]) ?? []).map(toFeatureRequest);
+}
+
+/**
+ * File a request, under the caller's own client.
+ *
+ * Deliberately NOT a service-role insert. The INSERT policy checks `is_channel_officer(channel_id)`
+ * and `created_by = auth.uid()`; running as the service role would bypass both, and `createdBy`
+ * would become a value this code asserts rather than one the database verified. Everything that
+ * makes the write safe — officer not viewer, own channel, own name, untriaged, no Roam notes — is in
+ * the policy, so the write must go through it.
+ */
+export async function createFeatureRequest(
+  client: RoamClient,
+  input: { channelId: string; createdBy: string; title: string; detail?: string | null; category?: string | null },
+): Promise<FeatureRequest> {
+  const category = FEATURE_REQUEST_CATEGORIES.includes((input.category ?? "other") as never)
+    ? (input.category ?? "other")
+    : "other";
+  const { data, error } = await tbl(client)
+    .from("channel_feature_requests")
+    .insert({
+      channel_id: input.channelId,
+      created_by: input.createdBy,
+      title: input.title.trim(),
+      detail: input.detail?.trim() || null,
+      category,
+    })
+    .select("id, channel_id, created_by, title, detail, category, status, roam_notes, created_at, updated_at")
+    .single();
+  if (error) throw new Error(`association: could not file the request: ${error.message}`);
+  return toFeatureRequest(data);
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export interface VenueOrderTotals {
   venueId: string;
   venueName: string;

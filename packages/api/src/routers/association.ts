@@ -15,6 +15,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { association } from "@roam/core";
 import { router, associationProcedure } from "../trpc.js";
+import { notifyOps } from "../observability/ops.js";
 
 function boom(e: unknown, fallback: string): never {
   throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e instanceof Error ? e.message : fallback });
@@ -143,6 +144,74 @@ export const associationRouter = router({
       } catch (e) {
         boom(e, "Failed to export members.");
       }
+    }),
+
+  /**
+   * The organisation's requests to Roam, and Roam's replies (plan 3.4).
+   *
+   * Read through `ctx.db` — the caller's own client — rather than `ctx.service`, so the read runs
+   * against the RLS policy instead of relying on this handler to filter correctly.
+   */
+  featureRequests: associationProcedure.query(async ({ ctx }) => {
+    try {
+      return await association.listFeatureRequests(ctx.db, ctx.association.channelId);
+    } catch (e) {
+      boom(e, "Failed to load requests.");
+    }
+  }),
+
+  /**
+   * File a request. Officers only — enforced by the INSERT policy, not by this handler.
+   *
+   * Written with `ctx.db` deliberately: the service client would bypass the very policy that checks
+   * the caller is an officer of this channel and that `created_by` is really them. A viewer's
+   * attempt fails in the database, which is where it should fail.
+   */
+  createFeatureRequest: associationProcedure
+    .input(
+      z.object({
+        title: z.string().trim().min(3).max(140),
+        detail: z.string().trim().max(4000).nullish(),
+        category: z.enum(association.FEATURE_REQUEST_CATEGORIES).default("other"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let created;
+      try {
+        const { data: authData } = await ctx.db.auth.getUser();
+        const uid = authData?.user?.id;
+        if (!uid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to file a request." });
+        created = await association.createFeatureRequest(ctx.db, {
+          channelId: ctx.association.channelId,
+          createdBy: uid,
+          title: input.title,
+          detail: input.detail ?? null,
+          category: input.category,
+        });
+      } catch (e) {
+        if (e instanceof TRPCError) throw e;
+        // The commonest cause is a VIEWER trying to file: the policy refuses and Postgres reports a
+        // row-level-security violation. Say what it means rather than surfacing the raw error.
+        const msg = e instanceof Error ? e.message : "";
+        if (/row-level security|violates/i.test(msg)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only officers can file a request. Ask Roam to change your role if you need to.",
+          });
+        }
+        boom(e, "Failed to file the request.");
+      }
+
+      // Tell Roam. Deliberately the ops alert channel rather than a second internal e-mail path:
+      // it already exists, dedupes, and never throws. A failure here must not lose the request, so
+      // it is fire-and-forget AFTER the row is committed.
+      void notifyOps({
+        key: `association.request:${created.id}`,
+        title: `Feature request from ${ctx.association.channelName ?? ctx.association.channelKey ?? "a partner"}`,
+        detail: `${created.title}\ncategory: ${created.category}\n\n${created.detail ?? "(no detail)"}`,
+      });
+
+      return created;
     }),
 
   /** Per-member-venue order totals — the half of Option B that makes the portal worth opening. */

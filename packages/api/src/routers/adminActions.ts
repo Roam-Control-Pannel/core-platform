@@ -20,6 +20,8 @@ import { sendMemberInvite } from "../f2g/invite.js";
 import { router, adminProcedure } from "../trpc.js";
 import type { Context } from "../context.js";
 import type { AdminRole } from "../trpc.js";
+import { sendTransactionalEmail } from "../brevo/transactional.js";
+import { renderFeatureRequestUpdate } from "../f2g/featureRequestEmail.js";
 
 type ActingCtx = Context & { service: import("@roam/db").RoamClient; admin: { id: string; role: AdminRole } };
 
@@ -208,6 +210,67 @@ export const adminActionsRouter = router({
       } catch (e) {
         fail(e, "Failed to appoint channel officer.");
       }
+    }),
+
+  /**
+   * Triage a partner's feature request: set its status and/or write Roam's reply (plan 3.4).
+   *
+   * `channel_feature_requests` has no client UPDATE policy, so this service-role path is the only
+   * way either field is ever written. Audited by the core action.
+   *
+   * The officer who filed it is then e-mailed — the partner is external, so this half really is
+   * mail, unlike Roam's own notification, which goes to the ops alert channel. The send is after the
+   * write and never fails the mutation: a bounced notification must not leave the queue looking
+   * untriaged.
+   */
+  setChannelFeatureRequest: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.enum(["new", "triaged", "planned", "in_progress", "shipped", "declined"]).nullish(),
+        roamNotes: z.string().max(4000).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let row;
+      try {
+        row = await admin.setFeatureRequestStatus(ctx.service, await actor(ctx as ActingCtx), input.id, {
+          status: input.status ?? null,
+          ...("roamNotes" in input ? { roamNotes: input.roamNotes ?? null } : {}),
+        });
+      } catch (e) {
+        fail(e, "Failed to update the feature request.");
+      }
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No such feature request." });
+
+      let notified = false;
+      if (row.createdBy) {
+        try {
+          const { data } = await ctx.service.auth.admin.getUserById(row.createdBy);
+          const to = data?.user?.email;
+          if (to) {
+            const base = ctx.env.stripe.webOrigin.replace(/\/+$/, "");
+            const rendered = renderFeatureRequestUpdate({
+              title: row.title,
+              status: row.status,
+              roamNotes: row.roamNotes,
+              channelName: row.channelName ?? "your organisation",
+              portalUrl: `${base}/association`,
+            });
+            notified = await sendTransactionalEmail(
+              ctx.env.brevo.apiKey,
+              { email: ctx.env.brevo.senderEmail, name: ctx.env.brevo.senderName },
+              { toEmail: to, subject: rendered.subject, htmlContent: rendered.html, textContent: rendered.text },
+            );
+          }
+        } catch {
+          // Deliberately swallowed: the triage is already committed and audited. Reporting a send
+          // failure as a failed mutation would invite a retry that re-triages an already-triaged row.
+          notified = false;
+        }
+      }
+
+      return { ok: true as const, status: row.status, notified };
     }),
 
   /** Revoke a partner officer's role. Idempotent — revoking a role nobody holds is not an error. */

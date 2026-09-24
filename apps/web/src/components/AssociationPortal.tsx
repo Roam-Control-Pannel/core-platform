@@ -20,7 +20,7 @@ import { useTrpc, useSession } from "./TrpcProvider";
 import { AuthPanel } from "./AuthPanel";
 import { formatPence } from "../lib/money";
 
-type Tab = "overview" | "members";
+type Tab = "overview" | "members" | "requests";
 
 interface Me { channelId: string; channelKey: string | null; channelName: string | null; role: string }
 interface Overview {
@@ -42,6 +42,10 @@ interface MemberRow {
   venueName: string | null; council: string | null; status: string; activatedAt: string | null;
 }
 interface MembersPage { rows: MemberRow[]; total: number }
+interface FeatureRequest {
+  id: string; title: string; detail: string | null; category: string;
+  status: string; roamNotes: string | null; createdAt: string;
+}
 
 const STATUSES = ["imported", "invited", "claimed", "live", "lapsed", "removed"] as const;
 const PAGE = 50;
@@ -102,14 +106,14 @@ export function AssociationPortal() {
       </header>
 
       <div style={{ display: "flex", gap: 8, marginBottom: "var(--space-4)" }}>
-        {(["overview", "members"] as Tab[]).map((t) => (
+        {(["overview", "members", "requests"] as Tab[]).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)} style={tabBtn(tab === t)}>
-            {t === "overview" ? "Overview" : "Members"}
+            {t === "overview" ? "Overview" : t === "members" ? "Members" : "Requests"}
           </button>
         ))}
       </div>
 
-      {tab === "overview" ? <OverviewTab /> : <MembersTab />}
+      {tab === "overview" ? <OverviewTab /> : tab === "members" ? <MembersTab /> : <RequestsTab canFile={me.role === "officer"} />}
     </main>
   );
 }
@@ -363,6 +367,109 @@ function MembersTab() {
         Member contact details are not shown here: your organisation already holds them, so the portal
         does not repeat them.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Requests — what the organisation has asked Roam for, and Roam's reply.
+ *
+ * `canFile` reflects the officer/viewer distinction, but only to shape the UI: the database refuses
+ * a viewer's insert regardless, so hiding the composer is a courtesy rather than the control. A
+ * viewer who reached the form anyway would get a clear FORBIDDEN, not a silent failure.
+ */
+function RequestsTab({ canFile }: { canFile: boolean }) {
+  const trpc = useTrpc();
+  const [rows, setRows] = useState<FeatureRequest[] | undefined>(undefined);
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [category, setCategory] = useState("other");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  const load = useCallback(() => {
+    (trpc as any).association.featureRequests
+      .query()
+      .then((r: FeatureRequest[]) => setRows(r ?? []))
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Could not load requests."));
+  }, [trpc]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function file() {
+    if (title.trim().length < 3) { setErr("Give the request a short title."); return; }
+    setBusy(true); setErr(null); setSent(false);
+    try {
+      await (trpc as any).association.createFeatureRequest.mutate({
+        title: title.trim(),
+        detail: detail.trim() || null,
+        category,
+      });
+      setTitle(""); setDetail(""); setCategory("other"); setSent(true);
+      load();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Could not file the request.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: "var(--space-4)" }}>
+      {canFile ? (
+        <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "var(--space-3)" }}>
+          <h2 style={h2}>Ask Roam for something</h2>
+          <div style={{ display: "grid", gap: 8 }}>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What would help your members?" style={input} maxLength={140} />
+            <textarea value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Any detail (optional)" rows={3} style={{ ...input, resize: "vertical" }} maxLength={4000} />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category" style={input}>
+                {["storefront", "members", "jobs", "suppliers", "reporting", "other"].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <button type="button" onClick={() => void file()} disabled={busy} style={{ ...input, cursor: busy ? "default" : "pointer", fontWeight: 700 }}>
+                {busy ? "Sending…" : "Send to Roam"}
+              </button>
+              {sent ? <span style={{ fontSize: 13, color: "var(--ink-2)" }}>Sent. Roam has been notified.</span> : null}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <p style={note}>
+          You can read your organisation&rsquo;s requests. Filing one is an officer&rsquo;s job &mdash;
+          ask Roam if your role should change.
+        </p>
+      )}
+
+      {err ? <p style={errStyle}>{err}</p> : null}
+
+      {rows === undefined ? (
+        <div style={skeleton} aria-hidden />
+      ) : rows.length === 0 ? (
+        <p style={note}>No requests yet.</p>
+      ) : (
+        <div style={{ display: "grid", gap: "var(--space-2)" }}>
+          {rows.map((r) => (
+            <article key={r.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "var(--space-3)" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <strong style={{ fontSize: 14.5 }}>{r.title}</strong>
+                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--ink-2)" }}>{r.category}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 11.5, fontWeight: 700 }}>{r.status.replace(/_/g, " ")}</span>
+              </div>
+              {r.detail ? <p style={{ margin: "6px 0 0", fontSize: 13.5, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{r.detail}</p> : null}
+              {r.roamNotes ? (
+                <p style={{ margin: "10px 0 0", padding: "8px 11px", borderRadius: 8, background: "var(--paper-2)", fontSize: 13.5, whiteSpace: "pre-wrap" }}>
+                  <strong>Roam:</strong> {r.roamNotes}
+                </p>
+              ) : null}
+              <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--ink-2)" }}>Filed {r.createdAt.slice(0, 10)}</div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

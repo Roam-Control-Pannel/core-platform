@@ -321,7 +321,21 @@ where data corruption lives, and a one-way pull has to prove itself first.
 | 3.1 | `channel_admins` (0156) + `associationProcedure` + HQ officer management + pgTAP scoping proof | 4.3 B | 2 | **DONE** |
 | 3.2 | Aggregate RPCs (members funnel, venues by council, FSA share among members, jobs, suppliers, orders per §5.3), channel-scoped (0157) | 4.3 B/H | 3 | **DONE** |
 | 3.3 | `/association` UI: overview, members list + CSV (0158). Feature requests land with 3.4, which creates their table | 4.3 B | 3 | **DONE** |
-| 3.4 | `channel_feature_requests` + RLS + HQ queue + Brevo notifications both ways | 4.3 B/H | 3 | |
+| 3.4 | `channel_feature_requests` + RLS + HQ queue + notifications both ways (0159) | 4.3 B/H | 3 | **DONE** |
+
+**3.4 as built.** The portal's first client-writable table, so the work is in what the policies
+refuse. `is_channel_officer` is added alongside 0156's `is_channel_admin`, because officer and viewer
+are genuinely different authorities: a viewer reads every request and files none. The INSERT policy's
+WITH CHECK refuses a request filed for another channel, attributed to someone else, arriving
+pre-triaged, or carrying Roam's reply. There is **no UPDATE or DELETE policy at all** — once filed, a
+request is Roam's to triage, and the tripwire trigger refuses a client UPDATE/DELETE even if a policy
+is added later. An officer who wants to say more files another request.
+
+*Notifications are not Brevo in both directions.* Roam's own notification goes through `notifyOps`,
+the alert channel this service already has — adding a second internal e-mail path would be a parallel
+mechanism with its own failure mode, and `ALERT_WEBHOOK_URL` unset simply falls back to stderr. The
+partner-side reply is Brevo, because that recipient is external. The HQ queue reports whether the
+e-mail actually went, rather than showing a bare "saved" that could hide a bounce.
 
 **3.2 as built, and two things the schema forced.** The aggregates are SECURITY DEFINER RPCs that each
 re-ask `is_channel_admin` themselves, because they are PostgREST-reachable: a signed-in user can call
