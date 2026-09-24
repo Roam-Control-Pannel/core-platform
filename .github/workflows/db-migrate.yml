@@ -50,6 +50,9 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
+          # See the note in ci.yml: resolving `latest` unauthenticated shares a 60/hour GitHub API
+          # quota across runners and has already exhausted it in practice.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Link project
         if: steps.guard.outputs.configured == 'true'
