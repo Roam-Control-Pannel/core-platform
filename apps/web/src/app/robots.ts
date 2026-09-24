@@ -22,7 +22,13 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/account", "/following", "/friends", "/notifications", "/threads", "/plans", "/dashboard", "/api/"],
+        // `/admin-login` and `/association` are a partner organisation's private entrance and portal.
+        // Neither was listed before, which left a sign-in page for a handful of named officers in the
+        // crawlable set. Both pages also carry a noindex meta tag, for crawlers that arrive by link.
+        disallow: [
+          "/account", "/following", "/friends", "/notifications", "/threads", "/plans", "/dashboard",
+          "/admin-login", "/association", "/api/",
+        ],
       },
     ],
     sitemap: `${base}/sitemap.xml`,
