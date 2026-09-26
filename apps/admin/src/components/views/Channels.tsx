@@ -321,7 +321,7 @@ function DomainsEditor({ channelKey, canAct }: { channelKey: string; canAct: boo
 
 /* ------------------------------------------------------------------------- roster */
 
-interface RosterRow { id: string; sourceName: string; sourceCouncil: string | null; sourceEmail: string | null; status: string; membershipRef: string; venueId: string | null; venue: { name: string; slug: string } | null; createdAt: string }
+interface RosterRow { id: string; sourceName: string; sourceCouncil: string | null; sourceEmailMasked: string | null; hasEmail: boolean; status: string; membershipRef: string; venueId: string | null; venue: { name: string; slug: string } | null; createdAt: string }
 
 function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean }) {
   const trpc = useTrpc();
@@ -406,6 +406,23 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
     }
   };
 
+  // 2.5 — PII. The list carries only a mask; this fetches ONE real address and the server records
+  // that it did. Kept in component state only, so it is gone on reload rather than accumulating a
+  // screenful of contact details nobody is still looking at.
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const reveal = async (memberId: string) => {
+    setErr(null);
+    const mut = trpc.adminActions.revealMemberEmail as unknown as {
+      mutate: (i: { channelKey: string; memberId: string }) => Promise<{ email: string | null }>;
+    };
+    try {
+      const r = await mut.mutate({ channelKey, memberId });
+      setRevealed((m) => ({ ...m, [memberId]: r.email ?? "—" }));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not reveal that email.");
+    }
+  };
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <form onSubmit={(e) => { e.preventDefault(); setOffset(0); load(true); }} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -453,8 +470,18 @@ function RosterTab({ channelKey, canAct }: { channelKey: string; canAct: boolean
                 ) : null}
               </span>
               <span style={{ flex: 2, color: C.inkSoft, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <span style={{ fontFamily: F.mono, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sourceEmail ?? "—"}</span>
-                {canAct && r.venueId && r.sourceEmail && (r.status === "imported" || r.status === "invited") ? (
+                <span style={{ fontFamily: F.mono, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {revealed[r.id] ?? r.sourceEmailMasked ?? "—"}
+                </span>
+                {/* 2.5: the real address is fetched one row at a time and the fetch is audited. The
+                    list itself never carries it, so nothing here can leak what it was never sent. */}
+                {r.hasEmail && !revealed[r.id] ? (
+                  <button type="button" onClick={() => void reveal(r.id)} style={smallGhost}
+                    title="Show the full address — this is recorded in the audit log">
+                    Reveal
+                  </button>
+                ) : null}
+                {canAct && r.venueId && r.hasEmail && (r.status === "imported" || r.status === "invited") ? (
                   invite[r.id] ? (
                     <span style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>{invite[r.id]}</span>
                   ) : (
