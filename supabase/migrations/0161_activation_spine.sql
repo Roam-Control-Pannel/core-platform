@@ -20,13 +20,20 @@
 --      attempts to be audited; a table nobody can rewrite is the only way that claim means anything.
 --   3. `activate_channel_member_venue` — the conferral, extending 0139/0154's claim definer.
 --
--- AND ONE REMOVAL. `venue_channels_owner_write` is dropped outright. §3.2: "PostgREST self-tagging
--- into any channel is removed". 0160 narrowed that policy to `role = 'listed'` as an emergency fix
--- while the escalation was live, which closed the privilege escalation but left a signed-in owner
--- able to tag their venue into ANY channel directly through PostgREST — bypassing the
--- Northern-Ireland fence that exists only in the tRPC router (`f2g.isVenueInFoodToGoRegion`). With
--- the policy gone, `venue_channels` has no client-writable path at all: listing goes through
--- `tag_venue_listing` below, called service-side after the router has checked the fence.
+-- AND ONE REMOVAL — WHICH IS NOT HERE. §3.2 also says "PostgREST self-tagging into any channel is
+-- removed", i.e. `venue_channels_owner_write` must go. That drop is 0163, NOT this file, and the
+-- split is the point rather than an accident.
+--
+-- THIS MIGRATION IS DELIBERATELY ADDITIVE. "Schema leads code" (the release runbook) holds for a
+-- migration that ADDS something the app will read: apply it, then deploy. A migration that REMOVES
+-- something the RUNNING code still depends on has to go the other way round — deploy first, then
+-- drop — or the window between the two is an outage.
+--
+-- Bundling both halves in one file made both rules impossible to satisfy at once, and deadlocked in
+-- practice: the schema-drift guard went red the moment this merged (the tables it probes were not
+-- applied yet), the deploy host gates on the check suite and so would not ship the code that stops
+-- needing the policy, and the policy could not safely be dropped until that code shipped. Expand
+-- here; contract in 0163, once the router calls `tag_venue_listing` instead of writing the table.
 --
 -- WHY THE DEFINER STILL REQUIRES AN ALREADY-BOUND PAIR. §3.2 also says an unbound roster row binds
 -- only when the roster postcode matches the venue. That rule is NOT enforced here, deliberately.
@@ -239,13 +246,14 @@ comment on function activate_channel_member_venue(uuid, uuid, uuid) is
   '(NOT_CLAIMABLE). Idempotent no-op on a same-claimant re-run. NOT granted to anon/authenticated — '
   'the API calls it with the service client only after e-mail possession has been proved.';
 
--- ── 5. the listing tag, service-side only ───────────────────────────────────────────────────────
-drop policy if exists venue_channels_owner_write on venue_channels;
-
--- With the policy gone the owner has no PostgREST write at all, so listing and unlisting run through
--- these. They are SECURITY DEFINER and NOT granted to client roles: the ownership test lives here so
--- it cannot be forgotten by a caller, and the Northern-Ireland fence stays in the router, which is
--- now the only thing that can reach them.
+-- ── 5. the listing tag, service-side ────────────────────────────────────────────────────────────
+-- These are what the router will call INSTEAD of writing venue_channels through the caller's own
+-- client. They are SECURITY DEFINER and NOT granted to client roles: the ownership test lives here
+-- so a caller cannot forget it, and the region fence stays in the router.
+--
+-- The matching REMOVAL of `venue_channels_owner_write` is deliberately NOT here — it is 0163. See
+-- the header: this migration is additive so it can be applied to a live database whose running code
+-- still needs that policy.
 create or replace function tag_venue_listing(
   p_venue_id   uuid,
   p_channel_id uuid,
@@ -331,10 +339,3 @@ comment on function untag_venue_listing(uuid, uuid, uuid) is
   'Service-role self-serve unlisting (F2G plan 2.4). Deletes the venue_channels row only when the '
   'actor owns the venue AND the row is role=''listed''; refuses to remove a ''member'' tag, which '
   'would un-rank a member the Association placed. NOT granted to anon/authenticated.';
-
-comment on column venue_channels.role is
-  '''member'' — ranked and badged as a channel member. ''listed'' — a non-member that opted its venue '
-  'into the storefront: listed, never ranked or badged. NO DEFAULT, deliberately (0160). There is NO '
-  'client-writable path to this table at all since 0161 dropped venue_channels_owner_write: '
-  '''listed'' comes from tag_venue_listing, ''member'' from an audited HQ action or '
-  'activate_channel_member_venue, and all three are service-role only.';
