@@ -187,6 +187,30 @@ export const adminActionsRouter = router({
    * staff-only and audited. Re-appointing the same person updates their role; `channel_admins` has
    * no client write policy, so this path is the only way such a row can exist.
    */
+  /**
+   * Reveal ONE roster member's e-mail, and record that it happened (F2G plan 2.5).
+   *
+   * A mutation rather than a query, deliberately: it has a side effect — the audit row — and must
+   * never be cached, batched or prefetched by a client that merely rendered a list.
+   */
+  revealMemberEmail: adminProcedure
+    .input(
+      z.object({
+        channelKey: z.string().min(1).max(32),
+        memberId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await admin.revealMemberEmail(ctx.service, await actor(ctx as ActingCtx), {
+          channelKey: input.channelKey,
+          memberId: input.memberId,
+        });
+      } catch (e) {
+        fail(e, "Failed to reveal the member's email.");
+      }
+    }),
+
   setChannelOfficer: adminProcedure
     .input(
       z.object({

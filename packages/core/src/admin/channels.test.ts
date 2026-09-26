@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { RoamClient } from "@roam/db";
 import {
   channelRoster,
+  revealMemberEmail,
   channelOnboardingStats,
   setChannelConfig,
   addChannelDomain,
@@ -17,15 +18,23 @@ import {
 function makeClient(opts: {
   channel?: any | null;
   memberRows?: any[];
+  /** What a `channel_members` maybeSingle() resolves to (revealMemberEmail reads one row). */
+  memberSingle?: any | null;
   audit: any[];
   writes: any[];
 }): RoamClient {
   const client: any = {
     from(table: string) {
       const state: any = { op: "select", payload: null, filters: {} };
+      let single = false;
       const runRead = () =>
         Promise.resolve({
-          data: table === "channels" ? (opts.channel ?? null) : table === "channel_members" ? (opts.memberRows ?? []) : [],
+          data:
+            table === "channels"
+              ? (opts.channel ?? null)
+              : table === "channel_members"
+                ? (single && "memberSingle" in opts ? opts.memberSingle : (opts.memberRows ?? []))
+                : [],
           error: null,
         });
       const settle = () => {
@@ -53,7 +62,7 @@ function makeClient(opts: {
         order: () => q,
         ilike: () => q,
         range: () => q,
-        maybeSingle: () => runRead(),
+        maybeSingle: () => ((single = true), runRead()),
         then: (res: any, rej: any) => settle().then(res, rej),
       };
       return q;
@@ -153,9 +162,14 @@ describe("channelRoster", () => {
     expect(page.hasMore).toBe(true); // 3 rows returned for limit 2
     expect(page.rows).toHaveLength(2);
     expect(page.rows[0]).toEqual({
-      id: "m1", sourceName: "Cafe A", sourceCouncil: "Belfast", sourceEmail: "a@x.com",
+      id: "m1", sourceName: "Cafe A", sourceCouncil: "Belfast",
+      // 2.5: the address is masked in the mapper, not the UI — so it never crosses the wire.
+      sourceEmailMasked: "a\u2022\u2022\u2022@x\u2022\u2022\u2022.com", hasEmail: true,
       status: "live", membershipRef: "R1", venueId: "v1", venue: { name: "Cafe A", slug: "cafe-a" }, createdAt: "2026-01-02",
     });
+
+    // The mapped row must not carry the real address under ANY key — the whole point of 2.5.
+    expect(JSON.stringify(page.rows)).not.toContain("a@x.com");
     expect(page.rows[1]!.venue).toEqual({ name: "Cafe B", slug: "cafe-b" }); // array embed flattened
     expect(page.nextOffset).toBe(2);
   });
@@ -173,5 +187,64 @@ describe("channelOnboardingStats", () => {
     expect(stats.total).toBe(4);
     expect(stats.byStatus).toEqual({ live: 2, invited: 1, imported: 1 });
     expect(stats.byCouncil).toEqual({ Belfast: 2, Derry: 1, "—": 1 });
+  });
+});
+
+describe("revealMemberEmail (2.5 — PII reads are audited)", () => {
+  const MEMBER = "00000000-0000-0000-0000-0000000000m1";
+
+  it("returns the real address AND records who looked", async () => {
+    const audit: any[] = [];
+    const r = await revealMemberEmail(
+      makeClient({ channel: F2G_ROW, memberSingle: { id: MEMBER, source_email: "info@cafe.co.uk" }, audit, writes: [] }),
+      ACTOR,
+      { channelKey: "f2g", memberId: MEMBER },
+    );
+    expect(r.email).toBe("info@cafe.co.uk");
+    expect(audit).toHaveLength(1);
+    expect(audit[0].action).toBe("reveal_member_email");
+    expect(audit[0].entity_type).toBe("channel_member");
+    expect(audit[0].entity_id).toBe(MEMBER);
+  });
+
+  it("does NOT copy the address into the audit row", async () => {
+    // The log is append-only and long-lived; quoting what it protects would make it a second,
+    // permanent copy of the very thing being guarded.
+    const audit: any[] = [];
+    await revealMemberEmail(
+      makeClient({ channel: F2G_ROW, memberSingle: { id: MEMBER, source_email: "info@cafe.co.uk" }, audit, writes: [] }),
+      ACTOR,
+      { channelKey: "f2g", memberId: MEMBER },
+    );
+    expect(JSON.stringify(audit)).not.toContain("info@cafe.co.uk");
+    expect(audit[0].detail).toEqual({ channel: "f2g" });
+  });
+
+  it("returns null and audits NOTHING when the roster holds no address", async () => {
+    // There was no personal data to read, so there is nothing to account for. Logging it would
+    // bury the reads that matter under ones that did not happen.
+    const audit: any[] = [];
+    const r = await revealMemberEmail(
+      makeClient({ channel: F2G_ROW, memberSingle: { id: MEMBER, source_email: null }, audit, writes: [] }),
+      ACTOR,
+      { channelKey: "f2g", memberId: MEMBER },
+    );
+    expect(r.email).toBeNull();
+    expect(audit).toHaveLength(0);
+  });
+
+  it("refuses a member that is not on this channel, and an unknown channel", async () => {
+    await expect(
+      revealMemberEmail(makeClient({ channel: F2G_ROW, memberSingle: null, audit: [], writes: [] }), ACTOR, {
+        channelKey: "f2g",
+        memberId: MEMBER,
+      }),
+    ).rejects.toThrow(/not found/);
+    await expect(
+      revealMemberEmail(makeClient({ channel: null, audit: [], writes: [] }), ACTOR, {
+        channelKey: "nope",
+        memberId: MEMBER,
+      }),
+    ).rejects.toThrow(/unknown channel/);
   });
 });

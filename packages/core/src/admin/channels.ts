@@ -14,6 +14,7 @@
 import type { RoamClient } from "@roam/db";
 import { loose } from "./loose.js";
 import { recordAudit, type AdminActor } from "./actions.js";
+import { maskEmail } from "../activation/index.js";
 import {
   getChannelByKey,
   normalizeHost,
@@ -31,7 +32,21 @@ export interface ChannelRosterRow {
   id: string;
   sourceName: string;
   sourceCouncil: string | null;
-  sourceEmail: string | null;
+  /**
+   * The roster e-mail, MASKED (`i\u2022\u2022\u2022@b\u2022\u2022\u2022.co.uk`), never the address itself. 2.5: the full
+   * value is personal data belonging to the Association's members, and a list screen that ships it
+   * to every staff browser on every page load puts it into screenshares, screenshots and devtools
+   * with no record that anyone looked. Masking HERE rather than in the UI is the point — a CSS or
+   * JSX change cannot undo it, because the address never crosses the wire.
+   *
+   * To see a real one, staff call `revealMemberEmail`, which is audited.
+   */
+  sourceEmailMasked: string | null;
+  /**
+   * Whether an address exists at all. The invite/activation buttons need to know this and nothing
+   * more; they never needed the address, because the send happens server-side.
+   */
+  hasEmail: boolean;
   status: string;
   membershipRef: string;
   /** The matched venue id (for staff tag/untag into the channel), null until matched. */
@@ -94,7 +109,8 @@ export async function channelRoster(
         id: String(r.id),
         sourceName: String(r.source_name ?? ""),
         sourceCouncil: r.source_council ?? null,
-        sourceEmail: r.source_email ?? null,
+        sourceEmailMasked: r.source_email ? maskEmail(r.source_email) : null,
+        hasEmail: Boolean(r.source_email && String(r.source_email).trim()),
         status: String(r.status ?? ""),
         membershipRef: String(r.membership_ref ?? ""),
         venueId: r.venue_id ?? null,
@@ -468,3 +484,56 @@ export async function removeChannelOfficer(
   });
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+// ── PII: revealing one roster e-mail, on the record ─────────────────────────────────────────────
+
+/**
+ * Return ONE member's real e-mail address and write an audit row for having done so (F2G plan 2.5).
+ *
+ * WHY THIS EXISTS RATHER THAN JUST SENDING THE ADDRESS WITH THE LIST. Roam staff are trusted, so
+ * this is not a defence against them — it is two other things. It keeps members' contact details out
+ * of the incidental places a list screen leaks into (a screenshare, a screenshot in a ticket, an
+ * open devtools panel), and it makes deliberate access to personal data *accountable*: who looked,
+ * at whose details, and when. That accountability is the part a data-protection regime actually asks
+ * for, and a masked list with no reveal path would simply have pushed staff to the database console,
+ * where nothing is recorded at all.
+ *
+ * Returns null when the roster holds no address — a legitimate and common answer (plan §3.2: those
+ * members have no self-serve path), and not something to audit as a PII read, because there was no
+ * personal data to read.
+ */
+export async function revealMemberEmail(
+  client: RoamClient,
+  actor: AdminActor,
+  args: { channelKey: string; memberId: string },
+): Promise<{ email: string | null }> {
+  const channel = await getChannelByKey(client, args.channelKey);
+  if (!channel) throw new Error(`admin: unknown channel '${args.channelKey}'`);
+
+  const { data, error } = await loose(client)
+    .from("channel_members")
+    .select("id, source_email")
+    // Scoped to the channel as well as the id: a member id from one partner must not resolve
+    // against another, even for staff who could legitimately read both.
+    .eq("id", args.memberId)
+    .eq("channel_id", channel.id)
+    .maybeSingle();
+  if (error) throw new Error(`admin: member read failed: ${error.message}`);
+  if (!data) throw new Error("admin: member not found on this channel");
+
+  const email = (data.source_email as string | null) ?? null;
+  if (!email) return { email: null };
+
+  // Audited BEFORE returning: if the write fails, recordAudit throws and the caller gets nothing.
+  // An unrecorded PII read is the one outcome this function must not produce.
+  await recordAudit(client, actor, {
+    action: "reveal_member_email",
+    entityType: "channel_member",
+    entityId: args.memberId,
+    // The channel, not the address — an audit log that quotes what it protects is a second copy of
+    // it, and this table is append-only and long-lived.
+    detail: { channel: args.channelKey },
+  });
+
+  return { email };
+}

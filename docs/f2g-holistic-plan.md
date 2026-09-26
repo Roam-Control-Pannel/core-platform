@@ -301,7 +301,23 @@ the CRM takes over both jobs and the roster CSV becomes a fallback import path r
 | 2.3 | **HubSpot sync v1 (read-only)** — companies (lead) + contacts → `channel_members`, incremental on `hs_lastmodifieddate`, nightly cron across every connected partner + HQ "sync now", audited; dormant without a HubSpot app | 4.4 B | 4 | **DONE** |
 | 2.3b | **Partner self-connect (OAuth)** — one Roam-owned HubSpot app, `channel_integrations` (0155) with an encrypted refresh token per channel, signed-state callback, HQ Connect / Rehearse / Sync now / Disconnect | 4.3 B | 2 | **DONE** |
 | 2.4 | `/activate`: member path (e-mail possession + binding rules + throttling + audit, `activate_channel_member_venue` definer) and non-member path (server-side `listed` tag); self-tag RPC removed; invite link lands on `/activate` rather than conferring ownership; per-channel sender name | 4.4 B, 4.1 H, 4.2 H | 3 | **DONE** (0160–0162; see below) |
-| 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | |
+| 2.5 | HQ: roster e-mail masked by default, PII reads audited | 4.3 H | 1 | **DONE** (no migration) |
+
+**2.5 as built.** The HQ roster list carried every member's e-mail in full, to every staff browser,
+on every page load. It now carries a MASK, computed in `channelRoster`'s mapper rather than in the UI
+— so the address never crosses the wire and no CSS or JSX change can undo it — plus a `hasEmail`
+boolean, which is all the invite/activation buttons ever needed (the send happens server-side).
+Staff reveal one address at a time via `adminActions.revealMemberEmail`, which writes an
+`admin_audit_log` row before returning: if the audit write fails, the caller gets nothing. The log
+records who, whose, and when — never the address itself, since an append-only table quoting what it
+protects would be a second permanent copy of it. No address on file returns null and audits nothing,
+because there was no personal data to read.
+
+This is not a defence against Roam staff, who are trusted. It keeps members' contact details out of
+screenshares, screenshots and devtools panels, and it makes deliberate access *accountable* — which
+is what a data-protection regime actually asks for. A masked list with no reveal path would only
+have pushed staff to the database console, where nothing is recorded at all. No migration: 0004's
+`admin_audit_log` already takes a free-form action.
 
 **2.4 as built.** 0161 is the spine: `channel_activation_codes` (hashed, bound to a (member, venue, account) triple, expiring, attempt-counted), `channel_activation_attempts` (every attempt, no address and no code in it), and `activate_channel_member_venue`, which refuses an unbound roster row and a lapsed one. `/activate` replaces `/f2g/claim`, which is now a redirect so outstanding invites still land somewhere — the link names a pair and proves nothing. Listing and unlisting run through `tag_venue_listing` / `untag_venue_listing`, so `venue_channels` has no client-writable path at all. 0162 adds `members_unreachable` to the portal overview: members awaiting activation with no e-mail on file, which is the ceiling on self-serve onboarding.
 
