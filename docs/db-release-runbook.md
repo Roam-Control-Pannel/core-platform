@@ -11,6 +11,32 @@
 **Schema leads code.** A migration that adds something the app will read must be **applied to the
 live DB _and_ its PostgREST cache reloaded** before (or atomically with) the app deploy that needs it.
 
+### The corollary, for migrations that REMOVE something
+**Code leads schema.** Dropping a policy, column, function or default that the *currently running*
+code still depends on breaks it from the moment the SQL lands until the deploy catches up. Such a
+migration must be applied **after** the deploy that stops needing it, not before.
+
+A single migration cannot satisfy both rules, so **never put an addition and a removal in the same
+file.** Split them — expand, then contract:
+
+| | |
+|---|---|
+| **Expand** (`000N`) | add the tables/functions/columns the new code needs. Apply → deploy. |
+| **Contract** (`000N+2`) | drop what the old code needed, once nothing runs it. Deploy → apply. |
+
+**This is not theoretical.** Migration 0161 originally did both — it created the activation tables
+*and* dropped `venue_channels_owner_write` — and deadlocked on merge:
+
+- the schema-drift guard went red immediately (0161's tables were not applied yet);
+- the deploy host gates on the GitHub check suite, so it would not ship the code that stops needing
+  the policy;
+- the policy could not safely be dropped until that code shipped.
+
+Nothing could move. The fix was to split it (0161 additive, **0163** the drop), which is why 0163
+exists and why it is numbered after 0162 rather than folded back in. If you find yourself wanting to
+apply a migration "quickly, before anyone notices", that is the signal you have bundled a removal
+with an addition.
+
 ## The two failure shapes (both now guarded)
 - **`42703` (undefined_column):** the migration isn't applied to this project. → apply it.
 - **`PGRST204` (schema cache):** the column exists in Postgres but PostgREST hasn't reloaded its
@@ -225,7 +251,7 @@ select sum(('x' || substr(h, 1, 8))::bit(32)::bigint) as canonical_sum, count(*)
   ) t;
 ```
 
-Expected value as of migration 0162: **`292820344529` across 134 functions**.
+Expected value as of migration 0163: **`292820344529` across 134 functions**.
 
 | After | canonical_sum | fns | What moved |
 |---|---|---|---|
@@ -239,6 +265,7 @@ Expected value as of migration 0162: **`292820344529` across 134 functions**.
 | 0160 | `284458429678` | 130 | **unchanged** — 0160 moves a policy and a column default, no function body. A clean replay through 0160 reproducing the 0159 figure exactly is the harness cross-check this table asks for |
 | 0161 | `292433798764` | 134 | `activate_channel_member_venue`, `tag_venue_listing`, `untag_venue_listing` and `channel_activation_guard_client_roles` added |
 | 0162 | `292820344529` | 134 | `channel_portal_overview` replaced (one column added); none added or removed |
+| 0163 | `292820344529` | 134 | **unchanged** — 0163 drops a policy, no function body moves |
 
 The 0155 row was reconstructed on 2026-09-23 — it was missed when 0155 shipped, which is the failure
 mode this line exists to prevent. Recompute after any migration that adds or changes a function, by

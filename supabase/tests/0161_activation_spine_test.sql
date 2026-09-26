@@ -2,24 +2,16 @@
 -- pgTAP regression tests for 0161_activation_spine.sql
 --
 -- The security claims under test, in the order they matter:
---   * `venue_channels` has NO client-writable path left at all — 0160 narrowed the owner-write
---     policy, 0161 removes it, so self-tagging through PostgREST is gone rather than restricted.
---   * activation NEVER confers a pair the roster does not already assert (unbound and mismatched
+--   * * activation NEVER confers a pair the roster does not already assert (unbound and mismatched
 --     both refused), and never revives a lapsed member.
 --   * an owner may withdraw their own LISTING but can never remove a MEMBER tag, which would
 --     silently un-rank a member the Association placed.
 --   * the codes and the attempt audit are unreachable from any client role.
 -- ============================================================================
 begin;
-select plan(23);
+select plan(21);
 
 -- ── posture ──────────────────────────────────────────────────────────────────
-select is(
-  (select count(*)::int from pg_policies
-    where schemaname = 'public' and tablename = 'venue_channels' and policyname = 'venue_channels_owner_write'),
-  0,
-  'venue_channels_owner_write is GONE — PostgREST self-tagging is removed, not merely narrowed');
-
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.channel_activation_codes'::regclass),
   'channel_activation_codes has RLS on');
@@ -127,7 +119,6 @@ declare
   member_not_demoted boolean := true;
   member_untag_refused boolean := false;
   listed_untag_ok boolean := false;
-  client_write_refused boolean := false;
 begin
   select id into ch from channels where key = 'test-act-0161';
   select id into m_bound   from channel_members where membership_ref = 'F2G-0161-BOUND';
@@ -200,16 +191,6 @@ begin
   listed_untag_ok := not exists (select 1 from venue_channels
                                   where channel_id = ch and venue_id = '00000000-0000-0000-0000-000000016105');
 
-  -- THE REMOVAL: a real authenticated role has no write to venue_channels at all any more.
-  perform set_config('role', 'authenticated', true);
-  perform set_config('request.jwt.claims',
-    '{"sub":"00000000-0000-0000-0000-00000016101a","role":"authenticated"}', true);
-  begin
-    insert into venue_channels (channel_id, venue_id, role)
-      values (ch, '00000000-0000-0000-0000-000000016105', 'listed');
-  exception when others then client_write_refused := true; end;
-  perform set_config('role', 'postgres', true);
-
   insert into _act values
     ('unbound_refused',      unbound_refused),
     ('mismatch_refused',     mismatch_refused),
@@ -221,12 +202,9 @@ begin
     ('listed_ok',            listed_ok),
     ('member_not_demoted',   member_not_demoted),
     ('member_untag_refused', member_untag_refused),
-    ('listed_untag_ok',      listed_untag_ok),
-    ('client_write_refused', client_write_refused);
+    ('listed_untag_ok',      listed_untag_ok);
 end $$;
 
-select ok((select ok from _act where name = 'client_write_refused'),
-  'an authenticated role cannot write venue_channels AT ALL — self-tagging is removed, not narrowed');
 select ok((select ok from _act where name = 'unbound_refused'),
   'activation refuses an UNBOUND roster row: the database never confers a pair the roster does not assert');
 select ok((select ok from _act where name = 'mismatch_refused'),
