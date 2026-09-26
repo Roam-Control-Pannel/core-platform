@@ -34,6 +34,10 @@
  * read still answers 200 with `[]` (RLS filters rows, not columns), so RLS-locked tables are probed
  * exactly like public ones — only a MISSING column produces the drift shape.
  *
+ * A table carrying `expect: "empty"` is service-managed — RLS on with NO policy — so it answers 200
+ * with zero rows rather than refusing, and is asserted that way round: rows coming back is the
+ * regression.
+ *
  * EXCEPT when the table's RLS policy calls a SECURITY DEFINER function that anon may not EXECUTE
  * (0151's posture). Postgres then refuses the statement outright with SQLSTATE 42501 rather than
  * returning an empty set, so such a table carries `expect: "denied"` and is asserted the other way
@@ -81,16 +85,18 @@ export const REQUIRED_READS = [
   {
     table: "channel_activation_codes",
     columns: ["id", "member_id", "venue_id", "profile_id", "expires_at", "attempts", "consumed_at"],
-    // Service-managed with RLS on and NO policy (0161): anon is refused outright rather than handed
-    // an empty set, so this is asserted the denied way round. A 2xx here would be a table of
-    // credentials readable from a browser.
-    expect: "denied",
+    // Service-managed with RLS on and NO policy (0161). With no policy at all, Postgres matches no
+    // rows for a client role rather than raising — so the honest assertion is 200-with-zero-rows,
+    // not a refusal. (An earlier revision asserted "denied" here by wrong analogy with
+    // channel_feature_requests, whose POLICY calls a definer anon cannot execute; that failed live
+    // and taught the distinction.)
+    expect: "empty",
     reason: "one-time activation codes — service-managed, no client path (migration 0161)",
   },
   {
     table: "channel_activation_attempts",
     columns: ["id", "channel_id", "member_id", "venue_id", "profile_id", "outcome", "created_at"],
-    expect: "denied",
+    expect: "empty",
     reason: "activation attempt audit — service-managed, no client path (migration 0161)",
   },
   {
@@ -409,6 +415,30 @@ async function main() {
       body = await res.json().catch(() => null);
     } catch (e) {
       errors.push(`${table}: could not reach PostgREST (${e.message})`);
+      continue;
+    }
+    if (expect === "empty") {
+      // A service-managed table: RLS on with NO policy. Postgres then matches no rows for a client
+      // role, so PostgREST answers 200 with `[]` — it does NOT refuse. (Contrast `denied` below,
+      // which applies only where a POLICY EXISTS and calls a definer the role may not execute.)
+      //
+      // Asserting emptiness rather than mere readability is the strongest thing an anon probe can
+      // say about such a table: if a policy were ever added that exposed rows, this catches it.
+      // What it CANNOT prove is that RLS is working while the table happens to be empty — an empty
+      // table and a correctly-filtered one look identical from out here. That limit is why the
+      // pgTAP suite asserts the posture directly (RLS on, zero policies, tripwire trigger) and this
+      // probe only guards against a live regression.
+      if (isDriftError(body)) {
+        drifts.push({ kind: "read", table, columns, reason, code: body?.code, message: body?.message });
+      } else if (res.ok && Array.isArray(body) && body.length === 0) {
+        console.log(`  ✓ ${table} (${columns.join(", ")}) — resolves and returns no rows to anon (service-managed, as intended)`);
+      } else if (res.ok && Array.isArray(body)) {
+        regressions.push(`${table}: anon READ returned ${body.length} row(s) from a service-managed table — ${reason}`);
+      } else if (res.ok) {
+        errors.push(`${table}: ${res.status} but the body is not a PostgREST row array — is SUPABASE_URL the project API?`);
+      } else {
+        errors.push(`${table}: unexpected ${res.status} response — ${body?.message ?? "unknown error"}`);
+      }
       continue;
     }
     if (expect === "denied") {
